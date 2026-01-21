@@ -1,5 +1,10 @@
 from typing import Callable, Dict, Set, Any
 from threading import Lock
+
+try:
+    import epicscorelibs.path.pyepics
+except ImportError:
+    pass
 import epics
 
 
