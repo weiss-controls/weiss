@@ -24,14 +24,19 @@ class TimeStamp:
 
 
 @dataclass
+class EnumT:
+    index: Optional[int] = None
+    choices: Optional[List[str]] = None
+
+
+@dataclass
 class Display:
     limitLow: Optional[float] = None
     limitHigh: Optional[float] = None
     description: Optional[str] = None
     units: Optional[str] = None
     precision: Optional[int] = None
-    form: Optional[str] = None
-    choices: Optional[List[str]] = None
+    form: Optional[EnumT] = None
 
 
 @dataclass
@@ -140,14 +145,18 @@ class PVParser:
         )
 
         d = pv_obj.get("display", {})
+        form_obj = d.get("form", {})
+        form_enum = EnumT(
+            index=form_obj.get("index"),
+            choices=form_obj.get("choices"),
+        )
         display = Display(
             limitLow=d.get("limitLow"),
             limitHigh=d.get("limitHigh"),
             description=d.get("description"),
             units=d.get("units"),
             precision=d.get("precision"),
-            form=(d.get("form")).get("index") if d.get("form") else None,
-            choices=d.get("choices"),
+            form=form_enum,
         )
 
         c = pv_obj.get("control", {})
@@ -219,7 +228,6 @@ class PVParser:
             limitHigh=normalize_value(pv_obj.get("upper_disp_limit")),
             units=pv_obj.get("units"),
             precision=normalize_value(pv_obj.get("precision")),
-            choices=enumChoices,
         )
 
         control = Control(
