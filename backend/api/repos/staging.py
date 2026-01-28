@@ -3,7 +3,7 @@ import uuid
 import subprocess
 import json
 from .common import REPOS_BASE_PATH
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel, Field
 from typing import List
 from datetime import datetime, timezone
@@ -25,10 +25,12 @@ from api.repos.common import (
     REGISTERED_REPO_URLS,
     NEW_FILE_CONTENT,
 )
+from api.auth.roles import require_developer
 
 router = APIRouter(
     prefix="/api/v1/repos/staging",
     tags=["[Admin] OPI management"],
+    dependencies=[Depends(require_developer)],
 )
 
 

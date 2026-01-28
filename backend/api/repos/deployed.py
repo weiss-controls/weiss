@@ -1,6 +1,6 @@
 import os
 import json
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import List
 from datetime import datetime
 from api.repos.common import (
@@ -16,10 +16,12 @@ from api.repos.common import (
     CURRENT_SYMLINK,
     DEPLOYMENT_META,
 )
+from api.auth.auth import get_current_user
 
 router = APIRouter(
     prefix="/api/v1/repos/runtime",
     tags=["OPI Repositories"],
+    dependencies=[Depends(get_current_user)],
 )
 
 
