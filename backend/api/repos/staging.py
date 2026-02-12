@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel, Field
 from typing import List
 from datetime import datetime, timezone
+from api.auth.roles import require_developer, User
 from api.repos.common import (
     FileResponse,
     RepoInfo,
@@ -25,13 +26,16 @@ from api.repos.common import (
     REGISTERED_REPO_URLS,
     NEW_FILE_CONTENT,
 )
-from api.auth.roles import require_developer
 
 router = APIRouter(
     prefix="/api/v1/repos/staging",
     tags=["[Admin] OPI management"],
     dependencies=[Depends(require_developer)],
 )
+
+
+def ssh_available() -> bool:
+    return os.path.exists("/root/.ssh/id_rsa") and os.path.exists("/root/.ssh/known_hosts")
 
 
 # -----------------------------------------------------------------------------
@@ -85,9 +89,46 @@ def run_git(cmd: list, cwd: str = None):
         raise HTTPException(status_code=500, detail=f"Git command failed: {e.stderr}")
 
 
+def get_repo_remote_url(repo_path: str) -> str:
+    return run_git(["remote", "get-url", "origin"], cwd=repo_path)
+
+
+def is_ssh_repo(repo_path: str) -> bool:
+    url = get_repo_remote_url(repo_path)
+    return url.startswith("git@") or url.startswith("ssh://")
+
+
+def is_https_repo(repo_path: str) -> bool:
+    url = get_repo_remote_url(repo_path)
+    return url.startswith("https://")
+
+
+def ensure_clean(repo_path: str):
+    dirty = run_git(["status", "--porcelain"], cwd=repo_path)
+    if dirty.strip():
+        raise HTTPException(
+            status_code=409,
+            detail="Working tree has uncommitted changes. Commit or reset first.",
+        )
+
+
 def clone(git_url: str, repo_id: str) -> str:
     if git_url in REGISTERED_REPO_URLS:
         raise HTTPException(status_code=403, detail="Repository already registered")
+
+    if ssh_available():
+        if not git_url.startswith(("git@", "ssh://")):
+            raise HTTPException(
+                status_code=400,
+                detail="SSH key is configured. Repositories must be registered using SSH URLs.",
+            )
+    else:
+        if not git_url.startswith("https://"):
+            raise HTTPException(
+                status_code=400,
+                detail="No SSH key configured. Only HTTPS repositories can be registered.",
+            )
+
     repo_path = os.path.join(REPOS_BASE_PATH, repo_id, STAGING_REL_FOLDER)
     os.makedirs(os.path.dirname(repo_path), exist_ok=True)
     run_git(["clone", "--recursive", git_url, repo_path])
@@ -138,6 +179,7 @@ def create_snapshot(repo_id: str, ref: str) -> str:
         deployment_id, snapshot_path
     """
     repo_path = get_staging_path(repo_id)
+    ensure_clean(repo_path)
     deployment_id = str(uuid.uuid4())
     deployments_root = os.path.join(REPOS_BASE_PATH, repo_id, DEPLOYMENTS_REL_FOLDER)
     os.makedirs(deployments_root, exist_ok=True)
@@ -227,6 +269,11 @@ def list_repository_refs(repo_id: str) -> list[str]:
 def update_repo(repo_id: str):
     """Fetch new tags/commits from remote"""
     repo_path = get_staging_path(repo_id)
+    if is_ssh_repo(repo_path) and not ssh_available():
+        raise HTTPException(
+            status_code=500,
+            detail="This repository requires SSH credentials, but no key is configured.",
+        )
     run_git(["fetch", "--all", "--tags", "--prune"], cwd=repo_path)
     info_path, repo_info = get_repo_info(repo_id)
     refs = list_repository_refs(repo_id)
@@ -436,12 +483,27 @@ def delete_staging_repo_path(
     response_model=RepoTreeInfo,
     operation_id="commitStagingRepo",
 )
-def commit_staging_repo(repo_id: str, payload: CommitRequest):
+def commit_staging_repo(
+    repo_id: str, payload: CommitRequest, user: User = Depends(require_developer)
+):
     """
     Commit staged changes in the staging repository.
     Fails if there is nothing to commit.
     """
     repo_path = get_staging_path(repo_id)
+
+    if is_https_repo(repo_path):
+        raise HTTPException(
+            status_code=400,
+            detail="This repository was cloned via HTTPS. "
+            "Unregister it and re-register using an SSH URL to enable commits.",
+        )
+
+    if not ssh_available():
+        raise HTTPException(
+            status_code=500,
+            detail="SSH key not configured on server. Cannot push.",
+        )
 
     # Ensure there is something staged
     staged = run_git(["diff", "--cached", "--name-only"], cwd=repo_path)
@@ -455,13 +517,15 @@ def commit_staging_repo(repo_id: str, payload: CommitRequest):
                 "-m",
                 payload.message,
                 "-m",
-                "Commited by WEISS API on behalf of $USER (#TODO)",
+                f"Committed by WEISS on behalf of {user.username}",
             ],
             cwd=repo_path,
         )
-        commit_hash = run_git(["rev-parse", "HEAD"], cwd=repo_path)
+
         if payload.tag:
-            run_git(["tag", payload.tag, commit_hash], cwd=repo_path)
+            run_git(["tag", payload.tag], cwd=repo_path)
+
+        run_git(["push", "--follow-tags"], cwd=repo_path)
     except HTTPException as e:
         raise HTTPException(
             status_code=500,
@@ -524,6 +588,7 @@ def deploy_repo(repo_id: str, payload: DeployRequest):
 def checkout_repo_ref(repo_id: str, ref: str):
     """Checkout a specific ref in the staging repo"""
     repo_path = get_staging_path(repo_id)
+    ensure_clean(repo_path)
     run_git(["checkout", ref], cwd=repo_path)
     repo_info_path, repo_info = get_repo_info(repo_id)
     # get actual hash to avoid tags
