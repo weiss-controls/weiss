@@ -51,6 +51,8 @@ services:
     volumes:
       - ./backend/api:/app/api
       - ${REPOS_MOUNT_PATH}:/app/storage/repos
+      - ${SSH_KEY_PATH}:/root/.ssh/id_rsa:ro
+      - ${SSH_KNOWN_HOSTS_PATH}:/root/.ssh/known_hosts:ro
     image: weiss-api-dev:${VITE_APP_VERSION}
     container_name: weiss-api-dev
     ports:
