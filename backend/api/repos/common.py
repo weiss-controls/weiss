@@ -4,7 +4,11 @@ from pydantic import BaseModel
 from typing import List, Optional, Literal, Tuple
 from datetime import datetime
 
-REPOS_BASE_PATH = "/app/storage/repos"  # Abs path inside container - adjust if running locally
+# Abs paths inside container - adjust if running locally
+REPOS_BASE_PATH = "/app/storage/repos"
+SSH_KEY_PATH = "/root/.ssh/id_rsa"
+SSH_KNOWN_HOSTS_PATH = "/root/.ssh/known_hosts"
+##
 STAGING_REL_FOLDER = "staging"
 DEPLOYMENTS_REL_FOLDER = "deployments"
 SNAPSHOT_REL_FOLDER = "snapshot"

@@ -25,6 +25,8 @@ from api.repos.common import (
     DEPLOYMENT_META,
     REGISTERED_REPO_URLS,
     NEW_FILE_CONTENT,
+    SSH_KEY_PATH,
+    SSH_KNOWN_HOSTS_PATH,
 )
 
 router = APIRouter(
@@ -35,7 +37,21 @@ router = APIRouter(
 
 
 def ssh_available() -> bool:
-    return os.path.exists("/root/.ssh/id_rsa") and os.path.exists("/root/.ssh/known_hosts")
+    if not (os.path.isfile(SSH_KEY_PATH) and os.path.getsize(SSH_KEY_PATH) > 0):
+        return False
+    if not (os.path.isfile(SSH_KNOWN_HOSTS_PATH) and os.path.getsize(SSH_KNOWN_HOSTS_PATH) > 0):
+        return False
+    try:
+        subprocess.run(
+            ["ssh-keygen", "-l", "-f", SSH_KEY_PATH],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except subprocess.CalledProcessError:
+        return False
+
+    return True
 
 
 # -----------------------------------------------------------------------------
