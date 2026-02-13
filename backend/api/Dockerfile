@@ -16,4 +16,4 @@ RUN pip install --upgrade pip \
 
 EXPOSE 8000
 
-ENTRYPOINT ["/app/docker-entrypoint.sh"]
+ENTRYPOINT ["/app/api/docker-entrypoint.sh"]
