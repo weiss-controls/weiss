@@ -66,6 +66,10 @@ class RepoRef(BaseModel):
     ref: str
 
 
+class SSHStatus(BaseModel):
+    enabled: bool
+
+
 class ValidationResult(BaseModel):
     valid: bool
     errors: List[str] = []
@@ -215,6 +219,12 @@ def validate_repo_content(repo_path: str, ref: str) -> ValidationResult:
 @router.get("/", response_model=List[RepoInfo], operation_id="listRepos")
 def list_repositories():
     return list_all_repositories()
+
+
+@router.get("/ssh-status", response_model=SSHStatus, operation_id="getSSHStatus")
+def get_ssh_status():
+    """Return whether SSH key is currently configured and usable"""
+    return SSHStatus(enabled=ssh_available())
 
 
 @router.get("/tree", response_model=List[RepoTreeInfo], operation_id="getAllReposTree")
