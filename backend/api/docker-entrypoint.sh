@@ -1,8 +1,8 @@
 #!/bin/sh
 set -e
 
-SSH_KEY_PATH="/root/.ssh/id_rsa"
-SSH_KNOWN_HOSTS_PATH="/root/.ssh/known_hosts"
+SSH_KEY_PATH="$HOME/.ssh/ssh_key"
+SSH_KNOWN_HOSTS_PATH="$HOME/.ssh/known_hosts"
 
 ssh_available() {
     # Both files must exist and be non-empty
