@@ -78,7 +78,7 @@ class DeploymentInfo(BaseModel):
     repo_id: str
     ref: str
     commit_hash: str
-    deployed_at: Optional[datetime]
+    deployed_at: Optional[str] = None
 
 
 def build_path_tree(root_path: str, rel_path: str = "") -> List[TreeNode]:

@@ -2,7 +2,6 @@ import os
 import json
 from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import List
-from datetime import datetime
 from api.repos.common import (
     FileResponse,
     RepoInfo,
@@ -86,7 +85,7 @@ def get_deployed_repo_tree(repo_id: str):
     Return the full tree of the currently deployed snapshot
     for a single repository, wrapped in RepoTreeInfo.
     """
-    repo = get_repo_info(repo_id)
+    _, repo = get_repo_info(repo_id)
 
     if repo.current_deployment is None:
         raise HTTPException(
@@ -134,5 +133,5 @@ def get_current_deployment_info(repo_id: str):
         repo_id=meta["repo_id"],
         ref=meta["ref"],
         commit_hash=meta["commit_hash"],
-        deployed_at=datetime.fromisoformat(meta["deployed_at"]),
+        deployed_at=meta["deployed_at"],
     )

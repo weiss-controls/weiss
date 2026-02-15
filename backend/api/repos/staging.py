@@ -3,9 +3,9 @@ import uuid
 import subprocess
 import json
 from .common import REPOS_BASE_PATH
-from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi import APIRouter, HTTPException, Body, Query, Depends
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Tuple
 from datetime import datetime, timezone
 from api.auth.roles import require_developer, User
 from api.repos.common import (
@@ -96,7 +96,7 @@ class PathCreateRequest(BaseModel):
 # -----------------------------------------------------------------------------
 # Helper functions
 # -----------------------------------------------------------------------------
-def run_git(cmd: list, cwd: str = None):
+def run_git(cmd: list, cwd: str | None = None):
     """Run git command and raise exception on failure"""
     try:
         result = subprocess.run(["git"] + cmd, cwd=cwd, check=True, capture_output=True, text=True)
@@ -187,7 +187,7 @@ def get_working_tree_status(repo_path: str) -> GitWorkingTreeStatus:
     )
 
 
-def create_snapshot(repo_id: str, ref: str) -> str:
+def create_snapshot(repo_id: str, ref: str) -> Tuple[str, str]:
     """
     Create a read-only snapshot of the repo at a given ref.
 
@@ -327,7 +327,7 @@ def staging_update_repo_file(
     path: str = Query(
         ..., description="Path to existing file inside repository (relative to root)"
     ),
-    payload: FileUpdateRequest = ...,
+    payload: FileUpdateRequest = Body(...),
 ):
     """
     Overwrite the contents of an existing file in the staging repository.
