@@ -197,7 +197,8 @@ export const registerRepo = <ThrowOnError extends boolean = true>(
 /**
  * List Repository Refs
  *
- * List 20 latest repository refs available in default branch
+ * List 20 latest repository refs available in default branch.
+ * If commit is tagged, show tag instead.
  */
 export const listRepoRefs = <ThrowOnError extends boolean = true>(
   options: Options<ListRepoRefsData, ThrowOnError>,

@@ -247,7 +247,12 @@ def register_repository(payload: RepoCreateRequest):
     # @TODO: sanitize git_url to prevent duplicates between ssh/https clones
     REGISTERED_REPO_URLS.append(payload.git_url)
 
-    checked_out_ref = run_git(["rev-parse", "HEAD"], cwd=repo_path)
+    repo_head = run_git(["rev-parse", "HEAD"], cwd=repo_path).strip()
+    tag = run_git(["describe", "--tags", "--exact-match", repo_head], cwd=repo_path).strip()
+    if tag:
+        checked_out_ref = tag
+    else:
+        checked_out_ref = repo_head
     refs = list_repository_refs(repo_id)
 
     repo_info = RepoInfo(
@@ -268,25 +273,42 @@ def register_repository(payload: RepoCreateRequest):
 
 @router.get("/{repo_id}/refs", response_model=list[str], operation_id="listRepoRefs")
 def list_repository_refs(repo_id: str) -> list[str]:
-    """List 20 latest repository refs available in default branch"""
+    """List 20 latest repository refs available in default branch.
+    If commit is tagged, show tag instead.
+    """
     repo_path = get_staging_path(repo_id)
-    tag_output = run_git(["tag"], cwd=repo_path)
-    tags = tag_output.splitlines() if tag_output else []
+
     default_branch = run_git(
-        ["symbolic-ref", "refs/remotes/origin/HEAD"],
-        cwd=repo_path,
-    ).replace("refs/remotes/", "")
-    commit_output = run_git(
-        ["rev-list", "--max-count=20", default_branch],
+        ["remote", "show", "origin"],
         cwd=repo_path,
     )
-    commits = commit_output.splitlines() if commit_output else []
+
+    for line in default_branch.splitlines():
+        if "HEAD branch" in line:
+            default_branch = line.split(":")[-1].strip()
+            break
+    else:
+        raise HTTPException(500, "Cannot resolve default branch")
+
+    branch_ref = f"origin/{default_branch}"
+    commits = run_git(
+        ["rev-list", "--max-count=20", branch_ref],
+        cwd=repo_path,
+    ).splitlines()
+
+    tag_refs = run_git(["show-ref", "--tags"], cwd=repo_path).splitlines()
+    commit_to_tag = {}
+    for line in tag_refs:
+        sha, ref = line.split()
+        tag = ref.replace("refs/tags/", "")
+        commit_to_tag[sha] = tag
+
     refs: list[str] = []
-    refs.extend(tags)
-    tagged_commits = set(run_git(["rev-list", "--tags"], cwd=repo_path).splitlines())
-    for commit in commits:
-        if commit not in tagged_commits:
-            refs.append(commit)
+    for sha in commits:
+        if sha in commit_to_tag:
+            refs.append(commit_to_tag[sha])
+        else:
+            refs.append(sha)
 
     return refs
 
@@ -548,10 +570,12 @@ def commit_staging_repo(
             cwd=repo_path,
         )
 
+        run_git(["push"], cwd=repo_path)
+
         if payload.tag:
             run_git(["tag", payload.tag], cwd=repo_path)
+            run_git(["push", "origin", payload.tag], cwd=repo_path)
 
-        run_git(["push", "--follow-tags"], cwd=repo_path)
     except HTTPException as e:
         raise HTTPException(
             status_code=500,
@@ -560,7 +584,10 @@ def commit_staging_repo(
 
     # Update repo metadata
     repo_info_path, repo_info = get_repo_info(repo_id)
-    repo_info.checked_out_ref = run_git(["rev-parse", "HEAD"], cwd=repo_path)
+    if payload.tag:
+        repo_info.checked_out_ref = payload.tag
+    else:
+        repo_info.checked_out_ref = run_git(["rev-parse", "HEAD"], cwd=repo_path).strip()
 
     with open(repo_info_path, "w") as f:
         f.write(repo_info.model_dump_json(indent=2))
@@ -617,9 +644,7 @@ def checkout_repo_ref(repo_id: str, ref: str):
     ensure_clean(repo_path)
     run_git(["checkout", ref], cwd=repo_path)
     repo_info_path, repo_info = get_repo_info(repo_id)
-    # get actual hash to avoid tags
-    checked_out_ref = run_git(["rev-parse", "HEAD"], cwd=repo_path)
-    repo_info.checked_out_ref = checked_out_ref
+    repo_info.checked_out_ref = ref
     with open(repo_info_path, "w") as f:
         f.write(repo_info.model_dump_json(indent=2))
     return get_staging_repo_tree(repo_id)
