@@ -2,12 +2,11 @@ import os
 import json
 from pydantic import BaseModel
 from typing import List, Optional, Literal, Tuple
-from datetime import datetime
 
 # Abs paths inside container - adjust if running locally
 REPOS_BASE_PATH = "/app/storage/repos"
-SSH_KEY_PATH = "/root/.ssh/id_rsa"
-SSH_KNOWN_HOSTS_PATH = "/root/.ssh/known_hosts"
+SSH_KEY_PATH = os.getenv("SSH_KEY_PATH", "/home/weiss/.ssh/ssh_key")
+SSH_KNOWN_HOSTS_PATH = os.getenv("SSH_KNOWN_HOSTS_PATH", "/home/weiss/.ssh/ssh_key")
 ##
 STAGING_REL_FOLDER = "staging"
 DEPLOYMENTS_REL_FOLDER = "deployments"
