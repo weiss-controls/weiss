@@ -14,6 +14,7 @@ import { notifyUser } from "@src/services/Notifications/Notification";
 import {
   getAllDeployedReposTree,
   getAllReposTree,
+  getSshStatus,
   updateStagingRepoFile,
   type RepoTreeInfo,
   type User,
@@ -45,6 +46,7 @@ export default function useUIManager(
   const [isPanning, setIsPanning] = useState(false);
   const [user, setUser] = useState<User | null>(() => authService.getUser());
   const [authChecked, setAuthChecked] = useState(false);
+  const [sshEnabled, setSshEnabled] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [reposTreeInfo, setReposTreeInfo] = useState<RepoTreeInfo[] | null>(null);
   const [selectedFile, setSelectedFile] = useState<SelectedPathInfo | null>(null);
@@ -52,6 +54,18 @@ export default function useUIManager(
   const RECONNECT_TIMEOUT = 3000;
   const isDemo = import.meta.env.VITE_DEMO_MODE === "true";
   const isDeveloper = user?.role === Roles.DEVELOPER;
+
+  useEffect(() => {
+    void (async () => {
+      if (!isAuthenticated) return;
+      try {
+        const data = await getSshStatus().then((r) => r.data);
+        setSshEnabled(data.enabled);
+      } catch {
+        setSshEnabled(false);
+      }
+    })();
+  }, [isAuthenticated]);
 
   const updateReposTreeInfo = useCallback(async () => {
     try {
@@ -218,5 +232,6 @@ export default function useUIManager(
     updateReposTreeInfo,
     selectedFile,
     setSelectedFile,
+    sshEnabled,
   };
 }

@@ -17,9 +17,14 @@ import { registerRepo } from "@src/services/APIClient/sdk.gen";
 import { notifyUser } from "@src/services/Notifications/Notification";
 import { useUIContext } from "@src/context/useUIContext";
 
-function isValidGitUrl(url: string): boolean {
+function isHttpsGitUrl(url: string): boolean {
   const httpsPattern = /^https:\/\/[\w.-]+\/[\w.-]+\/[\w.-]+(\.git)?$/;
   return httpsPattern.test(url);
+}
+
+function isSshGitUrl(url: string): boolean {
+  const sshPattern = /^(git@|ssh:\/\/)/;
+  return sshPattern.test(url);
 }
 
 function suggestAliasFromGitUrl(url: string): string {
@@ -34,15 +39,14 @@ interface GitImportDialogProps {
 }
 
 export default function GitImportDialog({ open, onClose }: GitImportDialogProps) {
-  const { setReleaseShortcuts, updateReposTreeInfo, isDemo } = useUIContext();
+  const { setReleaseShortcuts, updateReposTreeInfo, sshEnabled } = useUIContext();
   const [alias, setAlias] = useState("");
-  const [gitUrl, setGitUrl] = useState(
-    isDemo ? "https://github.com/weiss-controls/weiss-demo-opis.git" : "",
-  );
+  const [gitUrl, setGitUrl] = useState("");
   const [aliasEdited, setAliasEdited] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const gitUrlValid = isValidGitUrl(gitUrl.trim());
+  const gitUrlValid = sshEnabled ? isSshGitUrl(gitUrl.trim()) : isHttpsGitUrl(gitUrl.trim());
+
   const showGitUrlError = gitUrl.length > 0 && !gitUrlValid;
 
   useEffect(() => {
@@ -93,18 +97,22 @@ export default function GitImportDialog({ open, onClose }: GitImportDialogProps)
       <DialogContent>
         <Box sx={{ mt: 1 }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Provide the HTTPS URL of the repository to be imported and a local alias to identify it.
+            {`Provide the ${sshEnabled ? "SSH" : "HTTPS"} URL of the repository.`}
           </Typography>
 
           <Stack spacing={2}>
             <TextField
               fullWidth
               label="Git repository URL"
-              placeholder="https://github.com/org/repo.git"
+              placeholder={
+                sshEnabled ? "git@github.com:org/repo.git" : "https://github.com/org/repo.git"
+              }
               value={gitUrl}
               onChange={(e) => setGitUrl(e.target.value)}
               error={showGitUrlError}
-              helperText={showGitUrlError ? "Enter a valid HTTPS Git URL" : " "}
+              helperText={
+                showGitUrlError ? `Enter a valid Git ${sshEnabled ? "SSH" : "HTTPS"} URL` : " "
+              }
               slotProps={{
                 input: {
                   startAdornment: (
