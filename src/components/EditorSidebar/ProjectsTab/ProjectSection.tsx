@@ -40,6 +40,7 @@ import { notifyUser } from "@src/services/Notifications/Notification";
 import { COLORS } from "@src/constants/constants";
 import FileToolbar from "./FileToolbar";
 import { useUIContext } from "@src/context/useUIContext";
+import GitCommitDialog from "@src/components/GitCommitDialog/GitCommitDialog";
 
 type RichTreeItem = TreeViewBaseItem & {
   type: "file" | "directory";
@@ -138,9 +139,10 @@ export default function ProjectSection({
   defaultSelectedPath,
 }: ProjectSectionProps) {
   const REF_MAX_DISPLAY_SIZE = 7;
-  const { isDeveloper } = useUIContext();
+  const { isDeveloper, sshEnabled } = useUIContext();
 
   const [sectionExpanded, setSectionExpanded] = useState(true);
+  const [gitCommitOpen, setGitCommitOpen] = useState(false);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
@@ -341,7 +343,7 @@ export default function ProjectSection({
 
             <Menu anchorEl={menuAnchor} open={menuOpen} onClose={() => setMenuAnchor(null)}>
               <Tooltip placement="top" title="Commit and push current changes">
-                <MenuItem disabled>
+                <MenuItem disabled={!sshEnabled} onClick={() => setGitCommitOpen(true)}>
                   <CommitIcon fontSize="small" sx={{ mr: 1 }} />
                   Commit
                 </MenuItem>
@@ -393,6 +395,11 @@ export default function ProjectSection({
           />
         </Box>
       </Collapse>
+      <GitCommitDialog
+        open={gitCommitOpen}
+        onClose={() => setGitCommitOpen(false)}
+        repoID={repo.id}
+      />
     </Paper>
   );
 }

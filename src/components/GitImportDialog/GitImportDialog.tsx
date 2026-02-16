@@ -60,6 +60,7 @@ export default function GitImportDialog({ open, onClose }: GitImportDialogProps)
     setGitUrl("");
     setAliasEdited(false);
     setLoading(false);
+    setReleaseShortcuts(false);
     onClose();
   };
 
