@@ -15,6 +15,8 @@ ssh_available() {
 
 if ssh_available; then
     export GIT_SSH_COMMAND="ssh -i $SSH_KEY_PATH -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+    git config --global user.name $SERVICE_ACCOUNT_USER
+    git config --global user.email $SERVICE_ACCOUNT_EMAIL
 fi
 
 exec python -m uvicorn api.main:app --host 0.0.0.0 --port 8000
