@@ -200,10 +200,10 @@ export default function ProjectSection({
         path: { repo_id: repo.id },
       }).then((r) => r.data);
 
-      if (res.repo_id !== repo.id || res.commit_hash !== selectedRef) {
+      if (res.repo_id !== repo.id || res.ref !== selectedRef) {
         throw new Error("Invalid deployment response");
       }
-
+      repo.deployed_ref = res.ref;
       notifyUser(`Successfully deployed ${repo.alias}@${shortRef(selectedRef)}`, "success");
     } catch (err) {
       notifyUser(`Failed to deploy repo: ${err as string}`, "error");
