@@ -1,0 +1,11 @@
+services:
+  ioc:
+    image: exampleioc
+    build:
+      context: ./
+      dockerfile: ../epics-in-docker/Dockerfile
+      target: static-link
+      args:
+        REPONAME: example
+        RUNDIR: /opt/example/iocBoot/iocexample/
+        ENTRYPOINT: ./st.cmd
