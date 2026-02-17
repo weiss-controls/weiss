@@ -36,24 +36,6 @@ router = APIRouter(
 )
 
 
-def ssh_available() -> bool:
-    if not (os.path.isfile(SSH_KEY_PATH) and os.path.getsize(SSH_KEY_PATH) > 0):
-        return False
-    if not (os.path.isfile(SSH_KNOWN_HOSTS_PATH) and os.path.getsize(SSH_KNOWN_HOSTS_PATH) > 0):
-        return False
-    try:
-        subprocess.run(
-            ["ssh-keygen", "-l", "-f", SSH_KEY_PATH],
-            check=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-    except subprocess.CalledProcessError:
-        return False
-
-    return True
-
-
 # -----------------------------------------------------------------------------
 # Models
 # -----------------------------------------------------------------------------
@@ -100,12 +82,32 @@ class PathCreateRequest(BaseModel):
 # -----------------------------------------------------------------------------
 # Helper functions
 # -----------------------------------------------------------------------------
-def run_git(cmd: list, cwd: str | None = None):
-    """Run git command and raise exception on failure"""
+def ssh_available() -> bool:
+    if not (os.path.isfile(SSH_KEY_PATH) and os.path.getsize(SSH_KEY_PATH) > 0):
+        return False
+    if not (os.path.isfile(SSH_KNOWN_HOSTS_PATH) and os.path.getsize(SSH_KNOWN_HOSTS_PATH) > 0):
+        return False
+    try:
+        subprocess.run(
+            ["ssh-keygen", "-l", "-f", SSH_KEY_PATH],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except subprocess.CalledProcessError:
+        return False
+
+    return True
+
+
+def run_git(cmd: list[str], cwd: str | None = None, allow_fail: bool = False) -> str:
+    """Run git command and raise exception if allow_fail==False (default)"""
     try:
         result = subprocess.run(["git"] + cmd, cwd=cwd, check=True, capture_output=True, text=True)
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
+        if allow_fail:
+            return ""
         raise HTTPException(status_code=500, detail=f"Git command failed: {e.stderr}")
 
 
@@ -248,11 +250,10 @@ def register_repository(payload: RepoCreateRequest):
     REGISTERED_REPO_URLS.append(payload.git_url)
 
     repo_head = run_git(["rev-parse", "HEAD"], cwd=repo_path).strip()
-    tag = run_git(["describe", "--tags", "--exact-match", repo_head], cwd=repo_path).strip()
-    if tag:
-        checked_out_ref = tag
-    else:
-        checked_out_ref = repo_head
+    tag = run_git(
+        ["describe", "--tags", "--exact-match", repo_head], cwd=repo_path, allow_fail=True
+    ).strip()
+    checked_out_ref = tag if tag else repo_head
     refs = list_repository_refs(repo_id)
 
     repo_info = RepoInfo(
@@ -296,7 +297,7 @@ def list_repository_refs(repo_id: str) -> list[str]:
         cwd=repo_path,
     ).splitlines()
 
-    tag_refs = run_git(["show-ref", "--tags"], cwd=repo_path).splitlines()
+    tag_refs = run_git(["show-ref", "--tags"], cwd=repo_path, allow_fail=True).splitlines()
     commit_to_tag = {}
     for line in tag_refs:
         sha, ref = line.split()
