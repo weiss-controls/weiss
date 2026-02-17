@@ -1,0 +1,12 @@
+services:
+  ioc:
+    image: adsim
+    build:
+      context: ./
+      dockerfile: ../epics-in-docker/Dockerfile
+      target: dynamic-link
+      args:
+        REPONAME: adsim
+        RUNTIME_PACKAGES: libtiff-dev libxml2-dev
+        RUNDIR: /opt/adsim/iocBoot/iocSimDetector/
+        ENTRYPOINT: ./st.cmd
