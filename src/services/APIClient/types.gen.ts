@@ -306,16 +306,6 @@ export type RootInfo = {
 };
 
 /**
- * SSHStatus
- */
-export type SshStatus = {
-  /**
-   * Enabled
-   */
-  enabled: boolean;
-};
-
-/**
  * TreeNode
  */
 export type TreeNode = {
@@ -349,6 +339,10 @@ export type User = {
    * Username
    */
   username: string;
+  /**
+   * Displayname
+   */
+  displayName: string;
   /**
    * Email
    */
@@ -492,22 +486,6 @@ export type ListReposResponses = {
 };
 
 export type ListReposResponse = ListReposResponses[keyof ListReposResponses];
-
-export type GetSshStatusData = {
-  body?: never;
-  path?: never;
-  query?: never;
-  url: "/api/v1/repos/staging/ssh-status";
-};
-
-export type GetSshStatusResponses = {
-  /**
-   * Successful Response
-   */
-  200: SshStatus;
-};
-
-export type GetSshStatusResponse = GetSshStatusResponses[keyof GetSshStatusResponses];
 
 export type GetAllReposTreeData = {
   body?: never;

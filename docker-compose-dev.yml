@@ -51,8 +51,6 @@ services:
     volumes:
       - ./backend/api:/app/api
       - ${REPOS_MOUNT_PATH}:/app/storage/repos
-      - ${SSH_KEY_PATH}:/home/weiss/.ssh/ssh_key:ro
-      - ${SSH_KNOWN_HOSTS_PATH}:/home/weiss/.ssh/known_hosts:ro
     image: weiss-api-dev:${VITE_APP_VERSION}
     container_name: weiss-api-dev
     ports:
@@ -63,5 +61,4 @@ services:
       MS_AUTH_TENANT_ID: ${MS_AUTH_TENANT_ID}
       MS_AUTH_CLIENT_SECRET: ${MS_AUTH_CLIENT_SECRET}
       FRONTEND_URL: ${FRONTEND_URL}
-      SERVICE_ACCOUNT_USER: ${SERVICE_ACCOUNT_USER}
-      SERVICE_ACCOUNT_EMAIL: ${SERVICE_ACCOUNT_EMAIL}
+      TECHNICAL_ACCOUNT_TOKEN: ${TECHNICAL_ACCOUNT_TOKEN}

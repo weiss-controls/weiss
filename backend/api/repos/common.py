@@ -3,11 +3,8 @@ import json
 from pydantic import BaseModel
 from typing import List, Optional, Literal, Tuple
 
-# Abs paths inside container - adjust if running locally
-REPOS_BASE_PATH = "/app/storage/repos"
-SSH_KEY_PATH = os.getenv("SSH_KEY_PATH", "/home/weiss/.ssh/ssh_key")
-SSH_KNOWN_HOSTS_PATH = os.getenv("SSH_KNOWN_HOSTS_PATH", "/home/weiss/.ssh/ssh_key")
-##
+REPOS_BASE_PATH = "/app/storage/repos"  # Abs path inside container - adjust if running locally
+TECHNICAL_ACCOUNT_TOKEN = os.getenv("TECHNICAL_ACCOUNT_TOKEN")
 STAGING_REL_FOLDER = "staging"
 DEPLOYMENTS_REL_FOLDER = "deployments"
 SNAPSHOT_REL_FOLDER = "snapshot"
@@ -29,6 +26,9 @@ NEW_FILE_CONTENT = [
         },
     }
 ]
+os.environ["GIT_ASKPASS"] = "echo"
+os.environ["GIT_TERMINAL_PROMPT"] = "0"
+os.environ["GIT_HTTP_USER_AGENT"] = "WEISS/1.0"
 os.makedirs(REPOS_BASE_PATH, exist_ok=True)
 
 

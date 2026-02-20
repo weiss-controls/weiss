@@ -22,11 +22,6 @@ function isHttpsGitUrl(url: string): boolean {
   return httpsPattern.test(url);
 }
 
-function isSshGitUrl(url: string): boolean {
-  const sshPattern = /^(git@|ssh:\/\/)/;
-  return sshPattern.test(url);
-}
-
 function suggestAliasFromGitUrl(url: string): string {
   const normalized = url.replace(/\/$/, "");
   const lastSegment = normalized.split("/").pop() ?? "";
@@ -39,13 +34,15 @@ interface GitImportDialogProps {
 }
 
 export default function GitImportDialog({ open, onClose }: GitImportDialogProps) {
-  const { setReleaseShortcuts, updateReposTreeInfo, sshEnabled } = useUIContext();
+  const { setReleaseShortcuts, updateReposTreeInfo, isDemo } = useUIContext();
   const [alias, setAlias] = useState("");
-  const [gitUrl, setGitUrl] = useState("");
+  const [gitUrl, setGitUrl] = useState(
+    isDemo ? "https://github.com/weiss-controls/weiss-demo-opis.git" : "",
+  );
   const [aliasEdited, setAliasEdited] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const gitUrlValid = sshEnabled ? isSshGitUrl(gitUrl.trim()) : isHttpsGitUrl(gitUrl.trim());
+  const gitUrlValid = isHttpsGitUrl(gitUrl.trim());
 
   const showGitUrlError = gitUrl.length > 0 && !gitUrlValid;
 
@@ -98,22 +95,18 @@ export default function GitImportDialog({ open, onClose }: GitImportDialogProps)
       <DialogContent>
         <Box sx={{ mt: 1 }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            {`Provide the ${sshEnabled ? "SSH" : "HTTPS"} URL of the repository.`}
+            {`Provide the HTTPS URL of the repository.`}
           </Typography>
 
           <Stack spacing={2}>
             <TextField
               fullWidth
               label="Git repository URL"
-              placeholder={
-                sshEnabled ? "git@github.com:org/repo.git" : "https://github.com/org/repo.git"
-              }
+              placeholder={"https://github.com/org/repo.git"}
               value={gitUrl}
               onChange={(e) => setGitUrl(e.target.value)}
               error={showGitUrlError}
-              helperText={
-                showGitUrlError ? `Enter a valid Git ${sshEnabled ? "SSH" : "HTTPS"} URL` : " "
-              }
+              helperText={showGitUrlError ? `Enter a valid Git HTTPS URL` : " "}
               slotProps={{
                 input: {
                   startAdornment: (

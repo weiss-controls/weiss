@@ -41,6 +41,7 @@ class AuthProvider(str, Enum):
 class User(BaseModel):
     id: str
     username: str
+    displayName: str
     email: Optional[str]
     provider: AuthProvider
     provider_id: str
@@ -162,7 +163,8 @@ async def handle_microsoft_callback(code: str, redirect_uri: str) -> User:
     if user_id not in users_db:
         users_db[user_id] = User(
             id=user_id,
-            username=ms_user.get("displayName") or ms_user.get("userPrincipalName"),
+            username=ms_user.get("username"),
+            displayName=ms_user.get("displayName"),
             email=ms_user.get("mail") or ms_user.get("userPrincipalName"),
             provider=AuthProvider.MICROSOFT,
             provider_id=provider_id,
@@ -178,7 +180,8 @@ async def handle_demo_login(role: UserRole) -> User:
     if user_id not in users_db:
         users_db[user_id] = User(
             id=user_id,
-            username=f"Demo {role.value.capitalize()}",
+            username=f"weiss-demo-{role.lower()}",
+            displayName=f"Demo {role.value.capitalize()}",
             email=None,
             provider=AuthProvider.DEMO,
             provider_id=AuthProvider.DEMO.value,

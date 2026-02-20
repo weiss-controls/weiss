@@ -2,6 +2,7 @@ import os
 import uuid
 import subprocess
 import json
+import base64
 from .common import REPOS_BASE_PATH
 from fastapi import APIRouter, HTTPException, Body, Query, Depends
 from pydantic import BaseModel, Field
@@ -25,8 +26,7 @@ from api.repos.common import (
     DEPLOYMENT_META,
     REGISTERED_REPO_URLS,
     NEW_FILE_CONTENT,
-    SSH_KEY_PATH,
-    SSH_KNOWN_HOSTS_PATH,
+    TECHNICAL_ACCOUNT_TOKEN,
 )
 
 router = APIRouter(
@@ -46,10 +46,6 @@ class RepoCreateRequest(BaseModel):
 
 class RepoRef(BaseModel):
     ref: str
-
-
-class SSHStatus(BaseModel):
-    enabled: bool
 
 
 class ValidationResult(BaseModel):
@@ -82,47 +78,25 @@ class PathCreateRequest(BaseModel):
 # -----------------------------------------------------------------------------
 # Helper functions
 # -----------------------------------------------------------------------------
-def ssh_available() -> bool:
-    if not (os.path.isfile(SSH_KEY_PATH) and os.path.getsize(SSH_KEY_PATH) > 0):
-        return False
-    if not (os.path.isfile(SSH_KNOWN_HOSTS_PATH) and os.path.getsize(SSH_KNOWN_HOSTS_PATH) > 0):
-        return False
-    try:
-        subprocess.run(
-            ["ssh-keygen", "-l", "-f", SSH_KEY_PATH],
-            check=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-    except subprocess.CalledProcessError:
-        return False
-
-    return True
-
-
 def run_git(cmd: list[str], cwd: str | None = None, allow_fail: bool = False) -> str:
     """Run git command and raise exception if allow_fail==False (default)"""
     try:
-        result = subprocess.run(["git"] + cmd, cwd=cwd, check=True, capture_output=True, text=True)
+        prefix = [""]
+        if TECHNICAL_ACCOUNT_TOKEN:
+            # TODO: actually check if token is valid
+            token = TECHNICAL_ACCOUNT_TOKEN.strip()
+            auth_header = (
+                f"Authorization: Basic {base64.b64encode(('weiss-bot:' + token).encode()).decode()}"
+            )
+            prefix = ["-c", f"http.extraHeader={auth_header}"]
+        result = subprocess.run(
+            ["git"] + prefix + cmd, cwd=cwd, check=True, capture_output=True, text=True
+        )
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
         if allow_fail:
             return ""
         raise HTTPException(status_code=500, detail=f"Git command failed: {e.stderr}")
-
-
-def get_repo_remote_url(repo_path: str) -> str:
-    return run_git(["remote", "get-url", "origin"], cwd=repo_path)
-
-
-def is_ssh_repo(repo_path: str) -> bool:
-    url = get_repo_remote_url(repo_path)
-    return url.startswith("git@") or url.startswith("ssh://")
-
-
-def is_https_repo(repo_path: str) -> bool:
-    url = get_repo_remote_url(repo_path)
-    return url.startswith("https://")
 
 
 def ensure_clean(repo_path: str):
@@ -138,18 +112,11 @@ def clone(git_url: str, repo_id: str) -> str:
     if git_url in REGISTERED_REPO_URLS:
         raise HTTPException(status_code=403, detail="Repository already registered")
 
-    if ssh_available():
-        if not git_url.startswith(("git@", "ssh://")):
-            raise HTTPException(
-                status_code=400,
-                detail="SSH key is configured. Repositories must be registered using SSH URLs.",
-            )
-    else:
-        if not git_url.startswith("https://"):
-            raise HTTPException(
-                status_code=400,
-                detail="No SSH key configured. Only HTTPS repositories can be registered.",
-            )
+    if not git_url.startswith("https://"):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid URL. Only HTTPS repositories can be registered.",
+        )
 
     repo_path = os.path.join(REPOS_BASE_PATH, repo_id, STAGING_REL_FOLDER)
     os.makedirs(os.path.dirname(repo_path), exist_ok=True)
@@ -223,12 +190,6 @@ def list_repositories():
     return list_all_repositories()
 
 
-@router.get("/ssh-status", response_model=SSHStatus, operation_id="getSSHStatus")
-def get_ssh_status():
-    """Return whether SSH key is currently configured and usable"""
-    return SSHStatus(enabled=ssh_available())
-
-
 @router.get("/tree", response_model=List[RepoTreeInfo], operation_id="getAllReposTree")
 def get_all_repos_tree():
     all_trees = []
@@ -246,9 +207,7 @@ def register_repository(payload: RepoCreateRequest):
     repo_id = str(uuid.uuid4())
     created_at = datetime.now(timezone.utc).isoformat()
     repo_path = clone(payload.git_url, repo_id)
-    # @TODO: sanitize git_url to prevent duplicates between ssh/https clones
     REGISTERED_REPO_URLS.append(payload.git_url)
-
     repo_head = run_git(["rev-parse", "HEAD"], cwd=repo_path).strip()
     tag = run_git(
         ["describe", "--tags", "--exact-match", repo_head], cwd=repo_path, allow_fail=True
@@ -318,11 +277,6 @@ def list_repository_refs(repo_id: str) -> list[str]:
 def update_repo(repo_id: str):
     """Fetch new tags/commits from remote"""
     repo_path = get_staging_path(repo_id)
-    if is_ssh_repo(repo_path) and not ssh_available():
-        raise HTTPException(
-            status_code=500,
-            detail="This repository requires SSH credentials, but no key is configured.",
-        )
     run_git(["fetch", "--all", "--tags", "--prune"], cwd=repo_path)
     info_path, repo_info = get_repo_info(repo_id)
     refs = list_repository_refs(repo_id)
@@ -541,46 +495,53 @@ def commit_staging_repo(
     """
     repo_path = get_staging_path(repo_id)
 
-    if is_https_repo(repo_path):
-        raise HTTPException(
-            status_code=400,
-            detail="This repository was cloned via HTTPS. "
-            "Unregister it and re-register using an SSH URL to enable commits.",
-        )
-
-    if not ssh_available():
-        raise HTTPException(
-            status_code=500,
-            detail="SSH key not configured on server. Cannot push.",
-        )
-
     # Ensure there is something staged
     staged = run_git(["diff", "--cached", "--name-only"], cwd=repo_path)
     if not staged.strip():
         raise HTTPException(status_code=400, detail="No staged changes to commit")
-
+    if not TECHNICAL_ACCOUNT_TOKEN:
+        raise HTTPException(status_code=400, detail="Technical account token not configured")
     try:
         run_git(
             [
+                "-c",
+                f"user.name={user.displayName}",
+                "-c",
+                f"user.email={user.email}",
                 "commit",
                 "-m",
                 payload.message,
                 "-m",
-                f"Committed by WEISS on behalf of {user.username}",
+                f"Committed by WEISS on behalf of @{user.username}",
             ],
             cwd=repo_path,
         )
+    except HTTPException as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to commit changes: {e.detail}",
+        )
+    try:
+        remote_info = run_git(["remote", "show", "origin"], cwd=repo_path)
+        for line in remote_info.splitlines():
+            if "HEAD branch" in line:
+                default_branch = line.split(":")[-1].strip()
+                break
+        else:
+            default_branch = "main"
 
-        run_git(["push"], cwd=repo_path)
+        run_git(["push", "origin", f"HEAD:{default_branch}"], cwd=repo_path)
 
         if payload.tag:
             run_git(["tag", payload.tag], cwd=repo_path)
             run_git(["push", "origin", payload.tag], cwd=repo_path)
 
     except HTTPException as e:
+        # undo previous commit but keep changes staged
+        run_git(["reset", "--soft", "HEAD^1"], cwd=repo_path)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to commit changes: {e.detail}",
+            detail=f"Failed to push changes: {e.detail}. Aborted.",
         )
 
     # Update repo metadata

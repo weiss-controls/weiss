@@ -280,8 +280,8 @@ export default function NavBar() {
             {isAuthenticated ? (
               <>
                 <IconButton onClick={handleUserMenuOpen}>
-                  <Avatar alt={user?.username} sx={{ width: 32, height: 32 }}>
-                    {user?.username?.[0]?.toUpperCase() ?? "U"}
+                  <Avatar alt={user?.displayName} sx={{ width: 32, height: 32 }}>
+                    {user?.displayName?.[0]?.toUpperCase() ?? "U"}
                   </Avatar>
                 </IconButton>
 
@@ -294,7 +294,7 @@ export default function NavBar() {
                     <ListItemIcon>
                       <AccountCircleIcon fontSize="small" />
                     </ListItemIcon>
-                    <ListItemText primary={user?.username} secondary={user?.role} />
+                    <ListItemText primary={user?.displayName} secondary={user?.role} />
                   </MenuItem>
                   <Divider />
                   <MenuItem onClick={handleLogout}>

@@ -139,8 +139,7 @@ export default function ProjectSection({
   defaultSelectedPath,
 }: ProjectSectionProps) {
   const REF_MAX_DISPLAY_SIZE = 7;
-  const { isDeveloper, sshEnabled } = useUIContext();
-
+  const { isDeveloper } = useUIContext();
   const [sectionExpanded, setSectionExpanded] = useState(true);
   const [gitCommitOpen, setGitCommitOpen] = useState(false);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
@@ -343,7 +342,7 @@ export default function ProjectSection({
 
             <Menu anchorEl={menuAnchor} open={menuOpen} onClose={() => setMenuAnchor(null)}>
               <Tooltip placement="top" title="Commit and push current changes">
-                <MenuItem disabled={!sshEnabled} onClick={() => setGitCommitOpen(true)}>
+                <MenuItem onClick={() => setGitCommitOpen(true)}>
                   <CommitIcon fontSize="small" sx={{ mr: 1 }} />
                   Commit
                 </MenuItem>

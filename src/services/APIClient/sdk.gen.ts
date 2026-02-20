@@ -44,8 +44,6 @@ import type {
   GetDeployedRepoTreeData,
   GetDeployedRepoTreeErrors,
   GetDeployedRepoTreeResponses,
-  GetSshStatusData,
-  GetSshStatusResponses,
   GetStagingRepoFileData,
   GetStagingRepoFileErrors,
   GetStagingRepoFileResponses,
@@ -150,19 +148,6 @@ export const listRepos = <ThrowOnError extends boolean = true>(
 ) =>
   (options?.client ?? client).get<ListReposResponses, unknown, ThrowOnError>({
     url: "/api/v1/repos/staging/",
-    ...options,
-  });
-
-/**
- * Get Ssh Status
- *
- * Return whether SSH key is currently configured and usable
- */
-export const getSshStatus = <ThrowOnError extends boolean = true>(
-  options?: Options<GetSshStatusData, ThrowOnError>,
-) =>
-  (options?.client ?? client).get<GetSshStatusResponses, unknown, ThrowOnError>({
-    url: "/api/v1/repos/staging/ssh-status",
     ...options,
   });
 
