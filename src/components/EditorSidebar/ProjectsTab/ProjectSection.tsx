@@ -41,6 +41,7 @@ import { COLORS } from "@src/constants/constants";
 import FileToolbar from "./FileToolbar";
 import { useUIContext } from "@src/context/useUIContext";
 import GitCommitDialog from "@src/components/GitCommitDialog/GitCommitDialog";
+import { confirmDialog } from "@src/services/Dialog/Dialog";
 
 type RichTreeItem = TreeViewBaseItem & {
   type: "file" | "directory";
@@ -192,7 +193,13 @@ export default function ProjectSection({
 
   const handleDeploy = async () => {
     if (!selectedRef) return;
-
+    const confirmed = await confirmDialog({
+      title: `Deploy ${repo.alias}@${shortRef(selectedRef)}?`,
+      message: "Confirming will make this version available to operators",
+      confirmText: "Deploy",
+      cancelText: "Cancel",
+    });
+    if (!confirmed) return;
     try {
       const res = await deployRepo({
         body: { deployment_version: selectedRef },
