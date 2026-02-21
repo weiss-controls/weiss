@@ -36,6 +36,14 @@ router = APIRouter(
 TECHNICAL_ACCOUNT_TOKEN = os.getenv("TECHNICAL_ACCOUNT_TOKEN")
 TECHNICAL_ACCOUNT_USERNAME = os.getenv("TECHNICAL_ACCOUNT_USERNAME", "weiss-bot")
 TECHNICAL_ACCOUNT_EMAIL = os.getenv("TECHNICAL_ACCOUNT_EMAIL", "weiss-bot@dummy")
+auth_cmd = None
+if TECHNICAL_ACCOUNT_TOKEN:
+    # TODO: actually check if token is valid
+    token = TECHNICAL_ACCOUNT_TOKEN.strip()
+    auth_header = (
+        f"Authorization: Basic {base64.b64encode(('weiss-bot:' + token).encode()).decode()}"
+    )
+    auth_cmd = ["-c", f"http.extraHeader={auth_header}"]
 os.environ["GIT_ASKPASS"] = "echo"
 os.environ["GIT_TERMINAL_PROMPT"] = "0"
 os.environ["GIT_HTTP_USER_AGENT"] = "WEISS/1.0"
@@ -88,17 +96,14 @@ class PathCreateRequest(BaseModel):
 def run_git(cmd: list[str], cwd: str | None = None, allow_fail: bool = False) -> str:
     """Run git command and raise exception if allow_fail==False (default)"""
     try:
-        prefix = [""]
-        if TECHNICAL_ACCOUNT_TOKEN:
-            # TODO: actually check if token is valid
-            token = TECHNICAL_ACCOUNT_TOKEN.strip()
-            auth_header = (
-                f"Authorization: Basic {base64.b64encode(('weiss-bot:' + token).encode()).decode()}"
+        if auth_cmd:
+            result = subprocess.run(
+                ["git"] + auth_cmd + cmd, cwd=cwd, check=True, capture_output=True, text=True
             )
-            prefix = ["-c", f"http.extraHeader={auth_header}"]
-        result = subprocess.run(
-            ["git"] + prefix + cmd, cwd=cwd, check=True, capture_output=True, text=True
-        )
+        else:
+            result = subprocess.run(
+                ["git"] + cmd, cwd=cwd, check=True, capture_output=True, text=True
+            )
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
         if allow_fail:
