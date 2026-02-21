@@ -18,7 +18,10 @@ export function deepCloneWidget(widget: Widget): Widget {
     ...widget,
     // clone editableProperties deeply
     editableProperties: Object.fromEntries(
-      Object.entries(widget.editableProperties).map(([k, v]) => [k, { ...v }]),
+      Object.entries(widget.editableProperties).map(([k, v]) => [
+        k,
+        { ...v, value: structuredClone(v.value) },
+      ]),
     ),
     // recursively clone children if any
     children: widget.children?.map((child) => deepCloneWidget(child)),
