@@ -26,7 +26,6 @@ from api.repos.common import (
     DEPLOYMENT_META,
     REGISTERED_REPO_URLS,
     NEW_FILE_CONTENT,
-    TECHNICAL_ACCOUNT_TOKEN,
 )
 
 router = APIRouter(
@@ -34,6 +33,14 @@ router = APIRouter(
     tags=["[Admin] OPI management"],
     dependencies=[Depends(require_developer)],
 )
+TECHNICAL_ACCOUNT_TOKEN = os.getenv("TECHNICAL_ACCOUNT_TOKEN")
+TECHNICAL_ACCOUNT_USERNAME = os.getenv("TECHNICAL_ACCOUNT_USERNAME", "weiss-bot")
+TECHNICAL_ACCOUNT_EMAIL = os.getenv("TECHNICAL_ACCOUNT_EMAIL", "weiss-bot@dummy")
+os.environ["GIT_ASKPASS"] = "echo"
+os.environ["GIT_TERMINAL_PROMPT"] = "0"
+os.environ["GIT_HTTP_USER_AGENT"] = "WEISS/1.0"
+subprocess.run(["git", "config", "--global", "user.name", TECHNICAL_ACCOUNT_USERNAME], check=True)
+subprocess.run(["git", "config", "--global", "user.email", TECHNICAL_ACCOUNT_EMAIL], check=True)
 
 
 # -----------------------------------------------------------------------------
@@ -504,11 +511,8 @@ def commit_staging_repo(
     try:
         run_git(
             [
-                "-c",
-                f"user.name={user.displayName}",
-                "-c",
-                f"user.email={user.email}",
                 "commit",
+                f'--author="{user.displayName} <{user.email}>"',
                 "-m",
                 payload.message,
                 "-m",

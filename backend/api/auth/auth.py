@@ -182,7 +182,7 @@ async def handle_demo_login(role: UserRole) -> User:
             id=user_id,
             username=f"weiss-demo-{role.lower()}",
             displayName=f"Demo {role.value.capitalize()}",
-            email=None,
+            email="weiss-dummy@email",
             provider=AuthProvider.DEMO,
             provider_id=AuthProvider.DEMO.value,
             role=role,
