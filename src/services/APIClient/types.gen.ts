@@ -523,12 +523,46 @@ export type RegisterRepoError = RegisterRepoErrors[keyof RegisterRepoErrors];
 
 export type RegisterRepoResponses = {
   /**
+   * Response Registerrepo
+   *
    * Successful Response
    */
-  200: RepoInfo;
+  200: Array<RepoTreeInfo>;
 };
 
 export type RegisterRepoResponse = RegisterRepoResponses[keyof RegisterRepoResponses];
+
+export type UnregisterRepoData = {
+  body?: never;
+  path: {
+    /**
+     * Repo Id
+     */
+    repo_id: string;
+  };
+  query?: never;
+  url: "/api/v1/repos/staging/{repo_id}/unregister";
+};
+
+export type UnregisterRepoErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type UnregisterRepoError = UnregisterRepoErrors[keyof UnregisterRepoErrors];
+
+export type UnregisterRepoResponses = {
+  /**
+   * Response Unregisterrepo
+   *
+   * Successful Response
+   */
+  200: Array<RepoTreeInfo>;
+};
+
+export type UnregisterRepoResponse = UnregisterRepoResponses[keyof UnregisterRepoResponses];
 
 export type ListRepoRefsData = {
   body?: never;
@@ -869,6 +903,34 @@ export type DeployRepoResponses = {
 };
 
 export type DeployRepoResponse = DeployRepoResponses[keyof DeployRepoResponses];
+
+export type UndeployRepoData = {
+  body?: never;
+  path: {
+    /**
+     * Repo Id
+     */
+    repo_id: string;
+  };
+  query?: never;
+  url: "/api/v1/repos/staging/{repo_id}/undeploy";
+};
+
+export type UndeployRepoErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type UndeployRepoError = UndeployRepoErrors[keyof UndeployRepoErrors];
+
+export type UndeployRepoResponses = {
+  /**
+   * Successful Response
+   */
+  200: unknown;
+};
 
 export type CheckoutRepoRefData = {
   body?: never;

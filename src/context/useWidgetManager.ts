@@ -169,6 +169,15 @@ export function useWidgetManager() {
   }, [selectedWidgetIDs, updateEditorWidgetList]);
 
   /**
+   * Clear all widgets from editor.
+   */
+  const clearAllWidgets = useCallback(() => {
+    // TODO: reset GridZone state to default
+    setEditorWidgets([GridZone]);
+    setSelectedWidgetIDs([]);
+  }, [updateEditorWidgetList]);
+
+  /**
    * Create group with selected widgets.
    */
   function groupSelected() {
@@ -770,6 +779,7 @@ export function useWidgetManager() {
     getWidget,
     addWidget,
     deleteWidget,
+    clearAllWidgets,
     computeGroupBounds,
     groupSelected,
     ungroupSelected,

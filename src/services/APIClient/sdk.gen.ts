@@ -70,6 +70,12 @@ import type {
   ResetStagingRepoResponses,
   RootInfoData,
   RootInfoResponses,
+  UndeployRepoData,
+  UndeployRepoErrors,
+  UndeployRepoResponses,
+  UnregisterRepoData,
+  UnregisterRepoErrors,
+  UnregisterRepoResponses,
   UpdateStagingRepoFileData,
   UpdateStagingRepoFileErrors,
   UpdateStagingRepoFileResponses,
@@ -177,6 +183,23 @@ export const registerRepo = <ThrowOnError extends boolean = true>(
       "Content-Type": "application/json",
       ...options.headers,
     },
+  });
+
+/**
+ * Unregister Repository
+ *
+ * Remove a repository completely:
+ * - Delete staging folder
+ * - Delete all deployments
+ * - Remove repo metadata
+ * - Remove from REGISTERED_REPO_URLS
+ */
+export const unregisterRepo = <ThrowOnError extends boolean = true>(
+  options: Options<UnregisterRepoData, ThrowOnError>,
+) =>
+  (options.client ?? client).delete<UnregisterRepoResponses, UnregisterRepoErrors, ThrowOnError>({
+    url: "/api/v1/repos/staging/{repo_id}/unregister",
+    ...options,
   });
 
 /**
@@ -346,6 +369,21 @@ export const deployRepo = <ThrowOnError extends boolean = true>(
       "Content-Type": "application/json",
       ...options.headers,
     },
+  });
+
+/**
+ * Undeploy Repository
+ *
+ * Remove the current deployment for a repository:
+ * - Delete symlink to current deployment
+ * - Clear current deployment metadata in repo info
+ */
+export const undeployRepo = <ThrowOnError extends boolean = true>(
+  options: Options<UndeployRepoData, ThrowOnError>,
+) =>
+  (options.client ?? client).post<UndeployRepoResponses, UndeployRepoErrors, ThrowOnError>({
+    url: "/api/v1/repos/staging/{repo_id}/undeploy",
+    ...options,
   });
 
 /**

@@ -40,6 +40,10 @@ export default function ProjectsTab() {
     }
   };
 
+  const refreshAllReposTree = (updt: RepoTreeInfo[]) => {
+    setReposTreeInfo(updt);
+  };
+
   const loadRepoFile = useCallback(
     async (repo_id: string, path: string, opts: { persist?: boolean } = { persist: true }) => {
       const res = isDeveloper
@@ -97,6 +101,7 @@ export default function ProjectsTab() {
             repo={repo}
             onFileSelect={loadRepoFile}
             onRepoUpdate={refreshRepoTree}
+            onTreeUpdate={refreshAllReposTree}
             defaultSelectedPath={
               initialSelection?.repo_id === repo.id ? initialSelection.path : undefined
             }

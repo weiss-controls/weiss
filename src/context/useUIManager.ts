@@ -33,6 +33,7 @@ export default function useUIManager(
   editorWidgets: ReturnType<typeof useWidgetManager>["editorWidgets"],
   formatWdgToExport: ReturnType<typeof useWidgetManager>["formatWdgToExport"],
   fileLoadedTrig: ReturnType<typeof useWidgetManager>["fileLoadedTrig"],
+  clearAllWidgets: ReturnType<typeof useWidgetManager>["clearAllWidgets"],
 ) {
   const lastFileLoadedTrig = useRef(0);
   const hasFileChanged = useRef(true);
@@ -148,6 +149,11 @@ export default function useUIManager(
     };
   }, [inEditMode, ws]);
 
+  useEffect(() => {
+    if (!selectedFile) {
+      clearAllWidgets();
+    }
+  }, [selectedFile]);
   // throttle file update to backend
   useEffect(() => {
     if (!isDeveloper || !inEditMode) return;
