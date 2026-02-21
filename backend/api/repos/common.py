@@ -2,7 +2,6 @@ import os
 import json
 from pydantic import BaseModel
 from typing import List, Optional, Literal, Tuple
-from datetime import datetime
 
 REPOS_BASE_PATH = "/app/storage/repos"  # Abs path inside container - adjust if running locally
 STAGING_REL_FOLDER = "staging"
@@ -26,6 +25,7 @@ NEW_FILE_CONTENT = [
         },
     }
 ]
+
 os.makedirs(REPOS_BASE_PATH, exist_ok=True)
 
 
@@ -74,7 +74,7 @@ class DeploymentInfo(BaseModel):
     repo_id: str
     ref: str
     commit_hash: str
-    deployed_at: Optional[datetime]
+    deployed_at: Optional[str] = None
 
 
 def build_path_tree(root_path: str, rel_path: str = "") -> List[TreeNode]:

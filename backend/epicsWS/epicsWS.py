@@ -3,7 +3,7 @@ import json
 import os
 import websockets
 from websockets.legacy.server import WebSocketServerProtocol
-from typing import Dict, Set, Tuple
+from typing import Dict, Set, Tuple, Optional, Union
 
 from pvParser import PVParser, PVData
 from PVAClient import PVAClient
@@ -19,7 +19,10 @@ subscriptions: Dict[str, Set[WebSocketServerProtocol]] = {}
 sent_metadata: Dict[Tuple[WebSocketServerProtocol, str], bool] = {}
 
 # holds one client per backend
-clients = {PVA_PROVIDER_KEY: None, CA_PROVIDER_KEY: None}
+clients: Dict[str, Optional[Union[PVAClient, CAClient]]] = {
+    PVA_PROVIDER_KEY: None,
+    CA_PROVIDER_KEY: None,
+}
 
 # environment variable fallback
 DEFAULT_PROTOCOL = os.getenv("EPICS_DEFAULT_PROTOCOL", PVA_PROVIDER_KEY).lower()
@@ -110,7 +113,8 @@ async def message_handler(ws: WebSocketServerProtocol):
                 for pv in msg.get("pvs", []):
                     protocol, pv_name = parse_protocol(pv)
                     client = get_client(protocol)
-
+                    if not client:
+                        raise ValueError(f"Client not initialized for {protocol}")
                     if pv_name not in subscriptions:
                         subscriptions[pv_name] = set()
                     subscriptions[pv_name].add(ws)
@@ -120,7 +124,8 @@ async def message_handler(ws: WebSocketServerProtocol):
                 for pv in msg.get("pvs", []):
                     protocol, pv_name = parse_protocol(pv)
                     client = get_client(protocol)
-
+                    if not client:
+                        raise ValueError(f"Client not initialized for {protocol}")
                     if pv_name in subscriptions:
                         subscriptions[pv_name].discard(ws)
                         if not subscriptions[pv_name]:
@@ -134,6 +139,8 @@ async def message_handler(ws: WebSocketServerProtocol):
                 if pv and value is not None:
                     protocol, pv_name = parse_protocol(pv)
                     client = get_client(protocol)
+                    if not client:
+                        raise ValueError(f"Client not initialized for {protocol}")
                     client.write_to_pv(pv_name, value)
 
             else:

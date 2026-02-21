@@ -2,11 +2,13 @@ import os
 import uuid
 import subprocess
 import json
+import base64
 from .common import REPOS_BASE_PATH
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Body, Query, Depends
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Tuple
 from datetime import datetime, timezone
+from api.auth.roles import require_developer, User
 from api.repos.common import (
     FileResponse,
     RepoInfo,
@@ -29,7 +31,24 @@ from api.repos.common import (
 router = APIRouter(
     prefix="/api/v1/repos/staging",
     tags=["[Admin] OPI management"],
+    dependencies=[Depends(require_developer)],
 )
+TECHNICAL_ACCOUNT_TOKEN = os.getenv("TECHNICAL_ACCOUNT_TOKEN")
+TECHNICAL_ACCOUNT_USERNAME = os.getenv("TECHNICAL_ACCOUNT_USERNAME", "weiss-bot")
+TECHNICAL_ACCOUNT_EMAIL = os.getenv("TECHNICAL_ACCOUNT_EMAIL", "weiss-bot@dummy")
+auth_cmd = None
+if TECHNICAL_ACCOUNT_TOKEN:
+    # TODO: actually check if token is valid
+    token = TECHNICAL_ACCOUNT_TOKEN.strip()
+    auth_header = (
+        f"Authorization: Basic {base64.b64encode(('weiss-bot:' + token).encode()).decode()}"
+    )
+    auth_cmd = ["-c", f"http.extraHeader={auth_header}"]
+os.environ["GIT_ASKPASS"] = "echo"
+os.environ["GIT_TERMINAL_PROMPT"] = "0"
+os.environ["GIT_HTTP_USER_AGENT"] = "WEISS/1.0"
+subprocess.run(["git", "config", "--global", "user.name", TECHNICAL_ACCOUNT_USERNAME], check=True)
+subprocess.run(["git", "config", "--global", "user.email", TECHNICAL_ACCOUNT_EMAIL], check=True)
 
 
 # -----------------------------------------------------------------------------
@@ -74,18 +93,43 @@ class PathCreateRequest(BaseModel):
 # -----------------------------------------------------------------------------
 # Helper functions
 # -----------------------------------------------------------------------------
-def run_git(cmd: list, cwd: str = None):
-    """Run git command and raise exception on failure"""
+def run_git(cmd: list[str], cwd: str | None = None, allow_fail: bool = False) -> str:
+    """Run git command and raise exception if allow_fail==False (default)"""
     try:
-        result = subprocess.run(["git"] + cmd, cwd=cwd, check=True, capture_output=True, text=True)
+        if auth_cmd:
+            result = subprocess.run(
+                ["git"] + auth_cmd + cmd, cwd=cwd, check=True, capture_output=True, text=True
+            )
+        else:
+            result = subprocess.run(
+                ["git"] + cmd, cwd=cwd, check=True, capture_output=True, text=True
+            )
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
+        if allow_fail:
+            return ""
         raise HTTPException(status_code=500, detail=f"Git command failed: {e.stderr}")
+
+
+def ensure_clean(repo_path: str):
+    dirty = run_git(["status", "--porcelain"], cwd=repo_path)
+    if dirty.strip():
+        raise HTTPException(
+            status_code=409,
+            detail="Working tree has uncommitted changes. Commit or reset first.",
+        )
 
 
 def clone(git_url: str, repo_id: str) -> str:
     if git_url in REGISTERED_REPO_URLS:
         raise HTTPException(status_code=403, detail="Repository already registered")
+
+    if not git_url.startswith("https://"):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid URL. Only HTTPS repositories can be registered.",
+        )
+
     repo_path = os.path.join(REPOS_BASE_PATH, repo_id, STAGING_REL_FOLDER)
     os.makedirs(os.path.dirname(repo_path), exist_ok=True)
     run_git(["clone", "--recursive", git_url, repo_path])
@@ -128,7 +172,7 @@ def get_working_tree_status(repo_path: str) -> GitWorkingTreeStatus:
     )
 
 
-def create_snapshot(repo_id: str, ref: str) -> str:
+def create_snapshot(repo_id: str, ref: str) -> Tuple[str, str]:
     """
     Create a read-only snapshot of the repo at a given ref.
 
@@ -136,6 +180,7 @@ def create_snapshot(repo_id: str, ref: str) -> str:
         deployment_id, snapshot_path
     """
     repo_path = get_staging_path(repo_id)
+    ensure_clean(repo_path)
     deployment_id = str(uuid.uuid4())
     deployments_root = os.path.join(REPOS_BASE_PATH, repo_id, DEPLOYMENTS_REL_FOLDER)
     os.makedirs(deployments_root, exist_ok=True)
@@ -174,10 +219,12 @@ def register_repository(payload: RepoCreateRequest):
     repo_id = str(uuid.uuid4())
     created_at = datetime.now(timezone.utc).isoformat()
     repo_path = clone(payload.git_url, repo_id)
-    # @TODO: sanitize git_url to prevent duplicates between ssh/https clones
     REGISTERED_REPO_URLS.append(payload.git_url)
-
-    checked_out_ref = run_git(["rev-parse", "HEAD"], cwd=repo_path)
+    repo_head = run_git(["rev-parse", "HEAD"], cwd=repo_path).strip()
+    tag = run_git(
+        ["describe", "--tags", "--exact-match", repo_head], cwd=repo_path, allow_fail=True
+    ).strip()
+    checked_out_ref = tag if tag else repo_head
     refs = list_repository_refs(repo_id)
 
     repo_info = RepoInfo(
@@ -198,25 +245,42 @@ def register_repository(payload: RepoCreateRequest):
 
 @router.get("/{repo_id}/refs", response_model=list[str], operation_id="listRepoRefs")
 def list_repository_refs(repo_id: str) -> list[str]:
-    """List 20 latest repository refs available in default branch"""
+    """List 20 latest repository refs available in default branch.
+    If commit is tagged, show tag instead.
+    """
     repo_path = get_staging_path(repo_id)
-    tag_output = run_git(["tag"], cwd=repo_path)
-    tags = tag_output.splitlines() if tag_output else []
+
     default_branch = run_git(
-        ["symbolic-ref", "refs/remotes/origin/HEAD"],
-        cwd=repo_path,
-    ).replace("refs/remotes/", "")
-    commit_output = run_git(
-        ["rev-list", "--max-count=20", default_branch],
+        ["remote", "show", "origin"],
         cwd=repo_path,
     )
-    commits = commit_output.splitlines() if commit_output else []
+
+    for line in default_branch.splitlines():
+        if "HEAD branch" in line:
+            default_branch = line.split(":")[-1].strip()
+            break
+    else:
+        raise HTTPException(500, "Cannot resolve default branch")
+
+    branch_ref = f"origin/{default_branch}"
+    commits = run_git(
+        ["rev-list", "--max-count=20", branch_ref],
+        cwd=repo_path,
+    ).splitlines()
+
+    tag_refs = run_git(["show-ref", "--tags"], cwd=repo_path, allow_fail=True).splitlines()
+    commit_to_tag = {}
+    for line in tag_refs:
+        sha, ref = line.split()
+        tag = ref.replace("refs/tags/", "")
+        commit_to_tag[sha] = tag
+
     refs: list[str] = []
-    refs.extend(tags)
-    tagged_commits = set(run_git(["rev-list", "--tags"], cwd=repo_path).splitlines())
-    for commit in commits:
-        if commit not in tagged_commits:
-            refs.append(commit)
+    for sha in commits:
+        if sha in commit_to_tag:
+            refs.append(commit_to_tag[sha])
+        else:
+            refs.append(sha)
 
     return refs
 
@@ -262,7 +326,7 @@ def staging_update_repo_file(
     path: str = Query(
         ..., description="Path to existing file inside repository (relative to root)"
     ),
-    payload: FileUpdateRequest = ...,
+    payload: FileUpdateRequest = Body(...),
 ):
     """
     Overwrite the contents of an existing file in the staging repository.
@@ -434,7 +498,9 @@ def delete_staging_repo_path(
     response_model=RepoTreeInfo,
     operation_id="commitStagingRepo",
 )
-def commit_staging_repo(repo_id: str, payload: CommitRequest):
+def commit_staging_repo(
+    repo_id: str, payload: CommitRequest, user: User = Depends(require_developer)
+):
     """
     Commit staged changes in the staging repository.
     Fails if there is nothing to commit.
@@ -445,30 +511,54 @@ def commit_staging_repo(repo_id: str, payload: CommitRequest):
     staged = run_git(["diff", "--cached", "--name-only"], cwd=repo_path)
     if not staged.strip():
         raise HTTPException(status_code=400, detail="No staged changes to commit")
-
+    if not TECHNICAL_ACCOUNT_TOKEN:
+        raise HTTPException(status_code=400, detail="Technical account token not configured")
     try:
         run_git(
             [
                 "commit",
+                f'--author="{user.displayName} <{user.email}>"',
                 "-m",
                 payload.message,
                 "-m",
-                "Commited by WEISS API on behalf of $USER (#TODO)",
+                f"Committed by WEISS on behalf of @{user.username}",
             ],
             cwd=repo_path,
         )
-        commit_hash = run_git(["rev-parse", "HEAD"], cwd=repo_path)
-        if payload.tag:
-            run_git(["tag", payload.tag, commit_hash], cwd=repo_path)
     except HTTPException as e:
         raise HTTPException(
             status_code=500,
             detail=f"Failed to commit changes: {e.detail}",
         )
+    try:
+        remote_info = run_git(["remote", "show", "origin"], cwd=repo_path)
+        for line in remote_info.splitlines():
+            if "HEAD branch" in line:
+                default_branch = line.split(":")[-1].strip()
+                break
+        else:
+            default_branch = "main"
+
+        run_git(["push", "origin", f"HEAD:{default_branch}"], cwd=repo_path)
+
+        if payload.tag:
+            run_git(["tag", payload.tag], cwd=repo_path)
+            run_git(["push", "origin", payload.tag], cwd=repo_path)
+
+    except HTTPException as e:
+        # undo previous commit but keep changes staged
+        run_git(["reset", "--soft", "HEAD^1"], cwd=repo_path)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to push changes: {e.detail}. Aborted.",
+        )
 
     # Update repo metadata
     repo_info_path, repo_info = get_repo_info(repo_id)
-    repo_info.checked_out_ref = run_git(["rev-parse", "HEAD"], cwd=repo_path)
+    if payload.tag:
+        repo_info.checked_out_ref = payload.tag
+    else:
+        repo_info.checked_out_ref = run_git(["rev-parse", "HEAD"], cwd=repo_path).strip()
 
     with open(repo_info_path, "w") as f:
         f.write(repo_info.model_dump_json(indent=2))
@@ -522,11 +612,10 @@ def deploy_repo(repo_id: str, payload: DeployRequest):
 def checkout_repo_ref(repo_id: str, ref: str):
     """Checkout a specific ref in the staging repo"""
     repo_path = get_staging_path(repo_id)
+    ensure_clean(repo_path)
     run_git(["checkout", ref], cwd=repo_path)
     repo_info_path, repo_info = get_repo_info(repo_id)
-    # get actual hash to avoid tags
-    checked_out_ref = run_git(["rev-parse", "HEAD"], cwd=repo_path)
-    repo_info.checked_out_ref = checked_out_ref
+    repo_info.checked_out_ref = ref
     with open(repo_info_path, "w") as f:
         f.write(repo_info.model_dump_json(indent=2))
     return get_staging_repo_tree(repo_id)

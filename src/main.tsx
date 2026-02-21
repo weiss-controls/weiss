@@ -8,11 +8,13 @@ import AuthCallback from "@src/routes/AuthCallback.tsx";
 import LoginPage from "@src/routes/Login.tsx";
 import ProtectedRoute from "@src/routes/ProtectedRoute.tsx";
 import NotificationService from "./services/Notifications/NotificationService";
+import DialogService from "./services/Dialog/DialogService";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
       <NotificationService />
+      <DialogService />
       <ContextProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />

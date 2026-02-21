@@ -40,6 +40,8 @@ import { notifyUser } from "@src/services/Notifications/Notification";
 import { COLORS } from "@src/constants/constants";
 import FileToolbar from "./FileToolbar";
 import { useUIContext } from "@src/context/useUIContext";
+import GitCommitDialog from "@src/components/GitCommitDialog/GitCommitDialog";
+import { confirmDialog } from "@src/services/Dialog/Dialog";
 
 type RichTreeItem = TreeViewBaseItem & {
   type: "file" | "directory";
@@ -139,8 +141,8 @@ export default function ProjectSection({
 }: ProjectSectionProps) {
   const REF_MAX_DISPLAY_SIZE = 7;
   const { isDeveloper } = useUIContext();
-
   const [sectionExpanded, setSectionExpanded] = useState(true);
+  const [gitCommitOpen, setGitCommitOpen] = useState(false);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
@@ -191,17 +193,23 @@ export default function ProjectSection({
 
   const handleDeploy = async () => {
     if (!selectedRef) return;
-
+    const confirmed = await confirmDialog({
+      title: `Deploy ${repo.alias}@${shortRef(selectedRef)}?`,
+      message: "Confirming will make this version available to operators",
+      confirmText: "Deploy",
+      cancelText: "Cancel",
+    });
+    if (!confirmed) return;
     try {
       const res = await deployRepo({
         body: { deployment_version: selectedRef },
         path: { repo_id: repo.id },
       }).then((r) => r.data);
 
-      if (res.repo_id !== repo.id || res.commit_hash !== selectedRef) {
+      if (res.repo_id !== repo.id || res.ref !== selectedRef) {
         throw new Error("Invalid deployment response");
       }
-
+      repo.deployed_ref = res.ref;
       notifyUser(`Successfully deployed ${repo.alias}@${shortRef(selectedRef)}`, "success");
     } catch (err) {
       notifyUser(`Failed to deploy repo: ${err as string}`, "error");
@@ -341,7 +349,7 @@ export default function ProjectSection({
 
             <Menu anchorEl={menuAnchor} open={menuOpen} onClose={() => setMenuAnchor(null)}>
               <Tooltip placement="top" title="Commit and push current changes">
-                <MenuItem disabled>
+                <MenuItem onClick={() => setGitCommitOpen(true)}>
                   <CommitIcon fontSize="small" sx={{ mr: 1 }} />
                   Commit
                 </MenuItem>
@@ -393,6 +401,11 @@ export default function ProjectSection({
           />
         </Box>
       </Collapse>
+      <GitCommitDialog
+        open={gitCommitOpen}
+        onClose={() => setGitCommitOpen(false)}
+        repoID={repo.id}
+      />
     </Paper>
   );
 }

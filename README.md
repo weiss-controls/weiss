@@ -9,9 +9,6 @@ Try it out: https://demo.weiss-controls.org.
 
 ![Example image](./public/example.png)
 
-The demo connects to a real IOC. For the demo, all edits stay in your browser only. Use **Load
-Demo** anytime to restore.
-
 ## Why should you use web?
 
 - **Client-side rendering**: the client browser performs most work; backend load stays minimal.

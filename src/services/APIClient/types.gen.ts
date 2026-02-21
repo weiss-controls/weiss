@@ -70,7 +70,7 @@ export type DeploymentInfo = {
   /**
    * Deployed At
    */
-  deployed_at: string | null;
+  deployed_at?: string | null;
 };
 
 /**
@@ -339,6 +339,10 @@ export type User = {
    * Username
    */
   username: string;
+  /**
+   * Displayname
+   */
+  displayName: string;
   /**
    * Email
    */

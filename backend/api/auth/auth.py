@@ -2,7 +2,7 @@ import httpx
 import msal
 import os
 import secrets
-from api.config import FRONTEND_URL
+from api.config import FRONTEND_URL, ENABLE_HTTPS
 from fastapi import APIRouter, HTTPException, Depends, Response, Request
 from pydantic import BaseModel, Field
 from enum import Enum
@@ -20,7 +20,6 @@ MS_AUTH_CLIENT_SECRET = os.getenv("MS_AUTH_CLIENT_SECRET")
 MS_AUTHORITY = f"https://login.microsoftonline.com/{MS_AUTH_TENANT_ID}"
 MS_SCOPES = ["email", "User.Read"]
 MS_GRAPH_ME_URL = "https://graph.microsoft.com/v1.0/me"
-
 
 router = APIRouter(
     prefix="/api/v1/auth",
@@ -42,6 +41,7 @@ class AuthProvider(str, Enum):
 class User(BaseModel):
     id: str
     username: str
+    displayName: str
     email: Optional[str]
     provider: AuthProvider
     provider_id: str
@@ -163,7 +163,8 @@ async def handle_microsoft_callback(code: str, redirect_uri: str) -> User:
     if user_id not in users_db:
         users_db[user_id] = User(
             id=user_id,
-            username=ms_user.get("displayName") or ms_user.get("userPrincipalName"),
+            username=ms_user.get("username"),
+            displayName=ms_user.get("displayName"),
             email=ms_user.get("mail") or ms_user.get("userPrincipalName"),
             provider=AuthProvider.MICROSOFT,
             provider_id=provider_id,
@@ -179,8 +180,9 @@ async def handle_demo_login(role: UserRole) -> User:
     if user_id not in users_db:
         users_db[user_id] = User(
             id=user_id,
-            username=f"Demo {role.value.capitalize()}",
-            email=None,
+            username=f"weiss-demo-{role.lower()}",
+            displayName=f"Demo {role.value.capitalize()}",
+            email="weiss-dummy@email",
             provider=AuthProvider.DEMO,
             provider_id=AuthProvider.DEMO.value,
             role=role,
@@ -250,8 +252,8 @@ async def oauth_callback(
         key=SESSION_COOKIE_NAME,
         value=session.id,
         httponly=True,
-        secure=True,
-        samesite="lax",
+        secure=ENABLE_HTTPS,
+        samesite="none" if ENABLE_HTTPS else None,
         max_age=SESSION_EXPIRE_HOURS * 3600,
         path="/",
     )

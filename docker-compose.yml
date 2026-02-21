@@ -39,7 +39,7 @@ services:
     build:
       context: ./backend/api
     volumes:
-      - ${REPOS_MOUNT_PATH}:/app/repos
+      - storage:/app/storage
     image: weiss-api:${VITE_APP_VERSION}
     container_name: weiss-api
     ports:
@@ -50,3 +50,10 @@ services:
       MS_AUTH_TENANT_ID: ${MS_AUTH_TENANT_ID}
       MS_AUTH_CLIENT_SECRET: ${MS_AUTH_CLIENT_SECRET}
       FRONTEND_URL: ${FRONTEND_URL}
+      ENABLE_HTTPS: ${ENABLE_HTTPS:-false}
+      TECHNICAL_ACCOUNT_TOKEN: ${TECHNICAL_ACCOUNT_TOKEN}
+      TECHNICAL_ACCOUNT_USERNAME: ${TECHNICAL_ACCOUNT_USERNAME}
+      TECHNICAL_ACCOUNT_EMAIL: ${TECHNICAL_ACCOUNT_EMAIL}
+
+volumes:
+  storage:

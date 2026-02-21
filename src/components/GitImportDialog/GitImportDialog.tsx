@@ -17,7 +17,7 @@ import { registerRepo } from "@src/services/APIClient/sdk.gen";
 import { notifyUser } from "@src/services/Notifications/Notification";
 import { useUIContext } from "@src/context/useUIContext";
 
-function isValidGitUrl(url: string): boolean {
+function isHttpsGitUrl(url: string): boolean {
   const httpsPattern = /^https:\/\/[\w.-]+\/[\w.-]+\/[\w.-]+(\.git)?$/;
   return httpsPattern.test(url);
 }
@@ -42,7 +42,8 @@ export default function GitImportDialog({ open, onClose }: GitImportDialogProps)
   const [aliasEdited, setAliasEdited] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const gitUrlValid = isValidGitUrl(gitUrl.trim());
+  const gitUrlValid = isHttpsGitUrl(gitUrl.trim());
+
   const showGitUrlError = gitUrl.length > 0 && !gitUrlValid;
 
   useEffect(() => {
@@ -56,6 +57,7 @@ export default function GitImportDialog({ open, onClose }: GitImportDialogProps)
     setGitUrl("");
     setAliasEdited(false);
     setLoading(false);
+    setReleaseShortcuts(false);
     onClose();
   };
 
@@ -93,18 +95,18 @@ export default function GitImportDialog({ open, onClose }: GitImportDialogProps)
       <DialogContent>
         <Box sx={{ mt: 1 }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Provide the HTTPS URL of the repository to be imported and a local alias to identify it.
+            {`Provide the HTTPS URL of the repository.`}
           </Typography>
 
           <Stack spacing={2}>
             <TextField
               fullWidth
               label="Git repository URL"
-              placeholder="https://github.com/org/repo.git"
+              placeholder={"https://github.com/org/repo.git"}
               value={gitUrl}
               onChange={(e) => setGitUrl(e.target.value)}
               error={showGitUrlError}
-              helperText={showGitUrlError ? "Enter a valid HTTPS Git URL" : " "}
+              helperText={showGitUrlError ? `Enter a valid Git HTTPS URL` : " "}
               slotProps={{
                 input: {
                   startAdornment: (
