@@ -7,11 +7,10 @@ from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import List
 from api.repos.common import (
     FileResponse,
-    RepoInfo,
     RepoTreeInfo,
     DeploymentInfo,
     build_path_tree,
-    get_repo_info,
+    get_repo_meta,
     list_all_repositories,
     REPOS_BASE_PATH,
     DEPLOYMENTS_REL_FOLDER,
@@ -57,13 +56,13 @@ def get_current_deployment_meta(repo_id: str) -> dict:
 # ---------------------------------------------------------------------------
 
 
-@router.get("/", response_model=List[RepoInfo], operation_id="listDeployedRepos")
+@router.get("/", response_model=List[DeploymentInfo], operation_id="listDeployedRepos")
 def list_repositories():
     all_repos = list_all_repositories()
-    repos_w_deployment: List[RepoInfo] = []
+    repos_w_deployment: List[DeploymentInfo] = []
     for repo in all_repos:
         if repo.current_deployment is not None:
-            repos_w_deployment.append(repo)
+            repos_w_deployment.append(DeploymentInfo(**repo.model_dump()))
     return repos_w_deployment
 
 
@@ -88,7 +87,7 @@ def get_deployed_repo_tree(repo_id: str):
     Return the full tree of the currently deployed snapshot
     for a single repository, wrapped in RepoTreeInfo.
     """
-    _, repo = get_repo_info(repo_id)
+    _, repo = get_repo_meta(repo_id)
 
     if repo.current_deployment is None:
         raise HTTPException(
