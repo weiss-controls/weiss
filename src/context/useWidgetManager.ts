@@ -35,9 +35,10 @@ import {
  * - Import/export of widget configurations
  */
 export function useWidgetManager() {
+  const defaultGrid = deepCloneWidget(GridZone);
   const [undoStack, setUndoStack] = useState<Widget[][]>([]);
   const [redoStack, setRedoStack] = useState<Widget[][]>([]);
-  const [editorWidgets, setEditorWidgets] = useState<Widget[]>([GridZone]);
+  const [editorWidgets, setEditorWidgets] = useState<Widget[]>([defaultGrid]);
   const [pickedWidget, setPickedWidget] = useState<Widget | null>(null); // widget picked from pallete
   const [selectedWidgetIDs, setSelectedWidgetIDs] = useState<string[]>([]);
   const [fileLoadedTrig, setFileLoadedTrig] = useState(0);
@@ -167,6 +168,14 @@ export function useWidgetManager() {
     updateEditorWidgetList((prev) => prev.filter((w) => !selectedWidgetIDs.includes(w.id)));
     setSelectedWidgetIDs([]);
   }, [selectedWidgetIDs, updateEditorWidgetList]);
+
+  /**
+   * Clear all widgets from editor.
+   */
+  const clearAllWidgets = useCallback(() => {
+    setEditorWidgets([defaultGrid]);
+    setSelectedWidgetIDs([]);
+  }, [updateEditorWidgetList]);
 
   /**
    * Create group with selected widgets.
@@ -653,7 +662,7 @@ export function useWidgetManager() {
           const isGroup = raw.widgetName === "Group";
 
           if (idx === 0 && raw.id === GRID_ID) {
-            instance = GridZone;
+            instance = deepCloneWidget(GridZone);
           } else if (isGroup) {
             instance = createGroupWidget(raw.id);
           } else {
@@ -770,6 +779,7 @@ export function useWidgetManager() {
     getWidget,
     addWidget,
     deleteWidget,
+    clearAllWidgets,
     computeGroupBounds,
     groupSelected,
     ungroupSelected,

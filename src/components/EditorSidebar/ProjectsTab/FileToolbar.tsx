@@ -13,6 +13,8 @@ import {
 } from "@src/services/APIClient";
 import { notifyUser } from "@src/services/Notifications/Notification";
 import type { SelectedPathInfo } from "@src/context/useUIManager";
+import { confirmDialog } from "@src/services/Dialog/Dialog";
+import { useUIContext } from "@src/context/useUIContext";
 
 interface FileToolbarProps {
   selectedPath: SelectedPathInfo | null;
@@ -55,7 +57,7 @@ export default function FileToolbar({
   onCollapseAll,
 }: FileToolbarProps) {
   const iconSx = { fontSize: 18 };
-
+  const { inEditMode, isDeveloper, selectedFile, setSelectedFile } = useUIContext();
   async function createPath(repo_id: string, path: string, type: "file" | "directory") {
     try {
       const updt = await createStagingRepoPath({
@@ -69,11 +71,21 @@ export default function FileToolbar({
   }
 
   async function deletePath(repo_id: string, path: string) {
+    const confirmed = await confirmDialog({
+      title: `Delete ${selectedPath?.path}?`,
+      message: "Confirming will remove this item",
+      confirmText: "Delete",
+      cancelText: "Cancel",
+    });
+    if (!confirmed) return;
     try {
       const updt = await deleteStagingRepoPath({
         path: { repo_id },
         query: { path },
       }).then((r) => r.data);
+      if (selectedFile?.repo_id === repo_id) {
+        setSelectedFile(null);
+      }
       onRepoUpdate(updt);
     } catch {
       notifyUser("Failed to delete path", "error");
@@ -87,58 +99,56 @@ export default function FileToolbar({
         justifyContent: "flex-end",
       }}
     >
-      {/* New File */}
-      <Tooltip title="Create new file">
-        <IconButton
-          onClick={() => {
-            if (!selectedPath) return;
-            const input = prompt("Enter new file name:");
-            if (!input) return;
-            const fileName = normalizeJsonFileName(input);
-            if (!fileName) {
-              notifyUser(
-                "Only .json files are allowed. Either leave extension empty or use .json",
-                "error",
-              );
-              return;
-            }
-            const basePath = getCreateBasePath(selectedPath);
-            void createPath(selectedPath.repo_id, `${basePath}/${fileName}`, "file");
-          }}
-        >
-          <NoteAddOutlined sx={iconSx} />
-        </IconButton>
-      </Tooltip>
+      {isDeveloper && inEditMode && (
+        <>
+          <Tooltip title="Create new file">
+            <IconButton
+              onClick={() => {
+                if (!selectedPath) return;
+                const input = prompt("Enter new file name:");
+                if (!input) return;
+                const fileName = normalizeJsonFileName(input);
+                if (!fileName) {
+                  notifyUser(
+                    "Only .json files are allowed. Either leave extension empty or use .json",
+                    "error",
+                  );
+                  return;
+                }
+                const basePath = getCreateBasePath(selectedPath);
+                void createPath(selectedPath.repo_id, `${basePath}/${fileName}`, "file");
+              }}
+            >
+              <NoteAddOutlined sx={iconSx} />
+            </IconButton>
+          </Tooltip>
 
-      {/* New Folder */}
-      <Tooltip title="Create new folder">
-        <IconButton
-          onClick={() => {
-            if (!selectedPath) return;
-            const name = prompt("Enter new folder name:");
-            if (!name) return;
-            const basePath = getCreateBasePath(selectedPath);
-            void createPath(selectedPath.repo_id, `${basePath}/${name}`, "directory");
-          }}
-        >
-          <CreateNewFolderOutlined sx={iconSx} />
-        </IconButton>
-      </Tooltip>
+          <Tooltip title="Create new folder">
+            <IconButton
+              onClick={() => {
+                if (!selectedPath) return;
+                const name = prompt("Enter new folder name:");
+                if (!name) return;
+                const basePath = getCreateBasePath(selectedPath);
+                void createPath(selectedPath.repo_id, `${basePath}/${name}`, "directory");
+              }}
+            >
+              <CreateNewFolderOutlined sx={iconSx} />
+            </IconButton>
+          </Tooltip>
 
-      {/* Delete selected path */}
-      <Tooltip title="Delete selected path">
-        <IconButton
-          onClick={() => {
-            if (!selectedPath) return;
-            const confirmDelete = confirm(`Delete "${selectedPath.path}"?`);
-            if (!confirmDelete) return;
-            void deletePath(selectedPath.repo_id, selectedPath.path);
-          }}
-        >
-          <DeleteOutlined sx={iconSx} />
-        </IconButton>
-      </Tooltip>
-
+          <Tooltip title="Delete selected path">
+            <IconButton
+              onClick={() => {
+                if (!selectedPath) return;
+                void deletePath(selectedPath.repo_id, selectedPath.path);
+              }}
+            >
+              <DeleteOutlined sx={iconSx} />
+            </IconButton>
+          </Tooltip>
+        </>
+      )}
       {/* Expand all */}
       <Tooltip title="Expand all">
         <IconButton onClick={onExpandAll}>

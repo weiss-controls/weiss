@@ -213,7 +213,7 @@ def get_all_repos_tree():
     return all_trees
 
 
-@router.post("/register", response_model=RepoInfo, operation_id="registerRepo")
+@router.post("/register", response_model=List[RepoTreeInfo], operation_id="registerRepo")
 def register_repository(payload: RepoCreateRequest):
     """Register a Git repository and create a clone"""
     repo_id = str(uuid.uuid4())
@@ -239,8 +239,44 @@ def register_repository(payload: RepoCreateRequest):
     meta_file = os.path.join(REPOS_BASE_PATH, repo_info.id, REPO_META)
     with open(meta_file, "w", encoding="utf-8") as f:
         f.write(repo_info.model_dump_json(indent=2))
+    # TODO: store all repos tree and edit in place instead of recalculating
+    return get_all_repos_tree()
 
-    return repo_info
+
+@router.delete(
+    "/{repo_id}/unregister", response_model=List[RepoTreeInfo], operation_id="unregisterRepo"
+)
+def unregister_repository(repo_id: str):
+    """
+    Remove a repository completely:
+    - Delete staging folder
+    - Delete all deployments
+    - Remove repo metadata
+    - Remove from REGISTERED_REPO_URLS
+    """
+    repo_base = os.path.join(REPOS_BASE_PATH, repo_id)
+    repo_info_path = os.path.join(repo_base, REPO_META)
+
+    if not os.path.exists(repo_info_path):
+        raise HTTPException(status_code=404, detail="Repository not found")
+
+    # Load repo info to remove git_url from registered URLs
+    with open(repo_info_path, "r", encoding="utf-8") as f:
+        repo_info_data = json.load(f)
+    git_url = repo_info_data.get("git_url")
+    if git_url in REGISTERED_REPO_URLS:
+        REGISTERED_REPO_URLS.remove(git_url)
+
+    # Remove repository folder
+    try:
+        if os.path.exists(repo_base):
+            import shutil
+
+            shutil.rmtree(repo_base)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete repository: {str(e)}")
+    # TODO: store all repos tree and edit in place instead of recalculating
+    return get_all_repos_tree()
 
 
 @router.get("/{repo_id}/refs", response_model=list[str], operation_id="listRepoRefs")
@@ -606,6 +642,35 @@ def deploy_repo(repo_id: str, payload: DeployRequest):
         commit_hash=commit_hash,
         deployed_at=deployment_meta["deployed_at"],
     )
+
+
+@router.post("/{repo_id}/undeploy", operation_id="undeployRepo")
+def undeploy_repository(repo_id: str):
+    """
+    Remove the current deployment for a repository:
+    - Delete symlink to current deployment
+    - Clear current deployment metadata in repo info
+    """
+    _, repo_info = get_repo_info(repo_id)
+    current_link = os.path.join(REPOS_BASE_PATH, repo_id, DEPLOYMENTS_REL_FOLDER, CURRENT_SYMLINK)
+
+    if os.path.islink(current_link) or os.path.exists(current_link):
+        try:
+            os.remove(current_link)
+        except Exception as e:
+            raise HTTPException(
+                status_code=500, detail=f"Failed to remove current deployment link: {str(e)}"
+            )
+
+    # Clear deployment info
+    repo_info.current_deployment = None
+    repo_info.deployed_ref = None
+    repo_info.deployed_at = None
+    repo_info_path = os.path.join(REPOS_BASE_PATH, repo_id, REPO_META)
+    with open(repo_info_path, "w", encoding="utf-8") as f:
+        f.write(repo_info.model_dump_json(indent=2))
+
+    return
 
 
 @router.post("/{repo_id}/checkout", response_model=RepoTreeInfo, operation_id="checkoutRepoRef")

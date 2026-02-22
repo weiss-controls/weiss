@@ -16,6 +16,8 @@ import { RichTreeView, type TreeViewBaseItem, TreeItemLabel, TreeItemIcon } from
 import FolderIcon from "@mui/icons-material/Folder";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import RemoveCircleIcon from "@mui/icons-material/RemoveCircle";
+import DeleteIcon from "@mui/icons-material/Delete";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
@@ -31,6 +33,8 @@ import {
   deployRepo,
   fetchRepo,
   resetStagingRepo,
+  undeployRepo,
+  unregisterRepo,
   type GitFileStatus,
   type RepoTreeInfo,
   type TreeNode,
@@ -54,6 +58,7 @@ export interface ProjectSectionProps {
   repo: RepoTreeInfo;
   onFileSelect: (repo_id: string, path: string) => Promise<void>;
   onRepoUpdate: (update: RepoTreeInfo) => void;
+  onTreeUpdate: (update: RepoTreeInfo[]) => void;
   defaultSelectedPath?: string;
 }
 
@@ -137,10 +142,11 @@ export default function ProjectSection({
   repo,
   onFileSelect,
   onRepoUpdate,
+  onTreeUpdate,
   defaultSelectedPath,
 }: ProjectSectionProps) {
   const REF_MAX_DISPLAY_SIZE = 7;
-  const { isDeveloper } = useUIContext();
+  const { isDeveloper, inEditMode, selectedFile, setSelectedFile } = useUIContext();
   const [sectionExpanded, setSectionExpanded] = useState(true);
   const [gitCommitOpen, setGitCommitOpen] = useState(false);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
@@ -148,7 +154,6 @@ export default function ProjectSection({
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(menuAnchor);
   const selectedRef = repo.checked_out_ref;
-
   const shortRef = (ref: string) => ref.substring(0, REF_MAX_DISPLAY_SIZE);
 
   function expandAll(repo: RepoTreeInfo) {
@@ -218,6 +223,66 @@ export default function ProjectSection({
     setMenuAnchor(null);
   };
 
+  const handleUndeploy = async () => {
+    if (!selectedRef) return;
+    if (selectedRef != repo.deployed_ref) return;
+    const confirmed = await confirmDialog({
+      title: `Undeploy ${repo.alias}@${shortRef(selectedRef)}?`,
+      message: "Confirming will make this repository unavailable to operators",
+      confirmText: "Undeploy",
+      cancelText: "Cancel",
+    });
+    if (!confirmed) return;
+    try {
+      const res = await undeployRepo({
+        path: { repo_id: repo.id },
+      });
+
+      if (!res.response.ok) {
+        const errorBody = await res.response.json().catch(() => null);
+        const msg = errorBody?.detail || res.response.statusText;
+        throw new Error(msg);
+      }
+      repo.deployed_ref = "";
+      notifyUser(`Successfully undeployed ${repo.alias}`, "success");
+    } catch (err) {
+      notifyUser(`Failed to undeploy repo: ${err as string}`, "error");
+    }
+
+    setMenuAnchor(null);
+  };
+
+  const handleUnregister = async () => {
+    const confirmed = await confirmDialog({
+      title: `Delete ${repo.alias}?`,
+      message:
+        "Confirming will undeploy if applicable and remove this repository from WEISS entirely",
+      confirmText: "Delete",
+      cancelText: "Cancel",
+    });
+    if (!confirmed) return;
+    try {
+      const res = await unregisterRepo({
+        path: { repo_id: repo.id },
+      });
+
+      if (!res.response.ok) {
+        const errorBody = await res.response.json().catch(() => null);
+        const msg = errorBody?.detail || res.response.statusText;
+        throw new Error(msg);
+      }
+      if (selectedFile?.repo_id === repo.id) {
+        setSelectedFile(null);
+      }
+      onTreeUpdate(res.data);
+      notifyUser(`Successfully unregistered ${repo.alias}`, "success");
+    } catch (err) {
+      notifyUser(`Failed to unregister repo: ${err as string}`, "error");
+    }
+
+    setMenuAnchor(null);
+  };
+
   const handleSyncClick = async () => {
     try {
       const updatedTree = await fetchRepo({ path: { repo_id: repo.id } }).then((r) => r.data);
@@ -267,7 +332,13 @@ export default function ProjectSection({
       return nodes.map((node) => {
         const children = node.children ? toRichItems(node.children) : undefined;
         const fileStatus = gitStatusByPath.get(node.path);
-        const dirDirty = node.type === "directory" && hasDirtyDescendant(children);
+        // mark directory as dirty if any child is dirty or if a deleted file exists under this path
+        const dirDirty =
+          node.type === "directory" &&
+          (hasDirtyDescendant(children) ||
+            repo.working_tree_status?.files.some(
+              (f) => f.status === "deleted" && f.path.startsWith(node.path + "/"),
+            ));
 
         return {
           id: node.path,
@@ -360,16 +431,31 @@ export default function ProjectSection({
                   Sync
                 </MenuItem>
               </Tooltip>
+              {repo.deployed_ref == selectedRef ? (
+                <Tooltip placement="top" title="Undeploy this revision">
+                  <MenuItem onClick={() => void handleUndeploy()} disabled={!selectedRef}>
+                    <RemoveCircleIcon fontSize="small" sx={{ mr: 1 }} />
+                    Undeploy
+                  </MenuItem>
+                </Tooltip>
+              ) : (
+                <Tooltip placement="top" title="Deploy this revision to operators">
+                  <MenuItem onClick={() => void handleDeploy()} disabled={!selectedRef}>
+                    <CloudUploadIcon fontSize="small" sx={{ mr: 1 }} />
+                    Deploy
+                  </MenuItem>
+                </Tooltip>
+              )}
               <Tooltip placement="top" title="Discard all uncommited changes">
                 <MenuItem onClick={() => void handleResetClick()}>
                   <RestoreIcon fontSize="small" sx={{ mr: 1 }} />
                   Discard changes
                 </MenuItem>
               </Tooltip>
-              <Tooltip placement="top" title="Deploy this version to operators">
-                <MenuItem onClick={() => void handleDeploy()} disabled={!selectedRef}>
-                  <CloudUploadIcon fontSize="small" sx={{ mr: 1 }} />
-                  Deploy
+              <Tooltip placement="top" title="Delete this repository">
+                <MenuItem onClick={() => void handleUnregister()}>
+                  <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
+                  Delete
                 </MenuItem>
               </Tooltip>
             </Menu>
@@ -385,7 +471,6 @@ export default function ProjectSection({
           onExpandAll={() => expandAll(repo)}
           onCollapseAll={() => collapseAll()}
         />
-
         <Box sx={{ px: 1, py: 0.5 }}>
           <RichTreeView
             items={items}

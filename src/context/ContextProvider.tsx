@@ -14,6 +14,7 @@ export const ContextProvider: React.FC<{ children: React.ReactNode }> = ({ child
     widgetManager.editorWidgets,
     widgetManager.formatWdgToExport,
     widgetManager.fileLoadedTrig,
+    widgetManager.clearAllWidgets,
   );
 
   return (

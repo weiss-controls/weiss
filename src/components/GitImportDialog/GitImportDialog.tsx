@@ -34,7 +34,7 @@ interface GitImportDialogProps {
 }
 
 export default function GitImportDialog({ open, onClose }: GitImportDialogProps) {
-  const { setReleaseShortcuts, updateReposTreeInfo, isDemo } = useUIContext();
+  const { setReleaseShortcuts, updateReposTreeInfo, setReposTreeInfo, isDemo } = useUIContext();
   const [alias, setAlias] = useState("");
   const [gitUrl, setGitUrl] = useState(
     isDemo ? "https://github.com/weiss-controls/weiss-demo-opis.git" : "",
@@ -71,9 +71,9 @@ export default function GitImportDialog({ open, onClose }: GitImportDialogProps)
 
     try {
       setLoading(true);
-      await registerRepo({ body: payload });
+      const newTree = await registerRepo({ body: payload }).then((r) => r.data);
       notifyUser("Git repository imported successfully.", "success");
-      await updateReposTreeInfo();
+      setReposTreeInfo(newTree);
       resetAndClose();
     } catch (err) {
       notifyUser(`Git import failed: ${err instanceof Error ? err.message : String(err)}`, "error");
