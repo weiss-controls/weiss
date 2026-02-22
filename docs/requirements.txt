@@ -1,0 +1,5 @@
+make
+sphinx
+myst_parser
+sphinx-breeze-theme
+sphinx_copybutton
