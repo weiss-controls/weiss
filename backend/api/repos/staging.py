@@ -358,7 +358,7 @@ def update_repo(repo_id: str, user: User = Depends(require_developer)):
     """Fetch new tags/commits from remote"""
     repo_path = get_user_worktree_path(repo_id, user)
     run_git(["fetch", "--all", "--tags", "--prune"], cwd=repo_path)
-    return get_staging_repo_tree(repo_id)
+    return get_staging_repo_tree(repo_id, user)
 
 
 @router.get("/{repo_id}/file", response_model=FileResponse, operation_id="getStagingRepoFile")
@@ -426,7 +426,7 @@ def staging_update_repo_file(
             status_code=500,
             detail=f"Failed to update file: {str(e)}",
         )
-    return get_staging_repo_tree(repo_id)
+    return get_staging_repo_tree(repo_id, user)
 
 
 @router.post(
@@ -456,7 +456,7 @@ def reset_staging_repo_file(
     run_git(["restore", "--staged", rel_path], cwd=repo_path)
     run_git(["restore", rel_path], cwd=repo_path)
 
-    return get_staging_repo_tree(repo_id)
+    return get_staging_repo_tree(repo_id, user)
 
 
 @router.post(
@@ -479,7 +479,7 @@ def reset_staging_repo(
     run_git(["restore", "."], cwd=repo_path)
     run_git(["clean", "-fd"], cwd=repo_path)
 
-    return get_staging_repo_tree(repo_id)
+    return get_staging_repo_tree(repo_id, user)
 
 
 @router.post(
@@ -529,7 +529,7 @@ def create_staging_repo_path(
     except OSError as e:
         raise HTTPException(status_code=500, detail=f"Failed to create {payload.type}: {str(e)}")
 
-    return get_staging_repo_tree(repo_id)
+    return get_staging_repo_tree(repo_id, user)
 
 
 @router.delete(
@@ -565,7 +565,7 @@ def delete_staging_repo_path(
     else:
         run_git(["rm", "-f", "--", rel_path], cwd=repo_path)
 
-    return get_staging_repo_tree(repo_id)
+    return get_staging_repo_tree(repo_id, user)
 
 
 @router.post(
@@ -628,7 +628,7 @@ def commit_staging_repo(
             detail=f"Failed to push changes: {e.detail}. Aborted.",
         )
 
-    return get_staging_repo_tree(repo_id)
+    return get_staging_repo_tree(repo_id, user)
 
 
 @router.post("/{repo_id}/deploy", response_model=DeploymentInfo, operation_id="deployRepo")
@@ -712,7 +712,7 @@ def checkout_repo_ref(
     repo_path = get_user_worktree_path(repo_id, user)
     ensure_clean(repo_path)
     run_git(["checkout", ref], cwd=repo_path)
-    return get_staging_repo_tree(repo_id)
+    return get_staging_repo_tree(repo_id, user)
 
 
 @router.get("/{repo_id}/tree", response_model=RepoTreeInfo, operation_id="getStagingRepoTree")
