@@ -13,6 +13,7 @@ from typing import Optional
 from datetime import datetime, timedelta, timezone
 
 SESSION_COOKIE_NAME = "weiss_session"
+DEMO_ID_COOKIE = "weiss_demo_id"  # allow differ demo sessions
 SESSION_EXPIRE_HOURS = 24
 
 # Microsoft Auth / MSAL Config
@@ -177,8 +178,25 @@ async def handle_microsoft_callback(code: str, redirect_uri: str) -> User:
     return users_db[user_id]
 
 
-async def handle_demo_login(role: UserRole) -> User:
-    user_id = f"demo_user_{role.value}"
+async def handle_demo_login(role: UserRole, request: Request, response: Response) -> User:
+    """
+    Demo sessions are differentiated by the session cookie. This allows different demo sessions to
+    behave like different users, and avoid staging changes from one session to impact the other.
+    """
+    browser_demo_id = request.cookies.get(DEMO_ID_COOKIE)
+    if not browser_demo_id:
+        browser_demo_id = secrets.token_urlsafe(12)
+        response.set_cookie(
+            key=DEMO_ID_COOKIE,
+            value=browser_demo_id,
+            httponly=True,
+            secure=ENABLE_HTTPS,
+            samesite="none" if ENABLE_HTTPS else None,
+            max_age=SESSION_EXPIRE_HOURS * 3600,
+            path="/",
+        )
+
+    user_id = f"demo_{role.value}_{browser_demo_id}"
 
     if user_id not in users_db:
         users_db[user_id] = User(
@@ -229,6 +247,7 @@ async def authorize(provider: AuthProvider, demo_profile: UserRole | None = None
 )
 async def oauth_callback(
     payload: OAuthCallbackRequest,
+    request: Request,
     response: Response,
 ):
     if not payload.code or not payload.redirect_uri:
@@ -244,7 +263,7 @@ async def oauth_callback(
         demo_role = payload.code.split("_")[-1]
         if demo_role not in [r.value for r in UserRole]:
             raise HTTPException(status_code=400, detail="Invalid demo profile")
-        user = await handle_demo_login(UserRole(demo_role))
+        user = await handle_demo_login(UserRole(demo_role), request, response)
 
     else:
         raise HTTPException(status_code=400, detail="Unsupported provider")
