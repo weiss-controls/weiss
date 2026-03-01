@@ -124,6 +124,16 @@ def ensure_clean(repo_path: str):
         )
 
 
+def get_default_branch(repo_path: str):
+    head_info = run_git(["remote", "show", "origin"], cwd=repo_path).splitlines()
+    default_branch = "main"  # default fallback
+    for line in head_info:
+        if "HEAD branch" in line:
+            default_branch = line.split(":")[-1].strip()
+            break
+    return default_branch
+
+
 def clone(git_url: str, repo_id: str) -> str:
     if git_url in REGISTERED_REPO_URLS:
         raise HTTPException(status_code=403, detail="Repository already registered")
@@ -147,14 +157,7 @@ def get_user_worktree_path(repo_id: str, user: User) -> str:
 
     if not os.path.exists(path):
         # create worktree on default branch
-        default_branch = run_git(["remote", "show", "origin"], cwd=bare_repo).splitlines()
-        for line in default_branch:
-            if "HEAD branch" in line:
-                default_branch = line.split(":")[-1].strip()
-                break
-        else:
-            default_branch = "main"
-
+        default_branch = get_default_branch(bare_repo)
         run_git(["fetch", "origin", default_branch], cwd=bare_repo)
         run_git(
             ["worktree", "add", path, "-b", user.id, default_branch],
@@ -314,23 +317,11 @@ def unregister_repository(repo_id: str, user: User = Depends(require_developer))
 
 @router.get("/{repo_id}/refs", response_model=list[str], operation_id="listRepoRefs")
 def list_repository_refs(repo_id: str, user: User = Depends(require_developer)) -> list[str]:
-    """List 20 latest repository refs available in default branch.
+    """List 20 latest repository refs available. Assumes repo is up to date.
     If commit is tagged, show tag instead.
     """
     repo_path = get_user_worktree_path(repo_id, user)
-
-    default_branch = run_git(
-        ["remote", "show", "origin"],
-        cwd=repo_path,
-    )
-
-    for line in default_branch.splitlines():
-        if "HEAD branch" in line:
-            default_branch = line.split(":")[-1].strip()
-            break
-    else:
-        raise HTTPException(500, "Cannot resolve default branch")
-
+    default_branch = get_default_branch(repo_path)
     commits = run_git(
         ["rev-list", "--max-count=20", default_branch],
         cwd=repo_path,
@@ -353,11 +344,54 @@ def list_repository_refs(repo_id: str, user: User = Depends(require_developer)) 
     return refs
 
 
-@router.post("/{repo_id}/fetch", response_model=RepoTreeInfo, operation_id="fetchRepo")
+@router.post("/{repo_id}/sync", response_model=RepoTreeInfo, operation_id="syncRepo")
 def update_repo(repo_id: str, user: User = Depends(require_developer)):
-    """Fetch new tags/commits from remote"""
+    """Fetch new tags/commits from default branch and rebase current worktree onto it."""
     repo_path = get_user_worktree_path(repo_id, user)
-    run_git(["fetch", "--all", "--tags", "--prune"], cwd=repo_path)
+    default_branch = get_default_branch(repo_path)
+    is_dirty = bool(run_git(["status", "--porcelain"], cwd=repo_path).strip())
+
+    if is_dirty:
+        run_git(["stash", "push", "--include-untracked"], cwd=repo_path)
+    # update default branch
+    run_git(["fetch", "origin", f"{default_branch}:{default_branch}"], cwd=repo_path)
+
+    try:
+        run_git(["rebase", default_branch], cwd=repo_path)
+    except HTTPException:
+        run_git(["rebase", "--abort"], cwd=repo_path)
+        if is_dirty:
+            # Restore original workspace state
+            run_git(["stash", "apply"], cwd=repo_path)
+            run_git(["stash", "drop"], cwd=repo_path)
+        raise HTTPException(
+            status_code=409,
+            detail="Failed to rebase. Aborting commit. Please checkout to latest ref to apply your changes.",
+        )
+
+    # Only reached if rebase succeeded
+    if is_dirty:
+        try:
+            run_git(["stash", "apply"], cwd=repo_path)
+        except HTTPException:
+            raise HTTPException(
+                status_code=409,
+                detail="Local changes conflict with latest updates. Please start from latest ref or resolve conflicts manually. Aborting.",
+            )
+
+        conflicts = run_git(
+            ["diff", "--name-only", "--diff-filter=U"],
+            cwd=repo_path,
+        )
+        if conflicts.strip():
+            raise HTTPException(
+                status_code=409,
+                detail="Local changes conflict with latest updates. Please start from latest ref or resolve conflicts manually. Aborting.",
+            )
+
+        run_git(["stash", "drop"], cwd=repo_path)
+        run_git(["add", "."], cwd=repo_path)
+
     return get_staging_repo_tree(repo_id, user)
 
 
@@ -577,10 +611,12 @@ def commit_staging_repo(
     repo_id: str, payload: CommitRequest, user: User = Depends(require_developer)
 ):
     """
-    Commit staged changes in the staging repository.
+    Commit staged changes in the staging repository and push to remote.
+    If HEAD is behind remote, try rebasing first.
     Fails if there is nothing to commit.
     """
     repo_path = get_user_worktree_path(repo_id, user)
+    default_branch = get_default_branch(repo_path)
 
     # Ensure there is something staged
     staged = run_git(["diff", "--cached", "--name-only"], cwd=repo_path)
@@ -588,6 +624,8 @@ def commit_staging_repo(
         raise HTTPException(status_code=400, detail="No staged changes to commit")
     if not TECHNICAL_ACCOUNT_TOKEN:
         raise HTTPException(status_code=400, detail="Technical account token not configured")
+    # make sure HEAD is rebased to main tip before comitting
+    update_repo(repo_id, user)
     try:
         run_git(
             [
@@ -606,14 +644,7 @@ def commit_staging_repo(
             detail=f"Failed to commit changes: {e.detail}",
         )
     try:
-        remote_info = run_git(["remote", "show", "origin"], cwd=repo_path)
-        for line in remote_info.splitlines():
-            if "HEAD branch" in line:
-                default_branch = line.split(":")[-1].strip()
-                break
-        else:
-            default_branch = "main"
-
+        default_branch = get_default_branch(repo_path)
         run_git(["push", "origin", f"HEAD:{default_branch}"], cwd=repo_path)
 
         if payload.tag:
@@ -624,7 +655,7 @@ def commit_staging_repo(
         # undo previous commit but keep changes staged
         run_git(["reset", "--soft", "HEAD^1"], cwd=repo_path)
         raise HTTPException(
-            status_code=500,
+            status_code=409,
             detail=f"Failed to push changes: {e.detail}. Aborted.",
         )
 
