@@ -226,14 +226,6 @@ export type RepoInfo = {
    */
   created_at: string;
   /**
-   * Refs
-   */
-  refs: Array<string>;
-  /**
-   * Checked Out Ref
-   */
-  checked_out_ref: string;
-  /**
    * Current Deployment
    */
   current_deployment?: string | null;
@@ -245,6 +237,14 @@ export type RepoInfo = {
    * Deployed At
    */
   deployed_at?: string | null;
+  /**
+   * Refs
+   */
+  refs: Array<string>;
+  /**
+   * Checked Out Ref
+   */
+  checked_out_ref: string;
 };
 
 /**
@@ -268,14 +268,6 @@ export type RepoTreeInfo = {
    */
   created_at: string;
   /**
-   * Refs
-   */
-  refs: Array<string>;
-  /**
-   * Checked Out Ref
-   */
-  checked_out_ref: string;
-  /**
    * Current Deployment
    */
   current_deployment?: string | null;
@@ -287,6 +279,14 @@ export type RepoTreeInfo = {
    * Deployed At
    */
   deployed_at?: string | null;
+  /**
+   * Refs
+   */
+  refs: Array<string>;
+  /**
+   * Checked Out Ref
+   */
+  checked_out_ref: string;
   /**
    * Tree
    */
@@ -599,7 +599,7 @@ export type ListRepoRefsResponses = {
 
 export type ListRepoRefsResponse = ListRepoRefsResponses[keyof ListRepoRefsResponses];
 
-export type FetchRepoData = {
+export type SyncRepoData = {
   body?: never;
   path: {
     /**
@@ -608,26 +608,26 @@ export type FetchRepoData = {
     repo_id: string;
   };
   query?: never;
-  url: "/api/v1/repos/staging/{repo_id}/fetch";
+  url: "/api/v1/repos/staging/{repo_id}/sync";
 };
 
-export type FetchRepoErrors = {
+export type SyncRepoErrors = {
   /**
    * Validation Error
    */
   422: HttpValidationError;
 };
 
-export type FetchRepoError = FetchRepoErrors[keyof FetchRepoErrors];
+export type SyncRepoError = SyncRepoErrors[keyof SyncRepoErrors];
 
-export type FetchRepoResponses = {
+export type SyncRepoResponses = {
   /**
    * Successful Response
    */
   200: RepoTreeInfo;
 };
 
-export type FetchRepoResponse = FetchRepoResponses[keyof FetchRepoResponses];
+export type SyncRepoResponse = SyncRepoResponses[keyof SyncRepoResponses];
 
 export type GetStagingRepoFileData = {
   body?: never;
@@ -1014,7 +1014,7 @@ export type ListDeployedReposResponses = {
    *
    * Successful Response
    */
-  200: Array<RepoInfo>;
+  200: Array<DeploymentInfo>;
 };
 
 export type ListDeployedReposResponse =

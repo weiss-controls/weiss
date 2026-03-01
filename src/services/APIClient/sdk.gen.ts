@@ -31,9 +31,6 @@ import type {
   DeployRepoData,
   DeployRepoErrors,
   DeployRepoResponses,
-  FetchRepoData,
-  FetchRepoErrors,
-  FetchRepoResponses,
   GetAllDeployedReposTreeData,
   GetAllDeployedReposTreeResponses,
   GetAllReposTreeData,
@@ -73,6 +70,9 @@ import type {
   ResetStagingRepoResponses,
   RootInfoData,
   RootInfoResponses,
+  SyncRepoData,
+  SyncRepoErrors,
+  SyncRepoResponses,
   UndeployRepoData,
   UndeployRepoErrors,
   UndeployRepoResponses,
@@ -222,13 +222,13 @@ export const listRepoRefs = <ThrowOnError extends boolean = true>(
 /**
  * Update Repo
  *
- * Fetch new tags/commits from remote
+ * Fetch new tags/commits from default branch and rebase current worktree onto it.
  */
-export const fetchRepo = <ThrowOnError extends boolean = true>(
-  options: Options<FetchRepoData, ThrowOnError>,
+export const syncRepo = <ThrowOnError extends boolean = true>(
+  options: Options<SyncRepoData, ThrowOnError>,
 ) =>
-  (options.client ?? client).post<FetchRepoResponses, FetchRepoErrors, ThrowOnError>({
-    url: "/api/v1/repos/staging/{repo_id}/fetch",
+  (options.client ?? client).post<SyncRepoResponses, SyncRepoErrors, ThrowOnError>({
+    url: "/api/v1/repos/staging/{repo_id}/sync",
     ...options,
   });
 

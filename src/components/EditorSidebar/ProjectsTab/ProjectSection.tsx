@@ -34,7 +34,7 @@ import { useTreeItemModel } from "@mui/x-tree-view/hooks";
 import {
   checkoutRepoRef,
   deployRepo,
-  fetchRepo,
+  syncRepo,
   resetStagingRepo,
   undeployRepo,
   unregisterRepo,
@@ -288,7 +288,7 @@ export default function ProjectSection({
 
   const handleSyncClick = async () => {
     try {
-      const updatedTree = await fetchRepo({ path: { repo_id: repo.id } }).then((r) => r.data);
+      const updatedTree = await syncRepo({ path: { repo_id: repo.id } }).then((r) => r.data);
       onRepoUpdate(updatedTree);
       notifyUser(`Successfully updated ${repo.alias}`, "success");
     } catch (err) {
