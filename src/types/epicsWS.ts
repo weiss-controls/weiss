@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 André Favoto
+
 /** Type of a WebSocket message, indicating the operation or event */
 export type WSMessageType = "update" | "subscribe" | "unsubscribe" | "write";
 

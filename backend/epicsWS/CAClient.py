@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 André Favoto
+
 from typing import Callable, Dict, Set, Any
 from threading import Lock
 import epics

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 André Favoto
+
 import SvgIcon, { type SvgIconProps } from "@mui/material/SvgIcon";
 import React from "react";
 

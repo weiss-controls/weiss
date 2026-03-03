@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 André Favoto
+
 import { InputFieldComp } from "./InputFieldComp";
 import { COLORS } from "@src/constants/constants";
 import type { Widget } from "@src/types/widgets";

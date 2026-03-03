@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 André Favoto
+
 import { Box, Typography, Button, Paper, Tooltip } from "@mui/material";
 import PersonIcon from "@mui/icons-material/Person";
 import IntegrationInstructionsIcon from "@mui/icons-material/IntegrationInstructions";

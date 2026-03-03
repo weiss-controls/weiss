@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 André Favoto
+
 import React from "react";
 import { FormControl, InputLabel, MenuItem, Select, type SelectChangeEvent } from "@mui/material";
 import type { WidgetUpdate } from "@src/types/widgets";

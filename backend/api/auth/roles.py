@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 André Favoto
+
 from fastapi import Depends, HTTPException, status
 from api.auth.auth import get_current_user, User, UserRole
 

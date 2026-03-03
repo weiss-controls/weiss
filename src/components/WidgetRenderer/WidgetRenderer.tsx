@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 André Favoto
+
 import React, { useMemo, type ReactNode } from "react";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import type { Widget, MultiWidgetPropertyUpdates, DOMRectLike } from "@src/types/widgets";

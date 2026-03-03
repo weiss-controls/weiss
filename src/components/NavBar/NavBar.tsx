@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 André Favoto
+
 import { useState } from "react";
 import MuiAppBar from "@mui/material/AppBar";
 import type { AppBarProps as MuiAppBarProps } from "@mui/material/AppBar";

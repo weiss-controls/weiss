@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 André Favoto
+
 import React from "react";
 import type { ReactNode, CSSProperties } from "react";
 import type { Alarm } from "@src/types/epicsWS";

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 André Favoto
+
 import type { PVValue, WSMessage } from "@src/types/epicsWS";
 
 type ConnectionHandler = (connected: boolean) => void;

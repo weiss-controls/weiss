@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 André Favoto
+
 import { MultiBitIndicatorComp } from "./MultiBitIndicatorComp";
 import { PROPERTY_SCHEMAS, COMMON_PROPS } from "@src/types/widgetProperties";
 import type { Widget } from "@src/types/widgets";

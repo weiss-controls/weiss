@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 André Favoto
+
 import type { SvgIconProps } from "@mui/material/SvgIcon";
 import { PROPERTY_SCHEMAS } from "./widgetProperties";
 import type { MultiPvData, PVData } from "./epicsWS";
