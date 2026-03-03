@@ -5,7 +5,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getDeployedRepoFile,
   getStagingRepoFile,
-  type RepoTreeInfo,
+  type DeploymentTreeInfo,
+  type StagingTreeInfo,
 } from "@src/services/APIClient";
 import ProjectSection from "./ProjectSection";
 import { Box, Button } from "@mui/material";
@@ -35,7 +36,7 @@ export default function ProjectsTab() {
     void updateReposTreeInfo();
   }, [updateReposTreeInfo]);
 
-  const refreshRepoTree = (updt: RepoTreeInfo) => {
+  const refreshRepoTree = (updt: StagingTreeInfo | DeploymentTreeInfo) => {
     setReposTreeInfo((prev) => (prev ? prev.map((r) => (updt.id === r.id ? updt : r)) : prev));
     // update opened file if it belongs to synced repo
     if (selectedFile?.repo_id === updt.id) {
@@ -43,7 +44,7 @@ export default function ProjectsTab() {
     }
   };
 
-  const refreshAllReposTree = (updt: RepoTreeInfo[]) => {
+  const refreshAllReposTree = (updt: StagingTreeInfo[] | DeploymentTreeInfo[]) => {
     setReposTreeInfo(updt);
   };
 

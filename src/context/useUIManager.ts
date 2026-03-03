@@ -18,7 +18,8 @@ import {
   getAllDeployedReposTree,
   getAllReposTree,
   updateStagingRepoFile,
-  type RepoTreeInfo,
+  type DeploymentTreeInfo,
+  type StagingTreeInfo,
   type User,
 } from "@src/services/APIClient";
 
@@ -50,7 +51,9 @@ export default function useUIManager(
   const [user, setUser] = useState<User | null>(() => authService.getUser());
   const [authChecked, setAuthChecked] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [reposTreeInfo, setReposTreeInfo] = useState<RepoTreeInfo[] | null>(null);
+  const [reposTreeInfo, setReposTreeInfo] = useState<
+    (StagingTreeInfo | DeploymentTreeInfo)[] | null
+  >(null);
   const [selectedFile, setSelectedFile] = useState<SelectedPathInfo | null>(null);
   const inEditMode = mode === EDIT_MODE;
   const RECONNECT_TIMEOUT = 3000;
@@ -156,7 +159,7 @@ export default function useUIManager(
     if (!selectedFile) {
       clearAllWidgets();
     }
-  }, [selectedFile]);
+  }, [clearAllWidgets, selectedFile]);
   // throttle file update to backend
   useEffect(() => {
     if (!isDeveloper || !inEditMode) return;
