@@ -39,29 +39,23 @@ class FileResponse(BaseModel):
     encoding: str = "utf-8"
 
 
-class GitFileStatus(BaseModel):
-    path: str
-    status: Literal["modified", "added", "deleted", "renamed", "untracked"]
-
-
-class GitWorkingTreeStatus(BaseModel):
-    dirty: bool
-    files: List[GitFileStatus]
-
-
-class RepoMeta(BaseModel):
+class RepoBase(BaseModel):
     id: str
     alias: str
     git_url: str
     created_at: str
+
+
+class StagingMeta(RepoBase):
     current_deployment: Optional[str] = None
     deployed_ref: Optional[str] = None
     deployed_at: Optional[str] = None
 
 
-class RepoInfo(RepoMeta):
-    refs: List[str]
-    checked_out_ref: str
+class DeploymentMeta(RepoBase):
+    current_deployment: str
+    deployed_ref: str
+    deployed_at: str
 
 
 class TreeNode(BaseModel):
@@ -69,19 +63,6 @@ class TreeNode(BaseModel):
     path: str  # path relative to repo/snapshot root
     type: Literal["file", "directory"]
     children: Optional[List["TreeNode"]] = None
-
-
-class RepoTreeInfo(RepoInfo):
-    tree: List[TreeNode]
-    working_tree_status: Optional[GitWorkingTreeStatus] = None
-
-
-class DeploymentInfo(BaseModel):
-    id: str
-    repo_id: str
-    ref: str
-    commit_hash: str
-    deployed_at: Optional[str] = None
 
 
 def build_path_tree(root_path: str, rel_path: str = "") -> List[TreeNode]:
@@ -136,17 +117,17 @@ def build_path_tree(root_path: str, rel_path: str = "") -> List[TreeNode]:
     return nodes
 
 
-def get_repo_meta(repo_id: str) -> Tuple[(str, RepoMeta)]:
+def get_repo_meta(repo_id: str) -> Tuple[(str, StagingMeta)]:
     """Get content of repository metadata file (repo.json)"""
     meta_file_path = os.path.join(REPOS_BASE_PATH, repo_id, REPO_META)
     if not os.path.exists(meta_file_path):
         raise FileNotFoundError
     with open(meta_file_path) as f:
         repo_meta = json.load(f)
-    return meta_file_path, RepoMeta(**repo_meta)
+    return meta_file_path, StagingMeta(**repo_meta)
 
 
-def list_all_repositories() -> List[RepoMeta]:
+def list_all_repositories() -> List[StagingMeta]:
     """List all registered repositories"""
     repos = []
     repos_base = os.path.join(REPOS_BASE_PATH)
@@ -159,7 +140,7 @@ def list_all_repositories() -> List[RepoMeta]:
             with open(meta_file, "r", encoding="utf-8") as f:
                 meta = json.load(f)
                 repos.append(
-                    RepoMeta(
+                    StagingMeta(
                         id=meta["id"],
                         alias=meta["alias"],
                         git_url=meta["git_url"],

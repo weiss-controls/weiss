@@ -35,9 +35,6 @@ import type {
   GetAllDeployedReposTreeResponses,
   GetAllReposTreeData,
   GetAllReposTreeResponses,
-  GetCurrentDeploymentInfoData,
-  GetCurrentDeploymentInfoErrors,
-  GetCurrentDeploymentInfoResponses,
   GetDeployedRepoFileData,
   GetDeployedRepoFileErrors,
   GetDeployedRepoFileResponses,
@@ -208,7 +205,7 @@ export const unregisterRepo = <ThrowOnError extends boolean = true>(
 /**
  * List Repository Refs
  *
- * List 20 latest repository refs available in default branch.
+ * List 20 latest repository refs available. Assumes repo is up to date.
  * If commit is tagged, show tag instead.
  */
 export const listRepoRefs = <ThrowOnError extends boolean = true>(
@@ -338,7 +335,8 @@ export const createStagingRepoPath = <ThrowOnError extends boolean = true>(
 /**
  * Commit Staging Repo
  *
- * Commit staged changes in the staging repository.
+ * Commit staged changes in the staging repository and push to remote.
+ * If HEAD is behind remote, try rebasing first.
  * Fails if there is nothing to commit.
  */
 export const commitStagingRepo = <ThrowOnError extends boolean = true>(
@@ -440,7 +438,7 @@ export const getAllDeployedReposTree = <ThrowOnError extends boolean = true>(
  * Get Deployed Repo Tree
  *
  * Return the full tree of the currently deployed snapshot
- * for a single repository, wrapped in RepoTreeInfo.
+ * for a single repository, wrapped in DeploymentTreeInfo.
  */
 export const getDeployedRepoTree = <ThrowOnError extends boolean = true>(
   options: Options<GetDeployedRepoTreeData, ThrowOnError>,
@@ -464,20 +462,6 @@ export const getDeployedRepoFile = <ThrowOnError extends boolean = true>(
     GetDeployedRepoFileErrors,
     ThrowOnError
   >({ url: "/api/v1/repos/runtime/{repo_id}/file", ...options });
-
-/**
- * Get Current Deployment Info
- *
- * Return information about the currently deployed snapshot.
- */
-export const getCurrentDeploymentInfo = <ThrowOnError extends boolean = true>(
-  options: Options<GetCurrentDeploymentInfoData, ThrowOnError>,
-) =>
-  (options.client ?? client).get<
-    GetCurrentDeploymentInfoResponses,
-    GetCurrentDeploymentInfoErrors,
-    ThrowOnError
-  >({ url: "/api/v1/repos/runtime/{repo_id}/info", ...options });
 
 /**
  * Root
