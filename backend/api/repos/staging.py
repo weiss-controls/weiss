@@ -6,27 +6,23 @@ import uuid
 import subprocess
 import json
 import base64
-from .common import REPOS_BASE_PATH
+from .common import REPOS_BASE_PATH, BARE_CLONE_NAME
 from fastapi import APIRouter, HTTPException, Body, Query, Depends
 from pydantic import BaseModel, Field
-from typing import List, Tuple
+from typing import List, Tuple, Optional, Literal
 from datetime import datetime, timezone
 from api.auth.roles import require_developer, User
 from api.repos.common import (
     FileResponse,
-    RepoInfo,
-    RepoTreeInfo,
-    DeploymentInfo,
-    GitFileStatus,
-    GitWorkingTreeStatus,
-    get_repo_info,
+    StagingMeta,
+    TreeNode,
+    get_repo_meta,
     build_path_tree,
     list_all_repositories,
     DEPLOYMENTS_REL_FOLDER,
-    STAGING_REL_FOLDER,
+    WORKTREES_REL_FOLDER,
     CURRENT_SYMLINK,
     REPO_META,
-    DEPLOYMENT_META,
     REGISTERED_REPO_URLS,
     NEW_FILE_CONTENT,
 )
@@ -36,6 +32,7 @@ router = APIRouter(
     tags=["[Admin] OPI management"],
     dependencies=[Depends(require_developer)],
 )
+
 TECHNICAL_ACCOUNT_TOKEN = os.getenv("TECHNICAL_ACCOUNT_TOKEN")
 TECHNICAL_ACCOUNT_USERNAME = os.getenv("TECHNICAL_ACCOUNT_USERNAME", "weiss-bot")
 TECHNICAL_ACCOUNT_EMAIL = os.getenv("TECHNICAL_ACCOUNT_EMAIL", "weiss-bot@dummy")
@@ -60,10 +57,6 @@ subprocess.run(["git", "config", "--global", "user.email", TECHNICAL_ACCOUNT_EMA
 class RepoCreateRequest(BaseModel):
     alias: str = Field(..., description="Local OPI repository name")
     git_url: str = Field(..., description="Git repository URL")
-
-
-class RepoRef(BaseModel):
-    ref: str
 
 
 class ValidationResult(BaseModel):
@@ -91,6 +84,23 @@ class PathCreateRequest(BaseModel):
         description="Type of path to create: 'file' or 'directory'.",
         pattern="^(file|directory)$",
     )
+
+
+class GitFileStatus(BaseModel):
+    path: str
+    status: Literal["modified", "added", "deleted", "renamed", "untracked"]
+
+
+class GitWorkingTreeStatus(BaseModel):
+    dirty: bool
+    files: List[GitFileStatus]
+
+
+class StagingTreeInfo(StagingMeta):
+    refs: List[str]
+    checked_out_ref: str
+    tree: List[TreeNode]
+    working_tree_status: GitWorkingTreeStatus
 
 
 # -----------------------------------------------------------------------------
@@ -123,6 +133,16 @@ def ensure_clean(repo_path: str):
         )
 
 
+def get_default_branch(repo_path: str):
+    head_info = run_git(["remote", "show", "origin"], cwd=repo_path).splitlines()
+    default_branch = "main"  # default fallback
+    for line in head_info:
+        if "HEAD branch" in line:
+            default_branch = line.split(":")[-1].strip()
+            break
+    return default_branch
+
+
 def clone(git_url: str, repo_id: str) -> str:
     if git_url in REGISTERED_REPO_URLS:
         raise HTTPException(status_code=403, detail="Repository already registered")
@@ -133,17 +153,27 @@ def clone(git_url: str, repo_id: str) -> str:
             detail="Invalid URL. Only HTTPS repositories can be registered.",
         )
 
-    repo_path = os.path.join(REPOS_BASE_PATH, repo_id, STAGING_REL_FOLDER)
-    os.makedirs(os.path.dirname(repo_path), exist_ok=True)
-    run_git(["clone", "--recursive", git_url, repo_path])
+    repo_path = os.path.join(REPOS_BASE_PATH, repo_id, BARE_CLONE_NAME)
+    run_git(["clone", "--bare", "--recursive", git_url, repo_path])
     return repo_path
 
 
-def get_staging_path(repo_id: str) -> str:
-    repo_path = os.path.join(REPOS_BASE_PATH, repo_id, STAGING_REL_FOLDER)
-    if not os.path.exists(repo_path):
-        raise HTTPException(status_code=404, detail="Repository not found")
-    return repo_path
+def get_user_worktree_path(repo_id: str, user: User) -> str:
+    worktree_base = os.path.join(REPOS_BASE_PATH, repo_id, WORKTREES_REL_FOLDER)
+    os.makedirs(worktree_base, exist_ok=True)
+    path = os.path.join(worktree_base, user.id)
+    bare_repo = os.path.join(REPOS_BASE_PATH, repo_id, BARE_CLONE_NAME)
+
+    if not os.path.exists(path):
+        # create worktree on default branch
+        default_branch = get_default_branch(bare_repo)
+        run_git(["fetch", "origin", default_branch], cwd=bare_repo)
+        run_git(
+            ["worktree", "add", path, "-b", user.id, default_branch],
+            cwd=bare_repo,
+        )
+
+    return path
 
 
 def get_working_tree_status(repo_path: str) -> GitWorkingTreeStatus:
@@ -175,14 +205,25 @@ def get_working_tree_status(repo_path: str) -> GitWorkingTreeStatus:
     )
 
 
-def create_snapshot(repo_id: str, ref: str) -> Tuple[str, str]:
+def get_checked_out_ref(repo_id: str, user: User):
+    repo_path = get_user_worktree_path(repo_id, user)
+    repo_head = run_git(["rev-parse", "HEAD"], cwd=repo_path).strip()
+    tag = run_git(
+        ["describe", "--tags", "--exact-match", repo_head], cwd=repo_path, allow_fail=True
+    ).strip()
+    return tag if tag else repo_head
+
+
+def create_snapshot(
+    repo_id: str, ref: str, user: User = Depends(require_developer)
+) -> Tuple[str, str]:
     """
     Create a read-only snapshot of the repo at a given ref.
 
     Returns:
         deployment_id, snapshot_path
     """
-    repo_path = get_staging_path(repo_id)
+    repo_path = get_user_worktree_path(repo_id, user)
     ensure_clean(repo_path)
     deployment_id = str(uuid.uuid4())
     deployments_root = os.path.join(REPOS_BASE_PATH, repo_id, DEPLOYMENTS_REL_FOLDER)
@@ -200,56 +241,57 @@ def validate_repo_content(repo_path: str, ref: str) -> ValidationResult:
     return ValidationResult(valid=True, errors=[])
 
 
-@router.get("/", response_model=List[RepoInfo], operation_id="listRepos")
+@router.get("/", response_model=List[StagingMeta], operation_id="listRepos")
 def list_repositories():
     return list_all_repositories()
 
 
-@router.get("/tree", response_model=List[RepoTreeInfo], operation_id="getAllReposTree")
-def get_all_repos_tree():
+@router.get("/tree", response_model=List[StagingTreeInfo], operation_id="getAllReposTree")
+def get_all_repos_tree(user: User = Depends(require_developer)):
     all_trees = []
     for repo in list_all_repositories():
-        repo_path = get_staging_path(repo.id)
+        repo_path = get_user_worktree_path(repo.id, user)
         tree = build_path_tree(repo_path)
         wts = get_working_tree_status(repo_path)
-        all_trees.append(RepoTreeInfo(**repo.model_dump(), tree=tree, working_tree_status=wts))
+        current_checkout = get_checked_out_ref(repo.id, user)
+        all_trees.append(
+            StagingTreeInfo(
+                **repo.model_dump(),
+                refs=list_repository_refs(repo.id, user),
+                checked_out_ref=current_checkout,
+                tree=tree,
+                working_tree_status=wts,
+            )
+        )
     return all_trees
 
 
-@router.post("/register", response_model=List[RepoTreeInfo], operation_id="registerRepo")
-def register_repository(payload: RepoCreateRequest):
+@router.post("/register", response_model=List[StagingTreeInfo], operation_id="registerRepo")
+def register_repository(payload: RepoCreateRequest, user: User = Depends(require_developer)):
     """Register a Git repository and create a clone"""
     repo_id = str(uuid.uuid4())
     created_at = datetime.now(timezone.utc).isoformat()
-    repo_path = clone(payload.git_url, repo_id)
+    clone(payload.git_url, repo_id)
     REGISTERED_REPO_URLS.append(payload.git_url)
-    repo_head = run_git(["rev-parse", "HEAD"], cwd=repo_path).strip()
-    tag = run_git(
-        ["describe", "--tags", "--exact-match", repo_head], cwd=repo_path, allow_fail=True
-    ).strip()
-    checked_out_ref = tag if tag else repo_head
-    refs = list_repository_refs(repo_id)
 
-    repo_info = RepoInfo(
+    repo_meta = StagingMeta(
         id=repo_id,
         alias=payload.alias,
         git_url=payload.git_url,
         created_at=created_at,
-        refs=refs,
-        checked_out_ref=checked_out_ref,
     )
 
-    meta_file = os.path.join(REPOS_BASE_PATH, repo_info.id, REPO_META)
+    meta_file = os.path.join(REPOS_BASE_PATH, repo_meta.id, REPO_META)
     with open(meta_file, "w", encoding="utf-8") as f:
-        f.write(repo_info.model_dump_json(indent=2))
+        f.write(repo_meta.model_dump_json(indent=2))
     # TODO: store all repos tree and edit in place instead of recalculating
-    return get_all_repos_tree()
+    return get_all_repos_tree(user)
 
 
 @router.delete(
-    "/{repo_id}/unregister", response_model=List[RepoTreeInfo], operation_id="unregisterRepo"
+    "/{repo_id}/unregister", response_model=List[StagingTreeInfo], operation_id="unregisterRepo"
 )
-def unregister_repository(repo_id: str):
+def unregister_repository(repo_id: str, user: User = Depends(require_developer)):
     """
     Remove a repository completely:
     - Delete staging folder
@@ -258,15 +300,15 @@ def unregister_repository(repo_id: str):
     - Remove from REGISTERED_REPO_URLS
     """
     repo_base = os.path.join(REPOS_BASE_PATH, repo_id)
-    repo_info_path = os.path.join(repo_base, REPO_META)
+    repo_meta_path = os.path.join(repo_base, REPO_META)
 
-    if not os.path.exists(repo_info_path):
+    if not os.path.exists(repo_meta_path):
         raise HTTPException(status_code=404, detail="Repository not found")
 
     # Load repo info to remove git_url from registered URLs
-    with open(repo_info_path, "r", encoding="utf-8") as f:
-        repo_info_data = json.load(f)
-    git_url = repo_info_data.get("git_url")
+    with open(repo_meta_path, "r", encoding="utf-8") as f:
+        repo_meta_data = json.load(f)
+    git_url = repo_meta_data.get("git_url")
     if git_url in REGISTERED_REPO_URLS:
         REGISTERED_REPO_URLS.remove(git_url)
 
@@ -279,31 +321,18 @@ def unregister_repository(repo_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete repository: {str(e)}")
     # TODO: store all repos tree and edit in place instead of recalculating
-    return get_all_repos_tree()
+    return get_all_repos_tree(user)
 
 
 @router.get("/{repo_id}/refs", response_model=list[str], operation_id="listRepoRefs")
-def list_repository_refs(repo_id: str) -> list[str]:
-    """List 20 latest repository refs available in default branch.
+def list_repository_refs(repo_id: str, user: User = Depends(require_developer)) -> list[str]:
+    """List 20 latest repository refs available. Assumes repo is up to date.
     If commit is tagged, show tag instead.
     """
-    repo_path = get_staging_path(repo_id)
-
-    default_branch = run_git(
-        ["remote", "show", "origin"],
-        cwd=repo_path,
-    )
-
-    for line in default_branch.splitlines():
-        if "HEAD branch" in line:
-            default_branch = line.split(":")[-1].strip()
-            break
-    else:
-        raise HTTPException(500, "Cannot resolve default branch")
-
-    branch_ref = f"origin/{default_branch}"
+    repo_path = get_user_worktree_path(repo_id, user)
+    default_branch = get_default_branch(repo_path)
     commits = run_git(
-        ["rev-list", "--max-count=20", branch_ref],
+        ["rev-list", "--max-count=20", default_branch],
         cwd=repo_path,
     ).splitlines()
 
@@ -324,27 +353,67 @@ def list_repository_refs(repo_id: str) -> list[str]:
     return refs
 
 
-@router.post("/{repo_id}/fetch", response_model=RepoTreeInfo, operation_id="fetchRepo")
-def update_repo(repo_id: str):
-    """Fetch new tags/commits from remote"""
-    repo_path = get_staging_path(repo_id)
-    run_git(["fetch", "--all", "--tags", "--prune"], cwd=repo_path)
-    info_path, repo_info = get_repo_info(repo_id)
-    refs = list_repository_refs(repo_id)
-    repo_info.refs = refs
-    with open(info_path, "w") as f:
-        f.write(repo_info.model_dump_json(indent=2))
-    return get_staging_repo_tree(repo_id)
+@router.post("/{repo_id}/sync", response_model=StagingTreeInfo, operation_id="syncRepo")
+def update_repo(repo_id: str, user: User = Depends(require_developer)):
+    """Fetch new tags/commits from default branch and rebase current worktree onto it."""
+    repo_path = get_user_worktree_path(repo_id, user)
+    default_branch = get_default_branch(repo_path)
+    is_dirty = bool(run_git(["status", "--porcelain"], cwd=repo_path).strip())
+
+    if is_dirty:
+        run_git(["stash", "push", "--include-untracked"], cwd=repo_path)
+    # update default branch
+    run_git(["fetch", "origin", f"{default_branch}:{default_branch}"], cwd=repo_path)
+
+    try:
+        run_git(["rebase", default_branch], cwd=repo_path)
+    except HTTPException:
+        run_git(["rebase", "--abort"], cwd=repo_path)
+        if is_dirty:
+            # Restore original workspace state
+            run_git(["stash", "apply"], cwd=repo_path)
+            run_git(["stash", "drop"], cwd=repo_path)
+        raise HTTPException(
+            status_code=409,
+            detail="Failed to rebase. Aborting commit. Please checkout to latest ref to apply your changes.",
+        )
+
+    # Only reached if rebase succeeded
+    if is_dirty:
+        try:
+            run_git(["stash", "apply"], cwd=repo_path)
+        except HTTPException:
+            raise HTTPException(
+                status_code=409,
+                detail="Local changes conflict with latest updates. Please start from latest ref or resolve conflicts manually. Aborting.",
+            )
+
+        conflicts = run_git(
+            ["diff", "--name-only", "--diff-filter=U"],
+            cwd=repo_path,
+        )
+        if conflicts.strip():
+            raise HTTPException(
+                status_code=409,
+                detail="Local changes conflict with latest updates. Please start from latest ref or resolve conflicts manually. Aborting.",
+            )
+
+        run_git(["stash", "drop"], cwd=repo_path)
+        run_git(["add", "."], cwd=repo_path)
+
+    return get_staging_repo_tree(repo_id, user)
 
 
 @router.get("/{repo_id}/file", response_model=FileResponse, operation_id="getStagingRepoFile")
 def staging_get_repo_file(
-    repo_id: str, path: str = Query(..., description="Path to file inside repository")
+    repo_id: str,
+    path: str = Query(..., description="Path to file inside repository"),
+    user: User = Depends(require_developer),
 ):
     """
     Return the content of a file from the current state of staging repo.
     """
-    file_path = get_staging_path(repo_id)
+    file_path = get_user_worktree_path(repo_id, user)
     full_path = os.path.join(file_path, path)
     if not os.path.exists(full_path) or not os.path.isfile(full_path):
         raise HTTPException(status_code=404, detail="File not found")
@@ -358,7 +427,7 @@ def staging_get_repo_file(
 @router.put(
     "/{repo_id}/file",
     operation_id="updateStagingRepoFile",
-    response_model=RepoTreeInfo,
+    response_model=StagingTreeInfo,
 )
 def staging_update_repo_file(
     repo_id: str,
@@ -366,13 +435,14 @@ def staging_update_repo_file(
         ..., description="Path to existing file inside repository (relative to root)"
     ),
     payload: FileUpdateRequest = Body(...),
+    user: User = Depends(require_developer),
 ):
     """
     Overwrite the contents of an existing file in the staging repository.
     Path must always be relative to repo root.
     Fails if the file does not already exist.
     """
-    repo_path = get_staging_path(repo_id)
+    repo_path = get_user_worktree_path(repo_id, user)
 
     # Normalize and validate path
     rel_path = os.path.normpath(path).lstrip(os.sep)
@@ -399,22 +469,23 @@ def staging_update_repo_file(
             status_code=500,
             detail=f"Failed to update file: {str(e)}",
         )
-    return get_staging_repo_tree(repo_id)
+    return get_staging_repo_tree(repo_id, user)
 
 
 @router.post(
     "/{repo_id}/file/reset",
-    response_model=RepoTreeInfo,
+    response_model=StagingTreeInfo,
     operation_id="resetStagingRepoFile",
 )
 def reset_staging_repo_file(
     repo_id: str,
     path: str = Query(..., description="Path to file inside repository (relative to root)"),
+    user: User = Depends(require_developer),
 ):
     """
     Reset changes of a single file in the staging repository.
     """
-    repo_path = get_staging_path(repo_id)
+    repo_path = get_user_worktree_path(repo_id, user)
 
     # Normalize and validate path
     rel_path = os.path.normpath(path).lstrip(os.sep)
@@ -428,41 +499,48 @@ def reset_staging_repo_file(
     run_git(["restore", "--staged", rel_path], cwd=repo_path)
     run_git(["restore", rel_path], cwd=repo_path)
 
-    return get_staging_repo_tree(repo_id)
+    return get_staging_repo_tree(repo_id, user)
 
 
 @router.post(
     "/{repo_id}/reset",
-    response_model=RepoTreeInfo,
+    response_model=StagingTreeInfo,
     operation_id="resetStagingRepo",
 )
-def reset_staging_repo(repo_id: str):
+def reset_staging_repo(
+    repo_id: str,
+    user: User = Depends(require_developer),
+):
     """
     Return the staging repository to the checked-out ref.
     This discards all local changes, including untracked files and directories.
     """
-    repo_path = get_staging_path(repo_id)
+    repo_path = get_user_worktree_path(repo_id, user)
 
     # Unstage everything, then restore working tree
     run_git(["restore", "--staged", "."], cwd=repo_path)
     run_git(["restore", "."], cwd=repo_path)
     run_git(["clean", "-fd"], cwd=repo_path)
 
-    return get_staging_repo_tree(repo_id)
+    return get_staging_repo_tree(repo_id, user)
 
 
 @router.post(
     "/{repo_id}/path",
-    response_model=RepoTreeInfo,
+    response_model=StagingTreeInfo,
     operation_id="createStagingRepoPath",
 )
-def create_staging_repo_path(repo_id: str, payload: PathCreateRequest):
+def create_staging_repo_path(
+    repo_id: str,
+    payload: PathCreateRequest,
+    user: User = Depends(require_developer),
+):
     """
     Create a file or directory in the staging repository.
     - Intermediate directories will be created if necessary.
     - Directories get a .gitkeep file to ensure they are tracked by Git.
     """
-    repo_path = get_staging_path(repo_id)
+    repo_path = get_user_worktree_path(repo_id, user)
 
     rel_path = os.path.normpath(payload.path).lstrip(os.sep)
     if rel_path.startswith(".."):
@@ -494,12 +572,12 @@ def create_staging_repo_path(repo_id: str, payload: PathCreateRequest):
     except OSError as e:
         raise HTTPException(status_code=500, detail=f"Failed to create {payload.type}: {str(e)}")
 
-    return get_staging_repo_tree(repo_id)
+    return get_staging_repo_tree(repo_id, user)
 
 
 @router.delete(
     "/{repo_id}/path",
-    response_model=RepoTreeInfo,
+    response_model=StagingTreeInfo,
     operation_id="deleteStagingRepoPath",
 )
 def delete_staging_repo_path(
@@ -508,12 +586,13 @@ def delete_staging_repo_path(
         ...,
         description="FIle or directory path inside repository, relative to root.",
     ),
+    user: User = Depends(require_developer),
 ):
     """
     Delete a file or directory from the staging repository.
     Directories are deleted recursively.
     """
-    repo_path = get_staging_path(repo_id)
+    repo_path = get_user_worktree_path(repo_id, user)
 
     rel_path = os.path.normpath(path).lstrip(os.sep)
     if rel_path.startswith(".."):
@@ -529,22 +608,24 @@ def delete_staging_repo_path(
     else:
         run_git(["rm", "-f", "--", rel_path], cwd=repo_path)
 
-    return get_staging_repo_tree(repo_id)
+    return get_staging_repo_tree(repo_id, user)
 
 
 @router.post(
     "/{repo_id}/commit",
-    response_model=RepoTreeInfo,
+    response_model=StagingTreeInfo,
     operation_id="commitStagingRepo",
 )
 def commit_staging_repo(
     repo_id: str, payload: CommitRequest, user: User = Depends(require_developer)
 ):
     """
-    Commit staged changes in the staging repository.
+    Commit staged changes in the staging repository and push to remote.
+    If HEAD is behind remote, try rebasing first.
     Fails if there is nothing to commit.
     """
-    repo_path = get_staging_path(repo_id)
+    repo_path = get_user_worktree_path(repo_id, user)
+    default_branch = get_default_branch(repo_path)
 
     # Ensure there is something staged
     staged = run_git(["diff", "--cached", "--name-only"], cwd=repo_path)
@@ -552,6 +633,8 @@ def commit_staging_repo(
         raise HTTPException(status_code=400, detail="No staged changes to commit")
     if not TECHNICAL_ACCOUNT_TOKEN:
         raise HTTPException(status_code=400, detail="Technical account token not configured")
+    # make sure HEAD is rebased to main tip before comitting
+    update_repo(repo_id, user)
     try:
         run_git(
             [
@@ -570,14 +653,7 @@ def commit_staging_repo(
             detail=f"Failed to commit changes: {e.detail}",
         )
     try:
-        remote_info = run_git(["remote", "show", "origin"], cwd=repo_path)
-        for line in remote_info.splitlines():
-            if "HEAD branch" in line:
-                default_branch = line.split(":")[-1].strip()
-                break
-        else:
-            default_branch = "main"
-
+        default_branch = get_default_branch(repo_path)
         run_git(["push", "origin", f"HEAD:{default_branch}"], cwd=repo_path)
 
         if payload.tag:
@@ -588,63 +664,33 @@ def commit_staging_repo(
         # undo previous commit but keep changes staged
         run_git(["reset", "--soft", "HEAD^1"], cwd=repo_path)
         raise HTTPException(
-            status_code=500,
+            status_code=409,
             detail=f"Failed to push changes: {e.detail}. Aborted.",
         )
 
-    # Update repo metadata
-    repo_info_path, repo_info = get_repo_info(repo_id)
-    if payload.tag:
-        repo_info.checked_out_ref = payload.tag
-    else:
-        repo_info.checked_out_ref = run_git(["rev-parse", "HEAD"], cwd=repo_path).strip()
-
-    with open(repo_info_path, "w") as f:
-        f.write(repo_info.model_dump_json(indent=2))
-
-    return get_staging_repo_tree(repo_id)
+    return get_staging_repo_tree(repo_id, user)
 
 
-@router.post("/{repo_id}/deploy", response_model=DeploymentInfo, operation_id="deployRepo")
-def deploy_repo(repo_id: str, payload: DeployRequest):
+@router.post("/{repo_id}/deploy", response_model=StagingMeta, operation_id="deployRepo")
+def deploy_repo(repo_id: str, payload: DeployRequest, user: User = Depends(require_developer)):
     """Deploy a selected tag or commit to make it available for users"""
     ref_to_deploy = payload.deployment_version
     try:
-        deployment_id, snapshot_path = create_snapshot(repo_id, ref_to_deploy)
+        deployment_id, snapshot_path = create_snapshot(repo_id, ref_to_deploy, user)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create snapshot: {str(e)}")
-    commit_hash = run_git(["rev-parse", ref_to_deploy], cwd=snapshot_path)
-    deployment_meta = {
-        "deployment_id": deployment_id,
-        "repo_id": repo_id,
-        "ref": ref_to_deploy,
-        "commit_hash": commit_hash,
-        "deployed_at": datetime.now(timezone.utc).isoformat(),
-    }
-    deployment_meta_path = os.path.join(
-        REPOS_BASE_PATH, repo_id, DEPLOYMENTS_REL_FOLDER, deployment_id, DEPLOYMENT_META
-    )
-    with open(deployment_meta_path, "w") as f:
-        json.dump(deployment_meta, f, indent=2)
+    repo_meta_path, repo_meta = get_repo_meta(repo_id)
+    repo_meta.current_deployment = deployment_id
+    repo_meta.deployed_ref = ref_to_deploy
+    repo_meta.deployed_at = datetime.now(timezone.utc).isoformat()
 
-    repo_info_path, repo_info = get_repo_info(repo_id)
-    repo_info.current_deployment = deployment_id
-    repo_info.deployed_ref = ref_to_deploy
-    repo_info.deployed_at = deployment_meta["deployed_at"]
-
-    with open(repo_info_path, "w") as f:
-        f.write(repo_info.model_dump_json(indent=2))
+    with open(repo_meta_path, "w") as f:
+        f.write(repo_meta.model_dump_json(indent=2))
     current_link = os.path.join(REPOS_BASE_PATH, repo_id, DEPLOYMENTS_REL_FOLDER, CURRENT_SYMLINK)
     if os.path.islink(current_link) or os.path.exists(current_link):
         os.remove(current_link)
     os.symlink(snapshot_path, current_link)
-    return DeploymentInfo(
-        id=deployment_id,
-        repo_id=repo_id,
-        ref=ref_to_deploy,
-        commit_hash=commit_hash,
-        deployed_at=deployment_meta["deployed_at"],
-    )
+    return StagingMeta(**repo_meta.model_dump())
 
 
 @router.post("/{repo_id}/undeploy", operation_id="undeployRepo")
@@ -654,7 +700,7 @@ def undeploy_repository(repo_id: str):
     - Delete symlink to current deployment
     - Clear current deployment metadata in repo info
     """
-    _, repo_info = get_repo_info(repo_id)
+    repo_meta_path, repo_meta = get_repo_meta(repo_id)
     current_link = os.path.join(REPOS_BASE_PATH, repo_id, DEPLOYMENTS_REL_FOLDER, CURRENT_SYMLINK)
 
     if os.path.islink(current_link) or os.path.exists(current_link):
@@ -666,37 +712,41 @@ def undeploy_repository(repo_id: str):
             )
 
     # Clear deployment info
-    repo_info.current_deployment = None
-    repo_info.deployed_ref = None
-    repo_info.deployed_at = None
-    repo_info_path = os.path.join(REPOS_BASE_PATH, repo_id, REPO_META)
-    with open(repo_info_path, "w", encoding="utf-8") as f:
-        f.write(repo_info.model_dump_json(indent=2))
+    repo_meta.current_deployment = None
+    repo_meta.deployed_ref = None
+    repo_meta.deployed_at = None
+    with open(repo_meta_path, "w", encoding="utf-8") as f:
+        f.write(repo_meta.model_dump_json(indent=2))
 
     return
 
 
-@router.post("/{repo_id}/checkout", response_model=RepoTreeInfo, operation_id="checkoutRepoRef")
-def checkout_repo_ref(repo_id: str, ref: str):
+@router.post("/{repo_id}/checkout", response_model=StagingTreeInfo, operation_id="checkoutRepoRef")
+def checkout_repo_ref(
+    repo_id: str,
+    ref: str,
+    user: User = Depends(require_developer),
+):
     """Checkout a specific ref in the staging repo"""
-    repo_path = get_staging_path(repo_id)
+    repo_path = get_user_worktree_path(repo_id, user)
     ensure_clean(repo_path)
     run_git(["checkout", ref], cwd=repo_path)
-    repo_info_path, repo_info = get_repo_info(repo_id)
-    repo_info.checked_out_ref = ref
-    with open(repo_info_path, "w") as f:
-        f.write(repo_info.model_dump_json(indent=2))
-    return get_staging_repo_tree(repo_id)
+    return get_staging_repo_tree(repo_id, user)
 
 
-@router.get("/{repo_id}/tree", response_model=RepoTreeInfo, operation_id="getStagingRepoTree")
-def get_staging_repo_tree(repo_id: str):
-    repo_path = get_staging_path(repo_id)
+@router.get("/{repo_id}/tree", response_model=StagingTreeInfo, operation_id="getStagingRepoTree")
+def get_staging_repo_tree(
+    repo_id: str,
+    user: User = Depends(require_developer),
+):
+    repo_path = get_user_worktree_path(repo_id, user)
     tree = build_path_tree(repo_path)
-    _, repo_info = get_repo_info(repo_id)
+    _, repo_meta = get_repo_meta(repo_id)
     working_tree_status = get_working_tree_status(repo_path)
-    return RepoTreeInfo(
-        **repo_info.model_dump(),
+    return StagingTreeInfo(
+        **repo_meta.model_dump(),
+        refs=list_repository_refs(repo_id, user),
+        checked_out_ref=get_checked_out_ref(repo_id, user),
         tree=tree,
         working_tree_status=working_tree_status,
     )

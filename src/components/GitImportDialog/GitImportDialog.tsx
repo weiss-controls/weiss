@@ -37,7 +37,7 @@ interface GitImportDialogProps {
 }
 
 export default function GitImportDialog({ open, onClose }: GitImportDialogProps) {
-  const { setReleaseShortcuts, updateReposTreeInfo, setReposTreeInfo, isDemo } = useUIContext();
+  const { setReleaseShortcuts, setReposTreeInfo, isDemo } = useUIContext();
   const [alias, setAlias] = useState("");
   const [gitUrl, setGitUrl] = useState(
     isDemo ? "https://github.com/weiss-controls/weiss-demo-opis.git" : "",

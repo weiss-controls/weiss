@@ -34,13 +34,14 @@ import { useTreeItemModel } from "@mui/x-tree-view/hooks";
 import {
   checkoutRepoRef,
   deployRepo,
-  fetchRepo,
+  syncRepo,
   resetStagingRepo,
   undeployRepo,
   unregisterRepo,
   type GitFileStatus,
-  type RepoTreeInfo,
+  type StagingTreeInfo,
   type TreeNode,
+  type DeploymentTreeInfo,
 } from "@src/services/APIClient";
 import CustomGitIcon from "@src/components/CustomIcons/GitIcon";
 import { notifyUser } from "@src/services/Notifications/Notification";
@@ -58,10 +59,10 @@ type RichTreeItem = TreeViewBaseItem & {
 };
 
 export interface ProjectSectionProps {
-  repo: RepoTreeInfo;
+  repo: StagingTreeInfo | DeploymentTreeInfo;
   onFileSelect: (repo_id: string, path: string) => Promise<void>;
-  onRepoUpdate: (update: RepoTreeInfo) => void;
-  onTreeUpdate: (update: RepoTreeInfo[]) => void;
+  onRepoUpdate: (update: StagingTreeInfo | DeploymentTreeInfo) => void;
+  onTreeUpdate: (update: StagingTreeInfo[] | DeploymentTreeInfo[]) => void;
   defaultSelectedPath?: string;
 }
 
@@ -149,32 +150,22 @@ export default function ProjectSection({
   defaultSelectedPath,
 }: ProjectSectionProps) {
   const REF_MAX_DISPLAY_SIZE = 7;
-  const { isDeveloper, inEditMode, selectedFile, setSelectedFile } = useUIContext();
+  const { isDeveloper, selectedFile, setSelectedFile } = useUIContext();
+  // helper for type checking
+  const isStagingTree = useCallback(
+    (repo: StagingTreeInfo | DeploymentTreeInfo): repo is StagingTreeInfo => {
+      return isDeveloper && "working_tree_status" in repo;
+    },
+    [isDeveloper],
+  );
   const [sectionExpanded, setSectionExpanded] = useState(true);
   const [gitCommitOpen, setGitCommitOpen] = useState(false);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(menuAnchor);
-  const selectedRef = repo.checked_out_ref;
+  const selectedRef = isStagingTree(repo) ? repo.checked_out_ref : repo.deployed_ref;
   const shortRef = (ref: string) => ref.substring(0, REF_MAX_DISPLAY_SIZE);
-
-  function expandAll(repo: RepoTreeInfo) {
-    const allDirs: string[] = [];
-
-    function walk(node: TreeNode) {
-      if (node.type === "directory") {
-        allDirs.push(node.path);
-        node.children?.forEach(walk);
-      }
-    }
-    repo.tree.forEach(walk);
-    setExpandedItems(allDirs);
-  }
-
-  function collapseAll() {
-    setExpandedItems([]);
-  }
 
   // highlight selected file on mount
   useEffect(() => {
@@ -185,6 +176,21 @@ export default function ProjectSection({
       setExpandedItems(parents);
     }
   }, [setSelectedItem, defaultSelectedPath]);
+
+  const expandAll = (repo: StagingTreeInfo | DeploymentTreeInfo) => {
+    const allDirs: string[] = [];
+
+    function walk(node: TreeNode) {
+      if (node.type === "directory") {
+        allDirs.push(node.path);
+        node.children?.forEach(walk);
+      }
+    }
+    repo.tree.forEach(walk);
+    setExpandedItems(allDirs);
+  };
+
+  const collapseAll = () => setExpandedItems([]);
 
   const handleRefChange = async (ref: string) => {
     try {
@@ -200,7 +206,6 @@ export default function ProjectSection({
   };
 
   const handleDeploy = async () => {
-    if (!selectedRef) return;
     const confirmed = await confirmDialog({
       title: `Deploy ${repo.alias}@${shortRef(selectedRef)}?`,
       message: "Confirming will make this version available to operators",
@@ -214,10 +219,10 @@ export default function ProjectSection({
         path: { repo_id: repo.id },
       }).then((r) => r.data);
 
-      if (res.repo_id !== repo.id || res.ref !== selectedRef) {
+      if (res.id !== repo.id || res.deployed_ref !== selectedRef) {
         throw new Error("Invalid deployment response");
       }
-      repo.deployed_ref = res.ref;
+      repo.deployed_ref = res.deployed_ref;
       notifyUser(`Successfully deployed ${repo.alias}@${shortRef(selectedRef)}`, "success");
     } catch (err) {
       notifyUser(`Failed to deploy repo: ${err as string}`, "error");
@@ -227,7 +232,6 @@ export default function ProjectSection({
   };
 
   const handleUndeploy = async () => {
-    if (!selectedRef) return;
     if (selectedRef != repo.deployed_ref) return;
     const confirmed = await confirmDialog({
       title: `Undeploy ${repo.alias}@${shortRef(selectedRef)}?`,
@@ -243,8 +247,8 @@ export default function ProjectSection({
 
       if (!res.response.ok) {
         const errorBody = await res.response.json().catch(() => null);
-        const msg = errorBody?.detail || res.response.statusText;
-        throw new Error(msg);
+        const msg = errorBody?.detail ?? res.response.statusText;
+        throw new Error(msg as string);
       }
       repo.deployed_ref = "";
       notifyUser(`Successfully undeployed ${repo.alias}`, "success");
@@ -271,8 +275,8 @@ export default function ProjectSection({
 
       if (!res.response.ok) {
         const errorBody = await res.response.json().catch(() => null);
-        const msg = errorBody?.detail || res.response.statusText;
-        throw new Error(msg);
+        const msg = errorBody?.detail ?? res.response.statusText;
+        throw new Error(msg as string);
       }
       if (selectedFile?.repo_id === repo.id) {
         setSelectedFile(null);
@@ -288,7 +292,7 @@ export default function ProjectSection({
 
   const handleSyncClick = async () => {
     try {
-      const updatedTree = await fetchRepo({ path: { repo_id: repo.id } }).then((r) => r.data);
+      const updatedTree = await syncRepo({ path: { repo_id: repo.id } }).then((r) => r.data);
       onRepoUpdate(updatedTree);
       notifyUser(`Successfully updated ${repo.alias}`, "success");
     } catch (err) {
@@ -320,6 +324,7 @@ export default function ProjectSection({
   }, []);
 
   const gitStatusByPath = useMemo(() => {
+    if (!isStagingTree(repo)) return;
     const map = new Map<string, GitFileStatus["status"]>();
 
     repo.working_tree_status?.files.forEach((f) => {
@@ -327,21 +332,25 @@ export default function ProjectSection({
     });
 
     return map;
-  }, [repo.working_tree_status]);
+  }, [repo, isStagingTree]);
 
   // convert TreeNode[] to RichTree accepted format
   const toRichItems = useCallback(
     (nodes: TreeNode[]): RichTreeItem[] => {
       return nodes.map((node) => {
         const children = node.children ? toRichItems(node.children) : undefined;
-        const fileStatus = gitStatusByPath.get(node.path);
+        const fileStatus = gitStatusByPath?.get(node.path);
+        const isDirectory = node.type === "directory";
         // mark directory as dirty if any child is dirty or if a deleted file exists under this path
-        const dirDirty =
-          node.type === "directory" &&
-          (hasDirtyDescendant(children) ||
+        let dirDirty = false;
+        if (isStagingTree(repo) && isDirectory) {
+          const hasDirtyChildren = hasDirtyDescendant(children);
+          const hasDeletedDescendant =
             repo.working_tree_status?.files.some(
               (f) => f.status === "deleted" && f.path.startsWith(node.path + "/"),
-            ));
+            ) ?? false;
+          dirDirty = hasDirtyChildren || hasDeletedDescendant;
+        }
 
         return {
           id: node.path,
@@ -353,10 +362,12 @@ export default function ProjectSection({
         };
       });
     },
-    [gitStatusByPath],
+    [isStagingTree, repo, gitStatusByPath],
   );
 
   const items = useMemo(() => toRichItems(repo.tree), [repo.tree, toRichItems]);
+
+  if (!selectedRef) return;
 
   return (
     <Paper variant="outlined" sx={{ mb: 2, width: "100%" }}>
@@ -378,11 +389,11 @@ export default function ProjectSection({
           </Tooltip>
         </Box>
 
-        {repo.deployed_ref && !isDeveloper && (
+        {!isStagingTree(repo) && repo.deployed_ref && (
           <Chip icon={<CustomGitIcon />} size="small" label={shortRef(repo.deployed_ref)} />
         )}
 
-        {isDeveloper && (
+        {isStagingTree(repo) && (
           <>
             <CustomGitIcon fontSize="small" />
             <Tooltip

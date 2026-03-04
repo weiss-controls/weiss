@@ -2,21 +2,18 @@
 # Copyright (C) 2026 André Favoto
 
 import os
-import json
 from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import List
 from api.repos.common import (
     FileResponse,
-    RepoInfo,
-    RepoTreeInfo,
-    DeploymentInfo,
+    DeploymentMeta,
+    TreeNode,
     build_path_tree,
-    get_repo_info,
+    get_repo_meta,
     list_all_repositories,
     REPOS_BASE_PATH,
     DEPLOYMENTS_REL_FOLDER,
     CURRENT_SYMLINK,
-    DEPLOYMENT_META,
 )
 from api.auth.auth import get_current_user
 
@@ -25,6 +22,15 @@ router = APIRouter(
     tags=["OPI Repositories"],
     dependencies=[Depends(get_current_user)],
 )
+
+
+# -----------------------------------------------------------------------------
+# Models
+# -----------------------------------------------------------------------------
+
+
+class DeploymentTreeInfo(DeploymentMeta):
+    tree: List[TreeNode]
 
 
 # ---------------------------------------------------------------------------
@@ -40,55 +46,43 @@ def get_current_snapshot_path(repo_id: str) -> str:
     return current_link
 
 
-def get_current_deployment_meta(repo_id: str) -> dict:
-    """
-    Return the metadata from deployment.json for the current deployment.
-    """
-    current_link = os.path.join(REPOS_BASE_PATH, repo_id, DEPLOYMENTS_REL_FOLDER, CURRENT_SYMLINK)
-    meta_file = os.path.join(current_link, DEPLOYMENT_META)
-    if not os.path.exists(meta_file):
-        raise HTTPException(status_code=404, detail="Deployment metadata not found")
-    with open(meta_file, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
-
-
-@router.get("/", response_model=List[RepoInfo], operation_id="listDeployedRepos")
+@router.get("/", response_model=List[DeploymentMeta], operation_id="listDeployedRepos")
 def list_repositories():
     all_repos = list_all_repositories()
-    repos_w_deployment: List[RepoInfo] = []
+    repos_w_deployment: List[DeploymentMeta] = []
     for repo in all_repos:
         if repo.current_deployment is not None:
-            repos_w_deployment.append(repo)
+            repos_w_deployment.append(DeploymentMeta(**repo.model_dump()))
     return repos_w_deployment
 
 
-@router.get("/tree", response_model=List[RepoTreeInfo], operation_id="getAllDeployedReposTree")
+@router.get(
+    "/tree", response_model=List[DeploymentTreeInfo], operation_id="getAllDeployedReposTree"
+)
 def get_all_repos_tree():
     all_trees = []
     for repo in list_all_repositories():
         if repo.current_deployment is not None:
             snapshot_path = get_current_snapshot_path(repo.id)
             tree = build_path_tree(snapshot_path)
-            all_trees.append(RepoTreeInfo(**repo.model_dump(), tree=tree))
+            all_trees.append(DeploymentTreeInfo(**repo.model_dump(), tree=tree))
     return all_trees
 
 
 @router.get(
     "/{repo_id}/tree",
-    response_model=RepoTreeInfo,
+    response_model=DeploymentTreeInfo,
     operation_id="getDeployedRepoTree",
 )
 def get_deployed_repo_tree(repo_id: str):
     """
     Return the full tree of the currently deployed snapshot
-    for a single repository, wrapped in RepoTreeInfo.
+    for a single repository, wrapped in DeploymentTreeInfo.
     """
-    _, repo = get_repo_info(repo_id)
+    _, repo = get_repo_meta(repo_id)
 
     if repo.current_deployment is None:
         raise HTTPException(
@@ -99,7 +93,7 @@ def get_deployed_repo_tree(repo_id: str):
     snapshot_path = get_current_snapshot_path(repo_id)
     tree = build_path_tree(snapshot_path)
 
-    return RepoTreeInfo(
+    return DeploymentTreeInfo(
         **repo.model_dump(),
         tree=tree,
     )
@@ -121,20 +115,3 @@ def runtime_get_repo_file(
         content = f.read()
 
     return FileResponse(path=path, content=content)
-
-
-@router.get(
-    "/{repo_id}/info", response_model=DeploymentInfo, operation_id="getCurrentDeploymentInfo"
-)
-def get_current_deployment_info(repo_id: str):
-    """
-    Return information about the currently deployed snapshot.
-    """
-    meta = get_current_deployment_meta(repo_id)
-    return DeploymentInfo(
-        id=meta["deployment_id"],
-        repo_id=meta["repo_id"],
-        ref=meta["ref"],
-        commit_hash=meta["commit_hash"],
-        deployed_at=meta["deployed_at"],
-    )

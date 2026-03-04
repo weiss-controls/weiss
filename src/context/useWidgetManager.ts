@@ -178,7 +178,7 @@ export function useWidgetManager() {
   const clearAllWidgets = useCallback(() => {
     setEditorWidgets([defaultGrid]);
     setSelectedWidgetIDs([]);
-  }, [updateEditorWidgetList]);
+  }, [defaultGrid]);
 
   /**
    * Create group with selected widgets.

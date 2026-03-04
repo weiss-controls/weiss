@@ -18,7 +18,7 @@ import TagIcon from "@mui/icons-material/LocalOffer";
 import CommitIcon from "@mui/icons-material/Commit";
 import { notifyUser } from "@src/services/Notifications/Notification";
 import { useUIContext } from "@src/context/useUIContext";
-import { commitStagingRepo, fetchRepo } from "@src/services/APIClient";
+import { commitStagingRepo, syncRepo } from "@src/services/APIClient";
 
 interface GitCommitDialogProps {
   open: boolean;
@@ -52,7 +52,7 @@ export default function GitCommitDialog({ open, onClose, repoID }: GitCommitDial
       });
       notifyUser("Commit created successfully.", "success");
       // refresh tree state
-      const updt = await fetchRepo({ path: { repo_id: repoID } }).then((r) => r.data);
+      const updt = await syncRepo({ path: { repo_id: repoID } }).then((r) => r.data);
       setReposTreeInfo((prev) => (prev ? prev.map((r) => (updt.id === r.id ? updt : r)) : prev));
       resetAndClose();
     } catch (err) {

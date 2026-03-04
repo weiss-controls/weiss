@@ -51,29 +51,75 @@ export type DeployRequest = {
 };
 
 /**
- * DeploymentInfo
+ * DeploymentMeta
  */
-export type DeploymentInfo = {
+export type DeploymentMeta = {
   /**
    * Id
    */
   id: string;
   /**
-   * Repo Id
+   * Alias
    */
-  repo_id: string;
+  alias: string;
   /**
-   * Ref
+   * Git Url
    */
-  ref: string;
+  git_url: string;
   /**
-   * Commit Hash
+   * Created At
    */
-  commit_hash: string;
+  created_at: string;
+  /**
+   * Current Deployment
+   */
+  current_deployment: string;
+  /**
+   * Deployed Ref
+   */
+  deployed_ref: string;
   /**
    * Deployed At
    */
-  deployed_at?: string | null;
+  deployed_at: string;
+};
+
+/**
+ * DeploymentTreeInfo
+ */
+export type DeploymentTreeInfo = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Alias
+   */
+  alias: string;
+  /**
+   * Git Url
+   */
+  git_url: string;
+  /**
+   * Created At
+   */
+  created_at: string;
+  /**
+   * Current Deployment
+   */
+  current_deployment: string;
+  /**
+   * Deployed Ref
+   */
+  deployed_ref: string;
+  /**
+   * Deployed At
+   */
+  deployed_at: string;
+  /**
+   * Tree
+   */
+  tree: Array<TreeNode>;
 };
 
 /**
@@ -206,95 +252,6 @@ export type RepoCreateRequest = {
 };
 
 /**
- * RepoInfo
- */
-export type RepoInfo = {
-  /**
-   * Id
-   */
-  id: string;
-  /**
-   * Alias
-   */
-  alias: string;
-  /**
-   * Git Url
-   */
-  git_url: string;
-  /**
-   * Created At
-   */
-  created_at: string;
-  /**
-   * Refs
-   */
-  refs: Array<string>;
-  /**
-   * Checked Out Ref
-   */
-  checked_out_ref: string;
-  /**
-   * Current Deployment
-   */
-  current_deployment?: string | null;
-  /**
-   * Deployed Ref
-   */
-  deployed_ref?: string | null;
-  /**
-   * Deployed At
-   */
-  deployed_at?: string | null;
-};
-
-/**
- * RepoTreeInfo
- */
-export type RepoTreeInfo = {
-  /**
-   * Id
-   */
-  id: string;
-  /**
-   * Alias
-   */
-  alias: string;
-  /**
-   * Git Url
-   */
-  git_url: string;
-  /**
-   * Created At
-   */
-  created_at: string;
-  /**
-   * Refs
-   */
-  refs: Array<string>;
-  /**
-   * Checked Out Ref
-   */
-  checked_out_ref: string;
-  /**
-   * Current Deployment
-   */
-  current_deployment?: string | null;
-  /**
-   * Deployed Ref
-   */
-  deployed_ref?: string | null;
-  /**
-   * Deployed At
-   */
-  deployed_at?: string | null;
-  /**
-   * Tree
-   */
-  tree: Array<TreeNode>;
-  working_tree_status?: GitWorkingTreeStatus | null;
-};
-
-/**
  * RootInfo
  */
 export type RootInfo = {
@@ -306,6 +263,87 @@ export type RootInfo = {
    * Version
    */
   version: string;
+};
+
+/**
+ * StagingMeta
+ */
+export type StagingMeta = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Alias
+   */
+  alias: string;
+  /**
+   * Git Url
+   */
+  git_url: string;
+  /**
+   * Created At
+   */
+  created_at: string;
+  /**
+   * Current Deployment
+   */
+  current_deployment?: string | null;
+  /**
+   * Deployed Ref
+   */
+  deployed_ref?: string | null;
+  /**
+   * Deployed At
+   */
+  deployed_at?: string | null;
+};
+
+/**
+ * StagingTreeInfo
+ */
+export type StagingTreeInfo = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Alias
+   */
+  alias: string;
+  /**
+   * Git Url
+   */
+  git_url: string;
+  /**
+   * Created At
+   */
+  created_at: string;
+  /**
+   * Current Deployment
+   */
+  current_deployment?: string | null;
+  /**
+   * Deployed Ref
+   */
+  deployed_ref?: string | null;
+  /**
+   * Deployed At
+   */
+  deployed_at?: string | null;
+  /**
+   * Refs
+   */
+  refs: Array<string>;
+  /**
+   * Checked Out Ref
+   */
+  checked_out_ref: string;
+  /**
+   * Tree
+   */
+  tree: Array<TreeNode>;
+  working_tree_status: GitWorkingTreeStatus;
 };
 
 /**
@@ -485,7 +523,7 @@ export type ListReposResponses = {
    *
    * Successful Response
    */
-  200: Array<RepoInfo>;
+  200: Array<StagingMeta>;
 };
 
 export type ListReposResponse = ListReposResponses[keyof ListReposResponses];
@@ -503,7 +541,7 @@ export type GetAllReposTreeResponses = {
    *
    * Successful Response
    */
-  200: Array<RepoTreeInfo>;
+  200: Array<StagingTreeInfo>;
 };
 
 export type GetAllReposTreeResponse = GetAllReposTreeResponses[keyof GetAllReposTreeResponses];
@@ -530,7 +568,7 @@ export type RegisterRepoResponses = {
    *
    * Successful Response
    */
-  200: Array<RepoTreeInfo>;
+  200: Array<StagingTreeInfo>;
 };
 
 export type RegisterRepoResponse = RegisterRepoResponses[keyof RegisterRepoResponses];
@@ -562,7 +600,7 @@ export type UnregisterRepoResponses = {
    *
    * Successful Response
    */
-  200: Array<RepoTreeInfo>;
+  200: Array<StagingTreeInfo>;
 };
 
 export type UnregisterRepoResponse = UnregisterRepoResponses[keyof UnregisterRepoResponses];
@@ -599,7 +637,7 @@ export type ListRepoRefsResponses = {
 
 export type ListRepoRefsResponse = ListRepoRefsResponses[keyof ListRepoRefsResponses];
 
-export type FetchRepoData = {
+export type SyncRepoData = {
   body?: never;
   path: {
     /**
@@ -608,26 +646,26 @@ export type FetchRepoData = {
     repo_id: string;
   };
   query?: never;
-  url: "/api/v1/repos/staging/{repo_id}/fetch";
+  url: "/api/v1/repos/staging/{repo_id}/sync";
 };
 
-export type FetchRepoErrors = {
+export type SyncRepoErrors = {
   /**
    * Validation Error
    */
   422: HttpValidationError;
 };
 
-export type FetchRepoError = FetchRepoErrors[keyof FetchRepoErrors];
+export type SyncRepoError = SyncRepoErrors[keyof SyncRepoErrors];
 
-export type FetchRepoResponses = {
+export type SyncRepoResponses = {
   /**
    * Successful Response
    */
-  200: RepoTreeInfo;
+  200: StagingTreeInfo;
 };
 
-export type FetchRepoResponse = FetchRepoResponses[keyof FetchRepoResponses];
+export type SyncRepoResponse = SyncRepoResponses[keyof SyncRepoResponses];
 
 export type GetStagingRepoFileData = {
   body?: never;
@@ -700,7 +738,7 @@ export type UpdateStagingRepoFileResponses = {
   /**
    * Successful Response
    */
-  200: RepoTreeInfo;
+  200: StagingTreeInfo;
 };
 
 export type UpdateStagingRepoFileResponse =
@@ -739,7 +777,7 @@ export type ResetStagingRepoFileResponses = {
   /**
    * Successful Response
    */
-  200: RepoTreeInfo;
+  200: StagingTreeInfo;
 };
 
 export type ResetStagingRepoFileResponse =
@@ -770,7 +808,7 @@ export type ResetStagingRepoResponses = {
   /**
    * Successful Response
    */
-  200: RepoTreeInfo;
+  200: StagingTreeInfo;
 };
 
 export type ResetStagingRepoResponse = ResetStagingRepoResponses[keyof ResetStagingRepoResponses];
@@ -808,7 +846,7 @@ export type DeleteStagingRepoPathResponses = {
   /**
    * Successful Response
    */
-  200: RepoTreeInfo;
+  200: StagingTreeInfo;
 };
 
 export type DeleteStagingRepoPathResponse =
@@ -840,7 +878,7 @@ export type CreateStagingRepoPathResponses = {
   /**
    * Successful Response
    */
-  200: RepoTreeInfo;
+  200: StagingTreeInfo;
 };
 
 export type CreateStagingRepoPathResponse =
@@ -871,7 +909,7 @@ export type CommitStagingRepoResponses = {
   /**
    * Successful Response
    */
-  200: RepoTreeInfo;
+  200: StagingTreeInfo;
 };
 
 export type CommitStagingRepoResponse =
@@ -902,7 +940,7 @@ export type DeployRepoResponses = {
   /**
    * Successful Response
    */
-  200: DeploymentInfo;
+  200: StagingMeta;
 };
 
 export type DeployRepoResponse = DeployRepoResponses[keyof DeployRepoResponses];
@@ -965,7 +1003,7 @@ export type CheckoutRepoRefResponses = {
   /**
    * Successful Response
    */
-  200: RepoTreeInfo;
+  200: StagingTreeInfo;
 };
 
 export type CheckoutRepoRefResponse = CheckoutRepoRefResponses[keyof CheckoutRepoRefResponses];
@@ -995,7 +1033,7 @@ export type GetStagingRepoTreeResponses = {
   /**
    * Successful Response
    */
-  200: RepoTreeInfo;
+  200: StagingTreeInfo;
 };
 
 export type GetStagingRepoTreeResponse =
@@ -1014,7 +1052,7 @@ export type ListDeployedReposResponses = {
    *
    * Successful Response
    */
-  200: Array<RepoInfo>;
+  200: Array<DeploymentMeta>;
 };
 
 export type ListDeployedReposResponse =
@@ -1033,7 +1071,7 @@ export type GetAllDeployedReposTreeResponses = {
    *
    * Successful Response
    */
-  200: Array<RepoTreeInfo>;
+  200: Array<DeploymentTreeInfo>;
 };
 
 export type GetAllDeployedReposTreeResponse =
@@ -1064,7 +1102,7 @@ export type GetDeployedRepoTreeResponses = {
   /**
    * Successful Response
    */
-  200: RepoTreeInfo;
+  200: DeploymentTreeInfo;
 };
 
 export type GetDeployedRepoTreeResponse =
@@ -1107,38 +1145,6 @@ export type GetDeployedRepoFileResponses = {
 
 export type GetDeployedRepoFileResponse =
   GetDeployedRepoFileResponses[keyof GetDeployedRepoFileResponses];
-
-export type GetCurrentDeploymentInfoData = {
-  body?: never;
-  path: {
-    /**
-     * Repo Id
-     */
-    repo_id: string;
-  };
-  query?: never;
-  url: "/api/v1/repos/runtime/{repo_id}/info";
-};
-
-export type GetCurrentDeploymentInfoErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
-};
-
-export type GetCurrentDeploymentInfoError =
-  GetCurrentDeploymentInfoErrors[keyof GetCurrentDeploymentInfoErrors];
-
-export type GetCurrentDeploymentInfoResponses = {
-  /**
-   * Successful Response
-   */
-  200: DeploymentInfo;
-};
-
-export type GetCurrentDeploymentInfoResponse =
-  GetCurrentDeploymentInfoResponses[keyof GetCurrentDeploymentInfoResponses];
 
 export type RootInfoData = {
   body?: never;

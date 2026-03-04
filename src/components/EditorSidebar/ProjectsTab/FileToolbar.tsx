@@ -12,7 +12,7 @@ import {
 import {
   createStagingRepoPath,
   deleteStagingRepoPath,
-  type RepoTreeInfo,
+  type StagingTreeInfo,
 } from "@src/services/APIClient";
 import { notifyUser } from "@src/services/Notifications/Notification";
 import type { SelectedPathInfo } from "@src/context/useUIManager";
@@ -21,7 +21,7 @@ import { useUIContext } from "@src/context/useUIContext";
 
 interface FileToolbarProps {
   selectedPath: SelectedPathInfo | null;
-  onRepoUpdate: (update: RepoTreeInfo) => void;
+  onRepoUpdate: (update: StagingTreeInfo) => void;
   onExpandAll: () => void;
   onCollapseAll: () => void;
 }
