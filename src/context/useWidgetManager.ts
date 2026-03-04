@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 André Favoto
+
 import { useState, useCallback, useRef, useMemo } from "react";
 import type {
   Widget,

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 André Favoto
+
 // src/components/PropertyFields/BooleanProperty.tsx
 import React from "react";
 import { FormControlLabel, Checkbox, ListItem, IconButton } from "@mui/material";

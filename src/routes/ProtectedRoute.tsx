@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 André Favoto
+
 import { type ReactNode } from "react";
 import { Navigate } from "react-router-dom";
 import { Box, CircularProgress } from "@mui/material";

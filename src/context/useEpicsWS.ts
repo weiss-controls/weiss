@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 André Favoto
+
 import { useCallback, useMemo, useRef, useState } from "react";
 import { WSClient } from "@src/services/WSClient/WSClient";
 import type { PVData, PVValue, WSMessage } from "@src/types/epicsWS";

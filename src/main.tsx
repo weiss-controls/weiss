@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 André Favoto
+
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "@src/index.css";

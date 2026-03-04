@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 André Favoto
+
 import { COLORS } from "@src/constants/constants";
 import type { Widget } from "@src/types/widgets";
 import { PROPERTY_SCHEMAS, COMMON_PROPS } from "@src/types/widgetProperties";

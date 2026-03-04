@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 André Favoto
+
 import React, { useEffect, useState, useRef } from "react";
 import type { WidgetUpdate } from "@src/types/widgets";
 import Plot from "react-plotly.js";

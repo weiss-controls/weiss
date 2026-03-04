@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 André Favoto
+
 import * as React from "react";
 import { WIDGET_SELECTOR_WIDTH } from "@src/constants/constants";
 import type { Widget } from "@src/types/widgets";

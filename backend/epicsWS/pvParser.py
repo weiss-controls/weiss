@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 André Favoto
+
 from __future__ import annotations
 from typing import Optional, List, Union, Any
 from dataclasses import dataclass

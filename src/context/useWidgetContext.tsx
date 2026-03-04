@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 André Favoto
+
 // useWidgetContext.ts
 import { createContext, useContext } from "react";
 import type { useWidgetManager } from "./useWidgetManager";

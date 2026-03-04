@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 André Favoto
+
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { GridPosition, Widget, WidgetUpdate } from "@src/types/widgets";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 André Favoto
+
 // src/components/PropertyFields/SelectProperty.tsx
 import React from "react";
 import ListItem from "@mui/material/ListItem";

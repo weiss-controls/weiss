@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 André Favoto
+
 import React, { useState, useRef } from "react";
 import { IconButton, Fade, Box, Typography, Tooltip, Divider } from "@mui/material";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
