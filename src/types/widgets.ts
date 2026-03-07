@@ -98,28 +98,41 @@ export interface WidgetUpdate {
 export type WidgetIconType = React.FC<SvgIconProps>;
 
 /**
- * Represents a widget definition in the editor.
- * @property id Unique identifier for the widget instance
- * @property widgetLabel Label to display in the UI
+ * Static definition of a widget type, living in the registry.
+ * One instance exists per widget type; never mutated or stored in editor state.
+ * @property widgetName Internal widget name (registry key)
+ * @property widgetLabel Display label in the UI
  * @property widgetIcon Optional icon component
- * @property pvData Optional current PV data
- * @property multiPvData Optional PV data for multiple PVs
- * @property widgetName Internal widget name
  * @property component React component used to render the widget
- * @property category Category of the widget (for grouping in UI)
- * @property editableProperties Editable properties of the widget
+ * @property category Category for grouping in the palette
+ * @property defaultProperties Default property values copied into new instances
+ */
+export interface WidgetDefinition {
+  widgetName: string;
+  widgetLabel: string;
+  widgetIcon?: WidgetIconType;
+  component: React.FC<WidgetUpdate>;
+  category: string;
+  defaultProperties: WidgetProperties;
+}
+
+/**
+ * Runtime instance of a widget in the editor.
+ * Stored in editorWidgets state; fully serializable.
+ * @property id Unique identifier for the widget instance.
+ * @property widgetName Registry key linking to the WidgetDefinition
+ * @property editableProperties Current editable property values
+ * @property children Optional child widgets (for group widgets)
+ * @property pvData Optional PV data, merged at render time only
+ * @property multiPvData Optional multi-PV data, merged at render time only
  */
 export interface Widget {
   id: string;
-  widgetLabel: string;
-  widgetIcon?: WidgetIconType;
+  widgetName: string;
+  editableProperties: WidgetProperties;
+  children?: Widget[];
   pvData?: PVData;
   multiPvData?: MultiPvData;
-  children?: Widget[];
-  widgetName: string;
-  component: React.FC<WidgetUpdate>;
-  category: string;
-  editableProperties: WidgetProperties;
 }
 
 /**

@@ -6,7 +6,7 @@ import type { CSSProperties } from "react";
 /**
  * Color palette used across the application.
  * Values are read dynamically from CSS variables.
- * Main palletes:
+ * Main palettes:
  *  - https://coolors.co/palette/0d1b2a-1b263b-415a77-778da9-e0e1dd  
     - https://coolors.co/palette/0466c8-0353a4-023e7d-002855-001845-001233-33415c-5c677d-7d8597-979dac  
     - https://coolors.co/palette/f8f9fa-e9ecef-dee2e6-ced4da-adb5bd-6c757d-495057-343a40-212529  

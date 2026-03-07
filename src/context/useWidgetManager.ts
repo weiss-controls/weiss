@@ -4,6 +4,7 @@
 import { useState, useCallback, useRef, useMemo } from "react";
 import type {
   Widget,
+  WidgetDefinition,
   PropertyKey,
   PropertyUpdates,
   MultiWidgetPropertyUpdates,
@@ -17,6 +18,7 @@ import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import { v4 as uuidv4 } from "uuid";
 import {
   createGroupWidget,
+  createWidgetInstance,
   deepCloneWidget,
   deepCloneWidgetList,
   getNestedMoveUpdates,
@@ -38,11 +40,12 @@ import {
  * - Import/export of widget configurations
  */
 export function useWidgetManager() {
-  const defaultGrid = deepCloneWidget(GridZone);
   const [undoStack, setUndoStack] = useState<Widget[][]>([]);
   const [redoStack, setRedoStack] = useState<Widget[][]>([]);
-  const [editorWidgets, setEditorWidgets] = useState<Widget[]>([defaultGrid]);
-  const [pickedWidget, setPickedWidget] = useState<Widget | null>(null); // widget picked from pallete
+  const [editorWidgets, setEditorWidgets] = useState<Widget[]>(() => [
+    createWidgetInstance(GridZone, GRID_ID),
+  ]);
+  const [pickedWidget, setPickedWidget] = useState<WidgetDefinition | null>(null); // widget picked from palette
   const [selectedWidgetIDs, setSelectedWidgetIDs] = useState<string[]>([]);
   const [fileLoadedTrig, setFileLoadedTrig] = useState(0);
 
@@ -97,19 +100,18 @@ export function useWidgetManager() {
    */
   const updateEditorWidgetList = useCallback(
     (newWidgets: Widget[] | ((prev: Widget[]) => Widget[]), keepHistory = true) => {
-      const currentState = deepCloneWidgetList(editorWidgets);
-      if (keepHistory) {
-        setUndoStack((prevUndo) => {
-          const updated = [...prevUndo, currentState];
-          return updated.length > MAX_HISTORY ? updated.slice(1) : updated;
-        });
-        setRedoStack([]);
-      }
       setEditorWidgets((prev) => {
+        if (keepHistory) {
+          setUndoStack((stack) => {
+            const updated = [...stack, deepCloneWidgetList(prev)];
+            return updated.length > MAX_HISTORY ? updated.slice(1) : updated;
+          });
+          setRedoStack([]);
+        }
         return typeof newWidgets === "function" ? newWidgets(prev) : newWidgets;
       });
     },
-    [editorWidgets],
+    [],
   );
 
   /**
@@ -160,9 +162,12 @@ export function useWidgetManager() {
    * Add a new widget to the editor.
    * @param newWidget Widget to add
    */
-  const addWidget = (newWidget: Widget) => {
-    updateEditorWidgetList((prev) => [...prev, newWidget]);
-  };
+  const addWidget = useCallback(
+    (newWidget: Widget) => {
+      updateEditorWidgetList((prev) => [...prev, newWidget]);
+    },
+    [updateEditorWidgetList],
+  );
 
   /**
    * Delete currently selected widgets.
@@ -176,31 +181,31 @@ export function useWidgetManager() {
    * Clear all widgets from editor.
    */
   const clearAllWidgets = useCallback(() => {
-    setEditorWidgets([defaultGrid]);
+    setEditorWidgets([createWidgetInstance(GridZone, GRID_ID)]);
     setSelectedWidgetIDs([]);
-  }, [defaultGrid]);
+  }, []);
 
   /**
    * Create group with selected widgets.
    */
-  function groupSelected() {
+  const groupSelected = useCallback(() => {
     if (selectedWidgetIDs.length < 2 || !selectionBounds) return;
     const groupID = uuidv4();
     const groupWidget = createGroupWidget(groupID, selectedWidgets, selectionBounds);
 
-    setEditorWidgets((prev) => {
+    updateEditorWidgetList((prev) => {
       const remainingWidgets = prev.filter((w) => !selectedWidgetIDs.includes(w.id));
       return [...remainingWidgets, groupWidget];
     });
 
     setSelectedWidgetIDs([groupID]);
-  }
+  }, [selectedWidgetIDs, selectionBounds, selectedWidgets, updateEditorWidgetList]);
 
   /**
    * Ungroup selected widgets.
    */
-  function ungroupSelected() {
-    setEditorWidgets((prev) => {
+  const ungroupSelected = useCallback(() => {
+    updateEditorWidgetList((prev) => {
       const newWidgets: Widget[] = [];
 
       prev.forEach((w) => {
@@ -215,7 +220,7 @@ export function useWidgetManager() {
     });
 
     setSelectedWidgetIDs([]);
-  }
+  }, [selectedWidgetIDs, updateEditorWidgetList]);
 
   /**
    * Update properties of a single widget.
@@ -665,7 +670,7 @@ export function useWidgetManager() {
           const isGroup = raw.widgetName === "Group";
 
           if (idx === 0 && raw.id === GRID_ID) {
-            instance = deepCloneWidget(GridZone);
+            instance = createWidgetInstance(GridZone, GRID_ID);
           } else if (isGroup) {
             instance = createGroupWidget(raw.id);
           } else {
@@ -674,8 +679,7 @@ export function useWidgetManager() {
               console.warn(`Unknown widget type: ${raw.widgetName}`);
               return null;
             }
-            instance = deepCloneWidget(baseWdg);
-            instance.id = raw.id;
+            instance = createWidgetInstance(baseWdg, raw.id);
           }
 
           // Recursively restore children

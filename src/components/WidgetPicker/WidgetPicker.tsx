@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { WIDGET_SELECTOR_WIDTH } from "@src/constants/constants";
-import type { Widget } from "@src/types/widgets";
+import type { WidgetDefinition } from "@src/types/widgets";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import { styled } from "@mui/material/styles";
 import type { Theme, CSSObject } from "@mui/material/styles";
@@ -71,7 +71,7 @@ const Drawer = styled(DrawerBase, { shouldForwardProp: (prop) => prop !== "open"
 }));
 
 interface DraggableItemProps {
-  item: Widget;
+  item: WidgetDefinition;
   open: boolean;
 }
 
@@ -119,17 +119,17 @@ const DraggableItem: React.FC<DraggableItemProps> = ({ item, open }) => {
  */
 const WidgetPicker: React.FC = () => {
   const { inEditMode, wdgPickerOpen, setWdgPickerOpen } = useUIContext();
-  const palette: Record<string, Widget> = React.useMemo(
+  const palette: Record<string, WidgetDefinition> = React.useMemo(
     () =>
       Object.fromEntries(Object.values(WidgetRegistry).map((w) => [w.widgetName, w])) as Record<
         string,
-        Widget
+        WidgetDefinition
       >,
     [],
   );
 
   const categories = React.useMemo(() => {
-    const grouped: Record<string, Widget[]> = {};
+    const grouped: Record<string, WidgetDefinition[]> = {};
     for (const entry of Object.values(palette)) {
       const category = entry.category || "Uncategorized";
       if (!grouped[category]) grouped[category] = [];

@@ -3,20 +3,17 @@
 
 import { ToggleButtonComp } from "./ToggleButtonComp";
 import { COMMON_PROPS, PROPERTY_SCHEMAS, TEXT_PROPS } from "@src/types/widgetProperties";
-import type { Widget } from "@src/types/widgets";
+import type { WidgetDefinition } from "@src/types/widgets";
 import PowerSettingsNewIcon from "@mui/icons-material/PowerSettingsNew";
 import { COLORS } from "@src/constants/constants";
-import type { PVData } from "@src/types/epicsWS";
 
-export const ToggleButton: Widget = {
-  id: "__ToggleButton__",
+export const ToggleButton: WidgetDefinition = {
   component: ToggleButtonComp,
   widgetName: "ToggleButton",
   widgetIcon: PowerSettingsNewIcon,
   widgetLabel: "Toggle Button",
   category: "Controls",
-  pvData: {} as PVData,
-  editableProperties: {
+  defaultProperties: {
     ...COMMON_PROPS,
     backgroundColor: { ...PROPERTY_SCHEMAS.backgroundColor, value: COLORS.buttonColor },
     pvName: PROPERTY_SCHEMAS.pvName,
@@ -30,4 +27,4 @@ export const ToggleButton: Widget = {
     offColor: PROPERTY_SCHEMAS.offColor,
     ...TEXT_PROPS,
   },
-} as const;
+};

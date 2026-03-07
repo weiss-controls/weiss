@@ -8,19 +8,16 @@ import {
   PROPERTY_SCHEMAS,
   TEXT_PROPS,
 } from "@src/types/widgetProperties";
-import type { Widget } from "@src/types/widgets";
+import type { WidgetDefinition } from "@src/types/widgets";
 import StackedLineChartIcon from "@mui/icons-material/StackedLineChart";
-import type { MultiPvData } from "@src/types/epicsWS";
 
-export const GraphY: Widget = {
-  id: "__GraphYComp__",
+export const GraphY: WidgetDefinition = {
   component: GraphYComp,
   widgetName: "GraphY",
   widgetIcon: StackedLineChartIcon,
   widgetLabel: "Graph Y",
   category: "Monitoring",
-  multiPvData: {} as MultiPvData,
-  editableProperties: {
+  defaultProperties: {
     ...COMMON_PROPS,
     width: { ...PROPERTY_SCHEMAS.width, value: 480 },
     height: { ...PROPERTY_SCHEMAS.height, value: 260 },
@@ -29,4 +26,4 @@ export const GraphY: Widget = {
     textVAlign: { ...PROPERTY_SCHEMAS.textVAlign, value: "top" },
     textHAlign: { ...PROPERTY_SCHEMAS.textHAlign, value: "center" },
   },
-} as const;
+};

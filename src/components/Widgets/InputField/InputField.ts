@@ -3,22 +3,19 @@
 
 import { InputFieldComp } from "./InputFieldComp";
 import { COLORS } from "@src/constants/constants";
-import type { Widget } from "@src/types/widgets";
+import type { WidgetDefinition } from "@src/types/widgets";
 import InputIcon from "@mui/icons-material/Input";
 import { PROPERTY_SCHEMAS, COMMON_PROPS, TEXT_PROPS } from "@src/types/widgetProperties";
-import type { PVData } from "@src/types/epicsWS";
 
 const { textVAlign, textHAlign, ...FILTERED_TEXT_PROPS } = TEXT_PROPS;
 
-export const InputField: Widget = {
-  id: "__InputField__",
+export const InputField: WidgetDefinition = {
   component: InputFieldComp,
   widgetName: "InputField",
   widgetIcon: InputIcon,
   widgetLabel: "Input Field",
   category: "Controls",
-  pvData: {} as PVData,
-  editableProperties: {
+  defaultProperties: {
     pvName: PROPERTY_SCHEMAS.pvName,
     unitsFromPV: PROPERTY_SCHEMAS.unitsFromPV,
     units: PROPERTY_SCHEMAS.units,
@@ -27,4 +24,4 @@ export const InputField: Widget = {
     backgroundColor: { ...PROPERTY_SCHEMAS.backgroundColor, value: COLORS.inputColor },
     ...FILTERED_TEXT_PROPS,
   },
-} as const;
+};

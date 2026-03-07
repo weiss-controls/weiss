@@ -2,7 +2,8 @@
 // Copyright (C) 2026 André Favoto
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import type { GridPosition, Widget, WidgetUpdate } from "@src/types/widgets";
+import type { GridPosition, WidgetDefinition, WidgetUpdate } from "@src/types/widgets";
+import { createWidgetInstance } from "@src/context/widgetHelpers";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import { FRONT_UI_ZIDX, GRID_ID, MAX_ZOOM, MIN_ZOOM } from "@src/constants/constants";
 import ContextMenu from "@components/ContextMenu/ContextMenu";
@@ -65,7 +66,7 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
   const [contextMenuVisible, setContextMenuVisible] = useState(false);
   const [shouldCenterPan, setShouldCenterPan] = useState(true);
   const [dragPreview, setDragPreview] = useState<{
-    widget: Widget;
+    widget: WidgetDefinition;
     x: number;
     y: number;
   } | null>(null);
@@ -133,17 +134,12 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
       console.warn("No data found in dropped widget");
       return;
     }
-    const entry = JSON.parse(data) as Widget;
+    const entry = JSON.parse(data) as { widgetName: string };
     const droppedComp = WidgetRegistry[entry.widgetName];
     if (!droppedComp) {
       console.warn(`Unknown component: ${entry.widgetName}`);
       return;
     }
-
-    // Deep copy
-    const editableProperties = Object.fromEntries(
-      Object.entries(droppedComp.editableProperties).map(([k, v]) => [k, { ...v }]),
-    );
 
     // Drop position
     const rect = e.currentTarget.getBoundingClientRect();
@@ -152,17 +148,12 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
     const userX = (rawX - pan.x) / zoom;
     const userY = (rawY - pan.y) / zoom;
 
-    if (editableProperties.x) editableProperties.x.value = ensureGridCoordinate(userX);
-    if (editableProperties.y) editableProperties.y.value = ensureGridCoordinate(userY);
+    const newWidget = createWidgetInstance(droppedComp, `${entry.widgetName}-${uuidv4()}`);
+    if (newWidget.editableProperties.x)
+      newWidget.editableProperties.x.value = ensureGridCoordinate(userX);
+    if (newWidget.editableProperties.y)
+      newWidget.editableProperties.y.value = ensureGridCoordinate(userY);
 
-    const newWidget: Widget = {
-      id: `${entry.widgetName}-${uuidv4()}`,
-      widgetLabel: droppedComp.widgetLabel,
-      component: droppedComp.component,
-      widgetName: droppedComp.widgetName,
-      category: droppedComp.category,
-      editableProperties,
-    };
     addWidget(newWidget);
     setDragPreview(null);
   };
@@ -371,8 +362,8 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
               position: "absolute",
               left: dragPreview.x,
               top: dragPreview.y,
-              width: dragPreview.widget.editableProperties.width?.value ?? 100,
-              height: dragPreview.widget.editableProperties.height?.value ?? 50,
+              width: dragPreview.widget.defaultProperties.width?.value ?? 100,
+              height: dragPreview.widget.defaultProperties.height?.value ?? 50,
               border: "2px dashed #00aaff",
               pointerEvents: "none",
               zIndex: FRONT_UI_ZIDX,

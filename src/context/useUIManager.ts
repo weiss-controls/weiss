@@ -41,6 +41,7 @@ export default function useUIManager(
 ) {
   const lastFileLoadedTrig = useRef(0);
   const hasFileChanged = useRef(true);
+  const hasClearedForNoFileRef = useRef(false);
   const lastSavedRef = useRef<ExportedWidget[] | null>(null);
   const saveTimeoutRef = useRef<number | null>(null);
   const [releaseShortcuts, setReleaseShortcuts] = useState(false);
@@ -157,8 +158,12 @@ export default function useUIManager(
 
   useEffect(() => {
     if (!selectedFile) {
+      if (hasClearedForNoFileRef.current) return;
       clearAllWidgets();
+      hasClearedForNoFileRef.current = true;
+      return;
     }
+    hasClearedForNoFileRef.current = false;
   }, [clearAllWidgets, selectedFile]);
   // throttle file update to backend
   useEffect(() => {
