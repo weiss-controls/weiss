@@ -6,6 +6,7 @@ import type {
   MultiWidgetPropertyUpdates,
   Widget,
   WidgetProperties,
+  WidgetProperty,
   PropertyKey,
   DOMRectLike,
   PropertyValue,
@@ -60,7 +61,10 @@ export function updateWidgets(widgets: Widget[], updates: MultiWidgetPropertyUpd
           if (limits?.min !== undefined) newValue = Math.max(newValue, limits.min);
           if (limits?.max !== undefined) newValue = Math.min(newValue, limits.max);
         }
-        updatedProps[propName].value = newValue;
+        (updatedProps as Record<PropertyKey, WidgetProperty>)[propName] = {
+          ...updatedProps[propName],
+          value: newValue,
+        };
       }
       newWidget = { ...newWidget, editableProperties: updatedProps };
     }

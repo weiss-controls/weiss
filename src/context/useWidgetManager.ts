@@ -38,10 +38,9 @@ import {
  * - Import/export of widget configurations
  */
 export function useWidgetManager() {
-  const defaultGrid = deepCloneWidget(GridZone);
   const [undoStack, setUndoStack] = useState<Widget[][]>([]);
   const [redoStack, setRedoStack] = useState<Widget[][]>([]);
-  const [editorWidgets, setEditorWidgets] = useState<Widget[]>([defaultGrid]);
+  const [editorWidgets, setEditorWidgets] = useState<Widget[]>(() => [deepCloneWidget(GridZone)]);
   const [pickedWidget, setPickedWidget] = useState<Widget | null>(null); // widget picked from pallete
   const [selectedWidgetIDs, setSelectedWidgetIDs] = useState<string[]>([]);
   const [fileLoadedTrig, setFileLoadedTrig] = useState(0);
@@ -97,19 +96,18 @@ export function useWidgetManager() {
    */
   const updateEditorWidgetList = useCallback(
     (newWidgets: Widget[] | ((prev: Widget[]) => Widget[]), keepHistory = true) => {
-      const currentState = deepCloneWidgetList(editorWidgets);
-      if (keepHistory) {
-        setUndoStack((prevUndo) => {
-          const updated = [...prevUndo, currentState];
-          return updated.length > MAX_HISTORY ? updated.slice(1) : updated;
-        });
-        setRedoStack([]);
-      }
       setEditorWidgets((prev) => {
+        if (keepHistory) {
+          setUndoStack((stack) => {
+            const updated = [...stack, deepCloneWidgetList(prev)];
+            return updated.length > MAX_HISTORY ? updated.slice(1) : updated;
+          });
+          setRedoStack([]);
+        }
         return typeof newWidgets === "function" ? newWidgets(prev) : newWidgets;
       });
     },
-    [editorWidgets],
+    [],
   );
 
   /**
@@ -176,9 +174,9 @@ export function useWidgetManager() {
    * Clear all widgets from editor.
    */
   const clearAllWidgets = useCallback(() => {
-    setEditorWidgets([defaultGrid]);
+    setEditorWidgets([deepCloneWidget(GridZone)]);
     setSelectedWidgetIDs([]);
-  }, [defaultGrid]);
+  }, []);
 
   /**
    * Create group with selected widgets.
