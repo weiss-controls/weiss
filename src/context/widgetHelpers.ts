@@ -5,6 +5,7 @@ import { PROPERTY_SCHEMAS } from "@src/types/widgetProperties";
 import type {
   MultiWidgetPropertyUpdates,
   Widget,
+  WidgetDefinition,
   WidgetProperties,
   WidgetProperty,
   PropertyKey,
@@ -39,6 +40,25 @@ export function deepCloneWidget(widget: Widget): Widget {
  */
 export function deepCloneWidgetList(widgets: Widget[]): Widget[] {
   return widgets.map(deepCloneWidget);
+}
+
+/**
+ * Create a new Widget runtime instance from a WidgetDefinition.
+ * Deep-clones default properties so each instance is fully independent.
+ * @param def WidgetDefinition to instantiate
+ * @param id Unique ID for the new instance
+ */
+export function createWidgetInstance(def: WidgetDefinition, id: string): Widget {
+  return {
+    id,
+    widgetName: def.widgetName,
+    editableProperties: Object.fromEntries(
+      Object.entries(def.defaultProperties).map(([k, v]) => [
+        k,
+        { ...v, value: structuredClone(v.value) },
+      ]),
+    ),
+  };
 }
 
 export function updateWidgets(widgets: Widget[], updates: MultiWidgetPropertyUpdates): Widget[] {
@@ -113,10 +133,7 @@ export function createGroupWidget(
 ): Widget {
   return {
     id,
-    widgetLabel: "Group",
     widgetName: "Group",
-    category: "internal",
-    component: () => null,
     children,
     editableProperties: {
       x: { ...PROPERTY_SCHEMAS.x, value: bounds?.x ?? 0 },

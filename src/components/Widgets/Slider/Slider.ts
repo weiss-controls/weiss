@@ -3,20 +3,17 @@
 
 import { SliderComp } from "./SliderComp.tsx";
 import { COLORS } from "@src/constants/constants";
-import type { Widget } from "@src/types/widgets";
+import type { WidgetDefinition } from "@src/types/widgets";
 import CustomSliderIcon from "@src/components/CustomIcons/SliderIcon";
 import { PROPERTY_SCHEMAS, COMMON_PROPS } from "@src/types/widgetProperties";
-import type { PVData } from "@src/types/epicsWS";
 
-export const Slider: Widget = {
-  id: "__Slider__",
+export const Slider: WidgetDefinition = {
   component: SliderComp,
   widgetName: "Slider",
   widgetIcon: CustomSliderIcon,
   widgetLabel: "Slider",
   category: "Controls",
-  pvData: {} as PVData,
-  editableProperties: {
+  defaultProperties: {
     ...COMMON_PROPS,
     width: { ...PROPERTY_SCHEMAS.width, value: 50 },
     height: { ...PROPERTY_SCHEMAS.height, value: 260 },
@@ -30,4 +27,4 @@ export const Slider: Widget = {
     stepSize: PROPERTY_SCHEMAS.stepSize,
     horizontal: PROPERTY_SCHEMAS.horizontal,
   },
-} as const;
+};

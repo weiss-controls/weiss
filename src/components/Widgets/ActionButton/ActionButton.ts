@@ -3,20 +3,17 @@
 
 import { ActionButtonComp } from "./ActionButtonComp";
 import { COMMON_PROPS, PROPERTY_SCHEMAS, TEXT_PROPS } from "@src/types/widgetProperties";
-import type { Widget } from "@src/types/widgets";
+import type { WidgetDefinition } from "@src/types/widgets";
 import SendIcon from "@mui/icons-material/Send";
 import { COLORS } from "@src/constants/constants";
-import type { PVData } from "@src/types/epicsWS";
 
-export const ActionButton: Widget = {
-  id: "__ActionButton__",
+export const ActionButton: WidgetDefinition = {
   component: ActionButtonComp,
   widgetName: "ActionButton",
   widgetIcon: SendIcon,
   widgetLabel: "Action Button",
   category: "Controls",
-  pvData: {} as PVData,
-  editableProperties: {
+  defaultProperties: {
     label: { ...PROPERTY_SCHEMAS.label, value: "Action Button" },
     ...COMMON_PROPS,
     ...TEXT_PROPS,
@@ -25,4 +22,4 @@ export const ActionButton: Widget = {
     actionValue: PROPERTY_SCHEMAS.actionValue,
     disabled: PROPERTY_SCHEMAS.disabled,
   },
-} as const;
+};

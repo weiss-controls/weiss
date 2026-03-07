@@ -3,21 +3,18 @@
 
 import { MultiBitIndicatorComp } from "./MultiBitIndicatorComp";
 import { PROPERTY_SCHEMAS, COMMON_PROPS } from "@src/types/widgetProperties";
-import type { Widget } from "@src/types/widgets";
-import type { PVData } from "@src/types/epicsWS";
+import type { WidgetDefinition } from "@src/types/widgets";
 import CustomMultiBitIcon from "@src/components/CustomIcons/MultiBitIcon";
 
 const { borderRadius, backgroundColor, ...FILTERED_COMMON_PROPS } = COMMON_PROPS;
 
-export const MultiBitIndicator: Widget = {
-  id: "__MultiBitIndicator__",
+export const MultiBitIndicator: WidgetDefinition = {
   component: MultiBitIndicatorComp,
   widgetName: "MultiBitIndicator",
   widgetIcon: CustomMultiBitIcon,
   widgetLabel: "Multi-Bit Indicator",
   category: "Monitoring",
-  pvData: {} as PVData,
-  editableProperties: {
+  defaultProperties: {
     ...FILTERED_COMMON_PROPS,
     width: { ...PROPERTY_SCHEMAS.width, value: 40 },
     height: { ...PROPERTY_SCHEMAS.height, value: 320 },
@@ -31,4 +28,4 @@ export const MultiBitIndicator: Widget = {
     pvName: PROPERTY_SCHEMAS.pvName,
     alarmBorder: PROPERTY_SCHEMAS.alarmBorder,
   },
-} as const;
+};

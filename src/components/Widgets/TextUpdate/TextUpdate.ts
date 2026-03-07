@@ -4,19 +4,16 @@
 import { TextUpdateComp } from "./TextUpdateComp";
 import { PROPERTY_SCHEMAS, COMMON_PROPS, TEXT_PROPS } from "@src/types/widgetProperties";
 import { COLORS } from "@src/constants/constants";
-import type { Widget } from "@src/types/widgets";
+import type { WidgetDefinition } from "@src/types/widgets";
 import TextsmsIcon from "@mui/icons-material/Textsms";
-import type { PVData } from "@src/types/epicsWS";
 
-export const TextUpdate: Widget = {
-  id: "__TextUpdate__",
+export const TextUpdate: WidgetDefinition = {
   component: TextUpdateComp,
   widgetName: "TextUpdate",
   widgetIcon: TextsmsIcon,
   widgetLabel: "Text Update",
   category: "Monitoring",
-  pvData: {} as PVData,
-  editableProperties: {
+  defaultProperties: {
     label: { ...PROPERTY_SCHEMAS.label, value: "Text Update" },
     ...COMMON_PROPS,
     backgroundColor: { ...PROPERTY_SCHEMAS.backgroundColor, value: COLORS.readColor },
@@ -28,4 +25,4 @@ export const TextUpdate: Widget = {
     precisionFromPV: PROPERTY_SCHEMAS.precisionFromPV,
     precision: PROPERTY_SCHEMAS.precision,
   },
-} as const;
+};

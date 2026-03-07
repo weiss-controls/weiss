@@ -27,6 +27,7 @@ import PropertyNavigator from "./PropertiesTab/PropertiesTab";
 import ProjectsTab from "./ProjectsTab/ProjectsTab";
 import { useUIContext } from "@src/context/useUIContext";
 import { useWidgetContext } from "@src/context/useWidgetContext";
+import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 
 const Drawer = styled(MuiDrawer)(({ theme }) => ({
   "& .MuiDrawer-paper": {
@@ -150,7 +151,7 @@ const EditorSidebar: React.FC = () => {
   const header =
     tabIndex === 0
       ? editingWidgets.length === 1
-        ? `${editingWidgets[0].widgetLabel} properties`
+        ? `${WidgetRegistry[editingWidgets[0].widgetName]?.widgetLabel ?? editingWidgets[0].widgetName} properties`
         : "Common properties in selection"
       : "Browse projects";
 

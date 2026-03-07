@@ -4,6 +4,7 @@
 import { useState, useCallback, useRef, useMemo } from "react";
 import type {
   Widget,
+  WidgetDefinition,
   PropertyKey,
   PropertyUpdates,
   MultiWidgetPropertyUpdates,
@@ -17,6 +18,7 @@ import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import { v4 as uuidv4 } from "uuid";
 import {
   createGroupWidget,
+  createWidgetInstance,
   deepCloneWidget,
   deepCloneWidgetList,
   getNestedMoveUpdates,
@@ -40,8 +42,10 @@ import {
 export function useWidgetManager() {
   const [undoStack, setUndoStack] = useState<Widget[][]>([]);
   const [redoStack, setRedoStack] = useState<Widget[][]>([]);
-  const [editorWidgets, setEditorWidgets] = useState<Widget[]>(() => [deepCloneWidget(GridZone)]);
-  const [pickedWidget, setPickedWidget] = useState<Widget | null>(null); // widget picked from pallete
+  const [editorWidgets, setEditorWidgets] = useState<Widget[]>(() => [
+    createWidgetInstance(GridZone, GRID_ID),
+  ]);
+  const [pickedWidget, setPickedWidget] = useState<WidgetDefinition | null>(null); // widget picked from palette
   const [selectedWidgetIDs, setSelectedWidgetIDs] = useState<string[]>([]);
   const [fileLoadedTrig, setFileLoadedTrig] = useState(0);
 
@@ -158,9 +162,12 @@ export function useWidgetManager() {
    * Add a new widget to the editor.
    * @param newWidget Widget to add
    */
-  const addWidget = (newWidget: Widget) => {
-    updateEditorWidgetList((prev) => [...prev, newWidget]);
-  };
+  const addWidget = useCallback(
+    (newWidget: Widget) => {
+      updateEditorWidgetList((prev) => [...prev, newWidget]);
+    },
+    [updateEditorWidgetList],
+  );
 
   /**
    * Delete currently selected widgets.
@@ -174,14 +181,14 @@ export function useWidgetManager() {
    * Clear all widgets from editor.
    */
   const clearAllWidgets = useCallback(() => {
-    setEditorWidgets([deepCloneWidget(GridZone)]);
+    setEditorWidgets([createWidgetInstance(GridZone, GRID_ID)]);
     setSelectedWidgetIDs([]);
   }, []);
 
   /**
    * Create group with selected widgets.
    */
-  function groupSelected() {
+  const groupSelected = useCallback(() => {
     if (selectedWidgetIDs.length < 2 || !selectionBounds) return;
     const groupID = uuidv4();
     const groupWidget = createGroupWidget(groupID, selectedWidgets, selectionBounds);
@@ -192,12 +199,12 @@ export function useWidgetManager() {
     });
 
     setSelectedWidgetIDs([groupID]);
-  }
+  }, [selectedWidgetIDs, selectionBounds, selectedWidgets]);
 
   /**
    * Ungroup selected widgets.
    */
-  function ungroupSelected() {
+  const ungroupSelected = useCallback(() => {
     setEditorWidgets((prev) => {
       const newWidgets: Widget[] = [];
 
@@ -213,7 +220,7 @@ export function useWidgetManager() {
     });
 
     setSelectedWidgetIDs([]);
-  }
+  }, [selectedWidgetIDs]);
 
   /**
    * Update properties of a single widget.
@@ -663,7 +670,7 @@ export function useWidgetManager() {
           const isGroup = raw.widgetName === "Group";
 
           if (idx === 0 && raw.id === GRID_ID) {
-            instance = deepCloneWidget(GridZone);
+            instance = createWidgetInstance(GridZone, GRID_ID);
           } else if (isGroup) {
             instance = createGroupWidget(raw.id);
           } else {
@@ -672,8 +679,7 @@ export function useWidgetManager() {
               console.warn(`Unknown widget type: ${raw.widgetName}`);
               return null;
             }
-            instance = deepCloneWidget(baseWdg);
-            instance.id = raw.id;
+            instance = createWidgetInstance(baseWdg, raw.id);
           }
 
           // Recursively restore children
