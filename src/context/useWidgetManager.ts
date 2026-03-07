@@ -193,19 +193,19 @@ export function useWidgetManager() {
     const groupID = uuidv4();
     const groupWidget = createGroupWidget(groupID, selectedWidgets, selectionBounds);
 
-    setEditorWidgets((prev) => {
+    updateEditorWidgetList((prev) => {
       const remainingWidgets = prev.filter((w) => !selectedWidgetIDs.includes(w.id));
       return [...remainingWidgets, groupWidget];
     });
 
     setSelectedWidgetIDs([groupID]);
-  }, [selectedWidgetIDs, selectionBounds, selectedWidgets]);
+  }, [selectedWidgetIDs, selectionBounds, selectedWidgets, updateEditorWidgetList]);
 
   /**
    * Ungroup selected widgets.
    */
   const ungroupSelected = useCallback(() => {
-    setEditorWidgets((prev) => {
+    updateEditorWidgetList((prev) => {
       const newWidgets: Widget[] = [];
 
       prev.forEach((w) => {
@@ -220,7 +220,7 @@ export function useWidgetManager() {
     });
 
     setSelectedWidgetIDs([]);
-  }, [selectedWidgetIDs]);
+  }, [selectedWidgetIDs, updateEditorWidgetList]);
 
   /**
    * Update properties of a single widget.
