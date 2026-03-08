@@ -9,7 +9,7 @@ import {
   type StagingTreeInfo,
 } from "@src/services/APIClient";
 import ProjectSection from "./ProjectSection";
-import { Box, Button } from "@mui/material";
+import { Box, Button, Skeleton } from "@mui/material";
 import type { SelectedPathInfo } from "@src/context/useUIManager";
 import GitImportDialog from "@src/components/GitImportDialog/GitImportDialog";
 import CustomGitIcon from "@src/components/CustomIcons/GitIcon";
@@ -23,7 +23,7 @@ export default function ProjectsTab() {
     isDeveloper,
     reposTreeInfo,
     setReposTreeInfo,
-    updateReposTreeInfo,
+    isReposLoading,
     inEditMode,
     setSelectedFile,
     selectedFile,
@@ -31,10 +31,6 @@ export default function ProjectsTab() {
   const restoredRef = useRef(false);
   const [initialSelection, setInitialSelection] = useState<SelectedPathInfo | null>(null);
   const [GitImportOpen, setGitImportOpen] = useState(false);
-
-  useEffect(() => {
-    void updateReposTreeInfo();
-  }, [updateReposTreeInfo]);
 
   const refreshRepoTree = (updt: StagingTreeInfo | DeploymentTreeInfo) => {
     setReposTreeInfo((prev) => (prev ? prev.map((r) => (updt.id === r.id ? updt : r)) : prev));
@@ -98,7 +94,15 @@ export default function ProjectsTab() {
         alignItems: "center",
       }}
     >
-      {reposTreeInfo?.length ? (
+      {isReposLoading ? (
+        Array.from({ length: 3 }).map((_, i) => (
+          <Box key={i} sx={{ width: "100%", mb: 1 }}>
+            <Skeleton variant="rounded" height={36} sx={{ mb: 0.5 }} />
+            <Skeleton variant="text" sx={{ mx: 1 }} />
+            <Skeleton variant="text" sx={{ mx: 1 }} />
+          </Box>
+        ))
+      ) : reposTreeInfo?.length ? (
         reposTreeInfo.map((repo) => (
           <ProjectSection
             key={repo.id}

@@ -150,7 +150,7 @@ export default function ProjectSection({
   defaultSelectedPath,
 }: ProjectSectionProps) {
   const REF_MAX_DISPLAY_SIZE = 7;
-  const { isDeveloper, selectedFile, setSelectedFile } = useUIContext();
+  const { isDeveloper, selectedFile, setSelectedFile, setIsReposLoading } = useUIContext();
   // helper for type checking
   const isStagingTree = useCallback(
     (repo: StagingTreeInfo | DeploymentTreeInfo): repo is StagingTreeInfo => {
@@ -193,6 +193,7 @@ export default function ProjectSection({
   const collapseAll = () => setExpandedItems([]);
 
   const handleRefChange = async (ref: string) => {
+    setIsReposLoading(true);
     try {
       const updatedTree = await checkoutRepoRef({
         path: { repo_id: repo.id },
@@ -202,6 +203,8 @@ export default function ProjectSection({
       notifyUser(`Success: HEAD at ${shortRef(ref)}`, "success");
     } catch (err) {
       notifyUser(`Failed to checkout: ${err as string}`, "error");
+    } finally {
+      setIsReposLoading(false);
     }
   };
 
@@ -213,6 +216,7 @@ export default function ProjectSection({
       cancelText: "Cancel",
     });
     if (!confirmed) return;
+    setIsReposLoading(true);
     try {
       const res = await deployRepo({
         body: { deployment_version: selectedRef },
@@ -226,6 +230,8 @@ export default function ProjectSection({
       notifyUser(`Successfully deployed ${repo.alias}@${shortRef(selectedRef)}`, "success");
     } catch (err) {
       notifyUser(`Failed to deploy repo: ${err as string}`, "error");
+    } finally {
+      setIsReposLoading(false);
     }
 
     setMenuAnchor(null);
@@ -240,6 +246,7 @@ export default function ProjectSection({
       cancelText: "Cancel",
     });
     if (!confirmed) return;
+    setIsReposLoading(true);
     try {
       const res = await undeployRepo({
         path: { repo_id: repo.id },
@@ -254,6 +261,8 @@ export default function ProjectSection({
       notifyUser(`Successfully undeployed ${repo.alias}`, "success");
     } catch (err) {
       notifyUser(`Failed to undeploy repo: ${err as string}`, "error");
+    } finally {
+      setIsReposLoading(false);
     }
 
     setMenuAnchor(null);
@@ -268,6 +277,7 @@ export default function ProjectSection({
       cancelText: "Cancel",
     });
     if (!confirmed) return;
+    setIsReposLoading(true);
     try {
       const res = await unregisterRepo({
         path: { repo_id: repo.id },
@@ -285,22 +295,28 @@ export default function ProjectSection({
       notifyUser(`Successfully unregistered ${repo.alias}`, "success");
     } catch (err) {
       notifyUser(`Failed to unregister repo: ${err as string}`, "error");
+    } finally {
+      setIsReposLoading(false);
     }
 
     setMenuAnchor(null);
   };
 
   const handleSyncClick = async () => {
+    setIsReposLoading(true);
     try {
       const updatedTree = await syncRepo({ path: { repo_id: repo.id } }).then((r) => r.data);
       onRepoUpdate(updatedTree);
       notifyUser(`Successfully updated ${repo.alias}`, "success");
     } catch (err) {
       notifyUser(`Failed to update ${repo.alias}: ${err as string}`, "error");
+    } finally {
+      setIsReposLoading(false);
     }
   };
 
   const handleResetClick = async () => {
+    setIsReposLoading(true);
     try {
       const updatedTree = await resetStagingRepo({ path: { repo_id: repo.id } }).then(
         (r) => r.data,
@@ -309,6 +325,8 @@ export default function ProjectSection({
       notifyUser(`Successfully restored ${repo.alias}`, "success");
     } catch (err) {
       notifyUser(`Failed to restore ${repo.alias}: ${err as string}`, "error");
+    } finally {
+      setIsReposLoading(false);
     }
   };
 

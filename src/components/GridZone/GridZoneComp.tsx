@@ -12,7 +12,7 @@ import WidgetRenderer from "@components/WidgetRenderer/WidgetRenderer.tsx";
 import ToolbarButtons from "@components/Toolbar/Toolbar.tsx";
 import { v4 as uuidv4 } from "uuid";
 import SelectionManager from "./SelectionManager/SelectionManager";
-import { Box } from "@mui/material";
+import { Box, CircularProgress } from "@mui/material";
 import { useWidgetContext } from "@src/context/useWidgetContext";
 import { useUIContext } from "@src/context/useUIContext";
 
@@ -35,8 +35,16 @@ import { useUIContext } from "@src/context/useUIContext";
 const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
   const props = data.editableProperties;
 
-  const { mode, releaseShortcuts, isPanning, setIsPanning, inEditMode, selectedFile, isDeveloper } =
-    useUIContext();
+  const {
+    mode,
+    releaseShortcuts,
+    isPanning,
+    setIsPanning,
+    inEditMode,
+    selectedFile,
+    isDeveloper,
+    isReposLoading,
+  } = useUIContext();
 
   const {
     addWidget,
@@ -382,6 +390,21 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
           setContextMenuVisible(false);
         }}
       />
+      {isReposLoading && (
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: FRONT_UI_ZIDX,
+            pointerEvents: "none",
+          }}
+        >
+          <CircularProgress size={48} />
+        </Box>
+      )}
       <Box
         sx={{
           position: "absolute",

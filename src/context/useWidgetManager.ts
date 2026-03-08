@@ -16,6 +16,7 @@ import { GridZone } from "@components/GridZone";
 import { GRID_ID, MAX_HISTORY } from "@src/constants/constants";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import { v4 as uuidv4 } from "uuid";
+import { notifyUser } from "@src/services/Notifications/Notification";
 import {
   createGroupWidget,
   createWidgetInstance,
@@ -660,6 +661,8 @@ export function useWidgetManager() {
    */
   const loadWidgets = useCallback(
     (widgetsData: string | ExportedWidget[]) => {
+      const warnings: string[] = [];
+
       try {
         const parsed: ExportedWidget[] =
           typeof widgetsData === "string" ? JSON.parse(widgetsData) : widgetsData;
@@ -676,7 +679,7 @@ export function useWidgetManager() {
           } else {
             const baseWdg = WidgetRegistry[raw.widgetName];
             if (!baseWdg) {
-              console.warn(`Unknown widget type: ${raw.widgetName}`);
+              warnings.push(`Unknown widget type "${raw.widgetName}" (id: ${raw.id}) — skipped`);
               return null;
             }
             instance = createWidgetInstance(baseWdg, raw.id);
@@ -694,6 +697,10 @@ export function useWidgetManager() {
             const propName = key as PropertyKey;
             if (instance.editableProperties[propName]) {
               instance.editableProperties[propName].value = val;
+            } else {
+              warnings.push(
+                `Unknown property "${key}" on widget "${raw.widgetName}" (id: ${raw.id}) — ignored`,
+              );
             }
           }
           return instance;
@@ -703,12 +710,20 @@ export function useWidgetManager() {
           .map((raw, idx) => restoreWidget(raw, idx))
           .filter((w): w is Widget => w !== null);
 
-        updateEditorWidgetList(imported);
+        updateEditorWidgetList(imported, false);
         setSelectedWidgetIDs([]);
         setFileLoadedTrig((t) => t + 1);
         setUndoStack([]);
         setRedoStack([]);
+
+        if (warnings.length > 0) {
+          notifyUser(
+            `File loaded with ${warnings.length} warning(s):\n ${warnings.join("\n ")}`,
+            "warning",
+          );
+        }
       } catch (err) {
+        notifyUser(`Failed to load file: invalid JSON or unexpected format`, "error");
         console.error("Failed to load widgets:", err);
       }
     },
