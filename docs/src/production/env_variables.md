@@ -44,11 +44,13 @@ in EPICS docs
 
 Consumed by both `weiss` (nginx) and `weiss-api` (FastAPI CORS and cookie flags).
 
-| Variable        | Default                               | Description                                                                                       |
-| --------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `ENABLE_HTTPS`  | `false`                               | Set to true to enable HTTPS and mark session cookies as `Secure`.                                 |
-| `SSL_CERT_FILE` | `./nginx/certs/example-fullchain.pem` | Path on the _host_ to the full-chain TLS certificate (PEM). Mounted read-only into the container. |
-| `SSL_KEY_FILE`  | `./nginx/certs/example-privkey.pem`   | Path on the _host_ to the TLS private key (PEM). Mounted read-only into the container.            |
+| Variable        | Default                               | Description                                                                                                                                                                                                                                                  |
+| --------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ENABLE_HTTPS`  | `false`                               | Set to true to enable HTTPS and mark session cookies as `Secure`.                                                                                                                                                                                            |
+| `SSL_CERT_FILE` | `./nginx/certs/example-fullchain.pem` | Path on the _host_ to the full-chain TLS certificate (PEM). Mounted read-only into the container.                                                                                                                                                            |
+| `SSL_KEY_FILE`  | `./nginx/certs/example-privkey.pem`   | Path on the _host_ to the TLS private key (PEM). Mounted read-only into the container.                                                                                                                                                                       |
+| `APP_HOSTNAME`  | `localhost`                           | Hostname under which the app is served. Used by nginx `server_name` and to derive the CORS origin for the API. Change this to your server's hostname or IP for any non-localhost deployment.                                                                 |
+| `DOCS_HOSTNAME` | _(unset)_                             | Hostname under which the documentation is served. When set, nginx adds a proxy block for it pointing to the docs container (port 8001). Requires [running the docs service](../developer/source.md) separately. Leave unset if you are not serving the docs. |
 
 ---
 
@@ -56,9 +58,9 @@ Consumed by both `weiss` (nginx) and `weiss-api` (FastAPI CORS and cookie flags)
 
 Consumed by the `weiss-api` service.
 
-| Variable       | Default            | Description                                                                                                                                                                                  |
-| -------------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `FRONTEND_URL` | `http://localhost` | Full origin URL of the frontend (including scheme and port if non-standard). Used for CORS allow-list and OAuth redirect URI validation. **Must match the URL users use to access the app.** |
+| Variable    | Default | Description                                                                                                                                  |
+| ----------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| _(derived)_ | —       | The CORS origin and OAuth redirect URI are derived automatically from `APP_HOSTNAME` and `ENABLE_HTTPS`. No separate URL variable is needed. |
 
 ### Microsoft Entra ID (SSO authentication)
 

@@ -28,12 +28,11 @@ In your `.env` file:
 ENABLE_HTTPS=true
 SSL_CERT_FILE=/path/to/fullchain.pem
 SSL_KEY_FILE=/path/to/privkey.pem
-
-# Update the frontend URL to HTTPS
-FRONTEND_URL=https://your-server-hostname
+APP_HOSTNAME=your-server-hostname
 ```
 
-When `ENABLE_HTTPS=true`:
+The scheme for CORS and OAuth redirect URIs is derived automatically from `ENABLE_HTTPS`, so no
+separate URL variable is needed.
 
 - nginx uses the HTTPS template (`nginx/default.https.template`) which listens on port 443 and
   redirects HTTP (port 80) to HTTPS.
@@ -57,8 +56,11 @@ The nginx configuration templates are located in `nginx/`. Two templates are pro
 | `default.https.template` | `ENABLE_HTTPS=true`            |
 
 The Docker entrypoint (`nginx/docker-entrypoint.sh`) selects the correct template at container start
-based on the `ENABLE_HTTPS` environment variable and substitutes placeholders for the certificate
-paths.
+based on the `ENABLE_HTTPS` environment variable and substitutes `APP_HOSTNAME`, `DOCS_HOSTNAME`,
+and the certificate paths into the template.
+
+An optional third template (`default.docs.template`) is appended to the HTTPS config when
+`DOCS_HOSTNAME` is set, adding a reverse-proxy server block for the documentation service.
 
 If you need custom nginx directives (e.g., additional proxy headers, rate limiting, or custom
 locations), edit the relevant template file before building the image. The templates follow standard

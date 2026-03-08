@@ -26,9 +26,9 @@ If you want to see PVs outside of localhost, adjust `DEFAULT_PROTOCOL` and `EPIC
 accordingly.
 
 :::{important}  
-If running outside of your localhost, make sure to modify `FRONTEND_URL` with your server's IP
-address or DNS name - this will add your server to the API's whitelist for access - all other
-traffic is blocked.  
+If running outside of your localhost, make sure to set `APP_HOSTNAME` to your server's IP address or
+DNS name. This is used by nginx to accept requests for the right hostname and by the API's CORS
+policy to allow requests from the frontend — all other origins are blocked.  
 :::
 
 The whole behaviour of the app is configured via environment variables. For this tutorial, most of
