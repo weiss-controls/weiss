@@ -1,5 +1,5 @@
 make
 sphinx
 myst_parser
-sphinx-breeze-theme
+furo
 sphinx_copybutton

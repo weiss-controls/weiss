@@ -9,6 +9,10 @@ Documentation: https://docs.weiss-controls.org.
 Project issue tracking:
 [WEISS Project Dashboard](https://github.com/orgs/weiss-controls/projects/1/)
 
+![WEISS UI](docs/src/_static/example.svg)
+
+---
+
 ## Licensing Terms
 
 Copyright (C) 2026 André Favoto

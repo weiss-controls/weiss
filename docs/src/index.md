@@ -6,7 +6,7 @@ deployment model.
 
 Try it out: [https://demo.weiss-controls.org](https://demo.weiss-controls.org).
 
-![Example image](_static/example.png)
+![Example image](_static/example.svg)
 
 ---
 
@@ -58,6 +58,7 @@ the [WEISS Project Dashboard](https://github.com/orgs/weiss-controls/projects/1/
 :caption: Getting Started
 
 getting_started/quickstart
+getting_started/how_to
 ```
 
 ```{toctree}
@@ -80,6 +81,7 @@ production/git_interaction
 :caption: For developers
 
 developer/architecture
+developer/contributing
 developer/source
 developer/creating_widget
 ```
