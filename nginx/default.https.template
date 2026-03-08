@@ -16,6 +16,22 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
+    location ~ /\. {
+        return 404;
+    }
+
+    # Block extensions that will never exist in a Vite build - avoid probing noise.
+    location ~* \.(php|asp|aspx|cgi|pl|env|sh|bash|sql|bak|backup)$ {
+        return 404;
+    }
+
+    # Serve static assets directly; return a hard 404 for missing files
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|webp|avif|woff|woff2|ttf|eot|map|txt)$ {
+        try_files $uri =404;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
     location / {
         try_files $uri $uri/ /index.html;
     }
