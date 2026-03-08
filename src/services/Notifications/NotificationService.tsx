@@ -39,7 +39,7 @@ export default function NotificationService() {
         onClose={() => setOpen(false)}
         severity={notification.severity}
         variant="filled"
-        sx={{ width: "100%" }}
+        sx={{ width: "100%", "& .MuiAlert-message": { whiteSpace: "pre-line" } }}
       >
         {notification.message}
       </Alert>
