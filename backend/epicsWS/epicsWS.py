@@ -72,7 +72,9 @@ async def send_update(pv_name: str, pv_obj, provider: str):
                     "enumChoices": pv_data.enumChoices,
                     "display": pv_data.display.__dict__ if pv_data.display else None,
                     "control": pv_data.control.__dict__ if pv_data.control else None,
-                    "valueAlarm": pv_data.valueAlarm.__dict__ if pv_data.valueAlarm else None,
+                    "valueAlarm": pv_data.valueAlarm.__dict__
+                    if pv_data.valueAlarm
+                    else None,
                 }
             )
             sent_metadata[key] = True
@@ -91,10 +93,14 @@ async def message_handler(ws: WebSocketServerProtocol):
     loop = asyncio.get_running_loop()
 
     def ca_callback(pv_name, pv_obj):
-        asyncio.run_coroutine_threadsafe(send_update(pv_name, pv_obj, CA_PROVIDER_KEY), loop)
+        asyncio.run_coroutine_threadsafe(
+            send_update(pv_name, pv_obj, CA_PROVIDER_KEY), loop
+        )
 
     def pva_callback(pv_name, pv_obj):
-        asyncio.run_coroutine_threadsafe(send_update(pv_name, pv_obj, PVA_PROVIDER_KEY), loop)
+        asyncio.run_coroutine_threadsafe(
+            send_update(pv_name, pv_obj, PVA_PROVIDER_KEY), loop
+        )
 
     def get_client(protocol: str):
         if protocol == PVA_PROVIDER_KEY:
@@ -147,7 +153,9 @@ async def message_handler(ws: WebSocketServerProtocol):
                     client.write_to_pv(pv_name, value)
 
             else:
-                await ws.send(json.dumps({"type": "error", "message": "Unknown message type"}))
+                await ws.send(
+                    json.dumps({"type": "error", "message": "Unknown message type"})
+                )
 
     except Exception as e:
         print(f"[epicsWS]: Error handling message from {client_id}: {e}")
