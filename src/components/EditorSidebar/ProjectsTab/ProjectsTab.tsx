@@ -23,7 +23,6 @@ export default function ProjectsTab() {
     isDeveloper,
     reposTreeInfo,
     setReposTreeInfo,
-    updateReposTreeInfo,
     isReposLoading,
     inEditMode,
     setSelectedFile,
@@ -32,10 +31,6 @@ export default function ProjectsTab() {
   const restoredRef = useRef(false);
   const [initialSelection, setInitialSelection] = useState<SelectedPathInfo | null>(null);
   const [GitImportOpen, setGitImportOpen] = useState(false);
-
-  useEffect(() => {
-    void updateReposTreeInfo();
-  }, [updateReposTreeInfo]);
 
   const refreshRepoTree = (updt: StagingTreeInfo | DeploymentTreeInfo) => {
     setReposTreeInfo((prev) => (prev ? prev.map((r) => (updt.id === r.id ? updt : r)) : prev));

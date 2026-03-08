@@ -76,6 +76,10 @@ export default function useUIManager(
   }, [isDeveloper]);
 
   useEffect(() => {
+    void updateReposTreeInfo();
+  }, [updateReposTreeInfo]);
+
+  useEffect(() => {
     if (authChecked) return;
     void authService.restoreSession().finally(() => setAuthChecked(true));
   }, [authChecked]);
