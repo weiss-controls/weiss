@@ -16,6 +16,8 @@ services:
       ENABLE_HTTPS: ${ENABLE_HTTPS:-false}
       SSL_CERT_FILE: ${SSL_CERT_FILE:-./nginx/certs/example-fullchain.pem}
       SSL_KEY_FILE: ${SSL_KEY_FILE:-./nginx/certs/example-privkey.pem}
+      APP_HOSTNAME: ${APP_HOSTNAME}
+      DOCS_HOSTNAME: ${DOCS_HOSTNAME:-}
     volumes:
       - ${SSL_CERT_FILE}:/etc/nginx/certs/fullchain.pem:ro
       - ${SSL_KEY_FILE}:/etc/nginx/certs/privkey.pem:ro
@@ -49,7 +51,7 @@ services:
       MS_AUTH_CLIENT_ID: ${MS_AUTH_CLIENT_ID}
       MS_AUTH_TENANT_ID: ${MS_AUTH_TENANT_ID}
       MS_AUTH_CLIENT_SECRET: ${MS_AUTH_CLIENT_SECRET}
-      FRONTEND_URL: ${FRONTEND_URL}
+      APP_HOSTNAME: ${APP_HOSTNAME}
       ENABLE_HTTPS: ${ENABLE_HTTPS:-false}
       TECHNICAL_ACCOUNT_TOKEN: ${TECHNICAL_ACCOUNT_TOKEN}
       TECHNICAL_ACCOUNT_USERNAME: ${TECHNICAL_ACCOUNT_USERNAME}

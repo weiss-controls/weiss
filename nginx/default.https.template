@@ -6,6 +6,7 @@ server {
 
 server {
     listen 443 ssl default_server;
+    server_name ${APP_HOSTNAME};
 
     ssl_certificate ${SSL_FULLCHAIN};
     ssl_certificate_key ${SSL_PRIVKEY};

@@ -1,0 +1,9 @@
+services:
+  weiss-docs:
+    build:
+      context: .
+    image: weiss-docs:latest
+    container_name: weiss-docs
+    ports:
+      - "127.0.0.1:8001:80"
+    restart: always
