@@ -63,6 +63,7 @@ export default function useUIManager(
   const isDeveloper = user?.role === Roles.DEVELOPER;
 
   const updateReposTreeInfo = useCallback(async () => {
+    if (!isAuthenticated) return;
     setIsReposLoading(true);
     try {
       const response = isDeveloper ? await getAllReposTree() : await getAllDeployedReposTree();
@@ -73,7 +74,7 @@ export default function useUIManager(
     } finally {
       setIsReposLoading(false);
     }
-  }, [isDeveloper]);
+  }, [isDeveloper, isAuthenticated]);
 
   useEffect(() => {
     void updateReposTreeInfo();
@@ -119,7 +120,9 @@ export default function useUIManager(
         }
       },
       onLogout() {
-        // Additional logout handling if needed
+        setReposTreeInfo(null);
+        setSelectedFile(null);
+        setIsReposLoading(false);
       },
     };
 
