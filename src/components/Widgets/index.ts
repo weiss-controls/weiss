@@ -13,3 +13,4 @@ export { TextLabel } from "./TextLabel";
 export { GraphY } from "./GraphY";
 export { SelectionBox } from "./SelectionBox";
 export { Slider } from "./Slider";
+export { Image } from "./Image";

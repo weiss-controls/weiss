@@ -27,6 +27,7 @@ export type PropertySelectorType =
   | "select"
   | "strList"
   | "strRecord"
+  | "repoFile"
   | "none";
 
 /** Allowed values for a widget property */

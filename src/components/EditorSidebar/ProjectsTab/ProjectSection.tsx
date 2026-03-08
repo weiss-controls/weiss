@@ -18,6 +18,7 @@ import {
 import { RichTreeView, type TreeViewBaseItem, TreeItemLabel, TreeItemIcon } from "@mui/x-tree-view";
 import FolderIcon from "@mui/icons-material/Folder";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
+import ImageIcon from "@mui/icons-material/Image";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import RemoveCircleIcon from "@mui/icons-material/RemoveCircle";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -66,6 +67,12 @@ export interface ProjectSectionProps {
   defaultSelectedPath?: string;
 }
 
+const IMAGE_EXTENSIONS = new Set([".svg", ".png", ".jpg", ".jpeg"]);
+const isImageFile = (name: string) => {
+  const dot = name.lastIndexOf(".");
+  return dot !== -1 && IMAGE_EXTENSIONS.has(name.slice(dot).toLowerCase());
+};
+
 const getGitStatusHighlight = (status?: GitFileStatus["status"]) => {
   switch (status) {
     case "modified":
@@ -103,7 +110,12 @@ const CustomTreeItem = forwardRef<HTMLLIElement, UseTreeItemParameters>(
       fontWeight: item.gitStatus ? 600 : 200,
     };
 
-    const NodeIcon = item.type === "directory" ? FolderIcon : InsertDriveFileIcon;
+    const NodeIcon =
+      item.type === "directory"
+        ? FolderIcon
+        : isImageFile(item.label)
+          ? ImageIcon
+          : InsertDriveFileIcon;
     const NodeIconSx = { color: COLORS.midGray };
     const dirtyDir = item.type === "directory" && item.gitStatus != null;
 

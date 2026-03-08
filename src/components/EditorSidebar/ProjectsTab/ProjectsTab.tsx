@@ -9,13 +9,34 @@ import {
   type StagingTreeInfo,
 } from "@src/services/APIClient";
 import ProjectSection from "./ProjectSection";
-import { Box, Button, Skeleton } from "@mui/material";
+import { Box, Button, Paper, Skeleton, Typography } from "@mui/material";
 import type { SelectedPathInfo } from "@src/context/useUIManager";
 import GitImportDialog from "@src/components/GitImportDialog/GitImportDialog";
 import CustomGitIcon from "@src/components/CustomIcons/GitIcon";
 import { COLORS } from "@src/constants/constants";
 import { useUIContext } from "@src/context/useUIContext";
 import { useWidgetContext } from "@src/context/useWidgetContext";
+
+const IMAGE_EXTENSIONS = new Set([".svg", ".png", ".jpg", ".jpeg"]);
+const isImageFile = (path: string) => {
+  const dot = path.lastIndexOf(".");
+  return dot !== -1 && IMAGE_EXTENSIONS.has(path.slice(dot).toLowerCase());
+};
+
+const MIME_MAP: Record<string, string> = {
+  ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+};
+
+function buildDataUrl(path: string, content: string, encoding: string): string {
+  const dot = path.lastIndexOf(".");
+  const ext = dot !== -1 ? path.slice(dot).toLowerCase() : "";
+  const mime = MIME_MAP[ext] ?? "application/octet-stream";
+  if (encoding === "base64") return `data:${mime};base64,${content}`;
+  return `data:${mime};charset=utf-8,${encodeURIComponent(content)}`;
+}
 
 export default function ProjectsTab() {
   const { loadWidgets } = useWidgetContext();
@@ -31,6 +52,8 @@ export default function ProjectsTab() {
   const restoredRef = useRef(false);
   const [initialSelection, setInitialSelection] = useState<SelectedPathInfo | null>(null);
   const [GitImportOpen, setGitImportOpen] = useState(false);
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [imageName, setImageName] = useState<string | null>(null);
 
   const refreshRepoTree = (updt: StagingTreeInfo | DeploymentTreeInfo) => {
     setReposTreeInfo((prev) => (prev ? prev.map((r) => (updt.id === r.id ? updt : r)) : prev));
@@ -50,6 +73,21 @@ export default function ProjectsTab() {
         ? await getStagingRepoFile({ path: { repo_id }, query: { path } })
         : await getDeployedRepoFile({ path: { repo_id }, query: { path } });
 
+      if (isImageFile(path)) {
+        const { content, encoding } = res.data;
+        setImageSrc(buildDataUrl(path, content, encoding ?? "utf-8"));
+        setImageName(path.slice(path.lastIndexOf("/") + 1));
+        // update context so other widgets in the same repo know which repo is active,
+        // but don't populate the canvas with image content
+        setSelectedFile({ repo_id, path });
+        if (opts.persist) {
+          localStorage.setItem("lastLoadedFile", JSON.stringify({ repo_id, path }));
+        }
+        return;
+      }
+
+      setImageSrc(null);
+      setImageName(null);
       loadWidgets(res.data.content);
       setSelectedFile({ repo_id, path });
 
@@ -103,18 +141,38 @@ export default function ProjectsTab() {
           </Box>
         ))
       ) : reposTreeInfo?.length ? (
-        reposTreeInfo.map((repo) => (
-          <ProjectSection
-            key={repo.id}
-            repo={repo}
-            onFileSelect={loadRepoFile}
-            onRepoUpdate={refreshRepoTree}
-            onTreeUpdate={refreshAllReposTree}
-            defaultSelectedPath={
-              initialSelection?.repo_id === repo.id ? initialSelection.path : undefined
-            }
-          />
-        ))
+        <>
+          {imageSrc && (
+            <Paper variant="outlined" sx={{ width: "100%", mb: 2, p: 1, boxSizing: "border-box" }}>
+              <Typography
+                variant="caption"
+                noWrap
+                display="block"
+                sx={{ mb: 0.5, color: "text.secondary" }}
+              >
+                {imageName}
+              </Typography>
+              <Box
+                component="img"
+                src={imageSrc}
+                alt={imageName ?? ""}
+                sx={{ width: "100%", maxHeight: 200, objectFit: "contain", display: "block" }}
+              />
+            </Paper>
+          )}
+          {reposTreeInfo.map((repo) => (
+            <ProjectSection
+              key={repo.id}
+              repo={repo}
+              onFileSelect={loadRepoFile}
+              onRepoUpdate={refreshRepoTree}
+              onTreeUpdate={refreshAllReposTree}
+              defaultSelectedPath={
+                initialSelection?.repo_id === repo.id ? initialSelection.path : undefined
+              }
+            />
+          ))}
+        </>
       ) : (
         <Box sx={{ p: 2 }}>{`No repositories ${isDeveloper ? "available" : "deployed"}`}</Box>
       )}

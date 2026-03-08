@@ -29,6 +29,7 @@ export {
   undeployRepo,
   unregisterRepo,
   updateStagingRepoFile,
+  uploadStagingRepoFile,
 } from "./sdk.gen";
 export type {
   AuthCallbackData,
@@ -48,6 +49,7 @@ export type {
   AuthMeResponses,
   AuthProvider,
   AuthUrl,
+  BodyUploadStagingRepoFile,
   CheckoutRepoRefData,
   CheckoutRepoRefError,
   CheckoutRepoRefErrors,
@@ -168,6 +170,11 @@ export type {
   UpdateStagingRepoFileErrors,
   UpdateStagingRepoFileResponse,
   UpdateStagingRepoFileResponses,
+  UploadStagingRepoFileData,
+  UploadStagingRepoFileError,
+  UploadStagingRepoFileErrors,
+  UploadStagingRepoFileResponse,
+  UploadStagingRepoFileResponses,
   User,
   UserRole,
   ValidationError,

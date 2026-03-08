@@ -106,7 +106,11 @@ def build_path_tree(root_path: str, rel_path: str = "") -> List[TreeNode]:
             if entry.name in [
                 REPO_META,
                 DEPLOYMENT_META,
-            ] or not entry.name.lower().endswith(".json"):
+            ]:
+                continue
+
+            ext = entry.name.lower().rsplit(".", 1)[-1] if "." in entry.name else ""
+            if ext not in {"json", "svg", "png", "jpg", "jpeg"}:
                 continue
 
             nodes.append(

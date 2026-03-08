@@ -92,6 +92,9 @@ export const PROPERTY_SCHEMAS = {
   valuePlcmnt:     defineProp({ selType: "select", label: "Value placement", value: "top" as string, options: ["top", "bottom", "end", "start", "middle"], category: "Layout" }),
   labelPlcmnt:     defineProp({ selType: "select", label: "Label placement", value: "end" as string, options: ["top", "bottom", "end", "start", "middle"], category: "Layout" }),
   limitsFromPV:    defineProp({ selType: "boolean", label: "Limits From PV", value: true as boolean, category: "EPICS" }),
+  // Image
+  imagePath:       defineProp({ selType: "repoFile", label: "Image path", value: "" as string, category: "General", options: [".svg", ".png", ".jpg", ".jpeg"] }),
+  keepAspectRatio: defineProp({ selType: "boolean", label: "Keep aspect ratio", value: true as boolean, category: "Style" }),
 
 };
 

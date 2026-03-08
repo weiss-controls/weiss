@@ -15,6 +15,7 @@ import SelectProperty from "./Properties/SelectProperty";
 import StrListProperty from "./Properties/StrListProperty";
 import StrRecordProperty from "./Properties/StrRecordProperty";
 import ColorListProperty from "./Properties/ColorListProperty";
+import RepoFileProperty from "./Properties/RepoFileProperty";
 import { FRONT_UI_ZIDX } from "@src/constants/constants";
 import { Box } from "@mui/material";
 
@@ -109,6 +110,9 @@ const PropertyGroups: React.FC<PropertyGroupsProps> = ({
                       return (
                         <SelectProperty key={propName} {...commonProps} options={options ?? []} />
                       );
+
+                    case "repoFile":
+                      return <RepoFileProperty key={propName} {...commonProps} accept={options} />;
 
                     default:
                       return null;
