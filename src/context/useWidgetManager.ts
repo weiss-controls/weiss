@@ -703,7 +703,7 @@ export function useWidgetManager() {
           .map((raw, idx) => restoreWidget(raw, idx))
           .filter((w): w is Widget => w !== null);
 
-        updateEditorWidgetList(imported);
+        updateEditorWidgetList(imported, false);
         setSelectedWidgetIDs([]);
         setFileLoadedTrig((t) => t + 1);
         setUndoStack([]);
