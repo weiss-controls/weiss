@@ -242,6 +242,7 @@ export default function useUIManager(
     setReposTreeInfo,
     updateReposTreeInfo,
     isReposLoading,
+    setIsReposLoading,
     selectedFile,
     setSelectedFile,
   };
