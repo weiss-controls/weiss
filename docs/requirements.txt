@@ -1,0 +1,5 @@
+make
+sphinx
+myst_parser
+furo
+sphinx_copybutton

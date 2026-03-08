@@ -202,7 +202,9 @@ class PVParser:
 
         value = normalize_value(pv_obj.get("value"))
 
-        b64arr, b64dtype = encode_array(value) if isinstance(value, list) else (None, None)
+        b64arr, b64dtype = (
+            encode_array(value) if isinstance(value, list) else (None, None)
+        )
 
         enumChoices = pv_obj.get("enum_strs")
 
@@ -232,8 +234,12 @@ class PVParser:
         value_alarm = ValueAlarm(
             lowAlarmLimit=normalize_value(safe_get_nan(pv_obj, "lower_alarm_limit")),
             highAlarmLimit=normalize_value(safe_get_nan(pv_obj, "upper_alarm_limit")),
-            lowWarningLimit=normalize_value(safe_get_nan(pv_obj, "lower_warning_limit")),
-            highWarningLimit=normalize_value(safe_get_nan(pv_obj, "upper_warning_limit")),
+            lowWarningLimit=normalize_value(
+                safe_get_nan(pv_obj, "lower_warning_limit")
+            ),
+            highWarningLimit=normalize_value(
+                safe_get_nan(pv_obj, "upper_warning_limit")
+            ),
             hysteresis=normalize_value(safe_get_nan(pv_obj, "hyst")),
         )
 

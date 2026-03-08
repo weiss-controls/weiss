@@ -71,7 +71,9 @@ class CAClient:
                     try:
                         pv.clear_callbacks()
                     except Exception as e:
-                        print(f"[CAClient]: Failed to clear callbacks for {pv_name}: {e}")
+                        print(
+                            f"[CAClient]: Failed to clear callbacks for {pv_name}: {e}"
+                        )
 
     def unsubscribe_all(self, client_id: str):
         """Remove a client from all subscriptions."""
@@ -90,7 +92,9 @@ class CAClient:
                     try:
                         pv.clear_callbacks()
                     except Exception as e:
-                        print(f"[CAClient]: Failed to clear callbacks for {pv_name}: {e}")
+                        print(
+                            f"[CAClient]: Failed to clear callbacks for {pv_name}: {e}"
+                        )
 
     def write_to_pv(self, pv_name: str, value: Any):
         """Write synchronously to a PV."""

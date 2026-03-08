@@ -178,7 +178,9 @@ async def handle_microsoft_callback(code: str, redirect_uri: str) -> User:
     return users_db[user_id]
 
 
-async def handle_demo_login(role: UserRole, request: Request, response: Response) -> User:
+async def handle_demo_login(
+    role: UserRole, request: Request, response: Response
+) -> User:
     """
     Demo sessions are differentiated by the session cookie. This allows different demo sessions to
     behave like different users, and avoid staging changes from one session to impact the other.
@@ -215,7 +217,9 @@ async def handle_demo_login(role: UserRole, request: Request, response: Response
 ################
 # Routes
 ################
-@router.get("/{provider}/authorize", operation_id="authGetAuthURL", response_model=AuthURL)
+@router.get(
+    "/{provider}/authorize", operation_id="authGetAuthURL", response_model=AuthURL
+)
 async def authorize(provider: AuthProvider, demo_profile: UserRole | None = None):
     if provider == AuthProvider.MICROSOFT:
         ensure_microsoft_configured()
@@ -231,7 +235,9 @@ async def authorize(provider: AuthProvider, demo_profile: UserRole | None = None
 
     if provider == AuthProvider.DEMO:
         if demo_profile not in [role.value for role in UserRole]:
-            raise HTTPException(status_code=400, detail="Invalid or missing demo profile")
+            raise HTTPException(
+                status_code=400, detail="Invalid or missing demo profile"
+            )
 
         dummy_code = f"demo_code_{demo_profile.value}"
         redirect_url = f"{FRONTEND_URL}/auth/callback?code={dummy_code}&state=demo"

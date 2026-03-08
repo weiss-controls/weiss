@@ -30,6 +30,7 @@ dist-ssr
 
 # python
 __pycache__
+.ruff_cache
 
 # certificates
 /nginx/certs/*.pem

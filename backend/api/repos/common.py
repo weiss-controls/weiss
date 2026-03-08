@@ -6,7 +6,9 @@ import json
 from pydantic import BaseModel
 from typing import List, Optional, Literal, Tuple
 
-REPOS_BASE_PATH = "/app/storage/repos"  # Abs path inside container - adjust if running locally
+REPOS_BASE_PATH = (
+    "/app/storage/repos"  # Abs path inside container - adjust if running locally
+)
 WORKTREES_REL_FOLDER = "worktrees"
 BARE_CLONE_NAME = "bare"
 DEPLOYMENTS_REL_FOLDER = "deployments"
@@ -101,9 +103,10 @@ def build_path_tree(root_path: str, rel_path: str = "") -> List[TreeNode]:
                 )
             )
         else:
-            if entry.name in [REPO_META, DEPLOYMENT_META] or not entry.name.lower().endswith(
-                ".json"
-            ):
+            if entry.name in [
+                REPO_META,
+                DEPLOYMENT_META,
+            ] or not entry.name.lower().endswith(".json"):
                 continue
 
             nodes.append(
