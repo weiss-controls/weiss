@@ -55,6 +55,7 @@ export default function useUIManager(
   const [reposTreeInfo, setReposTreeInfo] = useState<
     (StagingTreeInfo | DeploymentTreeInfo)[] | null
   >(null);
+  const [isReposLoading, setIsReposLoading] = useState(true);
   const [selectedFile, setSelectedFile] = useState<SelectedPathInfo | null>(null);
   const inEditMode = mode === EDIT_MODE;
   const RECONNECT_TIMEOUT = 3000;
@@ -62,12 +63,15 @@ export default function useUIManager(
   const isDeveloper = user?.role === Roles.DEVELOPER;
 
   const updateReposTreeInfo = useCallback(async () => {
+    setIsReposLoading(true);
     try {
       const response = isDeveloper ? await getAllReposTree() : await getAllDeployedReposTree();
       const data = response.data;
       setReposTreeInfo(data.length > 0 ? data : null);
     } catch (error) {
       notifyUser(`Failed to fetch repositories: ${String(error)}`, "error");
+    } finally {
+      setIsReposLoading(false);
     }
   }, [isDeveloper]);
 
@@ -233,6 +237,7 @@ export default function useUIManager(
     reposTreeInfo,
     setReposTreeInfo,
     updateReposTreeInfo,
+    isReposLoading,
     selectedFile,
     setSelectedFile,
   };
