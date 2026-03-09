@@ -25,6 +25,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import type { PropertyKey, PropertyValue } from "@src/types/widgets";
 import type { TreeNode } from "@src/services/APIClient";
 import { useUIContext } from "@src/context/useUIContext";
+import { toRelativeRepoPath } from "@src/utils/repoPath";
 
 const IMAGE_EXTENSIONS = new Set([".svg", ".png", ".jpg", ".jpeg"]);
 
@@ -93,7 +94,9 @@ const RepoFileProperty: React.FC<RepoFilePropertyProps> = ({
   }, [accept]);
 
   const handlePick = (repoAbsPath: string) => {
-    onChange(propName, repoAbsPath);
+    const opiPath = selectedFile?.path ?? "";
+    const relative = opiPath ? toRelativeRepoPath(repoAbsPath, opiPath) : repoAbsPath;
+    onChange(propName, relative);
     setOpen(false);
   };
 

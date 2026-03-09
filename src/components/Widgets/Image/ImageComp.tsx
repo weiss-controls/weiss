@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 André Favotto
+// Copyright (C) 2026 André Favoto
 
 import React, { useEffect, useState } from "react";
 import type { WidgetUpdate } from "@src/types/widgets";
 import { useUIContext } from "@src/context/useUIContext";
 import { getDeployedRepoFile, getStagingRepoFile } from "@src/services/APIClient";
+import { resolveRepoPath } from "@src/utils/repoPath";
 
 const MIME_MAP: Record<string, string> = {
   ".svg": "image/svg+xml",
@@ -60,14 +61,16 @@ const ImageComp: React.FC<WidgetUpdate> = ({ data }) => {
   const p = data.editableProperties;
 
   const repoId = selectedFile?.repo_id ?? "";
+  const opiPath = selectedFile?.path ?? "";
   const imagePath = p.imagePath?.value;
+  const resolvedImagePath = imagePath ? resolveRepoPath(imagePath, opiPath) : undefined;
   const objectFit = p.keepAspectRatio?.value ? "contain" : "fill";
 
   const [src, setSrc] = useState<string | null>(null);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    if (!repoId || !imagePath) {
+    if (!repoId || !resolvedImagePath) {
       setSrc(null);
       setError(false);
       return;
@@ -79,13 +82,19 @@ const ImageComp: React.FC<WidgetUpdate> = ({ data }) => {
     const fetchImage = async () => {
       try {
         const response = isDeveloper
-          ? await getStagingRepoFile({ path: { repo_id: repoId }, query: { path: imagePath } })
-          : await getDeployedRepoFile({ path: { repo_id: repoId }, query: { path: imagePath } });
+          ? await getStagingRepoFile({
+              path: { repo_id: repoId },
+              query: { path: resolvedImagePath },
+            })
+          : await getDeployedRepoFile({
+              path: { repo_id: repoId },
+              query: { path: resolvedImagePath },
+            });
 
         if (cancelled) return;
 
         const { content, encoding } = response.data;
-        setSrc(buildDataUrl(imagePath, content, encoding ?? "utf-8"));
+        setSrc(buildDataUrl(resolvedImagePath, content, encoding ?? "utf-8"));
       } catch {
         if (!cancelled) setError(true);
       }
@@ -95,7 +104,7 @@ const ImageComp: React.FC<WidgetUpdate> = ({ data }) => {
     return () => {
       cancelled = true;
     };
-  }, [repoId, imagePath, isDeveloper]);
+  }, [repoId, resolvedImagePath, isDeveloper]);
 
   if (!p.visible?.value) return null;
 
