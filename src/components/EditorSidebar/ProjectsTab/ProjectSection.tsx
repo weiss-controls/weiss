@@ -61,7 +61,7 @@ type RichTreeItem = TreeViewBaseItem & {
 
 export interface ProjectSectionProps {
   repo: StagingTreeInfo | DeploymentTreeInfo;
-  onFileSelect: (repo_id: string, path: string) => Promise<void>;
+  onFileSelect: (repo_id: string, path: string) => void;
   onRepoUpdate: (update: StagingTreeInfo | DeploymentTreeInfo) => void;
   onTreeUpdate: (update: StagingTreeInfo[] | DeploymentTreeInfo[]) => void;
   defaultSelectedPath?: string;
@@ -179,15 +179,16 @@ export default function ProjectSection({
   const selectedRef = isStagingTree(repo) ? repo.checked_out_ref : repo.deployed_ref;
   const shortRef = (ref: string) => ref.substring(0, REF_MAX_DISPLAY_SIZE);
 
-  // highlight selected file on mount
   useEffect(() => {
-    if (defaultSelectedPath) {
-      setSelectedItem(defaultSelectedPath);
-      const parts = defaultSelectedPath.split("/");
-      const parents = parts.slice(0, -1).map((_, i) => parts.slice(0, i + 1).join("/"));
-      setExpandedItems(parents);
-    }
-  }, [setSelectedItem, defaultSelectedPath]);
+    if (!defaultSelectedPath) return;
+    setSelectedItem(defaultSelectedPath);
+    const parts = defaultSelectedPath.split("/");
+    const parents = parts.slice(0, -1).map((_, i) => parts.slice(0, i + 1).join("/"));
+    setExpandedItems((prev) => {
+      const missing = parents.filter((p) => !prev.includes(p));
+      return missing.length > 0 ? [...prev, ...missing] : prev;
+    });
+  }, [defaultSelectedPath]);
 
   const expandAll = (repo: StagingTreeInfo | DeploymentTreeInfo) => {
     const allDirs: string[] = [];

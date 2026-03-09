@@ -20,7 +20,7 @@ function defineProp<T extends PropertyValue>(prop: WidgetProperty<T>): WidgetPro
  */
 /* prettier-ignore */
 export const PROPERTY_SCHEMAS = {
-  disabled:        defineProp({ selType: "boolean", label: "Disabled", value: false as boolean, category: "EPICS" }),
+  disabled:        defineProp({ selType: "boolean", label: "Disabled", value: false as boolean, category: "General" }),
   macros:          defineProp({ selType: "strRecord", label: "Macro", value: {} as Record<string, string>, category: "EPICS" }),
   // Layout
   x:               defineProp({ selType: "number", label: "X", value: 100 as number, category: "Layout" }),
@@ -95,7 +95,7 @@ export const PROPERTY_SCHEMAS = {
   // Image
   imagePath:       defineProp({ selType: "repoFile", label: "Image path", value: "" as string, category: "General", options: [".svg", ".png", ".jpg", ".jpeg"] }),
   keepAspectRatio: defineProp({ selType: "boolean", label: "Keep aspect ratio", value: true as boolean, category: "Style" }),
-  // EmbeddedDisplay
+  // EmbeddedDisplay and NavigationButton
   displayPath:      defineProp({ selType: "repoFile", label: "Display path", value: "" as string, category: "General", options: [".json"] }),
 };
 

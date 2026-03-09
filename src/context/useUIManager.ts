@@ -17,11 +17,32 @@ import { notifyUser } from "@src/services/Notifications/Notification";
 import {
   getAllDeployedReposTree,
   getAllReposTree,
+  getDeployedRepoFile,
+  getStagingRepoFile,
   updateStagingRepoFile,
   type DeploymentTreeInfo,
   type StagingTreeInfo,
   type User,
 } from "@src/services/APIClient";
+
+const IMAGE_EXTENSIONS = new Set([".svg", ".png", ".jpg", ".jpeg"]);
+const MIME_MAP: Record<string, string> = {
+  ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+};
+function buildDataUrl(path: string, content: string, encoding: string): string {
+  const dot = path.lastIndexOf(".");
+  const ext = dot !== -1 ? path.slice(dot).toLowerCase() : "";
+  const mime = MIME_MAP[ext] ?? "application/octet-stream";
+  if (encoding === "base64") return `data:${mime};base64,${content}`;
+  return `data:${mime};charset=utf-8,${encodeURIComponent(content)}`;
+}
+function isImageFile(path: string): boolean {
+  const dot = path.lastIndexOf(".");
+  return dot !== -1 && IMAGE_EXTENSIONS.has(path.slice(dot).toLowerCase());
+}
 
 export interface SelectedPathInfo {
   repo_id: string;
@@ -38,10 +59,11 @@ export default function useUIManager(
   formatWdgToExport: ReturnType<typeof useWidgetManager>["formatWdgToExport"],
   fileLoadedTrig: ReturnType<typeof useWidgetManager>["fileLoadedTrig"],
   clearAllWidgets: ReturnType<typeof useWidgetManager>["clearAllWidgets"],
+  loadWidgets: ReturnType<typeof useWidgetManager>["loadWidgets"],
 ) {
   const lastFileLoadedTrig = useRef(0);
   const hasFileChanged = useRef(true);
-  const hasClearedForNoFileRef = useRef(false);
+  const restoredRef = useRef(false);
   const lastSavedRef = useRef<ExportedWidget[] | null>(null);
   const saveTimeoutRef = useRef<number | null>(null);
   const [releaseShortcuts, setReleaseShortcuts] = useState(false);
@@ -57,6 +79,8 @@ export default function useUIManager(
   >(null);
   const [isReposLoading, setIsReposLoading] = useState(true);
   const [selectedFile, setSelectedFile] = useState<SelectedPathInfo | null>(null);
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [imageName, setImageName] = useState<string | null>(null);
   const inEditMode = mode === EDIT_MODE;
   const RECONNECT_TIMEOUT = 3000;
   const isDemo = import.meta.env.VITE_DEMO_MODE === "true";
@@ -167,15 +191,63 @@ export default function useUIManager(
     };
   }, [inEditMode, ws]);
 
+  // Fetch and load file whenever selectedFile changes.
   useEffect(() => {
     if (!selectedFile) {
-      if (hasClearedForNoFileRef.current) return;
       clearAllWidgets();
-      hasClearedForNoFileRef.current = true;
+      setImageSrc(null);
+      setImageName(null);
       return;
     }
-    hasClearedForNoFileRef.current = false;
-  }, [clearAllWidgets, selectedFile]);
+    let cancelled = false;
+    const fetchFile = async () => {
+      try {
+        const res = isDeveloper
+          ? await getStagingRepoFile({
+              path: { repo_id: selectedFile.repo_id },
+              query: { path: selectedFile.path },
+            })
+          : await getDeployedRepoFile({
+              path: { repo_id: selectedFile.repo_id },
+              query: { path: selectedFile.path },
+            });
+        if (cancelled) return;
+        if (isImageFile(selectedFile.path)) {
+          const { content, encoding } = res.data;
+          setImageSrc(buildDataUrl(selectedFile.path, content, encoding ?? "utf-8"));
+          setImageName(selectedFile.path.slice(selectedFile.path.lastIndexOf("/") + 1));
+        } else {
+          setImageSrc(null);
+          setImageName(null);
+          loadWidgets(res.data.content);
+          localStorage.setItem("lastLoadedFile", JSON.stringify(selectedFile));
+        }
+      } catch (err) {
+        if (!cancelled) notifyUser(`Failed to load file: ${String(err)}`, "error");
+      }
+    };
+    void fetchFile();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedFile, isDeveloper, clearAllWidgets, loadWidgets]);
+
+  // Restore the last opened file on first load once repos are available.
+  useEffect(() => {
+    if (restoredRef.current || !reposTreeInfo?.length) return;
+    restoredRef.current = true;
+    const raw = localStorage.getItem("lastLoadedFile");
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as SelectedPathInfo;
+    if (!reposTreeInfo.find((r) => r.id === parsed.repo_id)) return;
+    setSelectedFile(parsed);
+  }, [reposTreeInfo]);
+
+  // Force re-fetch of the current file (e.g. after a git sync).
+  const reloadSelectedFile = useCallback(() => {
+    setSelectedFile((prev) => (prev ? { ...prev } : null));
+  }, []);
+
   // throttle file update to backend
   useEffect(() => {
     if (!isDeveloper || !inEditMode) return;
@@ -249,5 +321,8 @@ export default function useUIManager(
     setIsReposLoading,
     selectedFile,
     setSelectedFile,
+    reloadSelectedFile,
+    imageSrc,
+    imageName,
   };
 }
