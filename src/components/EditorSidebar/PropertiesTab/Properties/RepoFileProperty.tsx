@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import {
   Box,
   Dialog,
@@ -9,23 +9,22 @@ import {
   DialogTitle,
   IconButton,
   InputAdornment,
-  List,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
   ListItem,
   TextField,
   Tooltip,
   Typography,
 } from "@mui/material";
+import { SimpleTreeView } from "@mui/x-tree-view/SimpleTreeView";
+import { TreeItem } from "@mui/x-tree-view/TreeItem";
 import FolderOpenIcon from "@mui/icons-material/FolderOpen";
+import FolderIcon from "@mui/icons-material/Folder";
 import ImageIcon from "@mui/icons-material/Image";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import CloseIcon from "@mui/icons-material/Close";
 import type { PropertyKey, PropertyValue } from "@src/types/widgets";
 import type { TreeNode } from "@src/services/APIClient";
 import { useUIContext } from "@src/context/useUIContext";
-import { toRelativeRepoPath } from "@src/utils/repoPath";
+import { toRelativeRepoPath, resolveRepoPath } from "@src/utils/repoPath";
 
 const IMAGE_EXTENSIONS = new Set([".svg", ".png", ".jpg", ".jpeg"]);
 
@@ -39,26 +38,31 @@ interface RepoFilePropertyProps {
   onChange: (propName: PropertyKey, newValue: PropertyValue) => void;
 }
 
-function collectPaths(nodes: TreeNode[], accept: Set<string>, acc: string[] = []): string[] {
-  for (const node of nodes) {
-    if (node.type === "file") {
-      const dot = node.path.lastIndexOf(".");
-      const ext = dot !== -1 ? node.path.slice(dot).toLowerCase() : "";
-      if (accept.size === 0 || accept.has(ext)) acc.push(node.path);
-    } else if (node.children) {
-      collectPaths(node.children, accept, acc);
-    }
+/** True if the subtree rooted at `node` contains at least one accepted file. */
+function hasAcceptedFile(node: TreeNode, accept: Set<string>): boolean {
+  if (node.type === "file") {
+    if (accept.size === 0) return true;
+    const dot = node.path.lastIndexOf(".");
+    const ext = dot !== -1 ? node.path.slice(dot).toLowerCase() : "";
+    return accept.has(ext);
   }
-  return acc;
+  return !!node.children?.some((c) => hasAcceptedFile(c, accept));
+}
+
+/** Collect all parent directory paths for a given repo-absolute file path. */
+function parentPaths(absPath: string): string[] {
+  const parts = absPath.split("/");
+  if (parts.length <= 1) return [];
+  return parts.slice(0, -1).map((_, i) => parts.slice(0, i + 1).join("/"));
 }
 
 function fileIcon(path: string): React.ReactElement {
   const dot = path.lastIndexOf(".");
   const ext = dot !== -1 ? path.slice(dot).toLowerCase() : "";
   return IMAGE_EXTENSIONS.has(ext) ? (
-    <ImageIcon fontSize="small" />
+    <ImageIcon fontSize="small" color="action" />
   ) : (
-    <InsertDriveFileIcon fontSize="small" />
+    <InsertDriveFileIcon fontSize="small" color="action" />
   );
 }
 
@@ -71,15 +75,54 @@ const RepoFileProperty: React.FC<RepoFilePropertyProps> = ({
 }) => {
   const { reposTreeInfo, selectedFile } = useUIContext();
   const [open, setOpen] = useState(false);
+  const [expandedItems, setExpandedItems] = useState<string[]>([]);
 
+  const opiPath = selectedFile?.path ?? "";
   const acceptSet = useMemo(() => new Set(accept ?? []), [accept]);
 
-  const filePaths = useMemo(() => {
-    if (!reposTreeInfo || !selectedFile?.repo_id) return [];
-    const repo = reposTreeInfo.find((r) => r.id === selectedFile.repo_id);
-    if (!repo) return [];
-    return collectPaths(repo.tree, acceptSet);
-  }, [reposTreeInfo, selectedFile?.repo_id, acceptSet]);
+  const repoTree = useMemo(() => {
+    if (!reposTreeInfo || !selectedFile?.repo_id) return null;
+    return reposTreeInfo.find((r) => r.id === selectedFile.repo_id)?.tree ?? null;
+  }, [reposTreeInfo, selectedFile?.repo_id]);
+
+  const hasFiles = useMemo(
+    () => repoTree?.some((n) => hasAcceptedFile(n, acceptSet)) ?? false,
+    [repoTree, acceptSet],
+  );
+
+  // Collect accepted file paths as a Set for O(1) lookup in onItemClick.
+  const filePathSet = useMemo(() => {
+    const set = new Set<string>();
+    function walk(nodes: TreeNode[]) {
+      for (const node of nodes) {
+        if (node.type === "file" && hasAcceptedFile(node, acceptSet)) set.add(node.path);
+        else if (node.children) walk(node.children);
+      }
+    }
+    if (repoTree) walk(repoTree);
+    return set;
+  }, [repoTree, acceptSet]);
+
+  // Stable refs so the effect can read current values without being re-triggered.
+  const valueRef = useRef(value);
+  const opiPathRef = useRef(opiPath);
+  valueRef.current = value;
+  opiPathRef.current = opiPath;
+
+  // Pre-expand to the current value's directory (or OPI dir) when the dialog opens.
+  useEffect(() => {
+    if (!open) return;
+    const currentAbs =
+      valueRef.current && typeof valueRef.current === "string"
+        ? resolveRepoPath(valueRef.current, opiPathRef.current)
+        : opiPathRef.current;
+    setExpandedItems(parentPaths(currentAbs));
+  }, [open]);
+
+  const selectedAbsPath = useMemo(
+    () => (value && typeof value === "string" ? resolveRepoPath(value, opiPath) : undefined),
+    [value, opiPath],
+  );
 
   const dialogTitle = useMemo(() => {
     if (!accept?.length) return "Select file";
@@ -93,12 +136,50 @@ const RepoFileProperty: React.FC<RepoFilePropertyProps> = ({
     return allImages ? "Browse repo images" : "Browse repo files";
   }, [accept]);
 
-  const handlePick = (repoAbsPath: string) => {
-    const opiPath = selectedFile?.path ?? "";
-    const relative = opiPath ? toRelativeRepoPath(repoAbsPath, opiPath) : repoAbsPath;
+  const handlePick = (absPath: string) => {
+    const relative = opiPath ? toRelativeRepoPath(absPath, opiPath) : `./${absPath}`;
     onChange(propName, relative);
     setOpen(false);
   };
+
+  function renderNodes(nodes: TreeNode[]): React.ReactNode {
+    return nodes.map((node) => {
+      if (node.type === "file") {
+        if (acceptSet.size > 0) {
+          const dot = node.path.lastIndexOf(".");
+          const ext = dot !== -1 ? node.path.slice(dot).toLowerCase() : "";
+          if (!acceptSet.has(ext)) return null;
+        }
+        return (
+          <TreeItem
+            key={node.path}
+            itemId={node.path}
+            sx={{ cursor: "pointer" }}
+            label={
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, py: 0.25 }}>
+                {fileIcon(node.path)}
+                <Typography variant="body2">{node.name}</Typography>
+              </Box>
+            }
+          />
+        );
+      }
+      return (
+        <TreeItem
+          key={node.path}
+          itemId={node.path}
+          label={
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, py: 0.25 }}>
+              <FolderIcon fontSize="small" color="action" />
+              <Typography variant="body2">{node.name}</Typography>
+            </Box>
+          }
+        >
+          {node.children && renderNodes(node.children)}
+        </TreeItem>
+      );
+    });
+  }
 
   return (
     <ListItem disablePadding sx={{ px: 2, py: 1, display: "flex", flexBasis: "100%", flexGrow: 1 }}>
@@ -119,7 +200,7 @@ const RepoFileProperty: React.FC<RepoFilePropertyProps> = ({
                       edge="end"
                       size="small"
                       onClick={() => setOpen(true)}
-                      disabled={!filePaths.length}
+                      disabled={!hasFiles}
                     >
                       <FolderOpenIcon fontSize="small" />
                     </IconButton>
@@ -140,27 +221,24 @@ const RepoFileProperty: React.FC<RepoFilePropertyProps> = ({
             <CloseIcon fontSize="small" />
           </IconButton>
         </DialogTitle>
-        <DialogContent dividers sx={{ p: 0 }}>
-          {filePaths.length === 0 ? (
-            <Box sx={{ p: 2 }}>
+        <DialogContent dividers sx={{ p: 1 }}>
+          {!repoTree || !hasFiles ? (
+            <Box sx={{ p: 1 }}>
               <Typography variant="body2" color="text.secondary">
                 No matching files found in this repository.
               </Typography>
             </Box>
           ) : (
-            <List dense disablePadding>
-              {filePaths.map((p) => (
-                <ListItemButton key={p} onClick={() => handlePick(p)}>
-                  <ListItemIcon sx={{ minWidth: 32 }}>{fileIcon(p)}</ListItemIcon>
-                  <ListItemText
-                    primary={p.slice(p.lastIndexOf("/") + 1)}
-                    secondary={p.includes("/") ? p.slice(0, p.lastIndexOf("/")) : undefined}
-                    primaryTypographyProps={{ variant: "body2" }}
-                    secondaryTypographyProps={{ variant: "caption" }}
-                  />
-                </ListItemButton>
-              ))}
-            </List>
+            <SimpleTreeView
+              expandedItems={expandedItems}
+              onExpandedItemsChange={(_, items) => setExpandedItems(items)}
+              selectedItems={selectedAbsPath ?? null}
+              onItemClick={(_, itemId) => {
+                if (filePathSet.has(itemId)) handlePick(itemId);
+              }}
+            >
+              {renderNodes(repoTree)}
+            </SimpleTreeView>
           )}
         </DialogContent>
       </Dialog>
