@@ -18,11 +18,17 @@ export const createClientConfig: CreateClientConfig = (config) => ({
   baseUrl: resolveApiBaseUrl(),
 
   fetch: async (input: RequestInfo | URL, init: RequestInit = {}) => {
+    // Keep Content-Type if already set, do not override.
+    const requestContentType = input instanceof Request ? input.headers.get("Content-Type") : null;
+    const defaultHeaders: Record<string, string> = requestContentType
+      ? { "Content-Type": requestContentType }
+      : {};
+
     const res = await fetch(input, {
       ...init,
       credentials: "include",
       headers: {
-        "Content-Type": "application/json",
+        ...defaultHeaders,
         ...(init.headers ?? {}),
       },
     });

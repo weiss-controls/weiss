@@ -272,6 +272,30 @@ export const updateStagingRepoFile = <ThrowOnError extends boolean = true>(
   });
 
 /**
+ * Upload Staging Repo File
+ *
+ * Upload a file to the staging repository.
+ * Creates or overwrites the file at the given path.
+ * Intermediate directories are created as needed.
+ */
+export const uploadStagingRepoFile = <ThrowOnError extends boolean = true>(
+  options: Options<UploadStagingRepoFileData, ThrowOnError>,
+) =>
+  (options.client ?? client).post<
+    UploadStagingRepoFileResponses,
+    UploadStagingRepoFileErrors,
+    ThrowOnError
+  >({
+    ...formDataBodySerializer,
+    url: "/api/v1/repos/staging/{repo_id}/upload",
+    ...options,
+    headers: {
+      "Content-Type": null,
+      ...options.headers,
+    },
+  });
+
+/**
  * Reset Staging Repo File
  *
  * Reset changes of a single file in the staging repository.
@@ -333,30 +357,6 @@ export const createStagingRepoPath = <ThrowOnError extends boolean = true>(
     ...options,
     headers: {
       "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
-
-/**
- * Upload Staging Repo File
- *
- * Upload a file (SVG, PNG, JPG/JPEG) to the staging repository.
- * Intermediate directories will be created if necessary.
- * Fails if the file already exists.
- */
-export const uploadStagingRepoFile = <ThrowOnError extends boolean = true>(
-  options: Options<UploadStagingRepoFileData, ThrowOnError>,
-) =>
-  (options.client ?? client).post<
-    UploadStagingRepoFileResponses,
-    UploadStagingRepoFileErrors,
-    ThrowOnError
-  >({
-    ...formDataBodySerializer,
-    url: "/api/v1/repos/staging/{repo_id}/upload",
-    ...options,
-    headers: {
-      "Content-Type": null,
       ...options.headers,
     },
   });
