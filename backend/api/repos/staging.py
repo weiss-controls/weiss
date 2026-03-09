@@ -25,6 +25,7 @@ from api.repos.common import (
     REPO_META,
     REGISTERED_REPO_URLS,
     NEW_FILE_CONTENT,
+    ALLOWED_EXTENSIONS,
 )
 
 router = APIRouter(
@@ -33,7 +34,6 @@ router = APIRouter(
     dependencies=[Depends(require_developer)],
 )
 
-ALLOWED_UPLOAD_EXTENSIONS = {".svg", ".png", ".jpg", ".jpeg", ".json"}
 MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
 TECHNICAL_ACCOUNT_TOKEN = os.getenv("TECHNICAL_ACCOUNT_TOKEN")
 TECHNICAL_ACCOUNT_USERNAME = os.getenv("TECHNICAL_ACCOUNT_USERNAME", "weiss-bot")
@@ -480,10 +480,10 @@ async def upload_staging_repo_file(
         raise HTTPException(status_code=400, detail="Invalid file path")
 
     _, ext = os.path.splitext(rel_path)
-    if ext.lower() not in ALLOWED_UPLOAD_EXTENSIONS:
+    if ext.lower() not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported file type. Allowed: {', '.join(sorted(ALLOWED_UPLOAD_EXTENSIONS))}",
+            detail=f"Unsupported file type. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}",
         )
 
     contents = await file.read()
