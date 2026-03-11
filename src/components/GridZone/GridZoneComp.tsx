@@ -37,7 +37,7 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
 
   const {
     mode,
-    releaseShortcuts,
+    disableGridShortcuts,
     isPanning,
     setIsPanning,
     inEditMode,
@@ -247,7 +247,7 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
   // Shortcuts handler
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (releaseShortcuts) return;
+      if (disableGridShortcuts) return;
       // shortcuts for all modes
       if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "c") {
         e.preventDefault();

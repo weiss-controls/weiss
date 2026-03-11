@@ -64,7 +64,7 @@ const ResizeHandle = styled("div")({
 
 const EditorSidebar: React.FC = () => {
   const { selectedWidgetIDs, editingWidgets } = useWidgetContext();
-  const { inEditMode, isAuthenticated, setReleaseShortcuts } = useUIContext();
+  const { inEditMode, isAuthenticated, setDisableGridShortcuts } = useUIContext();
   const EditorTab = {
     EDIT: 0,
     NAVIGATE: 1,
@@ -178,8 +178,8 @@ const EditorSidebar: React.FC = () => {
         open={open}
         variant="permanent"
         anchor="right"
-        onFocus={() => setReleaseShortcuts(true)}
-        onBlur={() => setReleaseShortcuts(false)}
+        onFocus={() => setDisableGridShortcuts(true)}
+        onBlur={() => setDisableGridShortcuts(false)}
         sx={{ zIndex: FRONT_UI_ZIDX + 1 }}
         slotProps={{
           paper: {
