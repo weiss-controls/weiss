@@ -18,12 +18,20 @@ import { SimpleTreeView } from "@mui/x-tree-view/SimpleTreeView";
 import { TreeItem } from "@mui/x-tree-view/TreeItem";
 import FolderOpenIcon from "@mui/icons-material/FolderOpen";
 import FolderIcon from "@mui/icons-material/Folder";
+import FileUploadOutlined from "@mui/icons-material/FileUploadOutlined";
 import ImageIcon from "@mui/icons-material/Image";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import CloseIcon from "@mui/icons-material/Close";
+import UnfoldLessOutlined from "@mui/icons-material/UnfoldLessOutlined";
+import UnfoldMoreOutlined from "@mui/icons-material/UnfoldMoreOutlined";
 import type { PropertyKey, PropertyValue } from "@src/types/widgets";
-import type { TreeNode } from "@src/services/APIClient";
+import {
+  type StagingTreeInfo,
+  type TreeNode,
+  uploadStagingRepoFile,
+} from "@src/services/APIClient";
 import { useUIContext } from "@src/context/useUIContext";
+import { notifyUser } from "@src/services/Notifications/Notification";
 import { toRelativeRepoPath, resolveRepoPath } from "@src/utils/repoPath";
 
 const IMAGE_EXTENSIONS = new Set([".svg", ".png", ".jpg", ".jpeg"]);
@@ -56,6 +64,20 @@ function parentPaths(absPath: string): string[] {
   return parts.slice(0, -1).map((_, i) => parts.slice(0, i + 1).join("/"));
 }
 
+function getParentDir(path: string): string {
+  const idx = path.lastIndexOf("/");
+  return idx > 0 ? path.slice(0, idx) : "";
+}
+
+function isFilePath(path: string): boolean {
+  const lastSegment = path.slice(path.lastIndexOf("/") + 1);
+  return lastSegment.includes(".");
+}
+
+function getCreateBasePath(path: string): string {
+  return isFilePath(path) ? getParentDir(path) : path;
+}
+
 function fileIcon(path: string): React.ReactElement {
   const dot = path.lastIndexOf(".");
   const ext = dot !== -1 ? path.slice(dot).toLowerCase() : "";
@@ -73,9 +95,10 @@ const RepoFileProperty: React.FC<RepoFilePropertyProps> = ({
   accept,
   onChange,
 }) => {
-  const { reposTreeInfo, selectedFile } = useUIContext();
+  const { reposTreeInfo, selectedFile, setReposTreeInfo, inEditMode, isDeveloper } = useUIContext();
   const [open, setOpen] = useState(false);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const opiPath = selectedFile?.path ?? "";
   const acceptSet = useMemo(() => new Set(accept ?? []), [accept]);
@@ -102,6 +125,21 @@ const RepoFileProperty: React.FC<RepoFilePropertyProps> = ({
     if (repoTree) walk(repoTree);
     return set;
   }, [repoTree, acceptSet]);
+
+  const allDirectoryPaths = useMemo(() => {
+    const directories: string[] = [];
+
+    function walk(nodes: TreeNode[]) {
+      for (const node of nodes) {
+        if (node.type !== "directory") continue;
+        directories.push(node.path);
+        if (node.children) walk(node.children);
+      }
+    }
+
+    if (repoTree) walk(repoTree);
+    return directories;
+  }, [repoTree]);
 
   // Stable refs so the effect can read current values without being re-triggered.
   const valueRef = useRef(value);
@@ -140,6 +178,31 @@ const RepoFileProperty: React.FC<RepoFilePropertyProps> = ({
     const relative = opiPath ? toRelativeRepoPath(absPath, opiPath) : `./${absPath}`;
     onChange(propName, relative);
     setOpen(false);
+  };
+
+  const handleUpload = async (file: File) => {
+    if (!selectedFile?.repo_id) return;
+
+    const basePath = getCreateBasePath(selectedFile.path);
+    const destPath = basePath ? `${basePath}/${file.name}` : file.name;
+
+    try {
+      const updatedTree = await uploadStagingRepoFile({
+        path: { repo_id: selectedFile.repo_id },
+        query: { path: destPath },
+        body: { file },
+      }).then((response) => response.data);
+
+      setReposTreeInfo((prev) =>
+        prev
+          ? prev.map((repo) =>
+              repo.id === updatedTree.id ? (updatedTree as StagingTreeInfo) : repo,
+            )
+          : prev,
+      );
+    } catch (err) {
+      notifyUser(`Failed to upload file: ${err as string}`, "error");
+    }
   };
 
   function renderNodes(nodes: TreeNode[]): React.ReactNode {
@@ -216,10 +279,71 @@ const RepoFileProperty: React.FC<RepoFilePropertyProps> = ({
         <DialogTitle
           sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pr: 1 }}
         >
-          <Typography variant="subtitle1">{dialogTitle}</Typography>
-          <IconButton size="small" onClick={() => setOpen(false)}>
-            <CloseIcon fontSize="small" />
-          </IconButton>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 1,
+              width: "100%",
+            }}
+          >
+            <Typography variant="subtitle1">{dialogTitle}</Typography>
+            <Box sx={{ display: "flex", alignItems: "center" }}>
+              {isDeveloper && inEditMode && (
+                <>
+                  <Tooltip title="Upload file">
+                    <span>
+                      <IconButton
+                        size="small"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={!selectedFile?.repo_id}
+                      >
+                        <FileUploadOutlined fontSize="small" />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept={accept?.length ? accept.join(",") : undefined}
+                    style={{ display: "none" }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      e.target.value = "";
+                      if (!file) return;
+                      void handleUpload(file);
+                    }}
+                  />
+                </>
+              )}
+              <Tooltip title="Expand all">
+                <span>
+                  <IconButton
+                    size="small"
+                    onClick={() => setExpandedItems(allDirectoryPaths)}
+                    disabled={!repoTree?.length}
+                  >
+                    <UnfoldMoreOutlined fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <Tooltip title="Collapse all">
+                <span>
+                  <IconButton
+                    size="small"
+                    onClick={() => setExpandedItems([])}
+                    disabled={!expandedItems.length}
+                  >
+                    <UnfoldLessOutlined fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <IconButton size="small" onClick={() => setOpen(false)}>
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </Box>
+          </Box>
         </DialogTitle>
         <DialogContent dividers sx={{ p: 1 }}>
           {!repoTree || !hasFiles ? (
