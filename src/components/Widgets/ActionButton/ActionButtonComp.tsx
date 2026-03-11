@@ -54,6 +54,7 @@ const ActionButtonComp: React.FC<WidgetUpdate> = ({ data }) => {
           borderColor: p.borderColor?.value,
           textTransform: "none",
           pointerEvents: inEditMode ? "none" : "auto",
+          overflow: "hidden",
         }}
         disableRipple={inEditMode}
         disabled={p.disabled!.value}

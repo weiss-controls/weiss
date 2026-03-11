@@ -164,6 +164,7 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
           borderWidth: p.borderWidth?.value,
           borderColor: p.borderColor?.value,
           display: "flex",
+          overflow: "hidden",
         }}
       >
         <Plot

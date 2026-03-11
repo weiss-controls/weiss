@@ -6,6 +6,8 @@ import type { WidgetDefinition } from "@src/types/widgets";
 import { TextLabelComp } from "./TextLabelComp";
 import TextFieldsIcon from "@mui/icons-material/TextFields";
 
+const { alarmBorder, ...COMMON_WO_ALARMS } = COMMON_PROPS;
+
 export const TextLabel: WidgetDefinition = {
   component: TextLabelComp,
   widgetName: "TextLabel",
@@ -14,7 +16,7 @@ export const TextLabel: WidgetDefinition = {
   category: "Basic",
   defaultProperties: {
     label: { ...PROPERTY_SCHEMAS.label, value: "Text Label" },
-    ...COMMON_PROPS,
+    ...COMMON_WO_ALARMS,
     backgroundColor: { ...PROPERTY_SCHEMAS.backgroundColor, value: "transparent" },
     ...TEXT_PROPS,
   },

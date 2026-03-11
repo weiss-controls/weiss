@@ -46,6 +46,7 @@ const TextLabelComp: React.FC<WidgetUpdate> = ({ data }) => {
         borderStyle: p.borderStyle?.value,
         borderWidth: p.borderWidth?.value,
         borderColor: p.borderColor?.value,
+        overflow: "hidden",
       }}
     >
       <input

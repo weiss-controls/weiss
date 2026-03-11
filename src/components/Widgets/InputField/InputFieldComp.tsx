@@ -55,6 +55,7 @@ const InputFieldComp: React.FC<WidgetUpdate> = ({ data }) => {
             padding: "4px 8px",
             paddingRight: units ? "2em" : "8px",
             pointerEvents: inEditMode ? "none" : "auto",
+            overflow: "hidden",
           }}
           disabled={p.disabled?.value}
           placeholder={inEditMode ? p.pvName?.value : p.label?.value}
