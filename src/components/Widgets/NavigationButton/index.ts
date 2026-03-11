@@ -1,4 +1,4 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 André Favotto
+// Copyright (C) 2026 André Favoto
 
 export { NavigationButton } from "./NavigationButton";

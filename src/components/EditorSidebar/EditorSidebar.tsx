@@ -62,14 +62,15 @@ const ResizeHandle = styled("div")({
   zIndex: FRONT_UI_ZIDX,
 });
 
+const EditorTab = {
+  EDIT: 0,
+  NAVIGATE: 1,
+} as const;
+type EditorTab = (typeof EditorTab)[keyof typeof EditorTab];
+
 const EditorSidebar: React.FC = () => {
   const { selectedWidgetIDs, editingWidgets } = useWidgetContext();
   const { inEditMode, isAuthenticated, setDisableGridShortcuts } = useUIContext();
-  const EditorTab = {
-    EDIT: 0,
-    NAVIGATE: 1,
-  } as const;
-  type EditorTab = (typeof EditorTab)[keyof typeof EditorTab];
   const DEFAULT_WIDTH = 360;
   const MIN_WIDTH = 300;
   const MAX_WIDTH = 700;

@@ -24,7 +24,7 @@ const TextLabelComp: React.FC<WidgetUpdate> = ({ data }) => {
     } else {
       setDisableGridShortcuts(false);
     }
-  }, [editing]);
+  }, [editing, setDisableGridShortcuts]);
 
   if (!p.visible?.value) return null;
 

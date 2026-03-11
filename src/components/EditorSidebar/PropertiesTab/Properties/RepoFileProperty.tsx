@@ -25,11 +25,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import UnfoldLessOutlined from "@mui/icons-material/UnfoldLessOutlined";
 import UnfoldMoreOutlined from "@mui/icons-material/UnfoldMoreOutlined";
 import type { PropertyKey, PropertyValue } from "@src/types/widgets";
-import {
-  type StagingTreeInfo,
-  type TreeNode,
-  uploadStagingRepoFile,
-} from "@src/services/APIClient";
+import { type TreeNode, uploadStagingRepoFile } from "@src/services/APIClient";
 import { useUIContext } from "@src/context/useUIContext";
 import { notifyUser } from "@src/services/Notifications/Notification";
 import { toRelativeRepoPath, resolveRepoPath } from "@src/utils/repoPath";
@@ -194,11 +190,7 @@ const RepoFileProperty: React.FC<RepoFilePropertyProps> = ({
       }).then((response) => response.data);
 
       setReposTreeInfo((prev) =>
-        prev
-          ? prev.map((repo) =>
-              repo.id === updatedTree.id ? (updatedTree as StagingTreeInfo) : repo,
-            )
-          : prev,
+        prev ? prev.map((repo) => (repo.id === updatedTree.id ? updatedTree : repo)) : prev,
       );
     } catch (err) {
       notifyUser(`Failed to upload file: ${err as string}`, "error");
