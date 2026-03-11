@@ -14,7 +14,7 @@ const NavigationButtonComp: React.FC<WidgetUpdate> = ({ data }) => {
 
   const handleClick = () => {
     if (inEditMode) return;
-    const navPath = p.displayPath?.value as string | undefined;
+    const navPath = p.displayPath?.value;
     if (!navPath || !selectedFile) return;
     const resolved = resolveRepoPath(navPath, selectedFile.path);
     setSelectedFile({ repo_id: selectedFile.repo_id, path: resolved });

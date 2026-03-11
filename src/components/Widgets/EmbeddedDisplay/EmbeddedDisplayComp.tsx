@@ -11,7 +11,7 @@ import { resolveRepoPath } from "@src/utils/repoPath";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import { createGroupWidget } from "@src/context/widgetHelpers";
 import { GRID_ID } from "@src/constants/constants";
-import type { PropertyKey, PropertyValue } from "@src/types/widgets";
+import type { PropertyKey } from "@src/types/widgets";
 
 /**
  * Reconstruct a Widget instance from a serialised ExportedWidget so it can be
@@ -41,7 +41,7 @@ function exportedToWidget(raw: ExportedWidget): Widget | null {
   const editableProperties: WidgetProperties = Object.fromEntries(
     Object.entries(def.defaultProperties).map(([k, v]) => [
       k,
-      { ...v, value: (raw.properties?.[k as PropertyKey] as PropertyValue) ?? v.value },
+      { ...v, value: raw.properties?.[k as PropertyKey] ?? v.value },
     ]),
   );
 
@@ -96,18 +96,13 @@ function offsetWidgets(
   originY = 0,
 ): Widget[] {
   return widgets.map((w) => {
-    const srcX = (w.editableProperties.x?.value as number) ?? 0;
-    const srcY = (w.editableProperties.y?.value as number) ?? 0;
+    const { x, y } = w.editableProperties;
     return {
       ...w,
       editableProperties: {
         ...w.editableProperties,
-        ...(w.editableProperties.x && {
-          x: { ...w.editableProperties.x, value: edX + (srcX - originX) },
-        }),
-        ...(w.editableProperties.y && {
-          y: { ...w.editableProperties.y, value: edY + (srcY - originY) },
-        }),
+        ...(x && { x: { ...x, value: edX + (x.value - originX) } }),
+        ...(y && { y: { ...y, value: edY + (y.value - originY) } }),
       },
       children: w.children ? offsetWidgets(w.children, edX, edY, originX, originY) : undefined,
     };
@@ -162,7 +157,7 @@ const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
 
   const repoId = selectedFile?.repo_id ?? "";
   const opiPath = selectedFile?.path ?? "";
-  const displayPath = p.displayPath?.value as string | undefined;
+  const displayPath = p.displayPath?.value;
   const resolvedPath = displayPath ? resolveRepoPath(displayPath, opiPath) : undefined;
 
   // Stable refs so the effect never needs to add these to its dependency array.
@@ -178,8 +173,8 @@ const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
   // x/y in its dependency array (position changes must not re-trigger the fetch).
   const layoutRef = useRef({ x: 0, y: 0 });
   layoutRef.current = {
-    x: (p.x?.value as number) ?? 0,
-    y: (p.y?.value as number) ?? 0,
+    x: p.x?.value ?? 0,
+    y: p.y?.value ?? 0,
   };
 
   useEffect(() => {
@@ -187,7 +182,6 @@ const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
       updateChildrenRef.current(data.id, [], false);
       return;
     }
-    ("");
 
     let cancelled = false;
 
@@ -225,7 +219,6 @@ const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
     };
     // layoutRef / storedNatRef / updateChildrenRef / updatePropertiesRef are intentionally
     // excluded: they are always up to date via the ref pattern above.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [repoId, resolvedPath, isDeveloper, data.id]);
 
   if (!p.visible?.value) return null;
