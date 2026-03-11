@@ -9,7 +9,7 @@ import { useUIContext } from "@src/context/useUIContext";
 import { useWidgetContext } from "@src/context/useWidgetContext";
 
 const TextLabelComp: React.FC<WidgetUpdate> = ({ data }) => {
-  const { inEditMode } = useUIContext();
+  const { inEditMode, setDisableGridShortcuts } = useUIContext();
   const { updateWidgetProperties } = useWidgetContext();
   const p = data.editableProperties;
 
@@ -18,8 +18,11 @@ const TextLabelComp: React.FC<WidgetUpdate> = ({ data }) => {
 
   useEffect(() => {
     if (editing && inputRef.current) {
+      setDisableGridShortcuts(true);
       inputRef.current.focus();
       inputRef.current.select();
+    } else {
+      setDisableGridShortcuts(false);
     }
   }, [editing]);
 
