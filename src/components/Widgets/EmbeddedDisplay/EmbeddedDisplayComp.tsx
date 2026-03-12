@@ -109,6 +109,35 @@ function offsetWidgets(
   });
 }
 
+/** Substitute $(MACRO) patterns in a single string using a macros map. */
+function substituteInStr(str: string, macros: Record<string, string>): string {
+  return str.replace(/\$\(([^)]+)\)/g, (match) => macros[match] ?? match);
+}
+
+/**
+ * Walk the widget tree and replace macros in pvName / pvNames.
+ */
+function applyMacros(widgets: Widget[], macros: Record<string, string>): Widget[] {
+  if (Object.keys(macros).length === 0) return widgets;
+  return widgets.map((w) => {
+    const props = { ...w.editableProperties };
+    if (props.pvName?.value) {
+      props.pvName = { ...props.pvName, value: substituteInStr(props.pvName.value, macros) };
+    }
+    if (props.pvNames?.value && props.pvNames.value.length > 0) {
+      props.pvNames = {
+        ...props.pvNames,
+        value: props.pvNames.value.map((pv) => substituteInStr(pv, macros)),
+      };
+    }
+    return {
+      ...w,
+      editableProperties: props,
+      children: w.children ? applyMacros(w.children, macros) : undefined,
+    };
+  });
+}
+
 /** Assign new UUIDs to avoid ID clashes when multiple instances of the same display exist. */
 function assignNewIds(w: Widget): Widget {
   return {
@@ -159,6 +188,7 @@ const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
   const opiPath = selectedFile?.path ?? "";
   const displayPath = p.displayPath?.value;
   const resolvedPath = displayPath ? resolveRepoPath(displayPath, opiPath) : undefined;
+  const displayMacros = p.macros?.value;
 
   // Stable refs so the effect never needs to add these to its dependency array.
   // `updateWidgetProperties` changes identity on every widget-state update
@@ -176,6 +206,10 @@ const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
     x: p.x?.value ?? 0,
     y: p.y?.value ?? 0,
   };
+
+  const macrosRef = useRef<Record<string, string>>({});
+
+  if (displayMacros !== undefined) macrosRef.current = displayMacros;
 
   useEffect(() => {
     if (!repoId || !resolvedPath) {
@@ -203,8 +237,9 @@ const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
           .filter((widget): widget is Widget => widget !== null);
 
         const fresh = offsetWidgets(raw, x, y, minX, minY).map(assignNewIds);
+        const withMacros = applyMacros(fresh, macrosRef.current);
 
-        updateChildrenRef.current(data.id, fresh, false);
+        updateChildrenRef.current(data.id, withMacros, false);
         // Resize the EmbeddedDisplay to fit the imported content naturally.
         // Also persist natural dimensions for the aspect-ratio lock in WidgetRenderer.
         updatePropertiesRef.current(data.id, { width: natW, height: natH }, false);
@@ -217,9 +252,9 @@ const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
     return () => {
       cancelled = true;
     };
-    // layoutRef / storedNatRef / updateChildrenRef / updatePropertiesRef are intentionally
+    // layoutRef / macrosRef / updateChildrenRef / updatePropertiesRef are intentionally
     // excluded: they are always up to date via the ref pattern above.
-  }, [repoId, resolvedPath, isDeveloper, data.id]);
+  }, [repoId, resolvedPath, isDeveloper, data.id, displayMacros]);
 
   if (!p.visible?.value) return null;
 

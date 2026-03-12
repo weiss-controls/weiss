@@ -19,5 +19,6 @@ export const EmbeddedDisplay: WidgetDefinition = {
     width: { ...PROPERTY_SCHEMAS.width, value: 300 },
     height: { ...PROPERTY_SCHEMAS.height, value: 210 },
     displayPath: PROPERTY_SCHEMAS.displayPath,
+    macros: PROPERTY_SCHEMAS.macros,
   },
 };
