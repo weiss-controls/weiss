@@ -7,7 +7,7 @@ import subprocess
 import json
 import base64
 from .common import REPOS_BASE_PATH, BARE_CLONE_NAME
-from fastapi import APIRouter, HTTPException, Body, Query, Depends
+from fastapi import APIRouter, HTTPException, Body, Query, Depends, UploadFile, File
 from pydantic import BaseModel, Field
 from typing import List, Tuple, Literal
 from datetime import datetime, timezone
@@ -25,6 +25,7 @@ from api.repos.common import (
     REPO_META,
     REGISTERED_REPO_URLS,
     NEW_FILE_CONTENT,
+    ALLOWED_EXTENSIONS,
 )
 
 router = APIRouter(
@@ -33,6 +34,7 @@ router = APIRouter(
     dependencies=[Depends(require_developer)],
 )
 
+MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
 TECHNICAL_ACCOUNT_TOKEN = os.getenv("TECHNICAL_ACCOUNT_TOKEN")
 TECHNICAL_ACCOUNT_USERNAME = os.getenv("TECHNICAL_ACCOUNT_USERNAME", "weiss-bot")
 TECHNICAL_ACCOUNT_EMAIL = os.getenv("TECHNICAL_ACCOUNT_EMAIL", "weiss-bot@dummy")
@@ -442,10 +444,67 @@ def staging_get_repo_file(
     if not os.path.exists(full_path) or not os.path.isfile(full_path):
         raise HTTPException(status_code=404, detail="File not found")
 
+    _, ext = os.path.splitext(path)
+    if ext.lower() in {".png", ".jpg", ".jpeg"}:
+        with open(full_path, "rb") as f:
+            content = base64.b64encode(f.read()).decode("ascii")
+        return FileResponse(path=path, content=content, encoding="base64")
+
     with open(full_path, "r", encoding="utf-8") as f:
         content = f.read()
 
     return FileResponse(path=path, content=content)
+
+
+@router.post(
+    "/{repo_id}/upload",
+    response_model=StagingTreeInfo,
+    operation_id="uploadStagingRepoFile",
+)
+async def upload_staging_repo_file(
+    repo_id: str,
+    path: str = Query(
+        ...,
+        description="Destination path for the file, relative to repo root (e.g. images/logo.png)",
+    ),
+    file: UploadFile = File(...),
+    user: User = Depends(require_developer),
+):
+    """
+    Upload a file to the staging repository.
+    Creates or overwrites the file at the given path.
+    Intermediate directories are created as needed.
+    """
+    rel_path = os.path.normpath(path).lstrip(os.sep)
+    if rel_path.startswith(".."):
+        raise HTTPException(status_code=400, detail="Invalid file path")
+
+    _, ext = os.path.splitext(rel_path)
+    if ext.lower() not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}",
+        )
+
+    contents = await file.read()
+    if len(contents) > MAX_UPLOAD_SIZE_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File exceeds maximum allowed size of {MAX_UPLOAD_SIZE_BYTES // (1024 * 1024)} MB",
+        )
+
+    repo_path = get_user_worktree_path(repo_id, user)
+    full_path = os.path.join(repo_path, rel_path)
+    os.makedirs(os.path.dirname(full_path), exist_ok=True)
+
+    try:
+        with open(full_path, "wb") as f:
+            f.write(contents)
+        run_git(["add", rel_path], cwd=repo_path)
+    except OSError as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload file: {str(e)}")
+
+    return get_staging_repo_tree(repo_id, user)
 
 
 @router.put(

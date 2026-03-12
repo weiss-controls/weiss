@@ -1,24 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  getDeployedRepoFile,
-  getStagingRepoFile,
-  type DeploymentTreeInfo,
-  type StagingTreeInfo,
-} from "@src/services/APIClient";
+import { useState } from "react";
+import { type DeploymentTreeInfo, type StagingTreeInfo } from "@src/services/APIClient";
 import ProjectSection from "./ProjectSection";
-import { Box, Button, Skeleton } from "@mui/material";
-import type { SelectedPathInfo } from "@src/context/useUIManager";
+import { Box, Button, Paper, Skeleton, Typography } from "@mui/material";
 import GitImportDialog from "@src/components/GitImportDialog/GitImportDialog";
 import CustomGitIcon from "@src/components/CustomIcons/GitIcon";
 import { COLORS } from "@src/constants/constants";
 import { useUIContext } from "@src/context/useUIContext";
-import { useWidgetContext } from "@src/context/useWidgetContext";
 
 export default function ProjectsTab() {
-  const { loadWidgets } = useWidgetContext();
   const {
     isDeveloper,
     reposTreeInfo,
@@ -27,61 +19,20 @@ export default function ProjectsTab() {
     inEditMode,
     setSelectedFile,
     selectedFile,
+    imageSrc,
+    imageName,
+    reloadSelectedFile,
   } = useUIContext();
-  const restoredRef = useRef(false);
-  const [initialSelection, setInitialSelection] = useState<SelectedPathInfo | null>(null);
   const [GitImportOpen, setGitImportOpen] = useState(false);
 
   const refreshRepoTree = (updt: StagingTreeInfo | DeploymentTreeInfo) => {
     setReposTreeInfo((prev) => (prev ? prev.map((r) => (updt.id === r.id ? updt : r)) : prev));
-    // update opened file if it belongs to synced repo
-    if (selectedFile?.repo_id === updt.id) {
-      void loadRepoFile(selectedFile.repo_id, selectedFile.path);
-    }
+    if (selectedFile?.repo_id === updt.id) reloadSelectedFile();
   };
 
   const refreshAllReposTree = (updt: StagingTreeInfo[] | DeploymentTreeInfo[]) => {
     setReposTreeInfo(updt);
   };
-
-  const loadRepoFile = useCallback(
-    async (repo_id: string, path: string, opts: { persist?: boolean } = { persist: true }) => {
-      const res = isDeveloper
-        ? await getStagingRepoFile({ path: { repo_id }, query: { path } })
-        : await getDeployedRepoFile({ path: { repo_id }, query: { path } });
-
-      loadWidgets(res.data.content);
-      setSelectedFile({ repo_id, path });
-
-      if (opts.persist) {
-        localStorage.setItem("lastLoadedFile", JSON.stringify({ repo_id, path }));
-      }
-    },
-    [isDeveloper, loadWidgets, setSelectedFile],
-  );
-
-  // On first render, restore last loaded file
-  useEffect(() => {
-    if (restoredRef.current || !reposTreeInfo?.length) return;
-
-    const raw = localStorage.getItem("lastLoadedFile");
-    if (!raw) {
-      restoredRef.current = true;
-      return;
-    }
-
-    const parsed = JSON.parse(raw) as SelectedPathInfo;
-    const repo = reposTreeInfo.find((r) => r.id === parsed.repo_id);
-    if (!repo) {
-      restoredRef.current = true;
-      return;
-    }
-
-    setInitialSelection(parsed);
-    // trigger file load once
-    void loadRepoFile(parsed.repo_id, parsed.path, { persist: false });
-    restoredRef.current = true;
-  }, [reposTreeInfo, loadRepoFile]);
 
   return (
     <Box
@@ -103,18 +54,38 @@ export default function ProjectsTab() {
           </Box>
         ))
       ) : reposTreeInfo?.length ? (
-        reposTreeInfo.map((repo) => (
-          <ProjectSection
-            key={repo.id}
-            repo={repo}
-            onFileSelect={loadRepoFile}
-            onRepoUpdate={refreshRepoTree}
-            onTreeUpdate={refreshAllReposTree}
-            defaultSelectedPath={
-              initialSelection?.repo_id === repo.id ? initialSelection.path : undefined
-            }
-          />
-        ))
+        <>
+          {imageSrc && (
+            <Paper variant="outlined" sx={{ width: "100%", mb: 2, p: 1, boxSizing: "border-box" }}>
+              <Typography
+                variant="caption"
+                noWrap
+                display="block"
+                sx={{ mb: 0.5, color: "text.secondary" }}
+              >
+                {imageName}
+              </Typography>
+              <Box
+                component="img"
+                src={imageSrc}
+                alt={imageName ?? ""}
+                sx={{ width: "100%", maxHeight: 200, objectFit: "contain", display: "block" }}
+              />
+            </Paper>
+          )}
+          {reposTreeInfo.map((repo) => (
+            <ProjectSection
+              key={repo.id}
+              repo={repo}
+              onFileSelect={(repo_id, path) => setSelectedFile({ repo_id, path })}
+              onRepoUpdate={refreshRepoTree}
+              onTreeUpdate={refreshAllReposTree}
+              defaultSelectedPath={
+                selectedFile?.repo_id === repo.id ? selectedFile.path : undefined
+              }
+            />
+          ))}
+        </>
       ) : (
         <Box sx={{ p: 2 }}>{`No repositories ${isDeveloper ? "available" : "deployed"}`}</Box>
       )}

@@ -46,6 +46,7 @@ const SliderComp: React.FC<WidgetUpdate> = ({ data }) => {
           borderWidth: p.borderWidth?.value,
           borderColor: p.borderColor?.value,
           pointerEvents: inEditMode ? "none" : "auto",
+          overflow: "hidden",
         }}
       >
         <Slider

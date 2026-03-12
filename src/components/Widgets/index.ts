@@ -13,3 +13,6 @@ export { TextLabel } from "./TextLabel";
 export { GraphY } from "./GraphY";
 export { SelectionBox } from "./SelectionBox";
 export { Slider } from "./Slider";
+export { Image } from "./Image";
+export { EmbeddedDisplay } from "./EmbeddedDisplay";
+export { NavigationButton } from "./NavigationButton";

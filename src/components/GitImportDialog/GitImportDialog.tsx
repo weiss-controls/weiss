@@ -37,7 +37,7 @@ interface GitImportDialogProps {
 }
 
 export default function GitImportDialog({ open, onClose }: GitImportDialogProps) {
-  const { setReleaseShortcuts, setReposTreeInfo, isDemo } = useUIContext();
+  const { setDisableGridShortcuts, setReposTreeInfo, isDemo } = useUIContext();
   const [alias, setAlias] = useState("");
   const [gitUrl, setGitUrl] = useState(
     isDemo ? "https://github.com/weiss-controls/weiss-demo-opis.git" : "",
@@ -60,7 +60,7 @@ export default function GitImportDialog({ open, onClose }: GitImportDialogProps)
     setGitUrl("");
     setAliasEdited(false);
     setLoading(false);
-    setReleaseShortcuts(false);
+    setDisableGridShortcuts(false);
     onClose();
   };
 
@@ -87,8 +87,8 @@ export default function GitImportDialog({ open, onClose }: GitImportDialogProps)
   return (
     <Dialog
       open={open}
-      onFocus={() => setReleaseShortcuts(true)}
-      onBlur={() => setReleaseShortcuts(false)}
+      onFocus={() => setDisableGridShortcuts(true)}
+      onBlur={() => setDisableGridShortcuts(false)}
       onClose={resetAndClose}
       maxWidth="sm"
       fullWidth

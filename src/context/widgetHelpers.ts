@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
+import { ROUNDING_CONST } from "@src/constants/constants";
 import { PROPERTY_SCHEMAS } from "@src/types/widgetProperties";
 import type {
   MultiWidgetPropertyUpdates,
@@ -61,6 +62,8 @@ export function createWidgetInstance(def: WidgetDefinition, id: string): Widget 
   };
 }
 
+const POSITIONAL_KEYS = new Set<PropertyKey>(["x", "y", "width", "height"]);
+
 export function updateWidgets(widgets: Widget[], updates: MultiWidgetPropertyUpdates): Widget[] {
   const updateOne = (w: Widget): Widget => {
     let newWidget = w;
@@ -80,6 +83,8 @@ export function updateWidgets(widgets: Widget[], updates: MultiWidgetPropertyUpd
           const limits = updatedProps[propName].limits;
           if (limits?.min !== undefined) newValue = Math.max(newValue, limits.min);
           if (limits?.max !== undefined) newValue = Math.min(newValue, limits.max);
+          if (POSITIONAL_KEYS.has(propName))
+            newValue = Math.round(newValue * ROUNDING_CONST) / ROUNDING_CONST;
         }
         (updatedProps as Record<PropertyKey, WidgetProperty>)[propName] = {
           ...updatedProps[propName],

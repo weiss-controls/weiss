@@ -20,6 +20,16 @@ export type AuthUrl = {
 };
 
 /**
+ * Body_uploadStagingRepoFile
+ */
+export type BodyUploadStagingRepoFile = {
+  /**
+   * File
+   */
+  file: Blob | File;
+};
+
+/**
  * CommitRequest
  */
 export type CommitRequest = {
@@ -740,6 +750,45 @@ export type UpdateStagingRepoFileResponses = {
 
 export type UpdateStagingRepoFileResponse =
   UpdateStagingRepoFileResponses[keyof UpdateStagingRepoFileResponses];
+
+export type UploadStagingRepoFileData = {
+  body: BodyUploadStagingRepoFile;
+  path: {
+    /**
+     * Repo Id
+     */
+    repo_id: string;
+  };
+  query: {
+    /**
+     * Path
+     *
+     * Destination path for the file, relative to repo root (e.g. images/logo.png)
+     */
+    path: string;
+  };
+  url: "/api/v1/repos/staging/{repo_id}/upload";
+};
+
+export type UploadStagingRepoFileErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type UploadStagingRepoFileError =
+  UploadStagingRepoFileErrors[keyof UploadStagingRepoFileErrors];
+
+export type UploadStagingRepoFileResponses = {
+  /**
+   * Successful Response
+   */
+  200: StagingTreeInfo;
+};
+
+export type UploadStagingRepoFileResponse =
+  UploadStagingRepoFileResponses[keyof UploadStagingRepoFileResponses];
 
 export type ResetStagingRepoFileData = {
   body?: never;

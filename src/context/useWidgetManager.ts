@@ -171,6 +171,26 @@ export function useWidgetManager() {
   );
 
   /**
+   * Replace the children of a widget identified by id.
+   * Searches recursively so nested widgets are supported.
+   * Defaults keepHistory=false because child injection is a side effect, not a user action.
+   */
+  const updateWidgetChildren = useCallback(
+    (id: string, children: Widget[], keepHistory = false) => {
+      updateEditorWidgetList((prev) => {
+        const replace = (widgets: Widget[]): Widget[] =>
+          widgets.map((w) => {
+            if (w.id === id) return { ...w, children };
+            if (w.children) return { ...w, children: replace(w.children) };
+            return w;
+          });
+        return replace(prev);
+      }, keepHistory);
+    },
+    [updateEditorWidgetList],
+  );
+
+  /**
    * Delete currently selected widgets.
    */
   const deleteWidget = useCallback(() => {
@@ -210,7 +230,7 @@ export function useWidgetManager() {
       const newWidgets: Widget[] = [];
 
       prev.forEach((w) => {
-        if (selectedWidgetIDs.includes(w.id) && w.children) {
+        if (selectedWidgetIDs.includes(w.id) && w.children && w.widgetName !== "EmbeddedDisplay") {
           newWidgets.push(...w.children);
         } else {
           newWidgets.push(w);
@@ -592,13 +612,18 @@ export function useWidgetManager() {
   );
 
   const formatWdgToExport = useCallback((widget: Widget): ExportedWidget => {
+    // EmbeddedDisplay children are injected dynamically at runtime — omit them from export.
+    const exportChildren =
+      widget.widgetName === "EmbeddedDisplay"
+        ? undefined
+        : widget.children?.map((child) => formatWdgToExport(child));
     return {
       id: widget.id,
       widgetName: widget.widgetName,
       properties: Object.fromEntries(
         Object.entries(widget.editableProperties).map(([key, def]) => [key, def.value]),
       ),
-      children: widget.children?.map((child) => formatWdgToExport(child)),
+      children: exportChildren,
     };
   }, []);
 
@@ -808,6 +833,7 @@ export function useWidgetManager() {
     copyWidget,
     pasteWidget,
     updateWidgetProperties,
+    updateWidgetChildren,
     stepForward,
     stepBackwards,
     bringToFront,

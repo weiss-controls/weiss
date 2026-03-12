@@ -32,6 +32,8 @@ NEW_FILE_CONTENT = [
     }
 ]
 
+ALLOWED_EXTENSIONS = {".json", ".svg", ".png", ".jpg", ".jpeg"}
+
 os.makedirs(REPOS_BASE_PATH, exist_ok=True)
 
 
@@ -106,7 +108,11 @@ def build_path_tree(root_path: str, rel_path: str = "") -> List[TreeNode]:
             if entry.name in [
                 REPO_META,
                 DEPLOYMENT_META,
-            ] or not entry.name.lower().endswith(".json"):
+            ]:
+                continue
+
+            _, ext = os.path.splitext(entry.name.lower())
+            if ext not in ALLOWED_EXTENSIONS:
                 continue
 
             nodes.append(

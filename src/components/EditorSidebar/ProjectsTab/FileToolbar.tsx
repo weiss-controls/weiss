@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
+import { useRef } from "react";
 import { Box, IconButton, Tooltip } from "@mui/material";
 import {
   CreateNewFolderOutlined,
@@ -8,10 +9,12 @@ import {
   NoteAddOutlined,
   UnfoldLessOutlined,
   UnfoldMoreOutlined,
+  FileUploadOutlined,
 } from "@mui/icons-material";
 import {
   createStagingRepoPath,
   deleteStagingRepoPath,
+  uploadStagingRepoFile,
   type StagingTreeInfo,
 } from "@src/services/APIClient";
 import { notifyUser } from "@src/services/Notifications/Notification";
@@ -31,8 +34,13 @@ function getParentDir(path: string): string {
   return idx > 0 ? path.slice(0, idx) : "";
 }
 
+function isFilePath(path: string): boolean {
+  const lastSegment = path.slice(path.lastIndexOf("/") + 1);
+  return lastSegment.includes(".");
+}
+
 function getCreateBasePath(selected: SelectedPathInfo): string {
-  return selected.path.endsWith(".json") ? getParentDir(selected.path) : selected.path;
+  return isFilePath(selected.path) ? getParentDir(selected.path) : selected.path;
 }
 
 function normalizeJsonFileName(name: string): string | null {
@@ -53,6 +61,8 @@ function normalizeJsonFileName(name: string): string | null {
   return trimmed;
 }
 
+const ALLOWED_UPLOAD_EXTENSIONS = [".svg", ".png", ".jpg", ".jpeg", ".json"];
+
 export default function FileToolbar({
   selectedPath,
   onRepoUpdate,
@@ -61,6 +71,8 @@ export default function FileToolbar({
 }: FileToolbarProps) {
   const iconSx = { fontSize: 18 };
   const { inEditMode, isDeveloper, selectedFile, setSelectedFile } = useUIContext();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   async function createPath(repo_id: string, path: string, type: "file" | "directory") {
     try {
       const updt = await createStagingRepoPath({
@@ -70,6 +82,20 @@ export default function FileToolbar({
       onRepoUpdate(updt);
     } catch (err) {
       notifyUser(`Failed to create path: ${err as string}`, "error");
+    }
+  }
+
+  async function uploadFile(repo_id: string, basePath: string, file: File) {
+    const destPath = basePath ? `${basePath}/${file.name}` : file.name;
+    try {
+      const updt = await uploadStagingRepoFile({
+        path: { repo_id },
+        query: { path: destPath },
+        body: { file },
+      }).then((r) => r.data);
+      onRepoUpdate(updt);
+    } catch (err) {
+      notifyUser(`Failed to upload file: ${err as string}`, "error");
     }
   }
 
@@ -139,6 +165,31 @@ export default function FileToolbar({
               <CreateNewFolderOutlined sx={iconSx} />
             </IconButton>
           </Tooltip>
+
+          <Tooltip title="Upload file">
+            <IconButton
+              onClick={() => {
+                if (!selectedPath) return;
+                fileInputRef.current?.click();
+              }}
+            >
+              <FileUploadOutlined sx={iconSx} />
+            </IconButton>
+          </Tooltip>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={ALLOWED_UPLOAD_EXTENSIONS.join(",")}
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (!file || !selectedPath) return;
+              const basePath = getCreateBasePath(selectedPath);
+              void uploadFile(selectedPath.repo_id, basePath, file);
+            }}
+          />
 
           <Tooltip title="Delete selected path">
             <IconButton

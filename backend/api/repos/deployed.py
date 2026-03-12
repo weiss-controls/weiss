@@ -117,6 +117,14 @@ def runtime_get_repo_file(
     if not os.path.exists(full_path) or not os.path.isfile(full_path):
         raise HTTPException(status_code=404, detail="File not found in snapshot")
 
+    _, ext = os.path.splitext(path)
+    if ext.lower() in {".png", ".jpg", ".jpeg"}:
+        import base64
+
+        with open(full_path, "rb") as f:
+            content = base64.b64encode(f.read()).decode("ascii")
+        return FileResponse(path=path, content=content, encoding="base64")
+
     with open(full_path, "r", encoding="utf-8") as f:
         content = f.read()
 

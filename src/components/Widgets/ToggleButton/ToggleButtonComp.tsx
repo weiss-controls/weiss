@@ -57,6 +57,7 @@ const ToggleButtonComp: React.FC<WidgetUpdate> = ({ data }) => {
     outline: "1px solid rgba(0,0,0,0.3)",
     flexShrink: 0,
     marginRight: 8,
+    overflow: "hidden",
   };
 
   return (
@@ -83,6 +84,7 @@ const ToggleButtonComp: React.FC<WidgetUpdate> = ({ data }) => {
           borderWidth: p.borderWidth?.value,
           borderColor: p.borderColor?.value,
           textTransform: "none",
+          overflow: "hidden",
         }}
         disableRipple={inEditMode || !validValue}
         disabled={p.disabled?.value}

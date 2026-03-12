@@ -105,6 +105,10 @@ export const MAX_ZOOM = 100;
 /** Minimum allowed zoom level */
 export const MIN_ZOOM = 0.2;
 
+const gridDecimalPlaces = 3;
+
+/** Rounding constant derived from gridDecimalPlaces, used to round coordinates to the grid */
+export const ROUNDING_CONST = 10 ** gridDecimalPlaces;
 /**
  * Mapping of widget alignment keywords to CSS `justifyContent` values.
  */

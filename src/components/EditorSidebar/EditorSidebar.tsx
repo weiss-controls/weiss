@@ -20,9 +20,7 @@ import PushPinIcon from "@mui/icons-material/PushPin";
 import PushPinOutlinedIcon from "@mui/icons-material/PushPinOutlined";
 import ModeEditIcon from "@mui/icons-material/ModeEdit";
 import FormatListBulletedIcon from "@mui/icons-material/FormatListBulleted";
-
 import { FRONT_UI_ZIDX } from "@src/constants/constants";
-
 import PropertyNavigator from "./PropertiesTab/PropertiesTab";
 import ProjectsTab from "./ProjectsTab/ProjectsTab";
 import { useUIContext } from "@src/context/useUIContext";
@@ -64,10 +62,15 @@ const ResizeHandle = styled("div")({
   zIndex: FRONT_UI_ZIDX,
 });
 
+const EditorTab = {
+  EDIT: 0,
+  NAVIGATE: 1,
+} as const;
+type EditorTab = (typeof EditorTab)[keyof typeof EditorTab];
+
 const EditorSidebar: React.FC = () => {
   const { selectedWidgetIDs, editingWidgets } = useWidgetContext();
-  const { inEditMode, isAuthenticated, setReleaseShortcuts } = useUIContext();
-
+  const { inEditMode, isAuthenticated, setDisableGridShortcuts } = useUIContext();
   const DEFAULT_WIDTH = 360;
   const MIN_WIDTH = 300;
   const MAX_WIDTH = 700;
@@ -77,7 +80,7 @@ const EditorSidebar: React.FC = () => {
   const [open, setOpen] = useState(!isSmallScreen);
   const [pinned, setPinned] = useState(!isSmallScreen);
   const [drawerWidth, setDrawerWidth] = useState(DEFAULT_WIDTH);
-  const [tabIndex, setTabIndex] = useState(1);
+  const [tabIndex, setTabIndex] = useState<EditorTab>(EditorTab.NAVIGATE);
 
   const paperRef = useRef<HTMLDivElement | null>(null);
   const widthRef = useRef(drawerWidth);
@@ -88,12 +91,13 @@ const EditorSidebar: React.FC = () => {
 
   useEffect(() => {
     if (isAuthenticated && !inEditMode) {
-      setTabIndex(1);
+      setTabIndex(EditorTab.NAVIGATE);
     }
   }, [isAuthenticated, inEditMode]);
 
   useEffect(() => {
     if (selectedWidgetIDs.length > 0) {
+      setTabIndex(EditorTab.EDIT);
       setOpen(true);
     } else if (!pinned) {
       setOpen(false);
@@ -175,8 +179,8 @@ const EditorSidebar: React.FC = () => {
         open={open}
         variant="permanent"
         anchor="right"
-        onFocus={() => setReleaseShortcuts(true)}
-        onBlur={() => setReleaseShortcuts(false)}
+        onFocus={() => setDisableGridShortcuts(true)}
+        onBlur={() => setDisableGridShortcuts(false)}
         sx={{ zIndex: FRONT_UI_ZIDX + 1 }}
         slotProps={{
           paper: {
@@ -228,7 +232,7 @@ const EditorSidebar: React.FC = () => {
         {isAuthenticated && inEditMode && (
           <Tabs
             value={tabIndex}
-            onChange={(_e, newVal: number) => setTabIndex(newVal)}
+            onChange={(_e, newVal: EditorTab) => setTabIndex(newVal)}
             sx={{
               flex: "0 0 auto",
               borderTop: (theme) => `1px solid ${theme.palette.divider}`,

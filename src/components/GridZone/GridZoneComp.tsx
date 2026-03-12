@@ -5,7 +5,13 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { GridPosition, WidgetDefinition, WidgetUpdate } from "@src/types/widgets";
 import { createWidgetInstance } from "@src/context/widgetHelpers";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
-import { FRONT_UI_ZIDX, GRID_ID, MAX_ZOOM, MIN_ZOOM } from "@src/constants/constants";
+import {
+  FRONT_UI_ZIDX,
+  GRID_ID,
+  MAX_ZOOM,
+  MIN_ZOOM,
+  ROUNDING_CONST,
+} from "@src/constants/constants";
 import ContextMenu from "@components/ContextMenu/ContextMenu";
 import "./GridZone.css";
 import WidgetRenderer from "@components/WidgetRenderer/WidgetRenderer.tsx";
@@ -37,7 +43,7 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
 
   const {
     mode,
-    releaseShortcuts,
+    disableGridShortcuts,
     isPanning,
     setIsPanning,
     inEditMode,
@@ -84,7 +90,8 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
 
   const ensureGridCoordinate = useCallback(
     (coord: number) => {
-      return snapToGrid ? Math.round(coord / gridSize) * gridSize : coord;
+      const aligned = snapToGrid ? Math.round(coord / gridSize) * gridSize : coord;
+      return Math.round(aligned * ROUNDING_CONST) / ROUNDING_CONST;
     },
     [snapToGrid, gridSize],
   );
@@ -247,7 +254,7 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
   // Shortcuts handler
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (releaseShortcuts) return;
+      if (disableGridShortcuts) return;
       // shortcuts for all modes
       if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "c") {
         e.preventDefault();

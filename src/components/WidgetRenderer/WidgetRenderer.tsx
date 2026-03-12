@@ -132,7 +132,13 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
     batchWidgetUpdate(updates);
   };
 
-  const renderRecursive = (w: Widget, parentX = 0, parentY = 0, isChild = false): ReactNode => {
+  const renderRecursive = (
+    w: Widget,
+    parentX = 0,
+    parentY = 0,
+    isChild = false,
+    isEmbedded = false,
+  ): ReactNode => {
     if (w.id === GRID_ID) return null;
     const isSelected = selectedWidgetIDs.includes(w.id);
     if (isSelected && selectedWidgetIDs.length > 1) return null;
@@ -142,9 +148,11 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
     const width = w.editableProperties.width!.value;
     const height = w.editableProperties.height!.value;
 
-    const canDrag = inEditMode && !isPanning && !isChild;
-    const canResize = inEditMode && !isPanning && !isChild;
+    const canDrag = inEditMode && !isPanning && !isChild && !isEmbedded;
+    const canResize =
+      inEditMode && !isPanning && !isChild && !isEmbedded && w.widgetName !== "EmbeddedDisplay";
     const isGroup = w.children?.length;
+    const childIsEmbedded = isEmbedded || w.widgetName === "EmbeddedDisplay";
 
     return (
       <Rnd
@@ -157,8 +165,11 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
         size={{ width, height }}
         position={{ x, y }}
         className={
-          inEditMode ? `selectable ${isSelected ? "selected" : isGroup ? "groupBox" : ""}` : ""
+          inEditMode && !isEmbedded
+            ? `selectable ${isSelected ? "selected" : isGroup ? "groupBox" : ""}`
+            : ""
         }
+        style={isEmbedded ? { pointerEvents: "none" } : undefined}
         onDrag={() => setIsDragging(true)}
         onDragStop={(e, d) => handleDragStop(e, d, w)}
         onResizeStart={() => setIsDragging(true)}
@@ -171,6 +182,7 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
             w.editableProperties.x!.value,
             w.editableProperties.y!.value,
             true,
+            childIsEmbedded,
           ),
         )}
       </Rnd>
