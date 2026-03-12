@@ -49,6 +49,8 @@ import type {
   GetStagingRepoTreeData,
   GetStagingRepoTreeErrors,
   GetStagingRepoTreeResponses,
+  GetTokenStatusData,
+  GetTokenStatusResponses,
   HealthCheckData,
   HealthCheckResponses,
   ListDeployedReposData,
@@ -148,6 +150,22 @@ export const authLogout = <ThrowOnError extends boolean = true>(
 ) =>
   (options?.client ?? client).post<AuthLogoutResponses, unknown, ThrowOnError>({
     url: "/api/v1/auth/logout",
+    ...options,
+  });
+
+/**
+ * Get Token Status
+ *
+ * Return whether the configured PAT technical-account token is able to
+ * authenticate against the remote hosting platform's API.  This is a real
+ * credential check (not just a git ls-remote, which succeeds on public repos
+ * even with a bad token).
+ */
+export const getTokenStatus = <ThrowOnError extends boolean = true>(
+  options?: Options<GetTokenStatusData, ThrowOnError>,
+) =>
+  (options?.client ?? client).get<GetTokenStatusResponses, unknown, ThrowOnError>({
+    url: "/api/v1/repos/staging/token-status",
     ...options,
   });
 

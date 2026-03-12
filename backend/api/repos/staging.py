@@ -6,6 +6,9 @@ import uuid
 import subprocess
 import json
 import base64
+from urllib.parse import urlparse
+
+import httpx
 from .common import REPOS_BASE_PATH, BARE_CLONE_NAME
 from fastapi import APIRouter, HTTPException, Body, Query, Depends, UploadFile, File
 from pydantic import BaseModel, Field
@@ -98,6 +101,12 @@ class GitFileStatus(BaseModel):
 class GitWorkingTreeStatus(BaseModel):
     dirty: bool
     files: List[GitFileStatus]
+
+
+class TokenStatus(BaseModel):
+    configured: bool
+    valid: bool
+    detail: str
 
 
 class StagingTreeInfo(StagingMeta):
@@ -249,6 +258,113 @@ def validate_repo_content(repo_path: str, ref: str) -> ValidationResult:
     """Validate that the repo at given ref contains required OPI files"""
     # @TODO
     return ValidationResult(valid=True, errors=[])
+
+
+def _check_token(git_url: str) -> TokenStatus:
+    """Core token validation logic against the hosting platform's auth API."""
+    if not TECHNICAL_ACCOUNT_TOKEN:
+        return TokenStatus(configured=False, valid=False, detail="No token configured")
+
+    token = TECHNICAL_ACCOUNT_TOKEN.strip()
+    hostname = urlparse(git_url).hostname or ""
+
+    try:
+        if "github.com" in hostname:
+            resp = httpx.get(
+                "https://api.github.com/user",
+                headers={"Authorization": f"token {token}"},
+                timeout=10,
+            )
+            if resp.status_code == 200:
+                return TokenStatus(configured=True, valid=True, detail="Token is valid")
+            return TokenStatus(
+                configured=True, valid=False, detail="Token authentication failed"
+            )
+
+        if "gitlab" in hostname:
+            base = f"https://{hostname}"
+            resp = httpx.get(
+                f"{base}/api/v4/user",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=10,
+            )
+            if resp.status_code == 200:
+                return TokenStatus(configured=True, valid=True, detail="Token is valid")
+            return TokenStatus(
+                configured=True, valid=False, detail="Token authentication failed"
+            )
+
+        # Unknown platform — fall back to git ls-remote (best-effort; public repos
+        # won't distinguish a bad token from a good one here).
+        result = subprocess.run(
+            ["git"] + (auth_cmd or []) + ["ls-remote", git_url],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        if result.returncode == 0:
+            return TokenStatus(
+                configured=True,
+                valid=True,
+                detail="Token configured; platform unknown, remote reachable",
+            )
+        stderr = result.stderr.lower()
+        if (
+            "authentication" in stderr
+            or "403" in stderr
+            or "401" in stderr
+            or "could not read" in stderr
+        ):
+            return TokenStatus(
+                configured=True, valid=False, detail="Token authentication failed"
+            )
+        return TokenStatus(
+            configured=True,
+            valid=True,
+            detail=f"Token configured; remote check inconclusive: {result.stderr.strip()}",
+        )
+
+    except httpx.TimeoutException:
+        return TokenStatus(
+            configured=True, valid=True, detail="Token configured; API check timed out"
+        )
+    except subprocess.TimeoutExpired:
+        return TokenStatus(
+            configured=True,
+            valid=True,
+            detail="Token configured; remote check timed out",
+        )
+
+
+def _require_valid_token(git_url: str) -> None:
+    """Raise HTTP 503 if the PAT token is not configured or fails authentication."""
+    status = _check_token(git_url)
+    if not status.valid:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Remote operation unavailable: {status.detail}",
+        )
+
+
+@router.get("/token-status", response_model=TokenStatus, operation_id="getTokenStatus")
+def get_token_status():
+    """Return whether the configured PAT technical-account token is able to
+    authenticate against the remote hosting platform's API.  This is a real
+    credential check (not just a git ls-remote, which succeeds on public repos
+    even with a bad token).
+    """
+    repos = list_all_repositories()
+    if not repos:
+        if not TECHNICAL_ACCOUNT_TOKEN:
+            return TokenStatus(
+                configured=False, valid=False, detail="No token configured"
+            )
+        return TokenStatus(
+            configured=True,
+            valid=True,
+            detail="Token configured; no repositories registered to verify against",
+        )
+    return _check_token(repos[0].git_url)
 
 
 @router.get("/", response_model=List[StagingMeta], operation_id="listRepos")
@@ -711,6 +827,8 @@ def commit_staging_repo(
     If HEAD is behind remote, try rebasing first.
     Fails if there is nothing to commit.
     """
+    _, repo_meta = get_repo_meta(repo_id)
+    _require_valid_token(repo_meta.git_url)
     repo_path = get_user_worktree_path(repo_id, user)
     default_branch = get_default_branch(repo_path)
 
@@ -718,10 +836,7 @@ def commit_staging_repo(
     staged = run_git(["diff", "--cached", "--name-only"], cwd=repo_path)
     if not staged.strip():
         raise HTTPException(status_code=400, detail="No staged changes to commit")
-    if not TECHNICAL_ACCOUNT_TOKEN:
-        raise HTTPException(
-            status_code=400, detail="Technical account token not configured"
-        )
+
     # make sure HEAD is rebased to main tip before comitting
     update_repo(repo_id, user)
     try:

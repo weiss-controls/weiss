@@ -354,6 +354,24 @@ export type StagingTreeInfo = {
 };
 
 /**
+ * TokenStatus
+ */
+export type TokenStatus = {
+  /**
+   * Configured
+   */
+  configured: boolean;
+  /**
+   * Valid
+   */
+  valid: boolean;
+  /**
+   * Detail
+   */
+  detail: string;
+};
+
+/**
  * TreeNode
  */
 export type TreeNode = {
@@ -516,6 +534,22 @@ export type AuthLogoutResponses = {
    */
   200: unknown;
 };
+
+export type GetTokenStatusData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/api/v1/repos/staging/token-status";
+};
+
+export type GetTokenStatusResponses = {
+  /**
+   * Successful Response
+   */
+  200: TokenStatus;
+};
+
+export type GetTokenStatusResponse = GetTokenStatusResponses[keyof GetTokenStatusResponses];
 
 export type ListReposData = {
   body?: never;
