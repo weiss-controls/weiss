@@ -256,8 +256,6 @@ const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
     // excluded: they are always up to date via the ref pattern above.
   }, [repoId, resolvedPath, isDeveloper, data.id, displayMacros]);
 
-  if (!p.visible?.value) return null;
-
   const hasChildren = (data.children?.length ?? 0) > 0;
   if (hasChildren) return null;
 
