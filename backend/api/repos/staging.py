@@ -6,9 +6,8 @@ import uuid
 import subprocess
 import json
 import base64
-from urllib.parse import urlparse
-
 import httpx
+from urllib.parse import urlparse
 from .common import REPOS_BASE_PATH, BARE_CLONE_NAME
 from fastapi import APIRouter, HTTPException, Body, Query, Depends, UploadFile, File
 from pydantic import BaseModel, Field
@@ -349,9 +348,7 @@ def _require_valid_token(git_url: str) -> None:
 @router.get("/token-status", response_model=TokenStatus, operation_id="getTokenStatus")
 def get_token_status():
     """Return whether the configured PAT technical-account token is able to
-    authenticate against the remote hosting platform's API.  This is a real
-    credential check (not just a git ls-remote, which succeeds on public repos
-    even with a bad token).
+    authenticate against the remote hosting platform's API.
     """
     repos = list_all_repositories()
     if not repos:

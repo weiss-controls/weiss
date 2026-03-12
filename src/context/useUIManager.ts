@@ -20,8 +20,10 @@ import {
   getDeployedRepoFile,
   getStagingRepoFile,
   updateStagingRepoFile,
+  getTokenStatus,
   type DeploymentTreeInfo,
   type StagingTreeInfo,
+  type TokenStatus,
   type User,
 } from "@src/services/APIClient";
 
@@ -81,6 +83,7 @@ export default function useUIManager(
   const [selectedFile, setSelectedFile] = useState<SelectedPathInfo | null>(null);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [imageName, setImageName] = useState<string | null>(null);
+  const [tokenStatus, setTokenStatus] = useState<TokenStatus | null>(null);
   const inEditMode = mode === EDIT_MODE;
   const RECONNECT_TIMEOUT = 3000;
   const isDemo = import.meta.env.VITE_DEMO_MODE === "true";
@@ -103,6 +106,14 @@ export default function useUIManager(
   useEffect(() => {
     void updateReposTreeInfo();
   }, [updateReposTreeInfo]);
+
+  useEffect(() => {
+    if (!isDeveloper || !isAuthenticated) {
+      setTokenStatus(null);
+      return;
+    }
+    void getTokenStatus().then((r) => setTokenStatus(r.data));
+  }, [isDeveloper, isAuthenticated]);
 
   useEffect(() => {
     if (authChecked) return;
@@ -324,5 +335,6 @@ export default function useUIManager(
     reloadSelectedFile,
     imageSrc,
     imageName,
+    tokenStatus,
   };
 }

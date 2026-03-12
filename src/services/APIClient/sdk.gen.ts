@@ -157,9 +157,7 @@ export const authLogout = <ThrowOnError extends boolean = true>(
  * Get Token Status
  *
  * Return whether the configured PAT technical-account token is able to
- * authenticate against the remote hosting platform's API.  This is a real
- * credential check (not just a git ls-remote, which succeeds on public repos
- * even with a bad token).
+ * authenticate against the remote hosting platform's API.
  */
 export const getTokenStatus = <ThrowOnError extends boolean = true>(
   options?: Options<GetTokenStatusData, ThrowOnError>,
