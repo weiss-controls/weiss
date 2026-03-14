@@ -162,7 +162,8 @@ export default function ProjectSection({
   defaultSelectedPath,
 }: ProjectSectionProps) {
   const REF_MAX_DISPLAY_SIZE = 7;
-  const { isDeveloper, selectedFile, setSelectedFile, setIsReposLoading } = useUIContext();
+  const { isDeveloper, selectedFile, setSelectedFile, setIsReposLoading, tokenStatus } =
+    useUIContext();
   // helper for type checking
   const isStagingTree = useCallback(
     (repo: StagingTreeInfo | DeploymentTreeInfo): repo is StagingTreeInfo => {
@@ -464,11 +465,23 @@ export default function ProjectSection({
             </IconButton>
 
             <Menu anchorEl={menuAnchor} open={menuOpen} onClose={() => setMenuAnchor(null)}>
-              <Tooltip placement="top" title="Commit and push current changes">
-                <MenuItem onClick={() => setGitCommitOpen(true)}>
-                  <CommitIcon fontSize="small" sx={{ mr: 1 }} />
-                  Commit
-                </MenuItem>
+              <Tooltip
+                placement="top"
+                title={
+                  tokenStatus?.valid === false
+                    ? tokenStatus.detail
+                    : "Commit and push current changes"
+                }
+              >
+                <span>
+                  <MenuItem
+                    onClick={() => setGitCommitOpen(true)}
+                    disabled={tokenStatus?.valid === false}
+                  >
+                    <CommitIcon fontSize="small" sx={{ mr: 1 }} />
+                    Commit
+                  </MenuItem>
+                </span>
               </Tooltip>
               <Tooltip placement="top" title="Sync repo with remote (fetch)">
                 <MenuItem onClick={() => void handleSyncClick()}>
