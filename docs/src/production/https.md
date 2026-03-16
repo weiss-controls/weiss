@@ -65,3 +65,5 @@ An optional third template (`default.docs.template`) is appended to the HTTPS co
 If you need custom nginx directives (e.g., additional proxy headers, rate limiting, or custom
 locations), edit the relevant template file before building the image. The templates follow standard
 nginx `envsubst` syntax.
+
+See more details on the nginx configuration in the [nginx docs](https://nginx.org/en/docs/).

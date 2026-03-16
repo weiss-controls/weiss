@@ -58,7 +58,6 @@ the [WEISS Project Dashboard](https://github.com/orgs/weiss-controls/projects/1/
 :caption: Getting Started
 
 getting_started/quickstart
-getting_started/how_to
 ```
 
 ```{toctree}
