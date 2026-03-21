@@ -42,7 +42,6 @@ TECHNICAL_ACCOUNT_USERNAME = os.getenv("TECHNICAL_ACCOUNT_USERNAME", "weiss-bot"
 TECHNICAL_ACCOUNT_EMAIL = os.getenv("TECHNICAL_ACCOUNT_EMAIL", "weiss-bot@dummy")
 auth_cmd = None
 if TECHNICAL_ACCOUNT_TOKEN:
-    # TODO: actually check if token is valid
     token = TECHNICAL_ACCOUNT_TOKEN.strip()
     auth_header = f"Authorization: Basic {base64.b64encode(('weiss-bot:' + token).encode()).decode()}"
     auth_cmd = ["-c", f"http.extraHeader={auth_header}"]

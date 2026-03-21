@@ -58,10 +58,6 @@ Consumed by both `weiss` (nginx) and `weiss-api` (FastAPI CORS and cookie flags)
 
 Consumed by the `weiss-api` service.
 
-| Variable    | Default | Description                                                                                                                                  |
-| ----------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| _(derived)_ | —       | The CORS origin and OAuth redirect URI are derived automatically from `APP_HOSTNAME` and `ENABLE_HTTPS`. No separate URL variable is needed. |
-
 ### Microsoft Entra ID (SSO authentication)
 
 Required when `VITE_DEMO_MODE=false` or when SSO login is desired alongside demo mode. See
@@ -72,6 +68,12 @@ Required when `VITE_DEMO_MODE=false` or when SSO login is desired alongside demo
 | `MS_AUTH_CLIENT_ID`     | _(none)_ | Application (client) ID from the Azure app registration.                                                                                   |
 | `MS_AUTH_TENANT_ID`     | `common` | Directory (tenant) ID. Use `common` for multi-tenant or consumer accounts, or the specific tenant ID to restrict to a single organisation. |
 | `MS_AUTH_CLIENT_SECRET` | _(none)_ | Client secret value from the Azure app registration.                                                                                       |
+
+:::{note}  
+For now, only Microsoft Entra ID authentication method is supported, but the architecture allows for
+multiple providers to be added as needed. If you need a different authentication method, please open
+an issue or, better yet, contribute a provider implementation!  
+:::
 
 ### Technical account (git commits)
 
