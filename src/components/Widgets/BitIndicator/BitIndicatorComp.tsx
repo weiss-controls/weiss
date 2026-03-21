@@ -55,8 +55,8 @@ const BitIndicatorComp: React.FC<WidgetUpdate> = ({ data }) => {
   };
 
   const circleStyle: React.CSSProperties = {
-    width: circleSize,
-    height: circleSize,
+    width: p.square?.value ? containerWidth : circleSize,
+    height: p.square?.value ? containerHeight : circleSize,
     borderRadius: p.square?.value ? 0 : "50%",
     background,
     borderStyle: p.borderStyle?.value,
