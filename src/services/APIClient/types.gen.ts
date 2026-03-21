@@ -241,6 +241,18 @@ export type PathCreateRequest = {
 };
 
 /**
+ * PathRenameRequest
+ */
+export type PathRenameRequest = {
+  /**
+   * New Name
+   *
+   * New name for the file or directory (just the name segment, not the full path)
+   */
+  new_name: string;
+};
+
+/**
  * RepoCreateRequest
  */
 export type RepoCreateRequest = {
@@ -963,6 +975,45 @@ export type CreateStagingRepoPathResponses = {
 
 export type CreateStagingRepoPathResponse =
   CreateStagingRepoPathResponses[keyof CreateStagingRepoPathResponses];
+
+export type RenameStagingRepoPathData = {
+  body: PathRenameRequest;
+  path: {
+    /**
+     * Repo Id
+     */
+    repo_id: string;
+  };
+  query: {
+    /**
+     * Path
+     *
+     * File or directory path inside repository, relative to root.
+     */
+    path: string;
+  };
+  url: "/api/v1/repos/staging/{repo_id}/path/rename";
+};
+
+export type RenameStagingRepoPathErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type RenameStagingRepoPathError =
+  RenameStagingRepoPathErrors[keyof RenameStagingRepoPathErrors];
+
+export type RenameStagingRepoPathResponses = {
+  /**
+   * Successful Response
+   */
+  200: StagingTreeInfo;
+};
+
+export type RenameStagingRepoPathResponse =
+  RenameStagingRepoPathResponses[keyof RenameStagingRepoPathResponses];
 
 export type CommitStagingRepoData = {
   body: CommitRequest;
