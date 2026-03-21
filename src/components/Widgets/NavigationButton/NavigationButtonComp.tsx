@@ -46,6 +46,7 @@ const NavigationButtonComp: React.FC<WidgetUpdate> = ({ data }) => {
         pointerEvents: inEditMode ? "none" : "auto",
         overflow: "hidden",
       }}
+      disableElevation
       disableRipple={inEditMode}
       disabled={!!p.disabled?.value}
       variant="contained"
