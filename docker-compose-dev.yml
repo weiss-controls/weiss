@@ -1,14 +1,4 @@
 services:
-  weiss-demoioc:
-    build:
-      context: "./examples/exampleIOC/"
-    image: weiss-demoioc:${VITE_APP_VERSION}
-    container_name: weiss-demoioc
-    restart: always
-    network_mode: host
-    tty: true
-    stdin_open: true
-
   weiss-dev:
     build:
       context: "."

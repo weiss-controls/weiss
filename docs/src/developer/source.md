@@ -14,8 +14,6 @@ This launches four services:
 - `weiss-epicsws-dev`: the EPICS communication layer.
 - `weiss-api-dev`: the backend API for file and git interaction.
 - `weiss-dev`: The WEISS front-end application. It should be accessible in `http://localhost:5173`.
-- `weiss-demoioc`: EPICS demonstration IOC (see
-  [exampleIOC contents](https://github.com/weiss-controls/weiss/tree/main/examples/exampleIOC)).
 
 > For the API, the service must be restarted for endpoint changes to take effect. `DEV_MODE` is
 > already set to `true` in `docker-compose-dev.yml`, so the API automatically allows requests from
