@@ -66,8 +66,8 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
   };
 
   const handleDragStop = (_e: RndDragEvent, d: DraggableData, w: Widget) => {
-    if (w.editableProperties.x?.value == d.x && w.editableProperties.y?.value == d.y) return;
     setIsDragging(false);
+    if (w.editableProperties.x?.value == d.x && w.editableProperties.y?.value == d.y) return;
     updateWidgetProperties(w.id, {
       x: ensureGridCoordinate(d.x),
       y: ensureGridCoordinate(d.y),

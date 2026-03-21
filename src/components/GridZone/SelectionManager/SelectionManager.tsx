@@ -66,7 +66,10 @@ const SelectionManager: React.FC<SelectionManagerProps> = ({ gridRef, zoom, pan 
       const target = e.target as HTMLElement;
       const id = target.getAttribute("id");
       const widgetEl = target.closest(".selectable");
-      if ((id !== GRID_ID && !widgetEl) || id === "selectionGroup") return;
+      if ((id !== GRID_ID && !widgetEl) || id === "selectionGroup") {
+        setSelectionArea({});
+        return;
+      }
       // Ignore mouse up if dragging widgets
       if (isDragging) {
         setSelectionArea({});
