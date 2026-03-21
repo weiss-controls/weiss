@@ -49,10 +49,9 @@ Once built, three services should be launched:
   applicable).
 
 :::{hint}  
-If you do not have an IOC available for testing, try running the development demo IOC:
-`docker compose -f docker-compose-dev.yml up -d weiss-demoioc`. This will build and run the
-[example IOC](https://github.com/weiss-controls/weiss/tree/main/examples/exampleIOC). A set of OPIs
-using the appropriate PVs can be imported from
+If you do not have an IOC available for testing, you can run the
+[demonstration IOCs](https://github.com/weiss-controls/weiss-demo-iocs). A set of OPIs using the
+appropriate PVs for these can be imported from
 [weiss-demo-opis](https://github.com/weiss-controls/weiss-demo-opis) using WEISS file browser.  
 :::
 
