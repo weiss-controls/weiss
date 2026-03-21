@@ -3,7 +3,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import type { WidgetUpdate } from "@src/types/widgets";
-import { FLEX_ALIGN_MAP } from "@src/constants/constants";
 import type { CSSProperties } from "@mui/material";
 import { useUIContext } from "@src/context/useUIContext";
 import { useWidgetContext } from "@src/context/useWidgetContext";
@@ -35,9 +34,6 @@ const TextLabelComp: React.FC<WidgetUpdate> = ({ data }) => {
       className="textInputWrapper"
       title={p.tooltip?.value ?? ""}
       style={{
-        display: "flex",
-        justifyContent: FLEX_ALIGN_MAP[p.textHAlign?.value ?? "left"],
-        alignItems: FLEX_ALIGN_MAP[p.textVAlign?.value ?? "middle"],
         width: "100%",
         height: "100%",
         boxSizing: "border-box",
@@ -60,6 +56,8 @@ const TextLabelComp: React.FC<WidgetUpdate> = ({ data }) => {
         onBlur={() => setEditing(false)}
         onChange={(e) => updateWidgetProperties(data.id, { label: e.target.value })}
         style={{
+          width: "100%",
+          height: "100%",
           textAlign: (p.textHAlign?.value ?? "left") as CSSProperties["textAlign"],
           pointerEvents: inEditMode ? "auto" : "none",
           fontSize: p.fontSize?.value,
