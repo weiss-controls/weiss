@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
-import { useCallback, useMemo, useState, useEffect, forwardRef } from "react";
+import { useCallback, useMemo, useState, useEffect, useRef, forwardRef } from "react";
 import {
   Box,
   Typography,
@@ -15,7 +15,13 @@ import {
   Tooltip,
   Collapse,
 } from "@mui/material";
-import { RichTreeView, type TreeViewBaseItem, TreeItemLabel, TreeItemIcon } from "@mui/x-tree-view";
+import {
+  RichTreeView,
+  type TreeViewBaseItem,
+  TreeItemLabel,
+  TreeItemIcon,
+  TreeItemLabelInput,
+} from "@mui/x-tree-view";
 import FolderIcon from "@mui/icons-material/Folder";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import ImageIcon from "@mui/icons-material/Image";
@@ -31,10 +37,11 @@ import RestoreIcon from "@mui/icons-material/Restore";
 import { useTreeItem, type UseTreeItemParameters } from "@mui/x-tree-view/useTreeItem";
 import { TreeItemRoot, TreeItemContent, TreeItemIconContainer } from "@mui/x-tree-view/TreeItem";
 import { TreeItemProvider } from "@mui/x-tree-view/TreeItemProvider";
-import { useTreeItemModel } from "@mui/x-tree-view/hooks";
+import { useTreeItemModel, useRichTreeViewApiRef, useTreeItemUtils } from "@mui/x-tree-view/hooks";
 import {
   checkoutRepoRef,
   deployRepo,
+  renameStagingRepoPath,
   syncRepo,
   resetStagingRepo,
   undeployRepo,
@@ -76,6 +83,7 @@ const isImageFile = (name: string) => {
 const getGitStatusHighlight = (status?: GitFileStatus["status"]) => {
   switch (status) {
     case "modified":
+    case "renamed":
       return { color: COLORS.gitModified };
     case "added":
       return { color: COLORS.gitAdded };
@@ -94,15 +102,18 @@ const hasDirtyDescendant = (children?: RichTreeItem[]): boolean =>
 const CustomTreeItem = forwardRef<HTMLLIElement, UseTreeItemParameters>(
   function CustomTreeItem(props, ref) {
     const { id, itemId, label, disabled, children, ...other } = props;
+    const [extensionError, setExtensionError] = useState(false);
     const {
       getContextProviderProps,
       getRootProps,
       getContentProps,
       getIconContainerProps,
       getLabelProps,
+      getLabelInputProps,
       getGroupTransitionProps,
       status,
     } = useTreeItem({ id, itemId, children, label, disabled, rootRef: ref });
+    const { interactions } = useTreeItemUtils({ itemId, children });
 
     const item = useTreeItemModel<RichTreeItem>(itemId)!;
     const labelSx = {
@@ -119,6 +130,39 @@ const CustomTreeItem = forwardRef<HTMLLIElement, UseTreeItemParameters>(
     const NodeIconSx = { color: COLORS.midGray };
     const dirtyDir = item.type === "directory" && item.gitStatus != null;
 
+    // Derive old extension from the item's path (itemId is the full relative path)
+    const oldName = itemId.slice(itemId.lastIndexOf("/") + 1);
+    const oldExt = oldName.includes(".")
+      ? oldName.slice(oldName.lastIndexOf(".")).toLowerCase()
+      : "";
+
+    const handleInputChange = getLabelInputProps({
+      onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (oldExt) {
+          const val = e.target.value;
+          const newExt = val.includes(".") ? val.slice(val.lastIndexOf(".")).toLowerCase() : "";
+          setExtensionError(newExt !== oldExt);
+        }
+      },
+      onBlur: (event: React.FocusEvent<HTMLInputElement>) => {
+        if (extensionError) {
+          (event as unknown as { defaultMuiPrevented: boolean }).defaultMuiPrevented = true;
+        }
+      },
+      onKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => {
+        (event as unknown as { defaultMuiPrevented: boolean }).defaultMuiPrevented = true;
+        const target = event.target as HTMLInputElement;
+        if (event.key === "Enter") {
+          if (!extensionError && target.value.trim()) {
+            interactions.handleSaveItemLabel(event, target.value);
+          }
+        } else if (event.key === "Escape") {
+          setExtensionError(false);
+          interactions.handleCancelItemLabelEditing(event);
+        }
+      },
+    });
+
     return (
       <TreeItemProvider {...getContextProviderProps()}>
         <TreeItemRoot {...getRootProps(other)}>
@@ -127,20 +171,32 @@ const CustomTreeItem = forwardRef<HTMLLIElement, UseTreeItemParameters>(
               <TreeItemIcon status={status} />
             </TreeItemIconContainer>
             <NodeIcon sx={NodeIconSx} />
-            <TreeItemLabel {...getLabelProps()} sx={labelSx} />
-            {dirtyDir && (
-              <Box
-                sx={{
-                  flexGrow: 1,
-                  mr: 1,
-                  width: 6,
-                  height: 6,
-                  aspectRatio: 1 / 1,
-                  borderRadius: "50%",
-                  backgroundColor: COLORS.gitModified,
-                  alignSelf: "center",
-                }}
-              />
+            {status.editing ? (
+              <Tooltip
+                open={extensionError}
+                title={`Cannot change file extension (expected '${oldExt}')`}
+                placement="right"
+              >
+                <TreeItemLabelInput {...handleInputChange} />
+              </Tooltip>
+            ) : (
+              <>
+                <TreeItemLabel {...getLabelProps()} sx={labelSx} />
+                {dirtyDir && (
+                  <Box
+                    sx={{
+                      flexGrow: 1,
+                      mr: 1,
+                      width: 6,
+                      height: 6,
+                      aspectRatio: 1 / 1,
+                      borderRadius: "50%",
+                      backgroundColor: COLORS.gitModified,
+                      alignSelf: "center",
+                    }}
+                  />
+                )}
+              </>
             )}
           </TreeItemContent>
           {children && (
@@ -162,7 +218,7 @@ export default function ProjectSection({
   defaultSelectedPath,
 }: ProjectSectionProps) {
   const REF_MAX_DISPLAY_SIZE = 7;
-  const { isDeveloper, selectedFile, setSelectedFile, setIsReposLoading, tokenStatus } =
+  const { isDeveloper, inEditMode, selectedFile, setSelectedFile, setIsReposLoading, tokenStatus } =
     useUIContext();
   // helper for type checking
   const isStagingTree = useCallback(
@@ -177,6 +233,8 @@ export default function ProjectSection({
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(menuAnchor);
+  const apiRef = useRichTreeViewApiRef();
+  const revertingLabelRef = useRef(false);
   const selectedRef = isStagingTree(repo) ? repo.checked_out_ref : repo.deployed_ref;
   const shortRef = (ref: string) => ref.substring(0, REF_MAX_DISPLAY_SIZE);
 
@@ -341,6 +399,45 @@ export default function ProjectSection({
       notifyUser(`Failed to restore ${repo.alias}: ${err as string}`, "error");
     } finally {
       setIsReposLoading(false);
+    }
+  };
+
+  const handleItemLabelChange = async (itemId: string, newLabel: string) => {
+    if (!isStagingTree(repo)) return;
+
+    if (revertingLabelRef.current) {
+      revertingLabelRef.current = false;
+      return;
+    }
+
+    const oldLabel = itemId.slice(itemId.lastIndexOf("/") + 1);
+    const revertLabel = () => {
+      revertingLabelRef.current = true;
+      apiRef.current?.updateItemLabel(itemId, oldLabel);
+    };
+
+    try {
+      const updt = await renameStagingRepoPath({
+        path: { repo_id: repo.id },
+        query: { path: itemId },
+        body: { new_name: newLabel },
+      }).then((r) => r.data);
+      if (selectedFile?.repo_id === repo.id) {
+        const parentDir = itemId.slice(0, itemId.lastIndexOf("/") + 1);
+        const newItemPath = parentDir + newLabel;
+        if (selectedFile.path === itemId) {
+          setSelectedFile({ ...selectedFile, path: newItemPath });
+        } else if (selectedFile.path.startsWith(itemId + "/")) {
+          setSelectedFile({
+            ...selectedFile,
+            path: newItemPath + selectedFile.path.slice(itemId.length),
+          });
+        }
+      }
+      onRepoUpdate(updt);
+    } catch (err) {
+      revertLabel();
+      notifyUser(`Failed to rename: ${err as string}`, "error");
     }
   };
 
@@ -528,6 +625,9 @@ export default function ProjectSection({
           onRepoUpdate={onRepoUpdate}
           onExpandAll={() => expandAll(repo)}
           onCollapseAll={() => collapseAll()}
+          onStartRename={() => {
+            if (selectedItem) apiRef.current?.setEditedItem(selectedItem);
+          }}
         />
         <Box sx={{ px: 1, py: 0.5 }}>
           <RichTreeView
@@ -541,6 +641,9 @@ export default function ProjectSection({
             expandedItems={expandedItems}
             onExpandedItemsChange={(_, ids) => setExpandedItems(ids)}
             slots={{ item: CustomTreeItem }}
+            apiRef={apiRef}
+            isItemEditable={isStagingTree(repo) && isDeveloper && inEditMode ? true : false}
+            onItemLabelChange={(itemId, newLabel) => void handleItemLabelChange(itemId, newLabel)}
           />
         </Box>
       </Collapse>

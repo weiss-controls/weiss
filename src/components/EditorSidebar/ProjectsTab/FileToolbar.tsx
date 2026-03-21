@@ -6,6 +6,7 @@ import { Box, IconButton, Tooltip } from "@mui/material";
 import {
   CreateNewFolderOutlined,
   DeleteOutlined,
+  DriveFileRenameOutlineOutlined,
   NoteAddOutlined,
   UnfoldLessOutlined,
   UnfoldMoreOutlined,
@@ -27,6 +28,7 @@ interface FileToolbarProps {
   onRepoUpdate: (update: StagingTreeInfo) => void;
   onExpandAll: () => void;
   onCollapseAll: () => void;
+  onStartRename: () => void;
 }
 
 function getParentDir(path: string): string {
@@ -68,6 +70,7 @@ export default function FileToolbar({
   onRepoUpdate,
   onExpandAll,
   onCollapseAll,
+  onStartRename,
 }: FileToolbarProps) {
   const iconSx = { fontSize: 18 };
   const { inEditMode, isDeveloper, selectedFile, setSelectedFile } = useUIContext();
@@ -190,6 +193,17 @@ export default function FileToolbar({
               void uploadFile(selectedPath.repo_id, basePath, file);
             }}
           />
+
+          <Tooltip title="Rename selected path">
+            <IconButton
+              onClick={() => {
+                if (!selectedPath) return;
+                onStartRename();
+              }}
+            >
+              <DriveFileRenameOutlineOutlined sx={iconSx} />
+            </IconButton>
+          </Tooltip>
 
           <Tooltip title="Delete selected path">
             <IconButton
