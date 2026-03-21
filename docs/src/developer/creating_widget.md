@@ -166,3 +166,7 @@ For details and available fields, see `src/types/epicsWS.ts`.
   similar techniques if your widget is complex or has expensive rendering logic.
 - **Need extra properties?**: If you need a specific property that is not available, feel free to
   add it to `PROPERTY_SCHEMAS`. Make sure to follow the existing patterns.
+- **Make it easy to try out:** If your widget requires a PV not available in the
+  [demonstration IOCs](https://github.com/weiss-controls/weiss-demo-iocs/), consider submitting a PR
+  to add it there, so other developers can easily test your widget without needing to set up their
+  own IOCs.

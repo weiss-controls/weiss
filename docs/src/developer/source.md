@@ -19,6 +19,10 @@ This launches four services:
 > already set to `true` in `docker-compose-dev.yml`, so the API automatically allows requests from
 > `http://localhost:5173` — no extra configuration is needed.
 
+For development, it is also recommended to launch the demonstration IOCs, to have some live PVs to
+test with. All IOCs and instructions can be found in the
+[weiss-demo-iocs repository](https://github.com/weiss-controls/weiss-demo-iocs.git).
+
 ---
 
 ## Building and serving the documentation
