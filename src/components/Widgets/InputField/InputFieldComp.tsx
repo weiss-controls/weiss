@@ -39,7 +39,6 @@ const InputFieldComp: React.FC<WidgetUpdate> = ({ data }) => {
           style={{
             width: "100%",
             height: "100%",
-            margin: "auto",
             backgroundColor: p.backgroundColor?.value,
             fontSize: p.fontSize?.value,
             fontFamily: p.fontFamily?.value,

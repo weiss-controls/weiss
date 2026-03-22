@@ -16,7 +16,6 @@ const RectangleComp: React.FC<WidgetUpdate> = ({ data }) => {
       style={{
         width: "100%",
         height: "100%",
-        display: "flex",
         boxSizing: "border-box",
         backgroundColor: p.backgroundColor?.value,
         borderRadius: p.borderRadius?.value,
