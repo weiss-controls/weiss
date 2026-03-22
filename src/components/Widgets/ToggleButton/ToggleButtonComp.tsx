@@ -84,6 +84,9 @@ const ToggleButtonComp: React.FC<WidgetUpdate> = ({ data }) => {
           borderWidth: p.borderWidth?.value,
           borderColor: p.borderColor?.value,
           textTransform: "none",
+          minWidth: 0,
+          minHeight: 0,
+          padding: 0,
           overflow: "hidden",
         }}
         disableRipple={inEditMode || !validValue}
