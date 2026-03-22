@@ -7,7 +7,7 @@ import type { WidgetDefinition } from "@src/types/widgets";
 import InputIcon from "@mui/icons-material/Input";
 import { PROPERTY_SCHEMAS, COMMON_PROPS, TEXT_PROPS } from "@src/types/widgetProperties";
 
-const { textVAlign, textHAlign, ...FILTERED_TEXT_PROPS } = TEXT_PROPS;
+const { textVAlign, ...FILTERED_TEXT_PROPS } = TEXT_PROPS;
 
 export const InputField: WidgetDefinition = {
   component: InputFieldComp,
