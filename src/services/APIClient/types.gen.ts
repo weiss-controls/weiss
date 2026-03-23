@@ -241,6 +241,18 @@ export type PathCreateRequest = {
 };
 
 /**
+ * PathMoveRequest
+ */
+export type PathMoveRequest = {
+  /**
+   * Destination
+   *
+   * Destination directory path, relative to repo root. The item is moved into this directory.
+   */
+  destination: string;
+};
+
+/**
  * PathRenameRequest
  */
 export type PathRenameRequest = {
@@ -1014,6 +1026,44 @@ export type RenameStagingRepoPathResponses = {
 
 export type RenameStagingRepoPathResponse =
   RenameStagingRepoPathResponses[keyof RenameStagingRepoPathResponses];
+
+export type MoveStagingRepoPathData = {
+  body: PathMoveRequest;
+  path: {
+    /**
+     * Repo Id
+     */
+    repo_id: string;
+  };
+  query: {
+    /**
+     * Path
+     *
+     * File or directory path to move, relative to repo root.
+     */
+    path: string;
+  };
+  url: "/api/v1/repos/staging/{repo_id}/path/move";
+};
+
+export type MoveStagingRepoPathErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type MoveStagingRepoPathError = MoveStagingRepoPathErrors[keyof MoveStagingRepoPathErrors];
+
+export type MoveStagingRepoPathResponses = {
+  /**
+   * Successful Response
+   */
+  200: StagingTreeInfo;
+};
+
+export type MoveStagingRepoPathResponse =
+  MoveStagingRepoPathResponses[keyof MoveStagingRepoPathResponses];
 
 export type CommitStagingRepoData = {
   body: CommitRequest;

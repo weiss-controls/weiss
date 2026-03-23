@@ -1,7 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
-import { useCallback, useMemo, useState, useEffect, useRef, forwardRef } from "react";
+import {
+  useCallback,
+  useMemo,
+  useState,
+  useEffect,
+  useRef,
+  forwardRef,
+  createContext,
+  useContext,
+} from "react";
 import {
   Box,
   Typography,
@@ -41,6 +50,7 @@ import { useTreeItemModel, useRichTreeViewApiRef, useTreeItemUtils } from "@mui/
 import {
   checkoutRepoRef,
   deployRepo,
+  moveStagingRepoPath,
   renameStagingRepoPath,
   syncRepo,
   resetStagingRepo,
@@ -99,6 +109,19 @@ const getGitStatusHighlight = (status?: GitFileStatus["status"]) => {
 const hasDirtyDescendant = (children?: RichTreeItem[]): boolean =>
   !!children?.some((c) => c.gitStatus ?? hasDirtyDescendant(c.children));
 
+interface DragDropCtx {
+  enabled: boolean;
+  draggedItemId: string | null;
+  dropTargetId: string | null;
+  onDragStart: (itemId: string) => void;
+  onDragEnd: () => void;
+  onDragEnterDir: (itemId: string) => void;
+  onDragLeaveDir: (itemId: string) => void;
+  onDrop: (targetDirId: string) => void;
+}
+
+const DragDropContext = createContext<DragDropCtx | null>(null);
+
 const CustomTreeItem = forwardRef<HTMLLIElement, UseTreeItemParameters>(
   function CustomTreeItem(props, ref) {
     const { id, itemId, label, disabled, children, ...other } = props;
@@ -114,6 +137,7 @@ const CustomTreeItem = forwardRef<HTMLLIElement, UseTreeItemParameters>(
       status,
     } = useTreeItem({ id, itemId, children, label, disabled, rootRef: ref });
     const { interactions } = useTreeItemUtils({ itemId, children });
+    const dndCtx = useContext(DragDropContext);
 
     const item = useTreeItemModel<RichTreeItem>(itemId)!;
     const labelSx = {
@@ -129,6 +153,48 @@ const CustomTreeItem = forwardRef<HTMLLIElement, UseTreeItemParameters>(
           : InsertDriveFileIcon;
     const NodeIconSx = { color: COLORS.midGray };
     const dirtyDir = item.type === "directory" && item.gitStatus != null;
+
+    const isDragging = dndCtx?.draggedItemId === itemId;
+    const isDropTarget = dndCtx?.dropTargetId === itemId && item.type === "directory";
+
+    const dragHandlers: React.HTMLAttributes<HTMLElement> = dndCtx?.enabled
+      ? {
+          draggable: true,
+          onDragStart: (e) => {
+            e.stopPropagation();
+            e.dataTransfer.effectAllowed = "move";
+            dndCtx.onDragStart(itemId);
+          },
+          onDragEnd: () => dndCtx.onDragEnd(),
+          ...(item.type === "directory"
+            ? {
+                onDragOver: (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.dataTransfer.dropEffect = "move";
+                },
+                onDragEnter: (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const ct = e.currentTarget as HTMLElement;
+                  const rt = e.relatedTarget as Node | null;
+                  if (!rt || !ct.contains(rt)) dndCtx.onDragEnterDir(itemId);
+                },
+                onDragLeave: (e) => {
+                  e.stopPropagation();
+                  const ct = e.currentTarget as HTMLElement;
+                  const rt = e.relatedTarget as Node | null;
+                  if (!rt || !ct.contains(rt)) dndCtx.onDragLeaveDir(itemId);
+                },
+                onDrop: (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  dndCtx.onDrop(itemId);
+                },
+              }
+            : {}),
+        }
+      : {};
 
     // Derive old extension from the item's path (itemId is the full relative path)
     const oldName = itemId.slice(itemId.lastIndexOf("/") + 1);
@@ -166,7 +232,16 @@ const CustomTreeItem = forwardRef<HTMLLIElement, UseTreeItemParameters>(
     return (
       <TreeItemProvider {...getContextProviderProps()}>
         <TreeItemRoot {...getRootProps(other)}>
-          <TreeItemContent {...getContentProps()}>
+          <TreeItemContent
+            {...getContentProps()}
+            {...dragHandlers}
+            style={{
+              ...(isDragging ? { opacity: 0.5 } : {}),
+              ...(isDropTarget
+                ? { outline: `2px solid ${COLORS.highlighted}`, borderRadius: "4px" }
+                : {}),
+            }}
+          >
             <TreeItemIconContainer {...getIconContainerProps()}>
               <TreeItemIcon status={status} />
             </TreeItemIconContainer>
@@ -235,6 +310,8 @@ export default function ProjectSection({
   const menuOpen = Boolean(menuAnchor);
   const apiRef = useRichTreeViewApiRef();
   const revertingLabelRef = useRef(false);
+  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
   const selectedRef = isStagingTree(repo) ? repo.checked_out_ref : repo.deployed_ref;
   const shortRef = (ref: string) => ref.substring(0, REF_MAX_DISPLAY_SIZE);
 
@@ -441,6 +518,41 @@ export default function ProjectSection({
     }
   };
 
+  const handleMoveDrop = async (targetDirId: string) => {
+    const srcId = draggedItemId;
+    setDraggedItemId(null);
+    setDropTargetId(null);
+    if (!srcId || !isStagingTree(repo)) return;
+    const srcParent = srcId.includes("/") ? srcId.slice(0, srcId.lastIndexOf("/")) : "";
+    if (srcParent === targetDirId || srcId === targetDirId) return;
+    if (targetDirId.startsWith(srcId + "/")) return;
+    setIsReposLoading(true);
+    try {
+      const updt = await moveStagingRepoPath({
+        path: { repo_id: repo.id },
+        query: { path: srcId },
+        body: { destination: targetDirId },
+      }).then((r) => r.data);
+      if (selectedFile?.repo_id === repo.id) {
+        const itemName = srcId.slice(srcId.lastIndexOf("/") + 1);
+        const newPath = `${targetDirId}/${itemName}`;
+        if (selectedFile.path === srcId) {
+          setSelectedFile({ ...selectedFile, path: newPath });
+        } else if (selectedFile.path.startsWith(`${srcId}/`)) {
+          setSelectedFile({
+            ...selectedFile,
+            path: newPath + selectedFile.path.slice(srcId.length),
+          });
+        }
+      }
+      onRepoUpdate(updt);
+    } catch (err) {
+      notifyUser(`Failed to move: ${err as string}`, "error");
+    } finally {
+      setIsReposLoading(false);
+    }
+  };
+
   const findItemById = useCallback((items: RichTreeItem[], id: string): RichTreeItem | null => {
     for (const item of items) {
       if (item.id === id) return item;
@@ -497,6 +609,23 @@ export default function ProjectSection({
   const items = useMemo(() => toRichItems(repo.tree), [repo.tree, toRichItems]);
 
   if (!selectedRef) return;
+
+  const dndEnabled = isStagingTree(repo) && isDeveloper && inEditMode;
+  const dndContextValue: DragDropCtx = {
+    enabled: dndEnabled,
+    draggedItemId,
+    dropTargetId,
+    onDragStart: (id) => setDraggedItemId(id),
+    onDragEnd: () => {
+      setDraggedItemId(null);
+      setDropTargetId(null);
+    },
+    onDragEnterDir: (id) => setDropTargetId(id),
+    onDragLeaveDir: (id) => setDropTargetId((prev) => (prev === id ? null : prev)),
+    onDrop: (targetDirId) => {
+      void handleMoveDrop(targetDirId);
+    },
+  };
 
   return (
     <Paper variant="outlined" sx={{ mb: 2, width: "100%" }}>
@@ -629,23 +758,25 @@ export default function ProjectSection({
             if (selectedItem) apiRef.current?.setEditedItem(selectedItem);
           }}
         />
-        <Box sx={{ px: 1, py: 0.5 }}>
-          <RichTreeView
-            items={items}
-            selectedItems={selectedItem}
-            onSelectedItemsChange={(_, id) => {
-              setSelectedItem(id);
-              const item = id ? findItemById(items, id) : null;
-              if (item?.type === "file") void onFileSelect(repo.id, item.path);
-            }}
-            expandedItems={expandedItems}
-            onExpandedItemsChange={(_, ids) => setExpandedItems(ids)}
-            slots={{ item: CustomTreeItem }}
-            apiRef={apiRef}
-            isItemEditable={isStagingTree(repo) && isDeveloper && inEditMode ? true : false}
-            onItemLabelChange={(itemId, newLabel) => void handleItemLabelChange(itemId, newLabel)}
-          />
-        </Box>
+        <DragDropContext.Provider value={dndContextValue}>
+          <Box sx={{ px: 1, py: 0.5 }}>
+            <RichTreeView
+              items={items}
+              selectedItems={selectedItem}
+              onSelectedItemsChange={(_, id) => {
+                setSelectedItem(id);
+                const item = id ? findItemById(items, id) : null;
+                if (item?.type === "file") void onFileSelect(repo.id, item.path);
+              }}
+              expandedItems={expandedItems}
+              onExpandedItemsChange={(_, ids) => setExpandedItems(ids)}
+              slots={{ item: CustomTreeItem }}
+              apiRef={apiRef}
+              isItemEditable={isStagingTree(repo) && isDeveloper && inEditMode ? true : false}
+              onItemLabelChange={(itemId, newLabel) => void handleItemLabelChange(itemId, newLabel)}
+            />
+          </Box>
+        </DragDropContext.Provider>
       </Collapse>
       <GitCommitDialog
         open={gitCommitOpen}
