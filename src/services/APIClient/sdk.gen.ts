@@ -63,6 +63,9 @@ import type {
   RegisterRepoData,
   RegisterRepoErrors,
   RegisterRepoResponses,
+  RenameStagingRepoPathData,
+  RenameStagingRepoPathErrors,
+  RenameStagingRepoPathResponses,
   ResetStagingRepoData,
   ResetStagingRepoErrors,
   ResetStagingRepoFileData,
@@ -370,6 +373,27 @@ export const createStagingRepoPath = <ThrowOnError extends boolean = true>(
     ThrowOnError
   >({
     url: "/api/v1/repos/staging/{repo_id}/path",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+
+/**
+ * Rename Staging Repo Path
+ *
+ * Rename a file or directory in the staging repository.
+ */
+export const renameStagingRepoPath = <ThrowOnError extends boolean = true>(
+  options: Options<RenameStagingRepoPathData, ThrowOnError>,
+) =>
+  (options.client ?? client).post<
+    RenameStagingRepoPathResponses,
+    RenameStagingRepoPathErrors,
+    ThrowOnError
+  >({
+    url: "/api/v1/repos/staging/{repo_id}/path/rename",
     ...options,
     headers: {
       "Content-Type": "application/json",

@@ -91,6 +91,13 @@ class PathCreateRequest(BaseModel):
     )
 
 
+class PathRenameRequest(BaseModel):
+    new_name: str = Field(
+        ...,
+        description="New name for the file or directory (just the name segment, not the full path)",
+    )
+
+
 class GitFileStatus(BaseModel):
     path: str
     status: Literal["modified", "added", "deleted", "renamed", "untracked"]
@@ -204,15 +211,22 @@ def get_working_tree_status(repo_path: str) -> GitWorkingTreeStatus:
         path = line[3:]
 
         if code == "??":
-            status = "untracked"
+            files.append(GitFileStatus(path=path, status="untracked"))
+        elif "R" in code:
+            # if porcelain returns rename as "old -> new", report old path as
+            # deleted and new as renamed. The difference doesn't matter for FE
+            parts = path.split(" -> ", 1)
+            if len(parts) == 2:
+                files.append(GitFileStatus(path=parts[0], status="deleted"))
+                files.append(GitFileStatus(path=parts[1], status="renamed"))
+            else:
+                files.append(GitFileStatus(path=path, status="renamed"))
         elif "D" in code:
-            status = "deleted"
+            files.append(GitFileStatus(path=path, status="deleted"))
         elif "A" in code:
-            status = "added"
+            files.append(GitFileStatus(path=path, status="added"))
         else:
-            status = "modified"
-
-        files.append(GitFileStatus(path=path, status=status))
+            files.append(GitFileStatus(path=path, status="modified"))
 
     return GitWorkingTreeStatus(
         dirty=bool(files),
@@ -806,6 +820,62 @@ def delete_staging_repo_path(
         run_git(["rm", "-r", "-f", "--", rel_path], cwd=repo_path)
     else:
         run_git(["rm", "-f", "--", rel_path], cwd=repo_path)
+
+    return get_staging_repo_tree(repo_id, user)
+
+
+@router.post(
+    "/{repo_id}/path/rename",
+    response_model=StagingTreeInfo,
+    operation_id="renameStagingRepoPath",
+)
+def rename_staging_repo_path(
+    repo_id: str,
+    path: str = Query(
+        ...,
+        description="File or directory path inside repository, relative to root.",
+    ),
+    payload: PathRenameRequest = Body(...),
+    user: User = Depends(require_developer),
+):
+    """
+    Rename a file or directory in the staging repository.
+    """
+    repo_path = get_user_worktree_path(repo_id, user)
+
+    rel_path = os.path.normpath(path).lstrip(os.sep)
+    if rel_path.startswith(".."):
+        raise HTTPException(status_code=400, detail="Invalid path")
+
+    new_name = payload.new_name.strip()
+    if not new_name or os.sep in new_name or "/" in new_name:
+        raise HTTPException(
+            status_code=400,
+            detail="new_name must be a single name without path separators",
+        )
+
+    full_path = os.path.join(repo_path, rel_path)
+    if not os.path.exists(full_path):
+        raise HTTPException(status_code=404, detail="Path not found")
+
+    if os.path.isfile(full_path):
+        _, old_ext = os.path.splitext(rel_path)
+        _, new_ext = os.path.splitext(new_name)
+        if old_ext.lower() != new_ext.lower():
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot change file extension (expected '{old_ext}')",
+            )
+
+    parent_rel = os.path.dirname(rel_path)
+    new_rel_path = os.path.join(parent_rel, new_name) if parent_rel else new_name
+    new_full_path = os.path.join(repo_path, new_rel_path)
+    if os.path.exists(new_full_path):
+        raise HTTPException(
+            status_code=400, detail="A file or directory with that name already exists"
+        )
+
+    run_git(["mv", rel_path, new_rel_path], cwd=repo_path)
 
     return get_staging_repo_tree(repo_id, user)
 
