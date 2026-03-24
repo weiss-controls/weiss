@@ -46,7 +46,8 @@ const SliderComp: React.FC<WidgetUpdate> = ({ data }) => {
           borderWidth: p.borderWidth?.value,
           borderColor: p.borderColor?.value,
           pointerEvents: inEditMode ? "none" : "auto",
-          overflow: "hidden",
+          padding: isHorizontal ? "0 10px" : "10px 0",
+          minHeight: "14px",
         }}
       >
         <Slider
@@ -60,8 +61,8 @@ const SliderComp: React.FC<WidgetUpdate> = ({ data }) => {
           onChange={handleChange}
           sx={{
             color: p.backgroundColor?.value ?? "primary.main",
-            width: isHorizontal ? "90%" : undefined,
-            height: !isHorizontal ? "90%" : undefined,
+            width: isHorizontal ? "100%" : undefined,
+            height: !isHorizontal ? "100%" : undefined,
             pointerEvents: inEditMode ? "none" : "auto",
             flexShrink: 0,
           }}
