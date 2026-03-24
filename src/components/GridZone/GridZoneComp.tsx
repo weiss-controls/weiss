@@ -41,16 +41,8 @@ import { useUIContext } from "@src/context/useUIContext";
 const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
   const props = data.editableProperties;
 
-  const {
-    mode,
-    disableGridShortcuts,
-    isPanning,
-    setIsPanning,
-    inEditMode,
-    selectedFile,
-    isDeveloper,
-    isReposLoading,
-  } = useUIContext();
+  const { mode, isPanning, setIsPanning, inEditMode, selectedFile, isDeveloper, isReposLoading } =
+    useUIContext();
 
   const {
     addWidget,
@@ -254,7 +246,15 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
   // Shortcuts handler
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (disableGridShortcuts) return;
+      // Block shortcuts while the user is typing in any input/textarea/contenteditable.
+      // Checking document.activeElement here (instead of disableGridShortcuts) avoids race
+      // conditions observed with react-rnd.
+      const active = document.activeElement as HTMLElement | null;
+      if (
+        active &&
+        (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.isContentEditable)
+      )
+        return;
       // shortcuts for all modes
       if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "c") {
         e.preventDefault();
