@@ -40,6 +40,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ pos, mousePos, visible, onClo
   const { inEditMode } = useUIContext();
   const {
     selectedWidgetIDs,
+    selectedWidgets,
     bringToFront,
     sendToBack,
     alignTop,
@@ -62,6 +63,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ pos, mousePos, visible, onClo
 
   const noneSelected = selectedWidgetIDs.length === 0;
   const lessThanTwoSelected = selectedWidgetIDs.length < 2;
+  const hasGroupSelected = selectedWidgets.some((w) => w.widgetName === "Group");
 
   const options = [
     {
@@ -91,7 +93,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ pos, mousePos, visible, onClo
       icon: <CustomUngroupIcon fontSize="small" />,
       shortcut: "Ctrl+U",
       action: () => ungroupSelected(),
-      disabled: lessThanTwoSelected,
+      disabled: !hasGroupSelected,
     },
     { divider: true },
     {

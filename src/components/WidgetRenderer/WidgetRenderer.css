@@ -15,6 +15,13 @@
   outline: 1px dashed rgba(80, 80, 80, 0.199);
 }
 
+.groupMemberSelected {
+  box-sizing: border-box;
+  overflow: visible;
+  outline: 2px dashed rgba(4, 102, 200, 0.363);
+  box-shadow: 0 0 0 3px rgba(4, 102, 200, 0.1);
+}
+
 .selectionGroup {
   position: absolute;
   outline: 2px dashed #0466c8;

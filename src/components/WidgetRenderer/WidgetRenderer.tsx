@@ -14,6 +14,9 @@ import { useEpicsWSContext } from "@src/context/useEpicsWSContext";
 
 const DRAG_END_DELAY = 80; //ms
 
+const hasSelectedDescendant = (w: Widget, selectedIDs: string[]): boolean =>
+  !!w.children?.some((c) => selectedIDs.includes(c.id) || hasSelectedDescendant(c, selectedIDs));
+
 interface RendererProps {
   scale: number;
   ensureGridCoordinate: (coord: number) => number;
@@ -66,8 +69,8 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
   };
 
   const handleDragStop = (_e: RndDragEvent, d: DraggableData, w: Widget) => {
-    if (w.editableProperties.x?.value == d.x && w.editableProperties.y?.value == d.y) return;
     setIsDragging(false);
+    if (w.editableProperties.x?.value == d.x && w.editableProperties.y?.value == d.y) return;
     updateWidgetProperties(w.id, {
       x: ensureGridCoordinate(d.x),
       y: ensureGridCoordinate(d.y),
@@ -153,6 +156,16 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
       inEditMode && !isPanning && !isChild && !isEmbedded && w.widgetName !== "EmbeddedDisplay";
     const isGroup = w.children?.length;
     const childIsEmbedded = isEmbedded || w.widgetName === "EmbeddedDisplay";
+    const groupHasSelectedChild =
+      isGroup && !isSelected && hasSelectedDescendant(w, selectedWidgetIDs);
+
+    let editModeClass = "";
+    if (inEditMode && !isEmbedded) {
+      if (isSelected) editModeClass = "selectable selected";
+      else if (groupHasSelectedChild) editModeClass = "selectable groupMemberSelected";
+      else if (isGroup) editModeClass = "selectable groupBox";
+      else editModeClass = "selectable";
+    }
 
     return (
       <Rnd
@@ -164,11 +177,7 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
         enableResizing={canResize}
         size={{ width, height }}
         position={{ x, y }}
-        className={
-          inEditMode && !isEmbedded
-            ? `selectable ${isSelected ? "selected" : isGroup ? "groupBox" : ""}`
-            : ""
-        }
+        className={editModeClass}
         style={isEmbedded ? { pointerEvents: "none" } : undefined}
         onDrag={() => setIsDragging(true)}
         onDragStop={(e, d) => handleDragStop(e, d, w)}

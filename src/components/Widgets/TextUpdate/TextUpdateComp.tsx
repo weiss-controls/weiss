@@ -44,7 +44,6 @@ const TextUpdateComp: React.FC<WidgetUpdate> = ({ data }) => {
           paddingRight: 5,
           boxSizing: "border-box",
           overflow: "hidden",
-          justifyContent: FLEX_ALIGN_MAP[p.textHAlign?.value ?? "left"],
           alignItems: FLEX_ALIGN_MAP[p.textVAlign?.value ?? "middle"],
           backgroundColor: p.backgroundColor?.value,
           fontSize: p.fontSize?.value,
@@ -59,22 +58,19 @@ const TextUpdateComp: React.FC<WidgetUpdate> = ({ data }) => {
           borderColor: p.borderColor?.value,
         }}
       >
-        {displayValue}
-        {units && (
-          <span
-            style={{
-              position: "absolute",
-              right: "8px",
-              top: "50%",
-              transform: "translateY(-50%)",
-              color: p.textColor?.value,
-              fontSize: p.fontSize?.value,
-              pointerEvents: "none",
-            }}
-          >
-            {units}
-          </span>
-        )}
+        <span
+          style={{
+            flex: 1,
+            minWidth: 0,
+            overflow: "hidden",
+            whiteSpace: "nowrap",
+            textAlign: (p.textHAlign?.value ??
+              "left") as unknown as React.CSSProperties["textAlign"],
+          }}
+        >
+          {displayValue}
+          {units && <span style={{ marginLeft: 4 }}>{units}</span>}
+        </span>
       </div>
     </AlarmBorder>
   );

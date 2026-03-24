@@ -2,6 +2,7 @@
 // Copyright (C) 2026 André Favoto
 
 import React, { useState, useEffect } from "react";
+import type { CSSProperties } from "react";
 import type { WidgetUpdate } from "@src/types/widgets";
 import AlarmBorder from "@components/AlarmBorder/AlarmBorder";
 import { useUIContext } from "@src/context/useUIContext";
@@ -11,6 +12,7 @@ const InputFieldComp: React.FC<WidgetUpdate> = ({ data }) => {
   const { writePVValue } = useEpicsWSContext();
   const { inEditMode } = useUIContext();
   const [inputValue, setInputValue] = useState<string>("");
+  const [isFocused, setIsFocused] = useState(false);
 
   const p = data.editableProperties;
   const pvData = data.pvData;
@@ -39,7 +41,6 @@ const InputFieldComp: React.FC<WidgetUpdate> = ({ data }) => {
           style={{
             width: "100%",
             height: "100%",
-            margin: "auto",
             backgroundColor: p.backgroundColor?.value,
             fontSize: p.fontSize?.value,
             fontFamily: p.fontFamily?.value,
@@ -53,13 +54,27 @@ const InputFieldComp: React.FC<WidgetUpdate> = ({ data }) => {
             borderColor: p.borderColor?.value,
             boxSizing: "border-box",
             padding: "4px 8px",
-            paddingRight: units ? "2em" : "8px",
             pointerEvents: inEditMode ? "none" : "auto",
+            textAlign: (p.textHAlign?.value ?? "left") as CSSProperties["textAlign"],
             overflow: "hidden",
           }}
           disabled={p.disabled?.value}
           placeholder={inEditMode ? p.pvName?.value : p.label?.value}
-          value={inputValue}
+          value={
+            isFocused
+              ? inputValue
+              : !inEditMode && pvData?.value !== undefined
+                ? String(pvData.value) + (units ? ` ${units}` : "")
+                : inputValue
+          }
+          onFocus={() => {
+            setInputValue(pvData?.value !== undefined ? String(pvData.value) : "");
+            setIsFocused(true);
+          }}
+          onBlur={() => {
+            setIsFocused(false);
+            setInputValue("");
+          }}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
@@ -67,21 +82,6 @@ const InputFieldComp: React.FC<WidgetUpdate> = ({ data }) => {
             }
           }}
         />
-        {units && (
-          <span
-            style={{
-              position: "absolute",
-              right: "8px",
-              top: "50%",
-              transform: "translateY(-50%)",
-              color: p.textColor?.value,
-              fontSize: p.fontSize?.value,
-              pointerEvents: "none",
-            }}
-          >
-            {units}
-          </span>
-        )}
       </div>
     </AlarmBorder>
   );
