@@ -73,6 +73,7 @@ const BitIndicatorComp: React.FC<WidgetUpdate> = ({ data }) => {
     textDecoration: p.fontUnderlined?.value ? "underline" : "none",
     textAlign: "center",
     overflow: "hidden",
+    paddingLeft: "5px",
   };
 
   return (
