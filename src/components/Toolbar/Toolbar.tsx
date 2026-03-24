@@ -31,6 +31,7 @@ const ToolbarButtons: React.FC = () => {
   const { inEditMode } = useUIContext();
   const {
     selectedWidgetIDs,
+    selectedWidgets,
     handleUndo,
     undoStack,
     handleRedo,
@@ -54,6 +55,7 @@ const ToolbarButtons: React.FC = () => {
 
   const noneSelected = selectedWidgetIDs.length === 0;
   const lessThanTwoSelected = selectedWidgetIDs.length < 2;
+  const hasGroupSelected = selectedWidgets.some((w) => w.widgetName === "Group");
   const nothingToRedo = redoStack.length === 0;
   const nothingToUndo = undoStack.length === 0;
 
@@ -145,7 +147,7 @@ const ToolbarButtons: React.FC = () => {
             <IconButton
               size="small"
               onClick={ungroupSelected}
-              disabled={lessThanTwoSelected}
+              disabled={!hasGroupSelected}
               sx={iconSx}
             >
               <CustomUngroupIcon fontSize="small" />
