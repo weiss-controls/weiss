@@ -6,6 +6,7 @@ import uuid
 import subprocess
 import json
 import base64
+import shutil
 import httpx
 from urllib.parse import urlparse
 from .common import REPOS_BASE_PATH, BARE_CLONE_NAME
@@ -824,9 +825,11 @@ def delete_staging_repo_path(
         raise HTTPException(status_code=404, detail="Path not found")
 
     if os.path.isdir(full_path):
-        run_git(["rm", "-r", "-f", "--", rel_path], cwd=repo_path)
+        shutil.rmtree(full_path)
     else:
-        run_git(["rm", "-f", "--", rel_path], cwd=repo_path)
+        os.remove(full_path)
+
+    run_git(["add", "-A"], cwd=repo_path)
 
     return get_staging_repo_tree(repo_id, user)
 
@@ -949,7 +952,9 @@ def move_staging_repo_path(
             detail="Cannot move a directory into one of its own subdirectories",
         )
 
-    run_git(["mv", rel_src, rel_dst], cwd=repo_path)
+    full_dst = os.path.join(repo_path, rel_dst)
+    shutil.move(full_src, full_dst)
+    run_git(["add", "-A"], cwd=repo_path)
 
     return get_staging_repo_tree(repo_id, user)
 
