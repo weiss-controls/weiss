@@ -68,7 +68,7 @@ export default function useUIManager(
   const restoredRef = useRef(false);
   const lastSavedRef = useRef<ExportedWidget[] | null>(null);
   const saveTimeoutRef = useRef<number | null>(null);
-  const [disableGridShortcuts, setDisableGridShortcuts] = useState(false);
+  const [isTextEditing, setIsTextEditing] = useState(false);
   const [wdgPickerOpen, setWdgPickerOpen] = useState(false);
   const [mode, setMode] = useState<Mode>(EDIT_MODE);
   const [isDragging, setIsDragging] = useState(false);
@@ -307,8 +307,8 @@ export default function useUIManager(
   }, [editorWidgets, selectedFile, isDeveloper, inEditMode, formatWdgToExport, setReposTreeInfo]);
 
   return {
-    disableGridShortcuts,
-    setDisableGridShortcuts,
+    isTextEditing,
+    setIsTextEditing,
     mode,
     updateMode,
     wdgPickerOpen,

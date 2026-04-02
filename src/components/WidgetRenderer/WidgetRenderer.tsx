@@ -23,7 +23,7 @@ interface RendererProps {
 }
 
 const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }) => {
-  const { inEditMode, setIsDragging, isPanning } = useUIContext();
+  const { inEditMode, setIsDragging, isPanning, isTextEditing } = useUIContext();
   const { pvState } = useEpicsWSContext();
   const {
     editorWidgets,
@@ -151,7 +151,7 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
     const width = w.editableProperties.width!.value;
     const height = w.editableProperties.height!.value;
 
-    const canDrag = inEditMode && !isPanning && !isChild && !isEmbedded;
+    const canDrag = inEditMode && !isPanning && !isChild && !isEmbedded && !isTextEditing;
     const canResize =
       inEditMode && !isPanning && !isChild && !isEmbedded && w.widgetName !== "EmbeddedDisplay";
     const isGroup = w.children?.length;
