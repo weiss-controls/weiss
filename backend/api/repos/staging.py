@@ -6,6 +6,7 @@ import uuid
 import subprocess
 import json
 import base64
+import shutil
 import httpx
 from urllib.parse import urlparse
 from .common import REPOS_BASE_PATH, BARE_CLONE_NAME
@@ -95,6 +96,13 @@ class PathRenameRequest(BaseModel):
     new_name: str = Field(
         ...,
         description="New name for the file or directory (just the name segment, not the full path)",
+    )
+
+
+class PathMoveRequest(BaseModel):
+    destination: str = Field(
+        ...,
+        description="Destination directory path, relative to repo root. The item is moved into this directory.",
     )
 
 
@@ -817,9 +825,11 @@ def delete_staging_repo_path(
         raise HTTPException(status_code=404, detail="Path not found")
 
     if os.path.isdir(full_path):
-        run_git(["rm", "-r", "-f", "--", rel_path], cwd=repo_path)
+        shutil.rmtree(full_path)
     else:
-        run_git(["rm", "-f", "--", rel_path], cwd=repo_path)
+        os.remove(full_path)
+
+    run_git(["add", "-A"], cwd=repo_path)
 
     return get_staging_repo_tree(repo_id, user)
 
@@ -876,6 +886,75 @@ def rename_staging_repo_path(
         )
 
     run_git(["mv", rel_path, new_rel_path], cwd=repo_path)
+
+    return get_staging_repo_tree(repo_id, user)
+
+
+@router.post(
+    "/{repo_id}/path/move",
+    response_model=StagingTreeInfo,
+    operation_id="moveStagingRepoPath",
+)
+def move_staging_repo_path(
+    repo_id: str,
+    path: str = Query(
+        ...,
+        description="File or directory path to move, relative to repo root.",
+    ),
+    payload: PathMoveRequest = Body(...),
+    user: User = Depends(require_developer),
+):
+    """
+    Move a file or directory to a different directory in the staging repository.
+    The item keeps its name; only its parent directory changes.
+    The destination must be an existing directory.
+    """
+    repo_path = get_user_worktree_path(repo_id, user)
+
+    # Normalise and validate source
+    rel_src = os.path.normpath(path).lstrip(os.sep)
+    if rel_src.startswith(".."):
+        raise HTTPException(status_code=400, detail="Invalid source path")
+
+    # Normalise and validate destination
+    rel_dst_dir = os.path.normpath(payload.destination).lstrip(os.sep)
+    if rel_dst_dir.startswith(".."):
+        raise HTTPException(status_code=400, detail="Invalid destination path")
+
+    full_src = os.path.join(repo_path, rel_src)
+    if not os.path.exists(full_src):
+        raise HTTPException(status_code=404, detail="Source path not found")
+
+    full_dst_dir = os.path.join(repo_path, rel_dst_dir)
+    if not os.path.isdir(full_dst_dir):
+        raise HTTPException(
+            status_code=400, detail="Destination must be an existing directory"
+        )
+
+    item_name = os.path.basename(rel_src)
+    rel_dst = os.path.join(rel_dst_dir, item_name)
+
+    if rel_src == rel_dst:
+        raise HTTPException(
+            status_code=400, detail="Source and destination are the same"
+        )
+
+    if os.path.exists(os.path.join(repo_path, rel_dst)):
+        raise HTTPException(
+            status_code=400,
+            detail="A file or directory with that name already exists in the destination",
+        )
+
+    # Prevent moving a directory into one of its own descendants
+    if os.path.isdir(full_src) and rel_dst.startswith(rel_src + os.sep):
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot move a directory into one of its own subdirectories",
+        )
+
+    full_dst = os.path.join(repo_path, rel_dst)
+    shutil.move(full_src, full_dst)
+    run_git(["add", "-A"], cwd=repo_path)
 
     return get_staging_repo_tree(repo_id, user)
 

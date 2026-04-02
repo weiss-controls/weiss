@@ -24,11 +24,16 @@ export default function useEpicsWS(PVMap: ReturnType<typeof useWidgetManager>["P
   const pvCache = useRef<Record<string, PVData>>({});
   const [pvState, setPVState] = useState<Record<string, PVData>>({});
 
-  /** Precompute reverse map for fast lookup (substituted: original) */
+  /** Precompute reverse map for fast lookup (substituted: all originals that point to it) */
   const reversePVMap = useMemo(() => {
-    const map = new Map<string, string>();
+    const map = new Map<string, string[]>();
     PVMap.forEach((original, substituted) => {
-      map.set(original, substituted);
+      const existing = map.get(original);
+      if (existing) {
+        existing.push(substituted);
+      } else {
+        map.set(original, [substituted]);
+      }
     });
     return map;
   }, [PVMap]);
@@ -45,15 +50,14 @@ export default function useEpicsWS(PVMap: ReturnType<typeof useWidgetManager>["P
    */
   const onMessage = useCallback(
     (msg: WSMessage) => {
-      const originalPV = reversePVMap.get(msg.pv);
-      if (!originalPV) {
+      const originalPVs = reversePVMap.get(msg.pv);
+      if (!originalPVs) {
         console.warn(`received message from unsolicited PV: ${msg.pv}`);
         return;
       }
 
       const prev = pvCache.current[msg.pv] ?? {};
-      const pvData: PVData = {
-        pv: originalPV,
+      const baseData = {
         value: msg.value ?? prev.value,
         enumChoices: msg.enumChoices ?? prev.enumChoices,
         alarm: msg.alarm ?? prev.alarm,
@@ -62,9 +66,13 @@ export default function useEpicsWS(PVMap: ReturnType<typeof useWidgetManager>["P
         control: prev.control ?? msg.control,
         valueAlarm: prev.valueAlarm ?? msg.valueAlarm,
       };
-      pvCache.current[msg.pv] = pvData;
+      pvCache.current[msg.pv] = { pv: originalPVs[0], ...baseData };
       setPVState((prev) => {
-        return { ...prev, [pvData.pv]: pvData };
+        const updates: Record<string, PVData> = {};
+        for (const originalPV of originalPVs) {
+          updates[originalPV] = { pv: originalPV, ...baseData };
+        }
+        return { ...prev, ...updates };
       });
     },
     [reversePVMap],

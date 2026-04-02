@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
-import { useCallback, useMemo, useState, useEffect, useRef, forwardRef } from "react";
+import { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import {
   Box,
   Typography,
@@ -15,16 +15,7 @@ import {
   Tooltip,
   Collapse,
 } from "@mui/material";
-import {
-  RichTreeView,
-  type TreeViewBaseItem,
-  TreeItemLabel,
-  TreeItemIcon,
-  TreeItemLabelInput,
-} from "@mui/x-tree-view";
-import FolderIcon from "@mui/icons-material/Folder";
-import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
-import ImageIcon from "@mui/icons-material/Image";
+import { RichTreeView } from "@mui/x-tree-view";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import RemoveCircleIcon from "@mui/icons-material/RemoveCircle";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -34,13 +25,12 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import CommitIcon from "@mui/icons-material/Commit";
 import SyncIcon from "@mui/icons-material/Sync";
 import RestoreIcon from "@mui/icons-material/Restore";
-import { useTreeItem, type UseTreeItemParameters } from "@mui/x-tree-view/useTreeItem";
-import { TreeItemRoot, TreeItemContent, TreeItemIconContainer } from "@mui/x-tree-view/TreeItem";
-import { TreeItemProvider } from "@mui/x-tree-view/TreeItemProvider";
-import { useTreeItemModel, useRichTreeViewApiRef, useTreeItemUtils } from "@mui/x-tree-view/hooks";
+import FolderIcon from "@mui/icons-material/Folder";
+import { useRichTreeViewApiRef } from "@mui/x-tree-view/hooks";
 import {
   checkoutRepoRef,
   deployRepo,
+  moveStagingRepoPath,
   renameStagingRepoPath,
   syncRepo,
   resetStagingRepo,
@@ -52,19 +42,26 @@ import {
   type DeploymentTreeInfo,
 } from "@src/services/APIClient";
 import CustomGitIcon from "@src/components/CustomIcons/GitIcon";
+import CustomTreeItem, {
+  DragDropProvider,
+  type DragDropCtx,
+  type RichTreeItem,
+} from "./ProjectTreeItem";
 import { notifyUser } from "@src/services/Notifications/Notification";
-import { COLORS } from "@src/constants/constants";
 import FileToolbar from "./FileToolbar";
 import { useUIContext } from "@src/context/useUIContext";
 import GitCommitDialog from "@src/components/GitCommitDialog/GitCommitDialog";
 import { confirmDialog } from "@src/services/Dialog/Dialog";
+import { COLORS } from "@src/constants/constants";
 
-type RichTreeItem = TreeViewBaseItem & {
-  type: "file" | "directory";
-  path: string;
-  gitStatus?: GitFileStatus["status"];
-  children?: RichTreeItem[];
+const IMAGE_EXTENSIONS = new Set([".svg", ".png", ".jpg", ".jpeg"]);
+const isImageFile = (name: string) => {
+  const dot = name.lastIndexOf(".");
+  return dot !== -1 && IMAGE_EXTENSIONS.has(name.slice(dot).toLowerCase());
 };
+
+const hasDirtyDescendant = (children?: RichTreeItem[]): boolean =>
+  !!children?.some((c) => c.gitStatus ?? hasDirtyDescendant(c.children));
 
 export interface ProjectSectionProps {
   repo: StagingTreeInfo | DeploymentTreeInfo;
@@ -73,142 +70,6 @@ export interface ProjectSectionProps {
   onTreeUpdate: (update: StagingTreeInfo[] | DeploymentTreeInfo[]) => void;
   defaultSelectedPath?: string;
 }
-
-const IMAGE_EXTENSIONS = new Set([".svg", ".png", ".jpg", ".jpeg"]);
-const isImageFile = (name: string) => {
-  const dot = name.lastIndexOf(".");
-  return dot !== -1 && IMAGE_EXTENSIONS.has(name.slice(dot).toLowerCase());
-};
-
-const getGitStatusHighlight = (status?: GitFileStatus["status"]) => {
-  switch (status) {
-    case "modified":
-    case "renamed":
-      return { color: COLORS.gitModified };
-    case "added":
-      return { color: COLORS.gitAdded };
-    case "deleted":
-      return { color: COLORS.gitDeleted };
-    case "untracked":
-      return { color: COLORS.gitAdded };
-    default:
-      return undefined;
-  }
-};
-
-const hasDirtyDescendant = (children?: RichTreeItem[]): boolean =>
-  !!children?.some((c) => c.gitStatus ?? hasDirtyDescendant(c.children));
-
-const CustomTreeItem = forwardRef<HTMLLIElement, UseTreeItemParameters>(
-  function CustomTreeItem(props, ref) {
-    const { id, itemId, label, disabled, children, ...other } = props;
-    const [extensionError, setExtensionError] = useState(false);
-    const {
-      getContextProviderProps,
-      getRootProps,
-      getContentProps,
-      getIconContainerProps,
-      getLabelProps,
-      getLabelInputProps,
-      getGroupTransitionProps,
-      status,
-    } = useTreeItem({ id, itemId, children, label, disabled, rootRef: ref });
-    const { interactions } = useTreeItemUtils({ itemId, children });
-
-    const item = useTreeItemModel<RichTreeItem>(itemId)!;
-    const labelSx = {
-      ...getGitStatusHighlight(item.gitStatus),
-      fontWeight: item.gitStatus ? 600 : 200,
-    };
-
-    const NodeIcon =
-      item.type === "directory"
-        ? FolderIcon
-        : isImageFile(item.label)
-          ? ImageIcon
-          : InsertDriveFileIcon;
-    const NodeIconSx = { color: COLORS.midGray };
-    const dirtyDir = item.type === "directory" && item.gitStatus != null;
-
-    // Derive old extension from the item's path (itemId is the full relative path)
-    const oldName = itemId.slice(itemId.lastIndexOf("/") + 1);
-    const oldExt = oldName.includes(".")
-      ? oldName.slice(oldName.lastIndexOf(".")).toLowerCase()
-      : "";
-
-    const handleInputChange = getLabelInputProps({
-      onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (oldExt) {
-          const val = e.target.value;
-          const newExt = val.includes(".") ? val.slice(val.lastIndexOf(".")).toLowerCase() : "";
-          setExtensionError(newExt !== oldExt);
-        }
-      },
-      onBlur: (event: React.FocusEvent<HTMLInputElement>) => {
-        if (extensionError) {
-          (event as unknown as { defaultMuiPrevented: boolean }).defaultMuiPrevented = true;
-        }
-      },
-      onKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => {
-        (event as unknown as { defaultMuiPrevented: boolean }).defaultMuiPrevented = true;
-        const target = event.target as HTMLInputElement;
-        if (event.key === "Enter") {
-          if (!extensionError && target.value.trim()) {
-            interactions.handleSaveItemLabel(event, target.value);
-          }
-        } else if (event.key === "Escape") {
-          setExtensionError(false);
-          interactions.handleCancelItemLabelEditing(event);
-        }
-      },
-    });
-
-    return (
-      <TreeItemProvider {...getContextProviderProps()}>
-        <TreeItemRoot {...getRootProps(other)}>
-          <TreeItemContent {...getContentProps()}>
-            <TreeItemIconContainer {...getIconContainerProps()}>
-              <TreeItemIcon status={status} />
-            </TreeItemIconContainer>
-            <NodeIcon sx={NodeIconSx} />
-            {status.editing ? (
-              <Tooltip
-                open={extensionError}
-                title={`Cannot change file extension (expected '${oldExt}')`}
-                placement="right"
-              >
-                <TreeItemLabelInput {...handleInputChange} />
-              </Tooltip>
-            ) : (
-              <>
-                <TreeItemLabel {...getLabelProps()} sx={labelSx} />
-                {dirtyDir && (
-                  <Box
-                    sx={{
-                      flexGrow: 1,
-                      mr: 1,
-                      width: 6,
-                      height: 6,
-                      aspectRatio: 1 / 1,
-                      borderRadius: "50%",
-                      backgroundColor: COLORS.gitModified,
-                      alignSelf: "center",
-                    }}
-                  />
-                )}
-              </>
-            )}
-          </TreeItemContent>
-          {children && (
-            <Collapse {...getGroupTransitionProps()} sx={{ pl: 1 }}>
-              {children}
-            </Collapse>
-          )}
-        </TreeItemRoot>
-      </TreeItemProvider>
-    );
-  },
-);
 
 export default function ProjectSection({
   repo,
@@ -235,6 +96,8 @@ export default function ProjectSection({
   const menuOpen = Boolean(menuAnchor);
   const apiRef = useRichTreeViewApiRef();
   const revertingLabelRef = useRef(false);
+  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
   const selectedRef = isStagingTree(repo) ? repo.checked_out_ref : repo.deployed_ref;
   const shortRef = (ref: string) => ref.substring(0, REF_MAX_DISPLAY_SIZE);
 
@@ -441,6 +304,38 @@ export default function ProjectSection({
     }
   };
 
+  const handleMoveDrop = async (targetDirId: string) => {
+    const srcId = draggedItemId;
+    setDraggedItemId(null);
+    setDropTargetId(null);
+    if (!srcId || !isStagingTree(repo)) return;
+    const srcParent = srcId.includes("/") ? srcId.slice(0, srcId.lastIndexOf("/")) : "";
+    if (srcParent === targetDirId || srcId === targetDirId) return;
+    if (targetDirId.startsWith(srcId + "/")) return;
+    try {
+      const updt = await moveStagingRepoPath({
+        path: { repo_id: repo.id },
+        query: { path: srcId },
+        body: { destination: targetDirId },
+      }).then((r) => r.data);
+      if (selectedFile?.repo_id === repo.id) {
+        const itemName = srcId.slice(srcId.lastIndexOf("/") + 1);
+        const newPath = targetDirId ? `${targetDirId}/${itemName}` : itemName;
+        if (selectedFile.path === srcId) {
+          setSelectedFile({ ...selectedFile, path: newPath });
+        } else if (selectedFile.path.startsWith(`${srcId}/`)) {
+          setSelectedFile({
+            ...selectedFile,
+            path: newPath + selectedFile.path.slice(srcId.length),
+          });
+        }
+      }
+      onRepoUpdate(updt);
+    } catch (err) {
+      notifyUser(`Failed to move: ${err as string}`, "error");
+    }
+  };
+
   const findItemById = useCallback((items: RichTreeItem[], id: string): RichTreeItem | null => {
     for (const item of items) {
       if (item.id === id) return item;
@@ -466,37 +361,65 @@ export default function ProjectSection({
   // convert TreeNode[] to RichTree accepted format
   const toRichItems = useCallback(
     (nodes: TreeNode[]): RichTreeItem[] => {
-      return nodes.map((node) => {
-        const children = node.children ? toRichItems(node.children) : undefined;
-        const fileStatus = gitStatusByPath?.get(node.path);
-        const isDirectory = node.type === "directory";
-        // mark directory as dirty if any child is dirty or if a deleted file exists under this path
-        let dirDirty = false;
-        if (isStagingTree(repo) && isDirectory) {
-          const hasDirtyChildren = hasDirtyDescendant(children);
-          const hasDeletedDescendant =
-            repo.working_tree_status?.files.some(
-              (f) => f.status === "deleted" && f.path.startsWith(node.path + "/"),
-            ) ?? false;
-          dirDirty = hasDirtyChildren || hasDeletedDescendant;
-        }
+      return nodes
+        .filter((node) => {
+          if (inEditMode) return true;
+          // files or folders starting with _ are not shown in runtime
+          if (node.name.startsWith("_")) return false;
+          // image files are not shown in runtime
+          if (node.type === "file" && isImageFile(node.name)) return false;
+          return true;
+        })
+        .map((node) => {
+          const children = node.children ? toRichItems(node.children) : undefined;
+          const fileStatus = gitStatusByPath?.get(node.path);
+          const isDirectory = node.type === "directory";
+          // mark directory as dirty if any child is dirty or if a deleted file exists under this path
+          let dirDirty = false;
+          if (isStagingTree(repo) && isDirectory) {
+            const hasDirtyChildren = hasDirtyDescendant(children);
+            const hasDeletedDescendant =
+              repo.working_tree_status?.files.some(
+                (f) => f.status === "deleted" && f.path.startsWith(node.path + "/"),
+              ) ?? false;
+            dirDirty = hasDirtyChildren || hasDeletedDescendant;
+          }
 
-        return {
-          id: node.path,
-          label: node.name,
-          type: node.type,
-          path: node.path,
-          gitStatus: fileStatus ?? (dirDirty ? "modified" : undefined),
-          children,
-        };
-      });
+          return {
+            id: node.path,
+            label: node.name,
+            type: node.type,
+            path: node.path,
+            gitStatus: fileStatus ?? (dirDirty ? "modified" : undefined),
+            children,
+          };
+        });
     },
-    [isStagingTree, repo, gitStatusByPath],
+    [isStagingTree, repo, gitStatusByPath, inEditMode],
   );
 
   const items = useMemo(() => toRichItems(repo.tree), [repo.tree, toRichItems]);
 
   if (!selectedRef) return;
+
+  const dndEnabled = isStagingTree(repo) && isDeveloper && inEditMode;
+  const dndContextValue: DragDropCtx = {
+    enabled: dndEnabled,
+    draggedItemId,
+    dropTargetId,
+    onDragStart: (id) => {
+      setDraggedItemId(id);
+    },
+    onDragEnd: () => {
+      setDraggedItemId(null);
+      setDropTargetId(null);
+    },
+    onDragEnterDir: (id) => setDropTargetId(id),
+    onDragLeaveDir: (id) => setDropTargetId((prev) => (prev === id ? null : prev)),
+    onDrop: (targetDirId) => {
+      void handleMoveDrop(targetDirId);
+    },
+  };
 
   return (
     <Paper variant="outlined" sx={{ mb: 2, width: "100%" }}>
@@ -621,7 +544,8 @@ export default function ProjectSection({
       {/* Repo content */}
       <Collapse in={sectionExpanded} timeout="auto" unmountOnExit>
         <FileToolbar
-          selectedPath={selectedItem ? { repo_id: repo.id, path: selectedItem } : null}
+          repoId={repo.id}
+          selectedPath={selectedItem !== null ? { repo_id: repo.id, path: selectedItem } : null}
           onRepoUpdate={onRepoUpdate}
           onExpandAll={() => expandAll(repo)}
           onCollapseAll={() => collapseAll()}
@@ -629,23 +553,69 @@ export default function ProjectSection({
             if (selectedItem) apiRef.current?.setEditedItem(selectedItem);
           }}
         />
-        <Box sx={{ px: 1, py: 0.5 }}>
-          <RichTreeView
-            items={items}
-            selectedItems={selectedItem}
-            onSelectedItemsChange={(_, id) => {
-              setSelectedItem(id);
-              const item = id ? findItemById(items, id) : null;
-              if (item?.type === "file") void onFileSelect(repo.id, item.path);
-            }}
-            expandedItems={expandedItems}
-            onExpandedItemsChange={(_, ids) => setExpandedItems(ids)}
-            slots={{ item: CustomTreeItem }}
-            apiRef={apiRef}
-            isItemEditable={isStagingTree(repo) && isDeveloper && inEditMode ? true : false}
-            onItemLabelChange={(itemId, newLabel) => void handleItemLabelChange(itemId, newLabel)}
-          />
-        </Box>
+        <DragDropProvider value={dndContextValue}>
+          <Box sx={{ px: 1, py: 0.5 }}>
+            {isStagingTree(repo) && isDeveloper && inEditMode && (
+              <Box
+                onClick={() => setSelectedItem("")}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                }}
+                onDragEnter={(e) => {
+                  e.preventDefault();
+                  const ct = e.currentTarget as HTMLElement;
+                  const rt = e.relatedTarget as Node | null;
+                  if (!rt || !ct.contains(rt)) setDropTargetId("");
+                }}
+                onDragLeave={(e) => {
+                  const ct = e.currentTarget as HTMLElement;
+                  const rt = e.relatedTarget as Node | null;
+                  if (!rt || !ct.contains(rt))
+                    setDropTargetId((prev) => (prev === "" ? null : prev));
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  void handleMoveDrop("");
+                }}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0.5,
+                  px: 0.5,
+                  py: 0.25,
+                  mb: 0.25,
+                  borderRadius: 1,
+                  cursor: "pointer",
+                  fontSize: "0.8rem",
+                  backgroundColor: selectedItem === "" ? "action.selected" : undefined,
+                  outline: dropTargetId === "" ? `2px solid ${COLORS.highlighted}` : undefined,
+                  "&:hover": { backgroundColor: "action.hover" },
+                }}
+              >
+                <FolderIcon sx={{ fontSize: 18, color: COLORS.midGray }} />
+                <Box component="span" sx={{ color: "text.secondary", fontStyle: "italic" }}>
+                  / (root)
+                </Box>
+              </Box>
+            )}
+            <RichTreeView
+              items={items}
+              selectedItems={selectedItem}
+              onSelectedItemsChange={(_, id) => {
+                setSelectedItem(id);
+                const item = id ? findItemById(items, id) : null;
+                if (item?.type === "file") void onFileSelect(repo.id, item.path);
+              }}
+              expandedItems={expandedItems}
+              onExpandedItemsChange={(_, ids) => setExpandedItems(ids)}
+              slots={{ item: CustomTreeItem }}
+              apiRef={apiRef}
+              isItemEditable={isStagingTree(repo) && isDeveloper && inEditMode ? true : false}
+              onItemLabelChange={(itemId, newLabel) => void handleItemLabelChange(itemId, newLabel)}
+            />
+          </Box>
+        </DragDropProvider>
       </Collapse>
       <GitCommitDialog
         open={gitCommitOpen}

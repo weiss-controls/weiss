@@ -60,6 +60,9 @@ import type {
   ListRepoRefsResponses,
   ListReposData,
   ListReposResponses,
+  MoveStagingRepoPathData,
+  MoveStagingRepoPathErrors,
+  MoveStagingRepoPathResponses,
   RegisterRepoData,
   RegisterRepoErrors,
   RegisterRepoResponses,
@@ -394,6 +397,29 @@ export const renameStagingRepoPath = <ThrowOnError extends boolean = true>(
     ThrowOnError
   >({
     url: "/api/v1/repos/staging/{repo_id}/path/rename",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+
+/**
+ * Move Staging Repo Path
+ *
+ * Move a file or directory to a different directory in the staging repository.
+ * The item keeps its name; only its parent directory changes.
+ * The destination must be an existing directory.
+ */
+export const moveStagingRepoPath = <ThrowOnError extends boolean = true>(
+  options: Options<MoveStagingRepoPathData, ThrowOnError>,
+) =>
+  (options.client ?? client).post<
+    MoveStagingRepoPathResponses,
+    MoveStagingRepoPathErrors,
+    ThrowOnError
+  >({
+    url: "/api/v1/repos/staging/{repo_id}/path/move",
     ...options,
     headers: {
       "Content-Type": "application/json",
