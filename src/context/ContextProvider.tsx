@@ -2,7 +2,7 @@
 // Copyright (C) 2026 André Favoto
 
 import useEpicsWS from "./useEpicsWS";
-import { EpicsWSContext } from "./useEpicsWSContext";
+import { EpicsWSContext, WSActionsContext } from "./useEpicsWSContext";
 import { UIContext } from "./useUIContext";
 import useUIManager from "./useUIManager";
 import { WidgetContext } from "./useWidgetContext";
@@ -24,7 +24,9 @@ export const ContextProvider: React.FC<{ children: React.ReactNode }> = ({ child
   return (
     <WidgetContext.Provider value={widgetManager}>
       <EpicsWSContext.Provider value={ws}>
-        <UIContext.Provider value={ui}>{children}</UIContext.Provider>
+        <WSActionsContext.Provider value={{ writePVValue: ws.writePVValue }}>
+          <UIContext.Provider value={ui}>{children}</UIContext.Provider>
+        </WSActionsContext.Provider>
       </EpicsWSContext.Provider>
     </WidgetContext.Provider>
   );

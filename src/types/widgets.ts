@@ -112,7 +112,7 @@ export interface WidgetDefinition {
   widgetName: string;
   widgetLabel: string;
   widgetIcon?: WidgetIconType;
-  component: React.FC<WidgetUpdate>;
+  component: React.ComponentType<WidgetUpdate>;
   category: string;
   defaultProperties: WidgetProperties;
 }
