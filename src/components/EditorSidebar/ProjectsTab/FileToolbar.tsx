@@ -24,6 +24,7 @@ import { confirmDialog } from "@src/services/Dialog/Dialog";
 import { useUIContext } from "@src/context/useUIContext";
 
 interface FileToolbarProps {
+  repoId: string;
   selectedPath: SelectedPathInfo | null;
   onRepoUpdate: (update: StagingTreeInfo) => void;
   onExpandAll: () => void;
@@ -66,6 +67,7 @@ function normalizeJsonFileName(name: string): string | null {
 const ALLOWED_UPLOAD_EXTENSIONS = [".svg", ".png", ".jpg", ".jpeg", ".json"];
 
 export default function FileToolbar({
+  repoId,
   selectedPath,
   onRepoUpdate,
   onExpandAll,
@@ -136,7 +138,6 @@ export default function FileToolbar({
           <Tooltip title="Create new file">
             <IconButton
               onClick={() => {
-                if (!selectedPath) return;
                 const input = prompt("Enter new file name:");
                 if (!input) return;
                 const fileName = normalizeJsonFileName(input);
@@ -147,8 +148,9 @@ export default function FileToolbar({
                   );
                   return;
                 }
-                const basePath = getCreateBasePath(selectedPath);
-                void createPath(selectedPath.repo_id, `${basePath}/${fileName}`, "file");
+                const basePath = selectedPath ? getCreateBasePath(selectedPath) : "";
+                const fullPath = basePath ? `${basePath}/${fileName}` : fileName;
+                void createPath(repoId, fullPath, "file");
               }}
             >
               <NoteAddOutlined sx={iconSx} />
@@ -158,11 +160,11 @@ export default function FileToolbar({
           <Tooltip title="Create new folder">
             <IconButton
               onClick={() => {
-                if (!selectedPath) return;
                 const name = prompt("Enter new folder name:");
                 if (!name) return;
-                const basePath = getCreateBasePath(selectedPath);
-                void createPath(selectedPath.repo_id, `${basePath}/${name}`, "directory");
+                const basePath = selectedPath ? getCreateBasePath(selectedPath) : "";
+                const fullPath = basePath ? `${basePath}/${name}` : name;
+                void createPath(repoId, fullPath, "directory");
               }}
             >
               <CreateNewFolderOutlined sx={iconSx} />
@@ -172,7 +174,6 @@ export default function FileToolbar({
           <Tooltip title="Upload file">
             <IconButton
               onClick={() => {
-                if (!selectedPath) return;
                 fileInputRef.current?.click();
               }}
             >
@@ -188,9 +189,9 @@ export default function FileToolbar({
             onChange={(e) => {
               const file = e.target.files?.[0];
               e.target.value = "";
-              if (!file || !selectedPath) return;
-              const basePath = getCreateBasePath(selectedPath);
-              void uploadFile(selectedPath.repo_id, basePath, file);
+              if (!file) return;
+              const basePath = selectedPath ? getCreateBasePath(selectedPath) : "";
+              void uploadFile(repoId, basePath, file);
             }}
           />
 

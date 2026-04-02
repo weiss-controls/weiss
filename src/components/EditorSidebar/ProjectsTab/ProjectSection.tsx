@@ -25,6 +25,7 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import CommitIcon from "@mui/icons-material/Commit";
 import SyncIcon from "@mui/icons-material/Sync";
 import RestoreIcon from "@mui/icons-material/Restore";
+import FolderIcon from "@mui/icons-material/Folder";
 import { useRichTreeViewApiRef } from "@mui/x-tree-view/hooks";
 import {
   checkoutRepoRef,
@@ -51,6 +52,7 @@ import FileToolbar from "./FileToolbar";
 import { useUIContext } from "@src/context/useUIContext";
 import GitCommitDialog from "@src/components/GitCommitDialog/GitCommitDialog";
 import { confirmDialog } from "@src/services/Dialog/Dialog";
+import { COLORS } from "@src/constants/constants";
 
 const IMAGE_EXTENSIONS = new Set([".svg", ".png", ".jpg", ".jpeg"]);
 const isImageFile = (name: string) => {
@@ -310,7 +312,6 @@ export default function ProjectSection({
     const srcParent = srcId.includes("/") ? srcId.slice(0, srcId.lastIndexOf("/")) : "";
     if (srcParent === targetDirId || srcId === targetDirId) return;
     if (targetDirId.startsWith(srcId + "/")) return;
-    setIsReposLoading(true);
     try {
       const updt = await moveStagingRepoPath({
         path: { repo_id: repo.id },
@@ -319,7 +320,7 @@ export default function ProjectSection({
       }).then((r) => r.data);
       if (selectedFile?.repo_id === repo.id) {
         const itemName = srcId.slice(srcId.lastIndexOf("/") + 1);
-        const newPath = `${targetDirId}/${itemName}`;
+        const newPath = targetDirId ? `${targetDirId}/${itemName}` : itemName;
         if (selectedFile.path === srcId) {
           setSelectedFile({ ...selectedFile, path: newPath });
         } else if (selectedFile.path.startsWith(`${srcId}/`)) {
@@ -332,8 +333,6 @@ export default function ProjectSection({
       onRepoUpdate(updt);
     } catch (err) {
       notifyUser(`Failed to move: ${err as string}`, "error");
-    } finally {
-      setIsReposLoading(false);
     }
   };
 
@@ -408,7 +407,9 @@ export default function ProjectSection({
     enabled: dndEnabled,
     draggedItemId,
     dropTargetId,
-    onDragStart: (id) => setDraggedItemId(id),
+    onDragStart: (id) => {
+      setDraggedItemId(id);
+    },
     onDragEnd: () => {
       setDraggedItemId(null);
       setDropTargetId(null);
@@ -543,7 +544,8 @@ export default function ProjectSection({
       {/* Repo content */}
       <Collapse in={sectionExpanded} timeout="auto" unmountOnExit>
         <FileToolbar
-          selectedPath={selectedItem ? { repo_id: repo.id, path: selectedItem } : null}
+          repoId={repo.id}
+          selectedPath={selectedItem !== null ? { repo_id: repo.id, path: selectedItem } : null}
           onRepoUpdate={onRepoUpdate}
           onExpandAll={() => expandAll(repo)}
           onCollapseAll={() => collapseAll()}
@@ -553,6 +555,50 @@ export default function ProjectSection({
         />
         <DragDropProvider value={dndContextValue}>
           <Box sx={{ px: 1, py: 0.5 }}>
+            {isStagingTree(repo) && isDeveloper && inEditMode && (
+              <Box
+                onClick={() => setSelectedItem("")}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                }}
+                onDragEnter={(e) => {
+                  e.preventDefault();
+                  const ct = e.currentTarget as HTMLElement;
+                  const rt = e.relatedTarget as Node | null;
+                  if (!rt || !ct.contains(rt)) setDropTargetId("");
+                }}
+                onDragLeave={(e) => {
+                  const ct = e.currentTarget as HTMLElement;
+                  const rt = e.relatedTarget as Node | null;
+                  if (!rt || !ct.contains(rt))
+                    setDropTargetId((prev) => (prev === "" ? null : prev));
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  void handleMoveDrop("");
+                }}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0.5,
+                  px: 0.5,
+                  py: 0.25,
+                  mb: 0.25,
+                  borderRadius: 1,
+                  cursor: "pointer",
+                  fontSize: "0.8rem",
+                  backgroundColor: selectedItem === "" ? "action.selected" : undefined,
+                  outline: dropTargetId === "" ? `2px solid ${COLORS.highlighted}` : undefined,
+                  "&:hover": { backgroundColor: "action.hover" },
+                }}
+              >
+                <FolderIcon sx={{ fontSize: 18, color: COLORS.midGray }} />
+                <Box component="span" sx={{ color: "text.secondary", fontStyle: "italic" }}>
+                  / (root)
+                </Box>
+              </Box>
+            )}
             <RichTreeView
               items={items}
               selectedItems={selectedItem}
