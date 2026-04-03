@@ -251,12 +251,7 @@ const RepoFileProperty: React.FC<RepoFilePropertyProps> = ({
               <InputAdornment position="end">
                 <Tooltip title={tooltipTitle}>
                   <span>
-                    <IconButton
-                      edge="end"
-                      size="small"
-                      onClick={() => setOpen(true)}
-                      disabled={!hasFiles}
-                    >
+                    <IconButton edge="end" size="small" onClick={() => setOpen(true)}>
                       <FolderOpenIcon fontSize="small" />
                     </IconButton>
                   </span>
