@@ -12,6 +12,25 @@ Try it out: [https://demo.weiss-controls.org](https://demo.weiss-controls.org).
 
 ## Motivation
 
+### Why WEISS?
+
+It's known that the EPICS ecosystem has mature desktop tools for building operator interfaces.
+However, web-based OPIs in EPICS are still constrained by fragmented workflows. Existing solutions
+either require actually writing code to build screens or depend on desktop tools for designing, with
+the browser acting only as a runtime environment.
+
+WEISS removes this limitation. It delivers a fully browser-based environment for creating, testing,
+and deploying operator interfaces. Engineers can design synoptics with drag-and-drop widgets,
+connect them to live PVs, and publish updates instantly - all without leaving the browser or
+installing local tools.
+
+WEISS also redefines deployment. Interfaces are versioned in git, developed in staging, and promoted
+to production with a single action. Operators only access approved versions, ensuring controlled
+releases with full traceability.
+
+This approach consolidates the full interface lifecycle — design, validation, and deployment —
+within a single, consistent web-based environment.
+
 ### Why should you use web?
 
 - **Client-side rendering**: the client browser performs most work; backend load stays minimal.
@@ -33,16 +52,19 @@ Try it out: [https://demo.weiss-controls.org](https://demo.weiss-controls.org).
   via community-validated implementations [p4p](https://github.com/epics-base/p4p/) and
   [PyEpics](https://pyepics.github.io/pyepics/).
 - **Runtime vs edit mode**: instantly start and stop communication with a switch button.
+- **Git-based versioning**: developers can import repositories, edit OPIs, and commit changes
+  directly without leaving the app. Repositories can be public or private.
+- **Deployment management**: promote specific commits to production with a single click. Operators
+  only interact with the production version, ensuring controlled releases.
 - **Extensible widget library**: ready-to-use components for common controls and displays, others
   can be easily created.
-- **Designed for usability** : responsive UI, straightforward layout logic, modern development
-  stack.
-- **Portable JSON format**: import/export or create OPIs programatically using simple JSON files.
+- **Portable JSON format**: import, export or create OPIs programatically using straightforward JSON
+  files.
 
-Planned improvements (access control, OPI distribution, repository integration, etc.) are tracked in
-the [WEISS Project Dashboard](https://github.com/orgs/weiss-controls/projects/1/).
+Further planned improvements are tracked in the
+[WEISS Project Dashboard](https://github.com/orgs/weiss-controls/projects/1/).
 
-## Notes
+## Extra
 
 - Some references used for this project:
   - [Taranta](https://gitlab.com/tango-controls/web/taranta),
