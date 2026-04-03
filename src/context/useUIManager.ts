@@ -63,7 +63,6 @@ export default function useUIManager(
   clearAllWidgets: ReturnType<typeof useWidgetManager>["clearAllWidgets"],
   loadWidgets: ReturnType<typeof useWidgetManager>["loadWidgets"],
 ) {
-  const lastFileLoadedTrig = useRef(0);
   const hasFileChanged = useRef(true);
   const restoredRef = useRef(false);
   const lastSavedRef = useRef<ExportedWidget[] | null>(null);
@@ -120,14 +119,9 @@ export default function useUIManager(
     void authService.restoreSession().finally(() => setAuthChecked(true));
   }, [authChecked]);
 
-  // ensure session is restored after file change
+  // Reset the auto-save guard on every file load
   useEffect(() => {
-    if (!inEditMode) {
-      ws.startNewSession();
-      lastFileLoadedTrig.current = fileLoadedTrig;
-    }
     hasFileChanged.current = true;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fileLoadedTrig]);
 
   const updateMode = useCallback(

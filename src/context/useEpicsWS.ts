@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { WSClient } from "@src/services/WSClient/WSClient";
 import type { PVData, PVValue, WSMessage } from "@src/types/epicsWS";
 import type { useWidgetManager } from "./useWidgetManager";
@@ -23,6 +23,8 @@ export default function useEpicsWS(PVMap: ReturnType<typeof useWidgetManager>["P
   const [wsConnected, setWSConnected] = useState(false);
   const pvCache = useRef<Record<string, PVData>>({});
   const [pvState, setPVState] = useState<Record<string, PVData>>({});
+  /** Tracks which substituted PVs are currently subscribed on the server */
+  const subscribedRef = useRef<Set<string>>(new Set());
 
   /** Precompute reverse map for fast lookup (substituted: all originals that point to it) */
   const reversePVMap = useMemo(() => {
@@ -78,31 +80,63 @@ export default function useEpicsWS(PVMap: ReturnType<typeof useWidgetManager>["P
     [reversePVMap],
   );
 
+  // Always kept up to date so the WSClient never captures a stale closure.
+  // Make sure reversePVMap updates are picked up w/o recreating WSClient.
+  const onMessageRef = useRef(onMessage);
+  onMessageRef.current = onMessage;
+  const stableMessageHandler = useRef<(msg: WSMessage) => void>((msg) => onMessageRef.current(msg));
+
   /**
    * Handles connection state changes.
-   * Subscribes to substituted PVs when connected.
    */
   const handleConnect = useCallback(
     (connected: boolean) => {
       setWSConnected(connected);
-      if (connected) {
-        ws.current?.subscribe(substitutedList);
-      }
     },
-    [setWSConnected, substitutedList],
+    [setWSConnected],
   );
+
+  /**
+   * Reactively subscribes/unsubscribes PVs whenever the PV map changes or the
+   * session connects. This ensures EmbeddedDisplay children — which populate
+   * asynchronously after the initial connect — are subscribed as soon as they
+   * appear in the map, without restarting the session.
+   */
+  useEffect(() => {
+    if (!wsConnected || !ws.current) {
+      subscribedRef.current = new Set();
+      return;
+    }
+
+    const current = new Set(substitutedList);
+    const prev = subscribedRef.current;
+
+    const toAdd = substitutedList.filter((pv) => !prev.has(pv));
+    const toRemove = [...prev].filter((pv) => !current.has(pv));
+
+    if (toAdd.length > 0) ws.current.subscribe(toAdd);
+    if (toRemove.length > 0) {
+      ws.current.unsubscribe(toRemove);
+      // Drop cached data for PVs that are no longer displayed
+      toRemove.forEach((pv) => {
+        delete pvCache.current[pv];
+      });
+    }
+
+    subscribedRef.current = current;
+  }, [substitutedList, wsConnected]);
 
   /**
    * Stops the current WebSocket session.
    */
   const stopSession = useCallback(() => {
     if (!ws.current) return;
-    ws.current.unsubscribe(substitutedList);
+    ws.current.unsubscribe([...subscribedRef.current]);
     ws.current.close();
     ws.current = null;
     setWSConnected(false);
     setPVState({});
-  }, [setWSConnected, substitutedList]);
+  }, [setWSConnected]);
 
   /**
    * Starts a new WebSocket session.
@@ -111,9 +145,9 @@ export default function useEpicsWS(PVMap: ReturnType<typeof useWidgetManager>["P
     if (ws.current) {
       stopSession();
     }
-    ws.current = new WSClient(WS_URL, handleConnect, onMessage);
+    ws.current = new WSClient(WS_URL, handleConnect, stableMessageHandler.current);
     ws.current.open();
-  }, [handleConnect, onMessage, stopSession]);
+  }, [handleConnect, stopSession]);
 
   /**
    * Writes a new value to a PV.
