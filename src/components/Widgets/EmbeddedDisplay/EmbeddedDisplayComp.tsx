@@ -14,6 +14,14 @@ import { GRID_ID } from "@src/constants/constants";
 import type { PropertyKey } from "@src/types/widgets";
 
 /**
+ * Cache of raw ExportedWidget arrays keyed by "<fileLoadedTrig>::<staging|deployed>::<repoId>::<path>".
+ * Including fileLoadedTrig in the key ensures each file load fetches at least once,
+ * while repeated instances of the same embedded path within the same file share
+ * a single in-flight request.
+ */
+const _contentCache = new Map<string, Promise<ExportedWidget[]>>();
+
+/**
  * Reconstruct a Widget instance from a serialised ExportedWidget so it can be
  * inserted into the editor widget tree.  Works recursively.
  * Any widget whose type is unrecognised is silently dropped.
@@ -181,7 +189,7 @@ const Placeholder: React.FC<{ label: string }> = ({ label }) => (
 
 const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
   const { isDeveloper, selectedFile, inEditMode } = useUIContext();
-  const { updateWidgetChildren, updateWidgetProperties } = useWidgetContext();
+  const { updateWidgetChildren, updateWidgetProperties, fileLoadedTrig } = useWidgetContext();
   const p = data.editableProperties;
 
   const repoId = selectedFile?.repo_id ?? "";
@@ -221,13 +229,21 @@ const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
 
     const fetchDisplay = async () => {
       try {
-        const response = isDeveloper
-          ? await getStagingRepoFile({ path: { repo_id: repoId }, query: { path: resolvedPath } })
-          : await getDeployedRepoFile({ path: { repo_id: repoId }, query: { path: resolvedPath } });
+        const cacheKey = `${fileLoadedTrig}::${isDeveloper ? "staging" : "deployed"}::${repoId}::${resolvedPath}`;
 
+        let pending = _contentCache.get(cacheKey);
+        if (!pending) {
+          pending = (
+            isDeveloper
+              ? getStagingRepoFile({ path: { repo_id: repoId }, query: { path: resolvedPath } })
+              : getDeployedRepoFile({ path: { repo_id: repoId }, query: { path: resolvedPath } })
+          ).then((r) => JSON.parse(r.data.content) as ExportedWidget[]);
+          _contentCache.set(cacheKey, pending);
+        }
+
+        const exported = await pending;
         if (cancelled) return;
 
-        const exported = JSON.parse(response.data.content) as ExportedWidget[];
         const { natW, natH, minX, minY } = computeNatBounds(exported);
 
         const { x, y } = layoutRef.current;
@@ -254,7 +270,7 @@ const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
     };
     // layoutRef / macrosRef / updateChildrenRef / updatePropertiesRef are intentionally
     // excluded: they are always up to date via the ref pattern above.
-  }, [repoId, resolvedPath, isDeveloper, data.id, displayMacros]);
+  }, [repoId, resolvedPath, isDeveloper, data.id, displayMacros, fileLoadedTrig]);
 
   const hasChildren = (data.children?.length ?? 0) > 0;
   if (hasChildren) return null;
