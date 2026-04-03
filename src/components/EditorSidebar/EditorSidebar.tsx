@@ -70,7 +70,7 @@ type EditorTab = (typeof EditorTab)[keyof typeof EditorTab];
 
 const EditorSidebar: React.FC = () => {
   const { selectedWidgetIDs, editingWidgets } = useWidgetContext();
-  const { inEditMode, isAuthenticated, setDisableGridShortcuts } = useUIContext();
+  const { inEditMode, isAuthenticated } = useUIContext();
   const DEFAULT_WIDTH = 360;
   const MIN_WIDTH = 300;
   const MAX_WIDTH = 700;
@@ -179,8 +179,6 @@ const EditorSidebar: React.FC = () => {
         open={open}
         variant="permanent"
         anchor="right"
-        onFocus={() => setDisableGridShortcuts(true)}
-        onBlur={() => setDisableGridShortcuts(false)}
         sx={{ zIndex: FRONT_UI_ZIDX + 1 }}
         slotProps={{
           paper: {

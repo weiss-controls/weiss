@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
-import React, { useMemo, type ReactNode } from "react";
+import React, { useMemo, useRef, type ReactNode } from "react";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import type { Widget, MultiWidgetPropertyUpdates, DOMRectLike } from "@src/types/widgets";
 import { Rnd, type DraggableData, type Position, type RndDragEvent } from "react-rnd";
@@ -23,7 +23,7 @@ interface RendererProps {
 }
 
 const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }) => {
-  const { inEditMode, setIsDragging, isPanning } = useUIContext();
+  const { inEditMode, setIsDragging, isPanning, isTextEditing } = useUIContext();
   const { pvState } = useEpicsWSContext();
   const {
     editorWidgets,
@@ -34,32 +34,72 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
     selectedWidgets,
   } = useWidgetContext();
 
+  // Refs to track previous pvState entries and previously computed Widget objects.
+  const prevPVStateRef = useRef<Record<string, PVData>>({});
+  const prevWidgetsMapRef = useRef<Map<string, Widget>>(new Map());
+
   const widgetsForRender = useMemo(() => {
+    const prevPVState = prevPVStateRef.current;
+    const prevWidgetsMap = prevWidgetsMapRef.current;
+    const nextWidgetsMap = new Map<string, Widget>();
+
     const mergeWidget = (w: Widget): Widget => {
-      if (inEditMode) return w;
-      let pvData: PVData | undefined = undefined;
-      let multiPvData: Record<string, PVData> | undefined = undefined;
-
-      if (w.editableProperties.pvName?.value) {
-        pvData = pvState[w.editableProperties.pvName.value];
+      if (inEditMode) {
+        nextWidgetsMap.set(w.id, w);
+        return w;
       }
-      if (w.editableProperties.pvNames?.value) {
+
+      const pvName = w.editableProperties.pvName?.value;
+      const pvNames = w.editableProperties.pvNames?.value;
+
+      // Process children first so we can check child stability for the parent decision.
+      const newChildren = w.children?.map(mergeWidget);
+
+      // Check if we have PV updates for self and children
+      const ownPVsStable =
+        (!pvName || pvState[pvName] === prevPVState[pvName]) &&
+        (!pvNames?.length || pvNames.every((pv) => pvState[pv] === prevPVState[pv]));
+
+      const childrenStable =
+        !newChildren || newChildren.every((c, i) => c === prevWidgetsMap.get(w.children![i].id));
+
+      // Check if properties changed
+      const prevWidget = prevWidgetsMap.get(w.id);
+      const structureStable = prevWidget?.editableProperties === w.editableProperties;
+
+      if (ownPVsStable && childrenStable && structureStable) {
+        // Nothing changed
+        nextWidgetsMap.set(w.id, prevWidget);
+        return prevWidget;
+      }
+
+      // Something changed
+      let pvData: PVData | undefined;
+      let multiPvData: Record<string, PVData> | undefined;
+
+      if (pvName) {
+        pvData = pvState[pvName];
+      }
+      if (pvNames?.length) {
         multiPvData = {};
-        Object.values(w.editableProperties.pvNames.value).forEach((pv) => {
-          const data = pvState[pv];
-          if (data) multiPvData![pv] = data;
-        });
+        for (const pv of pvNames) {
+          const d = pvState[pv];
+          if (d) multiPvData[pv] = d;
+        }
       }
 
-      return {
-        ...w,
-        pvData,
-        multiPvData,
-        children: w.children?.map(mergeWidget),
-      };
+      const merged: Widget = { ...w, pvData, multiPvData, children: newChildren };
+      nextWidgetsMap.set(w.id, merged);
+      return merged;
     };
 
-    return editorWidgets.map(mergeWidget);
+    const result = editorWidgets.map(mergeWidget);
+
+    // Update refs for the next call
+    prevPVStateRef.current = pvState;
+    prevWidgetsMapRef.current = nextWidgetsMap;
+
+    return result;
   }, [editorWidgets, pvState, inEditMode]);
 
   /** Core widget content renderer */
@@ -151,7 +191,7 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
     const width = w.editableProperties.width!.value;
     const height = w.editableProperties.height!.value;
 
-    const canDrag = inEditMode && !isPanning && !isChild && !isEmbedded;
+    const canDrag = inEditMode && !isPanning && !isChild && !isEmbedded && !isTextEditing;
     const canResize =
       inEditMode && !isPanning && !isChild && !isEmbedded && w.widgetName !== "EmbeddedDisplay";
     const isGroup = w.children?.length;
@@ -270,4 +310,4 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
   );
 };
 
-export default WidgetRenderer;
+export default React.memo(WidgetRenderer);

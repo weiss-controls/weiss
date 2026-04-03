@@ -247,8 +247,6 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Block shortcuts while the user is typing in any input/textarea/contenteditable.
-      // Checking document.activeElement here (instead of disableGridShortcuts) avoids race
-      // conditions observed with react-rnd.
       const active = document.activeElement as HTMLElement | null;
       if (
         active &&

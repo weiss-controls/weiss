@@ -27,7 +27,7 @@ interface GitCommitDialogProps {
 }
 
 export default function GitCommitDialog({ open, onClose, repoID }: GitCommitDialogProps) {
-  const { setDisableGridShortcuts, setReposTreeInfo } = useUIContext();
+  const { setReposTreeInfo } = useUIContext();
 
   const [message, setMessage] = useState("");
   const [tag, setTag] = useState("");
@@ -37,7 +37,6 @@ export default function GitCommitDialog({ open, onClose, repoID }: GitCommitDial
     setMessage("");
     setTag("");
     setLoading(false);
-    setDisableGridShortcuts(false);
     onClose();
   };
 
@@ -62,14 +61,7 @@ export default function GitCommitDialog({ open, onClose, repoID }: GitCommitDial
   };
 
   return (
-    <Dialog
-      open={open}
-      onFocus={() => setDisableGridShortcuts(true)}
-      onBlur={() => setDisableGridShortcuts(false)}
-      onClose={resetAndClose}
-      maxWidth="sm"
-      fullWidth
-    >
+    <Dialog open={open} onClose={resetAndClose} maxWidth="sm" fullWidth>
       <DialogTitle>Create commit</DialogTitle>
 
       <DialogContent>

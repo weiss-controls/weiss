@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import type { WidgetUpdate } from "@src/types/widgets";
 import type { CSSProperties } from "@mui/material";
 import { useUIContext } from "@src/context/useUIContext";
 import { useWidgetContext } from "@src/context/useWidgetContext";
 
 const TextLabelComp: React.FC<WidgetUpdate> = ({ data }) => {
-  const { inEditMode, setDisableGridShortcuts } = useUIContext();
+  const { inEditMode, setIsTextEditing } = useUIContext();
   const { updateWidgetProperties } = useWidgetContext();
   const p = data.editableProperties;
 
@@ -17,14 +17,11 @@ const TextLabelComp: React.FC<WidgetUpdate> = ({ data }) => {
 
   useEffect(() => {
     if (editing && inputRef.current) {
-      setDisableGridShortcuts(true);
       inputRef.current.focus();
       inputRef.current.select();
-    } else {
-      setDisableGridShortcuts(false);
     }
-    return () => setDisableGridShortcuts(false);
-  }, [editing, setDisableGridShortcuts]);
+    setIsTextEditing(editing);
+  }, [editing, setIsTextEditing]);
 
   if (!p.visible?.value) return null;
 
@@ -49,8 +46,12 @@ const TextLabelComp: React.FC<WidgetUpdate> = ({ data }) => {
       <input
         className="textLabelInput"
         ref={inputRef}
+        tabIndex={showEditableInput ? 0 : -1}
         value={p.label?.value}
         readOnly={!showEditableInput}
+        onMouseDown={(e) => {
+          if (!showEditableInput) e.preventDefault();
+        }}
         onDoubleClick={() => {
           if (inEditMode) setEditing(true);
         }}
