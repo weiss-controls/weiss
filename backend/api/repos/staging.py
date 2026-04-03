@@ -26,7 +26,6 @@ from api.repos.common import (
     WORKTREES_REL_FOLDER,
     CURRENT_SYMLINK,
     REPO_META,
-    REGISTERED_REPO_URLS,
     NEW_FILE_CONTENT,
     ALLOWED_EXTENSIONS,
 )
@@ -44,7 +43,7 @@ TECHNICAL_ACCOUNT_EMAIL = os.getenv("TECHNICAL_ACCOUNT_EMAIL", "weiss-bot@dummy"
 auth_cmd = None
 if TECHNICAL_ACCOUNT_TOKEN:
     token = TECHNICAL_ACCOUNT_TOKEN.strip()
-    auth_header = f"Authorization: Basic {base64.b64encode(('weiss-bot:' + token).encode()).decode()}"
+    auth_header = f"Authorization: Basic {base64.b64encode((TECHNICAL_ACCOUNT_USERNAME + ':' + token).encode()).decode()}"
     auth_cmd = ["-c", f"http.extraHeader={auth_header}"]
 os.environ["GIT_ASKPASS"] = "echo"
 os.environ["GIT_TERMINAL_PROMPT"] = "0"
@@ -79,7 +78,7 @@ class FileUpdateRequest(BaseModel):
 
 
 class CommitRequest(BaseModel):
-    message: str = Field(..., description="Git commit message")
+    message: str = Field(..., min_length=1, description="Git commit message")
     tag: str | None = Field(None, description="Optional Git tag to add after commit")
 
 
@@ -163,18 +162,22 @@ def ensure_clean(repo_path: str):
         )
 
 
-def get_default_branch(repo_path: str):
-    head_info = run_git(["remote", "show", "origin"], cwd=repo_path).splitlines()
-    default_branch = "main"  # default fallback
-    for line in head_info:
-        if "HEAD branch" in line:
-            default_branch = line.split(":")[-1].strip()
-            break
-    return default_branch
+def get_default_branch(repo_path: str) -> str:
+    # Try the remote-tracking HEAD first (local)
+    ref = run_git(
+        ["symbolic-ref", "--short", "refs/remotes/origin/HEAD"],
+        cwd=repo_path,
+        allow_fail=True,
+    )
+    if ref:
+        return ref.removeprefix("origin/")
+    # Fall back to the local HEAD symbolic ref (bare repos right after clone)
+    ref = run_git(["symbolic-ref", "--short", "HEAD"], cwd=repo_path, allow_fail=True)
+    return ref if ref else "main"
 
 
 def clone(git_url: str, repo_id: str) -> str:
-    if git_url in REGISTERED_REPO_URLS:
+    if any(r.git_url == git_url for r in list_all_repositories()):
         raise HTTPException(status_code=403, detail="Repository already registered")
 
     if not git_url.startswith("https://"):
@@ -253,9 +256,7 @@ def get_checked_out_ref(repo_id: str, user: User):
     return tag if tag else repo_head
 
 
-def create_snapshot(
-    repo_id: str, ref: str, user: User = Depends(require_developer)
-) -> Tuple[str, str]:
+def create_snapshot(repo_id: str, ref: str, user: User) -> Tuple[str, str]:
     """
     Create a read-only snapshot of the repo at a given ref.
 
@@ -271,13 +272,36 @@ def create_snapshot(
     run_git(["clone", "--recursive", repo_path, deployment_path])
     run_git(["checkout", ref], cwd=deployment_path)
 
+    result = validate_repo_content(deployment_path)
+    if not result.valid:
+        shutil.rmtree(deployment_path, ignore_errors=True)
+        raise HTTPException(
+            status_code=422,
+            detail=f"Repository validation failed: {'; '.join(result.errors)}",
+        )
+
     return deployment_id, deployment_path
 
 
-def validate_repo_content(repo_path: str, ref: str) -> ValidationResult:
-    """Validate that the repo at given ref contains required OPI files"""
-    # @TODO
-    return ValidationResult(valid=True, errors=[])
+def validate_repo_content(repo_path: str) -> ValidationResult:
+    """Validate that all JSON files in the repo parse as valid JSON."""
+    errors: list[str] = []
+    for dirpath, dirnames, filenames in os.walk(repo_path):
+        # Skip hidden dirs (e.g. .git)
+        dirnames[:] = [d for d in dirnames if not d.startswith(".")]
+        for filename in filenames:
+            if not filename.endswith(".json"):
+                continue
+            if filename in {REPO_META}:
+                continue
+            full = os.path.join(dirpath, filename)
+            rel = os.path.relpath(full, repo_path)
+            try:
+                with open(full, "r", encoding="utf-8") as f:
+                    json.load(f)
+            except (json.JSONDecodeError, OSError) as e:
+                errors.append(f"{rel}: {e}")
+    return ValidationResult(valid=not errors, errors=errors)
 
 
 def _check_token(git_url: str) -> TokenStatus:
@@ -422,7 +446,6 @@ def register_repository(
     repo_id = str(uuid.uuid4())
     created_at = datetime.now(timezone.utc).isoformat()
     clone(payload.git_url, repo_id)
-    REGISTERED_REPO_URLS.append(payload.git_url)
 
     repo_meta = StagingMeta(
         id=repo_id,
@@ -449,20 +472,12 @@ def unregister_repository(repo_id: str, user: User = Depends(require_developer))
     - Delete staging folder
     - Delete all deployments
     - Remove repo metadata
-    - Remove from REGISTERED_REPO_URLS
     """
     repo_base = os.path.join(REPOS_BASE_PATH, repo_id)
     repo_meta_path = os.path.join(repo_base, REPO_META)
 
     if not os.path.exists(repo_meta_path):
         raise HTTPException(status_code=404, detail="Repository not found")
-
-    # Load repo info to remove git_url from registered URLs
-    with open(repo_meta_path, "r", encoding="utf-8") as f:
-        repo_meta_data = json.load(f)
-    git_url = repo_meta_data.get("git_url")
-    if git_url in REGISTERED_REPO_URLS:
-        REGISTERED_REPO_URLS.remove(git_url)
 
     # Remove repository folder
     try:
@@ -768,26 +783,30 @@ def create_staging_repo_path(
     full_path = os.path.join(repo_path, rel_path)
     parent_dir = os.path.dirname(full_path)
 
-    if os.path.exists(full_path):
+    # Compute the final target path before checking existence
+    if payload.type == "file" and not rel_path.endswith(".json"):
+        final_path = full_path + ".json"
+    else:
+        final_path = full_path
+
+    if os.path.exists(final_path):
         raise HTTPException(status_code=400, detail="File or directory already exists")
 
     try:
         os.makedirs(parent_dir, exist_ok=True)
 
         if payload.type == "file":
-            # Create empty file
-            if not full_path.endswith(".json"):
-                full_path += ".json"
-            with open(full_path, "w", encoding="utf-8") as f:
+            with open(final_path, "w", encoding="utf-8") as f:
                 json.dump(NEW_FILE_CONTENT, f, indent=2)
                 f.write("\n")
-            run_git(["add", full_path], cwd=repo_path)
+            run_git(["add", final_path], cwd=repo_path)
         elif payload.type == "directory":
             # Create directory and .gitkeep
-            os.makedirs(full_path, exist_ok=True)
-            gitkeep = os.path.join(full_path, ".gitkeep")
-            open(gitkeep, "w").close()
-            run_git(["add", full_path], cwd=repo_path)
+            os.makedirs(final_path, exist_ok=True)
+            gitkeep = os.path.join(final_path, ".gitkeep")
+            with open(gitkeep, "w"):
+                pass
+            run_git(["add", final_path], cwd=repo_path)
     except OSError as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to create {payload.type}: {str(e)}"
@@ -1028,6 +1047,8 @@ def deploy_repo(
     ref_to_deploy = payload.deployment_version
     try:
         deployment_id, snapshot_path = create_snapshot(repo_id, ref_to_deploy, user)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to create snapshot: {str(e)}"

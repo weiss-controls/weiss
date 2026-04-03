@@ -82,13 +82,19 @@ def ensure_microsoft_configured():
         )
 
 
+_msal_app: msal.ConfidentialClientApplication | None = None
+
+
 def get_msal_app() -> msal.ConfidentialClientApplication:
+    global _msal_app
     ensure_microsoft_configured()
-    return msal.ConfidentialClientApplication(
-        client_id=MS_AUTH_CLIENT_ID,
-        client_credential=MS_AUTH_CLIENT_SECRET,
-        authority=MS_AUTHORITY,
-    )
+    if _msal_app is None:
+        _msal_app = msal.ConfidentialClientApplication(
+            client_id=MS_AUTH_CLIENT_ID,
+            client_credential=MS_AUTH_CLIENT_SECRET,
+            authority=MS_AUTHORITY,
+        )
+    return _msal_app
 
 
 def create_session(user_id: str) -> Session:
@@ -104,6 +110,19 @@ def create_session(user_id: str) -> Session:
 
 def delete_session(session_id: str):
     sessions.pop(session_id, None)
+
+
+def prune_expired_sessions() -> None:
+    """Remove all expired sessions (and orphaned users) from in-memory stores."""
+    now = datetime.now(timezone.utc)
+    expired_ids = [sid for sid, s in sessions.items() if s.expires_at < now]
+    for sid in expired_ids:
+        sessions.pop(sid, None)
+    # Remove users that have no remaining valid session
+    active_user_ids = {s.user_id for s in sessions.values()}
+    orphaned = [uid for uid in users_db if uid not in active_user_ids]
+    for uid in orphaned:
+        users_db.pop(uid, None)
 
 
 def get_session(session_id: str) -> Session | None:
@@ -154,25 +173,35 @@ async def handle_microsoft_callback(code: str, redirect_uri: str) -> User:
     )
 
     if "access_token" not in result:
-        raise HTTPException(
-            status_code=400,
-            detail=f"MSAL token acquisition failed: {result.get('error_description')}",
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "MSAL token acquisition failed: %s", result.get("error_description")
         )
+        raise HTTPException(status_code=400, detail="Authentication failed")
 
     ms_user = await get_ms_user(result["access_token"])
 
     provider_id = ms_user["id"]
+    upn = ms_user.get("userPrincipalName", "")
     user_id = f"ms_{provider_id}"
 
     if user_id not in users_db:
+        from api.config import MS_DEVELOPER_EMAILS
+
+        role = (
+            UserRole.DEVELOPER
+            if upn and upn.lower() in MS_DEVELOPER_EMAILS
+            else UserRole.OPERATOR
+        )
         users_db[user_id] = User(
             id=user_id,
-            username=ms_user.get("username"),
-            displayName=ms_user.get("displayName"),
-            email=ms_user.get("mail") or ms_user.get("userPrincipalName"),
+            username=upn,
+            displayName=ms_user.get("displayName") or upn,
+            email=ms_user.get("mail") or upn,
             provider=AuthProvider.MICROSOFT,
             provider_id=provider_id,
-            role=UserRole.OPERATOR,  # Default role, to be fetched from DB later
+            role=role,
         )
 
     return users_db[user_id]
@@ -193,7 +222,7 @@ async def handle_demo_login(
             value=browser_demo_id,
             httponly=True,
             secure=ENABLE_HTTPS,
-            samesite="none" if ENABLE_HTTPS else None,
+            samesite="none" if ENABLE_HTTPS else "lax",
             max_age=SESSION_EXPIRE_HOURS * 3600,
             path="/",
         )
@@ -281,7 +310,7 @@ async def oauth_callback(
         value=session.id,
         httponly=True,
         secure=ENABLE_HTTPS,
-        samesite="none" if ENABLE_HTTPS else None,
+        samesite="none" if ENABLE_HTTPS else "lax",
         max_age=SESSION_EXPIRE_HOURS * 3600,
         path="/",
     )
