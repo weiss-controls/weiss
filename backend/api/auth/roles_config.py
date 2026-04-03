@@ -18,7 +18,7 @@ def load_roles_config() -> None:
     """
     Load developer usernames from the TOML config file into the in-memory cache.
     If the file is not found or cannot be parsed, an empty set is used and a
-    warning is logged — the server will start normally with everyone as operator.
+    warning is logged - the server will start normally with everyone as operator.
     """
     global _developer_usernames
     path = ROLES_CONFIG_PATH
