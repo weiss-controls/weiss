@@ -3,6 +3,7 @@
 
 import os
 import json
+from fastapi import HTTPException
 from pydantic import BaseModel
 from typing import List, Optional, Literal, Tuple
 
@@ -130,7 +131,7 @@ def get_repo_meta(repo_id: str) -> Tuple[(str, StagingMeta)]:
     """Get content of repository metadata file (repo.json)"""
     meta_file_path = os.path.join(REPOS_BASE_PATH, repo_id, REPO_META)
     if not os.path.exists(meta_file_path):
-        raise FileNotFoundError
+        raise HTTPException(status_code=404, detail="Repository not found")
     with open(meta_file_path) as f:
         repo_meta = json.load(f)
     return meta_file_path, StagingMeta(**repo_meta)
@@ -160,9 +161,3 @@ def list_all_repositories() -> List[StagingMeta]:
                     )
                 )
     return repos
-
-
-REGISTERED_REPO_URLS = []
-# initialize registered repos on startup
-for repo in list_all_repositories():
-    REGISTERED_REPO_URLS.append(repo.git_url)

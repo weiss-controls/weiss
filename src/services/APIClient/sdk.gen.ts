@@ -219,7 +219,6 @@ export const registerRepo = <ThrowOnError extends boolean = true>(
  * - Delete staging folder
  * - Delete all deployments
  * - Remove repo metadata
- * - Remove from REGISTERED_REPO_URLS
  */
 export const unregisterRepo = <ThrowOnError extends boolean = true>(
   options: Options<UnregisterRepoData, ThrowOnError>,

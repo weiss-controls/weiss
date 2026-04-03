@@ -4,11 +4,28 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
+import asyncio
 from api.auth import auth
 from api.repos import staging, deployed
 from api.config import FRONTEND_URL, TITLE, VERSION
 
-app = FastAPI(title=TITLE, version=VERSION)
+
+async def _session_pruner():
+    """Background task: remove expired sessions and orphaned users every hour."""
+    while True:
+        await asyncio.sleep(3600)
+        auth.prune_expired_sessions()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    task = asyncio.create_task(_session_pruner())
+    yield
+    task.cancel()
+
+
+app = FastAPI(title=TITLE, version=VERSION, lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
