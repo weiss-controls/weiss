@@ -5,10 +5,10 @@ import asyncio
 import json
 import os
 import websockets
-from websockets.legacy.server import WebSocketServerProtocol
+from websockets.asyncio.server import ServerConnection
 from typing import Dict, Set, Tuple, Optional, Union
 
-from pvParser import PVParser, PVData
+from pvParser import PVParser
 from PVAClient import PVAClient
 from CAClient import CAClient
 
@@ -16,16 +16,16 @@ CA_PROVIDER_KEY = "ca"
 PVA_PROVIDER_KEY = "pva"
 
 # map PV -> set of websocket clients
-subscriptions: Dict[str, Set[WebSocketServerProtocol]] = {}
+subscriptions: Dict[str, Set[ServerConnection]] = {}
+
+# per-ws inverse index for O(pvs_per_client) disconnect cleanup
+ws_subscriptions: Dict[ServerConnection, Set[str]] = {}
 
 # track if metadata has been sent per (ws, pv_name)
-sent_metadata: Dict[Tuple[WebSocketServerProtocol, str], bool] = {}
+sent_metadata: Dict[Tuple[ServerConnection, str], bool] = {}
 
-# holds one client per backend
-clients: Dict[str, Optional[Union[PVAClient, CAClient]]] = {
-    PVA_PROVIDER_KEY: None,
-    CA_PROVIDER_KEY: None,
-}
+# cached quasi-static metadata per pv_name
+_pv_metadata: Dict[str, dict] = {}
 
 # environment variable fallback
 DEFAULT_PROTOCOL = os.getenv("EPICS_DEFAULT_PROTOCOL", PVA_PROVIDER_KEY).lower()
@@ -41,77 +41,104 @@ def parse_protocol(pv_name: str) -> Tuple[str, str]:
     return DEFAULT_PROTOCOL, pv_name
 
 
+# Event loop reference set in main(); used to schedule coroutines from EPICS callbacks
+_loop: Optional[asyncio.AbstractEventLoop] = None
+
+
+def ca_callback(pv_name, pv_obj):
+    if _loop:
+        asyncio.run_coroutine_threadsafe(
+            send_update(pv_name, pv_obj, CA_PROVIDER_KEY), _loop
+        )
+
+
+def pva_callback(pv_name, pv_obj):
+    if _loop:
+        asyncio.run_coroutine_threadsafe(
+            send_update(pv_name, pv_obj, PVA_PROVIDER_KEY), _loop
+        )
+
+
+# EPICS clients initialized in main() once the event loop is running
+clients: Dict[str, Optional[Union[PVAClient, CAClient]]] = {
+    PVA_PROVIDER_KEY: None,
+    CA_PROVIDER_KEY: None,
+}
+
+
+def get_client(protocol: str) -> Union[PVAClient, CAClient]:
+    client = clients.get(protocol)
+    if client is None:
+        raise ValueError(f"[epicsWS]: Unsupported protocol: {protocol}")
+    return client
+
+
 async def send_update(pv_name: str, pv_obj, provider: str):
-    pv_data: PVData = (
-        PVParser.from_pva(pv_obj, pv_name)
-        if provider == PVA_PROVIDER_KEY
-        else PVParser.from_ca(pv_obj, pv_name)
-    )
+    ws_set = subscriptions.get(pv_name)
+    if not ws_set:
+        return
+
+    # Parse fast-changing fields (value, alarm, timeStamp, b64arr/dtype)
+    if provider == PVA_PROVIDER_KEY:
+        update = PVParser.pva_update(pv_obj, pv_name)
+    else:
+        update = PVParser.ca_update(pv_obj, pv_name)
+
+    # Populate metadata cache on first update for this PV
+    if pv_name not in _pv_metadata:
+        if provider == PVA_PROVIDER_KEY:
+            _pv_metadata[pv_name] = PVParser.pva_metadata(pv_obj)
+        else:
+            _pv_metadata[pv_name] = PVParser.ca_metadata(pv_obj)
 
     if provider != DEFAULT_PROTOCOL:
         pv_name_with_provider = f"{provider}://{pv_name}"
     else:
         pv_name_with_provider = pv_name
 
-    base_message = {
+    base_msg = {
         "type": "update",
         "pv": pv_name_with_provider,
-        "value": pv_data.value,
-        "alarm": pv_data.alarm.__dict__ if pv_data.alarm else None,
-        "timeStamp": pv_data.timeStamp.__dict__ if pv_data.timeStamp else None,
-        "b64arr": pv_data.b64arr,
-        "b64dtype": pv_data.b64dtype,
+        "value": update["value"],
+        "alarm": update["alarm"],
+        "timeStamp": update["timeStamp"],
+        "b64arr": update["b64arr"],
+        "b64dtype": update["b64dtype"],
     }
+    if update.get("enumChoices") is not None:
+        base_msg["enumChoices"] = update["enumChoices"]
 
-    for ws in set(subscriptions.get(pv_name, set())):
+    # Serialize the common payload once and reuse it for all clients that already have metadata
+    common_data: Optional[str] = None
+
+    for ws in set(ws_set):
         key = (ws, pv_name)
-        message = dict(base_message)
-        if not sent_metadata.get(key):
-            message.update(
-                {
-                    "enumChoices": pv_data.enumChoices,
-                    "display": pv_data.display.__dict__ if pv_data.display else None,
-                    "control": pv_data.control.__dict__ if pv_data.control else None,
-                    "valueAlarm": pv_data.valueAlarm.__dict__
-                    if pv_data.valueAlarm
-                    else None,
-                }
-            )
+        if sent_metadata.get(key):
+            # Fast path: reuse pre-serialized common payload
+            if common_data is None:
+                common_data = json.dumps(
+                    {k: v for k, v in base_msg.items() if v is not None}
+                )
+            try:
+                await ws.send(common_data)
+            except Exception:
+                print(f"[epicsWS]: Error sending update to {ws}")
+        else:
+            # First update for this client: include metadata
+            full_msg = dict(base_msg)
+            full_msg.update(_pv_metadata[pv_name])
             sent_metadata[key] = True
-
-        data = json.dumps({k: v for k, v in message.items() if v is not None})
-
-        try:
-            await ws.send(data)
-        except Exception:
-            print(f"[epicsWS]: Error sending update to {ws}")
+            data = json.dumps({k: v for k, v in full_msg.items() if v is not None})
+            try:
+                await ws.send(data)
+            except Exception:
+                print(f"[epicsWS]: Error sending update to {ws}")
 
 
-async def message_handler(ws: WebSocketServerProtocol):
+async def message_handler(ws: ServerConnection):
     client_id = f"{ws.remote_address[0]}:{ws.remote_address[1]}"
     print(f"New connection from {client_id}")
-    loop = asyncio.get_running_loop()
-
-    def ca_callback(pv_name, pv_obj):
-        asyncio.run_coroutine_threadsafe(
-            send_update(pv_name, pv_obj, CA_PROVIDER_KEY), loop
-        )
-
-    def pva_callback(pv_name, pv_obj):
-        asyncio.run_coroutine_threadsafe(
-            send_update(pv_name, pv_obj, PVA_PROVIDER_KEY), loop
-        )
-
-    def get_client(protocol: str):
-        if protocol == PVA_PROVIDER_KEY:
-            if clients[PVA_PROVIDER_KEY] is None:
-                clients[PVA_PROVIDER_KEY] = PVAClient(pva_callback)
-            return clients[PVA_PROVIDER_KEY]
-        elif protocol == CA_PROVIDER_KEY:
-            if clients[CA_PROVIDER_KEY] is None:
-                clients[CA_PROVIDER_KEY] = CAClient(ca_callback)
-            return clients[CA_PROVIDER_KEY]
-        raise ValueError(f"[epicsWS]: Unsupported protocol: {protocol}")
+    ws_subscriptions[ws] = set()
 
     try:
         async for message in ws:
@@ -122,21 +149,19 @@ async def message_handler(ws: WebSocketServerProtocol):
                 for pv in msg.get("pvs", []):
                     protocol, pv_name = parse_protocol(pv)
                     client = get_client(protocol)
-                    if not client:
-                        raise ValueError(f"Client not initialized for {protocol}")
                     if pv_name not in subscriptions:
                         subscriptions[pv_name] = set()
                     subscriptions[pv_name].add(ws)
+                    ws_subscriptions[ws].add(pv_name)
                     client.subscribe(client_id, pv_name)
 
             elif msg_type == "unsubscribe":
                 for pv in msg.get("pvs", []):
                     protocol, pv_name = parse_protocol(pv)
                     client = get_client(protocol)
-                    if not client:
-                        raise ValueError(f"Client not initialized for {protocol}")
                     if pv_name in subscriptions:
                         subscriptions[pv_name].discard(ws)
+                        ws_subscriptions[ws].discard(pv_name)
                         if not subscriptions[pv_name]:
                             del subscriptions[pv_name]
                         client.unsubscribe(client_id, pv_name)
@@ -148,8 +173,6 @@ async def message_handler(ws: WebSocketServerProtocol):
                 if pv and value is not None:
                     protocol, pv_name = parse_protocol(pv)
                     client = get_client(protocol)
-                    if not client:
-                        raise ValueError(f"Client not initialized for {protocol}")
                     client.write_to_pv(pv_name, value)
 
             else:
@@ -162,17 +185,27 @@ async def message_handler(ws: WebSocketServerProtocol):
 
     finally:
         print(f"[epicsWS]: Client disconnected: {client_id}")
-        for pv, clients_set in list(subscriptions.items()):
-            clients_set.discard(ws)
-            if not clients_set:
-                del subscriptions[pv]
-            sent_metadata.pop((ws, pv), None)
+        # Clean up all subscriptions for this client using the inverse index
+        pv_names = ws_subscriptions.pop(ws, set())
+        for pv_name in pv_names:
+            pv_set = subscriptions.get(pv_name)
+            if pv_set is not None:
+                pv_set.discard(ws)
+                if not pv_set:
+                    del subscriptions[pv_name]
+            sent_metadata.pop((ws, pv_name), None)
         for c in clients.values():
             if c:
                 c.unsubscribe_all(client_id)
 
 
 async def main():
+    global _loop
+    _loop = asyncio.get_running_loop()
+
+    clients[PVA_PROVIDER_KEY] = PVAClient(pva_callback)
+    clients[CA_PROVIDER_KEY] = CAClient(ca_callback)
+
     async with websockets.serve(message_handler, "0.0.0.0", 8080):
         print("[epicsWS]: WebSocket server running on ws://localhost:8080")
         await asyncio.Future()

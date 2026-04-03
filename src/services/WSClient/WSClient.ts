@@ -54,6 +54,11 @@ export class WSClient {
   private socket!: WebSocket;
   private values: Record<string, WSMessage> = {};
 
+  private reconnectDelay = 1000;
+  private readonly maxReconnectDelay = 30000;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private intentionallyClosed = false;
+
   /**
    * Creates a new WSClient instance.
    * @param url The WebSocket server URL.
@@ -70,6 +75,11 @@ export class WSClient {
    * Opens a new WebSocket connection and sets up event handlers.
    */
   open(): void {
+    this.intentionallyClosed = false;
+    this._connect();
+  }
+
+  private _connect(): void {
     this.socket = new WebSocket(this.url);
     this.socket.onopen = (event) => this.handleConnection(event);
     this.socket.onmessage = (event) => this.handleMessage(event.data as string);
@@ -83,6 +93,11 @@ export class WSClient {
    */
   private handleConnection(_event: Event): void {
     this.connected = true;
+    this.reconnectDelay = 1000;
+    if (this.reconnectTimer !== null) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
     this.connection_handler(true);
   }
 
@@ -149,6 +164,13 @@ export class WSClient {
     message += ")";
     if (event.code !== 1000) {
       console.error(message);
+      if (!this.intentionallyClosed) {
+        this.reconnectTimer = setTimeout(() => {
+          this.reconnectTimer = null;
+          this._connect();
+        }, this.reconnectDelay);
+        this.reconnectDelay = Math.min(this.reconnectDelay * 2, this.maxReconnectDelay);
+      }
     }
   }
 
@@ -202,6 +224,11 @@ export class WSClient {
    * Closes the WebSocket connection.
    */
   close(): void {
+    this.intentionallyClosed = true;
+    if (this.reconnectTimer !== null) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
     if (!this.connected) return;
     this.socket.close(1000, "Client closing connection normally");
   }

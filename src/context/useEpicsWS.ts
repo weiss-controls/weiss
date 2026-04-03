@@ -27,19 +27,19 @@ export default function useEpicsWS(PVMap: ReturnType<typeof useWidgetManager>["P
   /** Precompute reverse map for fast lookup (substituted: all originals that point to it) */
   const reversePVMap = useMemo(() => {
     const map = new Map<string, string[]>();
-    PVMap.forEach((original, substituted) => {
-      const existing = map.get(original);
+    PVMap.forEach((substituted, original) => {
+      const existing = map.get(substituted);
       if (existing) {
-        existing.push(substituted);
+        existing.push(original);
       } else {
-        map.set(original, [substituted]);
+        map.set(substituted, [original]);
       }
     });
     return map;
   }, [PVMap]);
 
   /** All substituted PVs for subscription */
-  const substitutedList = Array.from(PVMap.values());
+  const substitutedList = useMemo(() => Array.from(PVMap.values()), [PVMap]);
 
   /**
    * Handles incoming WebSocket messages.
