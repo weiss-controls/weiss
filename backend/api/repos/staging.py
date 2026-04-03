@@ -531,7 +531,8 @@ def list_repository_refs(
 def update_repo(repo_id: str, user: User = Depends(require_developer)):
     """Fetch new tags/commits from default branch and rebase current worktree onto it."""
     repo_path = get_user_worktree_path(repo_id, user)
-    default_branch = get_default_branch(repo_path)
+    bare_repo = os.path.join(REPOS_BASE_PATH, repo_id, BARE_CLONE_NAME)
+    default_branch = get_default_branch(bare_repo)
     is_dirty = bool(run_git(["status", "--porcelain"], cwd=repo_path).strip())
 
     if is_dirty:
@@ -997,7 +998,7 @@ def commit_staging_repo(
     _, repo_meta = get_repo_meta(repo_id)
     _require_valid_token(repo_meta.git_url)
     repo_path = get_user_worktree_path(repo_id, user)
-    default_branch = get_default_branch(repo_path)
+    bare_repo = os.path.join(REPOS_BASE_PATH, repo_id, BARE_CLONE_NAME)
 
     # Ensure there is something staged
     staged = run_git(["diff", "--cached", "--name-only"], cwd=repo_path)
@@ -1024,7 +1025,7 @@ def commit_staging_repo(
             detail=f"Failed to commit changes: {e.detail}",
         )
     try:
-        default_branch = get_default_branch(repo_path)
+        default_branch = get_default_branch(bare_repo)
         run_git(["push", "origin", f"HEAD:{default_branch}"], cwd=repo_path)
 
         if payload.tag:
