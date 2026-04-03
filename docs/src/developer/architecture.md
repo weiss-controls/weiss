@@ -41,17 +41,20 @@ React context providers and custom hooks. The main layers are:
 
 #### Context layer (`src/context/`)
 
-Three context providers are composed inside a single `ContextProvider` and made available to the
+Four context providers are composed inside a single `ContextProvider` and made available to the
 entire component tree:
 
-- **`useWidgetManager`** — owns the canonical list of widgets on the canvas. It handles selection,
-  undo/redo history, clipboard, grouping, and serialisation/deserialisation of OPI files.
-- **`useUIManager`** — owns global UI state: the current mode (edit vs. runtime), the open file,
-  repository and authentication state, and any cross-cutting user interactions such as loading or
-  saving a file.
-- **`useEpicsWS`** — manages the WebSocket connection to the EPICS bridge. It subscribes and
-  unsubscribes PVs, applies macro substitution, and keeps a live `pvState` map that widgets read in
-  runtime mode.
+- **`WidgetContext`** (`useWidgetManager`) — owns the canonical list of widgets on the canvas. It
+  handles selection, undo/redo history, clipboard, grouping, and serialisation/deserialisation of
+  OPI files.
+- **`UIContext`** (`useUIManager`) — owns global UI state: the current mode (edit vs. runtime), the
+  open file, repository and authentication state, and any cross-cutting user interactions such as
+  loading or saving a file.
+- **`EpicsWSContext`** (`useEpicsWS`) — exposes the full WebSocket state: connection status,
+  `pvState` map, and subscribe/unsubscribe. Widgets read live PV data from here in runtime mode.
+- **`WSActionsContext`** (`useEpicsWS`) — exposes only `writePVValue`. Backed by the same
+  `useEpicsWS` hook but kept as a separate context so widgets that only write to PVs do not
+  re-render on every incoming PV update.
 
 #### Rendering layer
 

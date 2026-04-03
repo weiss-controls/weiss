@@ -85,3 +85,12 @@ for setup instructions.
 | `TECHNICAL_ACCOUNT_TOKEN`    | _(none)_          | Technical account token (PAT) with repository write permission. |
 | `TECHNICAL_ACCOUNT_USERNAME` | `weiss-bot`       | Technical account username. Used for commit history logs        |
 | `TECHNICAL_ACCOUNT_EMAIL`    | `weiss-bot@dummy` | Technical account email. Used for commit history logs           |
+
+### User roles
+
+Controls the path of the `roles.toml` file that defines which users have the developer role. See
+[User roles](user_roles.md) for full setup instructions.
+
+| Variable            | Default        | Description                                                                                       |
+| ------------------- | -------------- | ------------------------------------------------------------------------------------------------- |
+| `ROLES_CONFIG_FILE` | `./roles.toml` | Path on the _host_ to the roles config file. Mounted read-only into the API container at startup. |

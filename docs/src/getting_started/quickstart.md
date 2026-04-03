@@ -41,7 +41,7 @@ to get familiarized with the options.
 docker compose up -d
 ```
 
-Once built, three services should be launched:
+Once built, three services should be running (plus an internal `storage` volume container):
 
 - `weiss-epicsws`: the EPICS communication layer.
 - `weiss-api`: the backend API for file and git interaction.
