@@ -1,0 +1,18 @@
+# WEISS roles configuration
+#
+# Copy this file to roles.toml and list the usernames of users who should be
+# granted the developer role. Everyone else is treated as operator.
+# Keep roles.toml out of version control (it is listed in .gitignore).
+#
+# For Microsoft auth, the username is the userPrincipalName (UPN), e.g.
+# "andre@example.com". For other providers (e.g. LDAP - to be supported),
+# use the login name as it appears in the user's session (e.g. "andre" or "DOMAIN\andre").
+#
+# Changes take effect either after the server restarts or after calling:
+#   POST /api/v1/auth/admin/reload-roles   (requires developer role)
+
+[roles]
+developers = [
+    # "person1@example.com",
+    # "person2@example.com",
+]

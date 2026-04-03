@@ -6,6 +6,7 @@ import msal
 import os
 import secrets
 from api.config import FRONTEND_URL, ENABLE_HTTPS
+from api.auth import roles_config
 from fastapi import APIRouter, HTTPException, Depends, Response, Request
 from pydantic import BaseModel, Field
 from enum import Enum
@@ -148,6 +149,14 @@ async def get_current_user(request: Request) -> User:
     if not user:
         raise HTTPException(status_code=401, detail="Invalid session")
 
+    # Re-resolve role on every request so config-file changes take effect
+    # without requiring users to log out and back in.
+    user.role = (
+        UserRole.DEVELOPER
+        if roles_config.is_developer(user.username)
+        else UserRole.OPERATOR
+    )
+
     return user
 
 
@@ -183,22 +192,20 @@ async def handle_microsoft_callback(code: str, redirect_uri: str) -> User:
     ms_user = await get_ms_user(result["access_token"])
 
     provider_id = ms_user["id"]
-    upn = ms_user.get("userPrincipalName", "")
+    username = ms_user.get("userPrincipalName", "")
     user_id = f"ms_{provider_id}"
 
     if user_id not in users_db:
-        from api.config import MS_DEVELOPER_EMAILS
-
         role = (
             UserRole.DEVELOPER
-            if upn and upn.lower() in MS_DEVELOPER_EMAILS
+            if username and roles_config.is_developer(username)
             else UserRole.OPERATOR
         )
         users_db[user_id] = User(
             id=user_id,
-            username=upn,
-            displayName=ms_user.get("displayName") or upn,
-            email=ms_user.get("mail") or upn,
+            username=username,
+            displayName=ms_user.get("displayName") or username,
+            email=ms_user.get("mail") or username,
             provider=AuthProvider.MICROSOFT,
             provider_id=provider_id,
             role=role,
@@ -342,3 +349,20 @@ async def logout(request: Request, response: Response):
     )
 
     return {"message": "Logged out"}
+
+
+class ReloadRolesResponse(BaseModel):
+    reloaded: bool
+    developer_count: int
+
+
+@router.post(
+    "/admin/reload-roles",
+    response_model=ReloadRolesResponse,
+    operation_id="authReloadRoles",
+)
+async def reload_roles(current_user: User = Depends(get_current_user)):
+    if current_user.role != UserRole.DEVELOPER:
+        raise HTTPException(status_code=403, detail="Developer role required")
+    count = roles_config.reload_roles()
+    return {"reloaded": True, "developer_count": count}

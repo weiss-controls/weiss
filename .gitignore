@@ -32,6 +32,9 @@ dist-ssr
 __pycache__
 .ruff_cache
 
+# roles config
+roles.toml
+
 # certificates
 /nginx/certs/*.pem
 !/nginx/certs/example-*.pem

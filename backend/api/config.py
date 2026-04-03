@@ -21,10 +21,3 @@ VITE_DEV_PORT = "5173"
 PROTOCOL = "https" if ENABLE_HTTPS else "http"
 PORT = f":{VITE_DEV_PORT}" if DEV_MODE else ""
 FRONTEND_URL = f"{PROTOCOL}://{APP_HOSTNAME}{PORT}"
-
-# Comma-separated list of Microsoft userPrincipalNames (UPNs) granted the
-# developer role on login. E.g. "alice@example.com,bob@example.com"
-_raw_dev_emails = os.getenv("MS_DEVELOPER_EMAILS", "")
-MS_DEVELOPER_EMAILS: frozenset[str] = frozenset(
-    e.strip().lower() for e in _raw_dev_emails.split(",") if e.strip()
-)
