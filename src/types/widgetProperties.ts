@@ -96,7 +96,7 @@ export const PROPERTY_SCHEMAS = {
   imagePath:       defineProp({ selType: "repoFile", label: "Image path", value: "" as string, category: "General", options: [".svg", ".png", ".jpg", ".jpeg"] }),
   keepAspectRatio: defineProp({ selType: "boolean", label: "Keep aspect ratio", value: true as boolean, category: "Style" }),
   // EmbeddedDisplay and NavigationButton
-  displayPath:      defineProp({ selType: "repoFile", label: "Display path", value: "" as string, category: "General", options: [".json"] }),
+  displayPath:      defineProp({ selType: "repoFile", label: "Display path", value: "" as string, category: "General", options: [".opi.json"] }),
 };
 
 /**

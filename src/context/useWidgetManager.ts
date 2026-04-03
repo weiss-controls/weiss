@@ -631,7 +631,7 @@ export function useWidgetManager() {
    * Export current widgets to JSON file.
    */
   const downloadWidgets = useCallback(async () => {
-    const defaultName = "weiss-opi.json";
+    const defaultName = "weiss.opi.json";
 
     const simplified = editorWidgets.map(formatWdgToExport);
 
@@ -650,8 +650,8 @@ export function useWidgetManager() {
           suggestedName: defaultName,
           types: [
             {
-              description: "JSON Files",
-              accept: { "application/json": [".json"] },
+              description: "OPI Files",
+              accept: { "application/json": [".opi.json"] },
             },
           ],
         });

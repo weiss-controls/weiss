@@ -28,6 +28,7 @@ from api.repos.common import (
     REPO_META,
     NEW_FILE_CONTENT,
     ALLOWED_EXTENSIONS,
+    OPI_EXTENSION,
 )
 
 router = APIRouter(
@@ -284,13 +285,13 @@ def create_snapshot(repo_id: str, ref: str, user: User) -> Tuple[str, str]:
 
 
 def validate_repo_content(repo_path: str) -> ValidationResult:
-    """Validate that all JSON files in the repo parse as valid JSON."""
+    """Validate that all .opi.json files in the repo parse as valid JSON."""
     errors: list[str] = []
     for dirpath, dirnames, filenames in os.walk(repo_path):
         # Skip hidden dirs (e.g. .git)
         dirnames[:] = [d for d in dirnames if not d.startswith(".")]
         for filename in filenames:
-            if not filename.endswith(".json"):
+            if not filename.endswith(OPI_EXTENSION):
                 continue
             if filename in {REPO_META}:
                 continue
@@ -628,11 +629,13 @@ async def upload_staging_repo_file(
     if rel_path.startswith(".."):
         raise HTTPException(status_code=400, detail="Invalid file path")
 
-    _, ext = os.path.splitext(rel_path)
-    if ext.lower() not in ALLOWED_EXTENSIONS:
+    rel_lower = rel_path.lower()
+    _, ext = os.path.splitext(rel_lower)
+    if not rel_lower.endswith(OPI_EXTENSION) and ext not in ALLOWED_EXTENSIONS:
+        allowed_str = ", ".join(sorted([OPI_EXTENSION] + list(ALLOWED_EXTENSIONS)))
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported file type. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}",
+            detail=f"Unsupported file type. Allowed: {allowed_str}",
         )
 
     contents = await file.read()
@@ -784,8 +787,8 @@ def create_staging_repo_path(
     parent_dir = os.path.dirname(full_path)
 
     # Compute the final target path before checking existence
-    if payload.type == "file" and not rel_path.endswith(".json"):
-        final_path = full_path + ".json"
+    if payload.type == "file" and not rel_path.endswith(OPI_EXTENSION):
+        final_path = full_path + OPI_EXTENSION
     else:
         final_path = full_path
 

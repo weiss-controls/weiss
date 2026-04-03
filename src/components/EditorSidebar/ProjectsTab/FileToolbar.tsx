@@ -46,25 +46,15 @@ function getCreateBasePath(selected: SelectedPathInfo): string {
   return isFilePath(selected.path) ? getParentDir(selected.path) : selected.path;
 }
 
-function normalizeJsonFileName(name: string): string | null {
+function normalizeOpiFileName(name: string): string | null {
   const trimmed = name.trim();
-
   if (!trimmed) return null;
-
-  const dotIdx = trimmed.lastIndexOf(".");
-  if (dotIdx === -1) {
-    return `${trimmed}.json`;
-  }
-
-  const ext = trimmed.slice(dotIdx).toLowerCase();
-  if (ext !== ".json") {
-    return null;
-  }
-
-  return trimmed;
+  if (trimmed.toLowerCase().endsWith(".opi.json")) return trimmed;
+  if (trimmed.includes(".")) return null;
+  return `${trimmed}.opi.json`;
 }
 
-const ALLOWED_UPLOAD_EXTENSIONS = [".svg", ".png", ".jpg", ".jpeg", ".json"];
+const ALLOWED_UPLOAD_EXTENSIONS = [".svg", ".png", ".jpg", ".jpeg", ".opi.json"];
 
 export default function FileToolbar({
   repoId,
@@ -140,10 +130,10 @@ export default function FileToolbar({
               onClick={() => {
                 const input = prompt("Enter new file name:");
                 if (!input) return;
-                const fileName = normalizeJsonFileName(input);
+                const fileName = normalizeOpiFileName(input);
                 if (!fileName) {
                   notifyUser(
-                    "Only .json files are allowed. Either leave extension empty or use .json",
+                    "Only .opi.json files are allowed. Either leave extension empty or use .opi.json",
                     "error",
                   );
                   return;
