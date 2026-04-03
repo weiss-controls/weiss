@@ -41,6 +41,7 @@ services:
     volumes:
       - ./backend/api:/app/api
       - storage:/app/storage
+      - ${ROLES_CONFIG_FILE:-./roles.toml}:/config/roles.toml:ro
     image: weiss-api-dev:${VITE_APP_VERSION}
     container_name: weiss-api-dev
     ports:
@@ -56,6 +57,7 @@ services:
       TECHNICAL_ACCOUNT_TOKEN: ${TECHNICAL_ACCOUNT_TOKEN}
       TECHNICAL_ACCOUNT_USERNAME: ${TECHNICAL_ACCOUNT_USERNAME}
       TECHNICAL_ACCOUNT_EMAIL: ${TECHNICAL_ACCOUNT_EMAIL}
+      ROLES_CONFIG_PATH: /config/roles.toml
 
 volumes:
   storage:
