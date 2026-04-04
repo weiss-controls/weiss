@@ -132,6 +132,19 @@ class StagingTreeInfo(StagingMeta):
 # -----------------------------------------------------------------------------
 # Helper functions
 # -----------------------------------------------------------------------------
+_COMPOUND_EXTENSIONS = (".opi.json",)
+
+
+def get_file_ext(filename: str) -> str:
+    """Return the effective extension, treating compound extensions (e.g. .opi.json) as one unit."""
+    lower = filename.lower()
+    for ext in _COMPOUND_EXTENSIONS:
+        if lower.endswith(ext):
+            return ext
+    _, ext = os.path.splitext(filename)
+    return ext.lower()
+
+
 def run_git(cmd: list[str], cwd: str | None = None, allow_fail: bool = False) -> str:
     """Run git command and raise exception if allow_fail==False (default)"""
     try:
@@ -892,9 +905,10 @@ def rename_staging_repo_path(
         raise HTTPException(status_code=404, detail="Path not found")
 
     if os.path.isfile(full_path):
-        _, old_ext = os.path.splitext(rel_path)
-        _, new_ext = os.path.splitext(new_name)
-        if old_ext.lower() != new_ext.lower():
+        old_filename = os.path.basename(rel_path)
+        old_ext = get_file_ext(old_filename)
+        new_ext = get_file_ext(new_name)
+        if old_ext != new_ext:
             raise HTTPException(
                 status_code=400,
                 detail=f"Cannot change file extension (expected '{old_ext}')",

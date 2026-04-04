@@ -147,16 +147,21 @@ const CustomTreeItem = forwardRef<HTMLLIElement, UseTreeItemParameters>(
       : {};
 
     // Derive old extension from the item's path (itemId is the full relative path)
+    // Treat compound extensions like .opi.json as a single unit.
     const oldName = itemId.slice(itemId.lastIndexOf("/") + 1);
-    const oldExt = oldName.includes(".")
-      ? oldName.slice(oldName.lastIndexOf(".")).toLowerCase()
-      : "";
+    const getExt = (name: string): string => {
+      const lower = name.toLowerCase();
+      if (lower.endsWith(".opi.json")) return ".opi.json";
+      const dot = name.lastIndexOf(".");
+      return dot !== -1 ? name.slice(dot).toLowerCase() : "";
+    };
+    const oldExt = getExt(oldName);
 
     const handleInputChange = getLabelInputProps({
       onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
         if (oldExt) {
           const val = e.target.value;
-          const newExt = val.includes(".") ? val.slice(val.lastIndexOf(".")).toLowerCase() : "";
+          const newExt = getExt(val);
           setExtensionError(newExt !== oldExt);
         }
       },
