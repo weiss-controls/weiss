@@ -34,7 +34,7 @@ within a single, consistent web-based environment.
 ### Why should you use web?
 
 - **Client-side rendering**: the client browser performs most work; backend load stays minimal.
-- **Ease of access**: use any modern browser—no remote desktops or local tools required. Access
+- **Ease of access**: use any modern browser - no remote desktops or local tools required. Access
   control relies on standard security mechanisms (network restrictions, authentication, reverse
   proxies, etc).
 - **Built for scale**: concurrent users do not require dedicated VMs or graphical sessions.

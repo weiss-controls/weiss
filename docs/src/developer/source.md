@@ -17,7 +17,7 @@ This launches three services (plus an internal `storage` volume container):
 
 > For the API, the service must be restarted for endpoint changes to take effect. `DEV_MODE` is
 > already set to `true` in `docker-compose-dev.yml`, so the API automatically allows requests from
-> `http://localhost:5173` — no extra configuration is needed.
+> `http://localhost:5173` - no extra configuration is needed.
 
 For development, it is also recommended to launch the demonstration IOCs, to have some live PVs to
 test with. All IOCs and instructions can be found in the
@@ -37,8 +37,7 @@ docker compose -f docs/docker-compose.yml up -d --build
 This builds the Sphinx documentation and serves the resulting HTML via nginx on
 `http://localhost:8001`.
 
-The docs service is completely standalone and has no dependency on the main stack. To expose it
-publicly under a dedicated hostname (e.g. `docs.example.com`), set `DOCS_HOSTNAME` in your `.env`
-and ensure the main `weiss` service is running — it will automatically proxy requests for that
-hostname to the docs container. See [Environment variables](../production/env_variables.md) for
-details.
+To expose it publicly under a dedicated hostname (e.g. `docs.example.com`), set `DOCS_HOSTNAME` in
+your `.env` and ensure the main `weiss` service is running - it will automatically proxy requests
+for that hostname to the docs container. See [Environment variables](../production/env_variables.md)
+for details.

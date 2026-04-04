@@ -23,7 +23,7 @@ The order of the following steps is not mandatory, but it's recommended for a sm
 experience. The editor reads the definition file to display the widget in the palette, so writing it
 first allows you to test your component more easily as you build it.
 
-## Step 1 — Write the definition file
+## Step 1 - Write the definition file
 
 The definition file exports a `WidgetDefinition` object. From this file, the editor is able to read
 all metadata (label, icon, category, default properties) and render the appropriate editing menus.
@@ -40,7 +40,7 @@ import MyIcon from "@mui/icons-material/Category"; // pick any MUI icon
 
 export const MyWidget: WidgetDefinition = {
   component: MyWidgetComp,
-  widgetName: "MyWidget", // unique key — used in saved .opi.json files
+  widgetName: "MyWidget", // unique key - used in saved .opi.json files
   widgetLabel: "My Widget", // display name in the editor palette
   widgetIcon: MyIcon,
   category: "Basic", // palette group
@@ -73,7 +73,7 @@ also recommended to get familiarized with the structure and patterns.
 
 ---
 
-## Step 2 — Register the widget to the palette
+## Step 2 - Register the widget to the palette
 
 Add a named export to the `src/components/Widgets/index.ts`, so the `WidgetRegistry` picks it up
 automatically:
@@ -87,7 +87,7 @@ export { MyWidget } from "./MyWidget";
 From now on, your widget will appear in the editor palette under its `category`, can be dragged onto
 the canvas, and will be serialised/deserialised using `widgetName` as the key.
 
-## Step 3 — Writing the React component
+## Step 3 - Writing the React component
 
 Now it's time to actually design your widget. The component should receive a single `data` prop of
 type `Widget` (the runtime version of `WidgetDefinition`). Use `data.editableProperties` to read
@@ -106,7 +106,7 @@ export function MyWidgetComp({ data }: WidgetUpdate) {
 
   return (
     <div style={{ width: "100%", height: "100%", background: bg }}>
-      {label} {pv ? String(pv.value) : "—"}
+      {label} {pv ? String(pv.value) : "-"}
     </div>
   );
 }

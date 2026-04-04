@@ -15,7 +15,8 @@ operator.
 number of users and roles changes infrequently and a full database service would be disproportionate
 overhead. If your deployment grows to the point where dynamic role management, audit trails, or
 per-repository permissions become necessary, this mechanism can be replaced with a database-backed
-solution without changing the rest of the application. Proportional growth is the way! :::
+solution without changing the rest of the application.  
+:::
 
 ---
 
@@ -39,16 +40,17 @@ developers = [
 ]
 ```
 
-Keep `roles.toml` out of version control — it is already listed in `.gitignore`.
+Keep `roles.toml` out of version control - it is already listed in `.gitignore`.
 
 :::{note} The username format depends on the authentication provider in use:
 
-- **Microsoft Entra ID** — use the user's `userPrincipalName` (UPN), typically their organisational
+- **Microsoft Entra ID** - use the user's `userPrincipalName` (UPN), typically their organisational
   email address (e.g. `username@example.com`).
-- **Other providers** (e.g. LDAP, to be supported) — use the login name as it appears in the user's
+- **Other providers** (e.g. LDAP, to be supported) - use the login name as it appears in the user's
   session (e.g. `username` or `DOMAIN\username`).
 
-Usernames are matched case-insensitively. :::
+Usernames are matched case-insensitively.  
+:::
 
 ---
 
@@ -62,16 +64,14 @@ for it at `./roles.toml` relative to the project root. If you want to keep it el
 ROLES_CONFIG_FILE=/path/to/your/roles.toml
 ```
 
-The file is mounted read-only at `/config/roles.toml` inside the container. The API container reads
-the path from the `ROLES_CONFIG_PATH` environment variable, which is already set in the compose
-files.
+The file is mounted read-only at `/config/roles.toml` inside the container.
 
 ---
 
 ## Applying changes without restarting
 
 After editing `roles.toml`, you can reload it without restarting the server by calling the reload
-endpoint — no existing user sessions are interrupted:
+endpoint - no existing user sessions are interrupted:
 
 ```sh
 curl -X POST https://<your-host>/api/v1/auth/admin/reload-roles \
@@ -85,9 +85,10 @@ number of developer usernames loaded from the file:
 { "reloaded": true, "developer_count": 2 }
 ```
 
-Role changes take effect on the next request made by each user — there is no need to force anyone to
+Role changes take effect on the next request made by each user - there is no need to force anyone to
 log out and back in.
 
 :::{note} If `roles.toml` is not found when the server starts, a warning is logged and all users
 fall back to the operator role. The file can be created and loaded at any time using the reload
-endpoint above without restarting. :::
+endpoint above without restarting.  
+:::

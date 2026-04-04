@@ -14,7 +14,7 @@ Instructions available [here](https://docs.docker.com/engine/install/).
 git clone https://github.com/weiss-controls/weiss.git
 ```
 
-3. Configure you environment.
+3. Configure your environment.
 
 First, create your `.env` file. You can start by just copying `.env.example` from the root folder:
 
@@ -28,7 +28,7 @@ accordingly.
 :::{important}  
 If running outside of your localhost, make sure to set `APP_HOSTNAME` to your server's IP address or
 DNS name. This is used by nginx to accept requests for the right hostname and by the API's CORS
-policy to allow requests from the frontend — all other origins are blocked.  
+policy to allow requests from the frontend - all other origins are blocked.  
 :::
 
 The whole behaviour of the app is configured via environment variables. For this tutorial, most of
