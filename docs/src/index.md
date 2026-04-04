@@ -28,7 +28,7 @@ WEISS also redefines deployment. Interfaces are versioned in git, developed in s
 to production with a single action. Operators only access approved versions, ensuring controlled
 releases with full traceability.
 
-This approach consolidates the full interface lifecycle — design, validation, and deployment —
+This approach consolidates the full interface lifecycle - design, validation, and deployment -
 within a single, consistent web-based environment.
 
 ### Why should you use web?
