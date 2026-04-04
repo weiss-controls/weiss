@@ -40,7 +40,7 @@ import MyIcon from "@mui/icons-material/Category"; // pick any MUI icon
 
 export const MyWidget: WidgetDefinition = {
   component: MyWidgetComp,
-  widgetName: "MyWidget", // unique key — used in saved JSON files
+  widgetName: "MyWidget", // unique key — used in saved .opi.json files
   widgetLabel: "My Widget", // display name in the editor palette
   widgetIcon: MyIcon,
   category: "Basic", // palette group

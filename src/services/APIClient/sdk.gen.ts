@@ -18,6 +18,8 @@ import type {
   AuthLogoutResponses,
   AuthMeData,
   AuthMeResponses,
+  AuthReloadRolesData,
+  AuthReloadRolesResponses,
   CheckoutRepoRefData,
   CheckoutRepoRefErrors,
   CheckoutRepoRefResponses,
@@ -156,6 +158,17 @@ export const authLogout = <ThrowOnError extends boolean = true>(
 ) =>
   (options?.client ?? client).post<AuthLogoutResponses, unknown, ThrowOnError>({
     url: "/api/v1/auth/logout",
+    ...options,
+  });
+
+/**
+ * Reload Roles
+ */
+export const authReloadRoles = <ThrowOnError extends boolean = true>(
+  options?: Options<AuthReloadRolesData, ThrowOnError>,
+) =>
+  (options?.client ?? client).post<AuthReloadRolesResponses, unknown, ThrowOnError>({
+    url: "/api/v1/auth/admin/reload-roles",
     ...options,
   });
 

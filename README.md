@@ -5,7 +5,7 @@ provides a responsive editor, live PV communication (read and write), git-based 
 a lightweight deployment model.
 
 Try it out: https://demo.weiss-controls.org.  
-Documentation: https://docs.weiss-controls.org. _(Available soon)_  
+Documentation: https://docs.weiss-controls.org.  
 Project issue tracking:
 [WEISS Project Dashboard](https://github.com/orgs/weiss-controls/projects/1/)
 

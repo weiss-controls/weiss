@@ -151,7 +151,7 @@ class PVParser:
 
     @staticmethod
     def pva_metadata(pv_obj) -> dict:
-        """Parse quasi-static metadata fields from a PVA object."""
+        """Parse metadata fields from a PVA object."""
         d = pv_obj.get("display", {})
         c = pv_obj.get("control", {})
         va = pv_obj.get("valueAlarm", {})

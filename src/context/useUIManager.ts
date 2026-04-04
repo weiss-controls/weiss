@@ -257,7 +257,7 @@ export default function useUIManager(
   useEffect(() => {
     if (!isDeveloper || !inEditMode) return;
     if (!selectedFile?.repo_id || !selectedFile.path) return;
-    if (!selectedFile.path.toLowerCase().endsWith(".json")) return;
+    if (!selectedFile.path.toLowerCase().endsWith(".opi.json")) return;
     // Skip the first render after selecting a new file
     if (hasFileChanged.current) {
       hasFileChanged.current = false;

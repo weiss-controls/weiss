@@ -20,6 +20,26 @@ The Git URL must be accessible from the server running `weiss-api`. Private repo
 properly configured technical account token (see [Enabling commits](#enabling-commits) section).  
 :::
 
+### File visibility in the browser
+
+Not all files in a cloned repository are shown in the file browser. Only the following types are
+displayed:
+
+- **OPI files** — files with the `.opi.json` extension.
+- **Image files** — files with the `.svg`, `.png`, `.jpg`, or `.jpeg` extension.
+
+All other file types (scripts, configuration files, etc.) are ignored by the interface.
+
+Additionally, **files and folders whose name starts with `_`** (underscore) follow special
+visibility rules:
+
+- They **are visible and selectable in Edit mode**, allowing developers to organise internal or
+  non-navigable assets inside a repository.
+- They **are hidden and not selectable in Runtime mode**, so operators never see them.
+
+This convention lets you keep support files (e.g. shared symbol libraries, templates) alongside your
+OPIs without exposing them to end users.
+
 ---
 
 (enabling-commits)=

@@ -17,6 +17,7 @@ SNAPSHOT_REL_FOLDER = "snapshot"
 CURRENT_SYMLINK = "current"
 DEPLOYMENT_META = "deployment.json"
 REPO_META = "repo.json"
+OPI_EXTENSION = ".opi.json"
 NEW_FILE_CONTENT = [
     {
         "id": "__grid__",
@@ -33,7 +34,7 @@ NEW_FILE_CONTENT = [
     }
 ]
 
-ALLOWED_EXTENSIONS = {".json", ".svg", ".png", ".jpg", ".jpeg"}
+ALLOWED_EXTENSIONS = {".svg", ".png", ".jpg", ".jpeg"}
 
 os.makedirs(REPOS_BASE_PATH, exist_ok=True)
 
@@ -75,7 +76,7 @@ def build_path_tree(root_path: str, rel_path: str = "") -> List[TreeNode]:
     Recursively build a directory tree starting at root_path/rel_path.
 
     - Skips metadata directories (e.g. .git)
-    - Includes only .json files
+    - Includes only .opi.json files and image assets
     - Paths are returned relative to root_path
     """
     abs_path = os.path.join(root_path, rel_path)
@@ -112,8 +113,9 @@ def build_path_tree(root_path: str, rel_path: str = "") -> List[TreeNode]:
             ]:
                 continue
 
-            _, ext = os.path.splitext(entry.name.lower())
-            if ext not in ALLOWED_EXTENSIONS:
+            name_lower = entry.name.lower()
+            _, ext = os.path.splitext(name_lower)
+            if not name_lower.endswith(OPI_EXTENSION) and ext not in ALLOWED_EXTENSIONS:
                 continue
 
             nodes.append(

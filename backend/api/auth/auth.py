@@ -151,11 +151,12 @@ async def get_current_user(request: Request) -> User:
 
     # Re-resolve role on every request so config-file changes take effect
     # without requiring users to log out and back in.
-    user.role = (
-        UserRole.DEVELOPER
-        if roles_config.is_developer(user.username)
-        else UserRole.OPERATOR
-    )
+    if user.provider != AuthProvider.DEMO:
+        user.role = (
+            UserRole.DEVELOPER
+            if roles_config.is_developer(user.username)
+            else UserRole.OPERATOR
+        )
 
     return user
 

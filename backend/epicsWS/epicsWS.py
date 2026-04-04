@@ -153,6 +153,7 @@ async def message_handler(ws: ServerConnection):
                         subscriptions[pv_name] = set()
                     subscriptions[pv_name].add(ws)
                     ws_subscriptions[ws].add(pv_name)
+                    _pv_metadata.pop(pv_name, None)
                     client.subscribe(client_id, pv_name)
 
             elif msg_type == "unsubscribe":
@@ -164,6 +165,7 @@ async def message_handler(ws: ServerConnection):
                         ws_subscriptions[ws].discard(pv_name)
                         if not subscriptions[pv_name]:
                             del subscriptions[pv_name]
+                            _pv_metadata.pop(pv_name, None)
                         client.unsubscribe(client_id, pv_name)
                     sent_metadata.pop((ws, pv_name), None)
 
@@ -193,6 +195,7 @@ async def message_handler(ws: ServerConnection):
                 pv_set.discard(ws)
                 if not pv_set:
                     del subscriptions[pv_name]
+                    _pv_metadata.pop(pv_name, None)
             sent_metadata.pop((ws, pv_name), None)
         for c in clients.values():
             if c:

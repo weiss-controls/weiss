@@ -9,7 +9,7 @@ Run:
 docker compose -f docker-compose-dev.yml up
 ```
 
-This launches four services:
+This launches three services (plus an internal `storage` volume container):
 
 - `weiss-epicsws-dev`: the EPICS communication layer.
 - `weiss-api-dev`: the backend API for file and git interaction.

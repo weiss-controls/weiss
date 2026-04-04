@@ -134,6 +134,7 @@ export default function useEpicsWS(PVMap: ReturnType<typeof useWidgetManager>["P
     ws.current.unsubscribe([...subscribedRef.current]);
     ws.current.close();
     ws.current = null;
+    pvCache.current = {};
     setWSConnected(false);
     setPVState({});
   }, [setWSConnected]);

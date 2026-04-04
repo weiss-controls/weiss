@@ -7,6 +7,7 @@ export { BitIndicator } from "./BitIndicator";
 export { MultiBitIndicator } from "./MultiBitIndicator";
 export { InputField } from "./InputField";
 export { TextUpdate } from "./TextUpdate";
+export { ProgressBar } from "./ProgressBar";
 export { Ellipse } from "./Ellipse";
 export { Rectangle } from "./Rectangle";
 export { TextLabel } from "./TextLabel";

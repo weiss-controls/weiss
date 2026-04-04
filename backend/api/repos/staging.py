@@ -28,6 +28,7 @@ from api.repos.common import (
     REPO_META,
     NEW_FILE_CONTENT,
     ALLOWED_EXTENSIONS,
+    OPI_EXTENSION,
 )
 
 router = APIRouter(
@@ -131,6 +132,19 @@ class StagingTreeInfo(StagingMeta):
 # -----------------------------------------------------------------------------
 # Helper functions
 # -----------------------------------------------------------------------------
+_COMPOUND_EXTENSIONS = (".opi.json",)
+
+
+def get_file_ext(filename: str) -> str:
+    """Return the effective extension, treating compound extensions (e.g. .opi.json) as one unit."""
+    lower = filename.lower()
+    for ext in _COMPOUND_EXTENSIONS:
+        if lower.endswith(ext):
+            return ext
+    _, ext = os.path.splitext(filename)
+    return ext.lower()
+
+
 def run_git(cmd: list[str], cwd: str | None = None, allow_fail: bool = False) -> str:
     """Run git command and raise exception if allow_fail==False (default)"""
     try:
@@ -284,13 +298,13 @@ def create_snapshot(repo_id: str, ref: str, user: User) -> Tuple[str, str]:
 
 
 def validate_repo_content(repo_path: str) -> ValidationResult:
-    """Validate that all JSON files in the repo parse as valid JSON."""
+    """Validate that all .opi.json files in the repo parse as valid JSON."""
     errors: list[str] = []
     for dirpath, dirnames, filenames in os.walk(repo_path):
         # Skip hidden dirs (e.g. .git)
         dirnames[:] = [d for d in dirnames if not d.startswith(".")]
         for filename in filenames:
-            if not filename.endswith(".json"):
+            if not filename.endswith(OPI_EXTENSION):
                 continue
             if filename in {REPO_META}:
                 continue
@@ -530,7 +544,8 @@ def list_repository_refs(
 def update_repo(repo_id: str, user: User = Depends(require_developer)):
     """Fetch new tags/commits from default branch and rebase current worktree onto it."""
     repo_path = get_user_worktree_path(repo_id, user)
-    default_branch = get_default_branch(repo_path)
+    bare_repo = os.path.join(REPOS_BASE_PATH, repo_id, BARE_CLONE_NAME)
+    default_branch = get_default_branch(bare_repo)
     is_dirty = bool(run_git(["status", "--porcelain"], cwd=repo_path).strip())
 
     if is_dirty:
@@ -628,11 +643,13 @@ async def upload_staging_repo_file(
     if rel_path.startswith(".."):
         raise HTTPException(status_code=400, detail="Invalid file path")
 
-    _, ext = os.path.splitext(rel_path)
-    if ext.lower() not in ALLOWED_EXTENSIONS:
+    rel_lower = rel_path.lower()
+    _, ext = os.path.splitext(rel_lower)
+    if not rel_lower.endswith(OPI_EXTENSION) and ext not in ALLOWED_EXTENSIONS:
+        allowed_str = ", ".join(sorted([OPI_EXTENSION] + list(ALLOWED_EXTENSIONS)))
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported file type. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}",
+            detail=f"Unsupported file type. Allowed: {allowed_str}",
         )
 
     contents = await file.read()
@@ -784,8 +801,8 @@ def create_staging_repo_path(
     parent_dir = os.path.dirname(full_path)
 
     # Compute the final target path before checking existence
-    if payload.type == "file" and not rel_path.endswith(".json"):
-        final_path = full_path + ".json"
+    if payload.type == "file" and not rel_path.endswith(OPI_EXTENSION):
+        final_path = full_path + OPI_EXTENSION
     else:
         final_path = full_path
 
@@ -888,9 +905,10 @@ def rename_staging_repo_path(
         raise HTTPException(status_code=404, detail="Path not found")
 
     if os.path.isfile(full_path):
-        _, old_ext = os.path.splitext(rel_path)
-        _, new_ext = os.path.splitext(new_name)
-        if old_ext.lower() != new_ext.lower():
+        old_filename = os.path.basename(rel_path)
+        old_ext = get_file_ext(old_filename)
+        new_ext = get_file_ext(new_name)
+        if old_ext != new_ext:
             raise HTTPException(
                 status_code=400,
                 detail=f"Cannot change file extension (expected '{old_ext}')",
@@ -994,7 +1012,7 @@ def commit_staging_repo(
     _, repo_meta = get_repo_meta(repo_id)
     _require_valid_token(repo_meta.git_url)
     repo_path = get_user_worktree_path(repo_id, user)
-    default_branch = get_default_branch(repo_path)
+    bare_repo = os.path.join(REPOS_BASE_PATH, repo_id, BARE_CLONE_NAME)
 
     # Ensure there is something staged
     staged = run_git(["diff", "--cached", "--name-only"], cwd=repo_path)
@@ -1021,7 +1039,7 @@ def commit_staging_repo(
             detail=f"Failed to commit changes: {e.detail}",
         )
     try:
-        default_branch = get_default_branch(repo_path)
+        default_branch = get_default_branch(bare_repo)
         run_git(["push", "origin", f"HEAD:{default_branch}"], cwd=repo_path)
 
         if payload.tag:

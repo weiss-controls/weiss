@@ -265,6 +265,20 @@ export type PathRenameRequest = {
 };
 
 /**
+ * ReloadRolesResponse
+ */
+export type ReloadRolesResponse = {
+  /**
+   * Reloaded
+   */
+  reloaded: boolean;
+  /**
+   * Developer Count
+   */
+  developer_count: number;
+};
+
+/**
  * RepoCreateRequest
  */
 export type RepoCreateRequest = {
@@ -558,6 +572,22 @@ export type AuthLogoutResponses = {
    */
   200: unknown;
 };
+
+export type AuthReloadRolesData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/api/v1/auth/admin/reload-roles";
+};
+
+export type AuthReloadRolesResponses = {
+  /**
+   * Successful Response
+   */
+  200: ReloadRolesResponse;
+};
+
+export type AuthReloadRolesResponse = AuthReloadRolesResponses[keyof AuthReloadRolesResponses];
 
 export type GetTokenStatusData = {
   body?: never;
