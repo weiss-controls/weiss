@@ -12,25 +12,25 @@ export const ProgressBarComp: React.FC<WidgetUpdate> = ({ data }) => {
   const pvData = data.pvData;
 
   // Extract editable properties
-  const showValue = (p.showValue?.value as boolean) ?? true;
-  const valuePlcmnt = (p.valuePlcmnt?.value as string) ?? "middle";
-  const showPercentage = (p.showPercentage?.value as boolean) ?? false;
-  const horizontal = (p.horizontal?.value as boolean) ?? true;
-  const barColor = (p.barColor?.value as string | undefined) ?? undefined;
-  const fontSize = (p.fontSize?.value as number) ?? 14;
-  const textColor = (p.textColor?.value as string) ?? "#000";
-  const fontBold = (p.fontBold?.value as boolean) ?? false;
-  const fontItalic = (p.fontItalic?.value as boolean) ?? false;
-  const fontUnderlined = (p.fontUnderlined?.value as boolean) ?? false;
-  const fontFamily = (p.fontFamily?.value as string) ?? "sans-serif";
-  const textHAlign = (p.textHAlign?.value as string) ?? "center";
-  const textVAlign = (p.textVAlign?.value as string) ?? "middle";
-  const limitsFromPV = (p.limitsFromPV?.value as boolean) ?? true;
-  const backgroundColor = (p.backgroundColor?.value as string) ?? "transparent";
+  const showValue = p.showValue!.value;
+  const valuePlcmnt = p.valuePlcmnt!.value;
+  const showPercentage = p.showPercentage!.value;
+  const horizontal = p.horizontal!.value;
+  const barColor = p.barColor!.value;
+  const fontSize = p.fontSize!.value;
+  const textColor = p.textColor!.value;
+  const fontBold = p.fontBold!.value;
+  const fontItalic = p.fontItalic!.value;
+  const fontUnderlined = p.fontUnderlined!.value;
+  const fontFamily = p.fontFamily!.value;
+  const textHAlign = p.textHAlign!.value;
+  const textVAlign = p.textVAlign!.value;
+  const limitsFromPV = p.limitsFromPV!.value;
+  const backgroundColor = p.backgroundColor!.value;
 
   // Determine limits
-  let minValue = (p.min?.value as number) ?? 0;
-  let maxValue = (p.max?.value as number) ?? 100;
+  let minValue = p.min?.value ?? 0;
+  let maxValue = p.max?.value ?? 100;
 
   if (limitsFromPV && pvData?.display) {
     if (pvData.display.limitLow !== undefined) {

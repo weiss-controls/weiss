@@ -95,7 +95,7 @@ export const PROPERTY_SCHEMAS = {
   // ProgressBar
   showValue:       defineProp({ selType: "boolean", label: "Show Value", value: true as boolean, category: "Text" }),
   showPercentage:  defineProp({ selType: "boolean", label: "Show Percentage", value: false as boolean, category: "Text" }),
-  barColor:        defineProp({ selType: "colorSel", label: "Bar Color", value: COLORS.midDarkBlue as string, category: "Style" }),
+  barColor:        defineProp({ selType: "colorSel", label: "Bar Color", value: COLORS.midDarkBlue, category: "Style" }),
   // Image
   imagePath:       defineProp({ selType: "repoFile", label: "Image path", value: "" as string, category: "General", options: [".svg", ".png", ".jpg", ".jpeg"] }),
   keepAspectRatio: defineProp({ selType: "boolean", label: "Keep aspect ratio", value: true as boolean, category: "Style" }),
