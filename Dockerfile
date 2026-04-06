@@ -15,6 +15,8 @@ CMD pnpm run dev --host
 # Production build
 FROM node:20-alpine AS build
 WORKDIR /app
+ARG VITE_APP_VERSION
+ENV VITE_APP_VERSION=${VITE_APP_VERSION}
 ARG VITE_DEMO_MODE
 ENV VITE_DEMO_MODE=${VITE_DEMO_MODE}
 COPY --from=source_fetch /app ./
