@@ -17,7 +17,7 @@ requires a rebuild.
 | Variable           | Default                                       | Description                                                                                                     |
 | ------------------ | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | `GIT_REPO`         | `https://github.com/weiss-controls/weiss.git` | URL of the WEISS repository used for build (production build will always build from source!).                   |
-| `VITE_APP_VERSION` | `0.1.0`                                       | Application version checked out in build time and shown in the UI.                                              |
+| `VITE_APP_VERSION` | `1.0.0`                                       | Application version checked out in build time and shown in the UI.                                              |
 | `VITE_DEMO_MODE`   | `true`                                        | When `true`, a demo (unauthenticated) login option is shown on the login page. Disable for private deployments. |
 
 ---
@@ -26,11 +26,14 @@ requires a rebuild.
 
 Consumed by the `weiss-epicsws` service.
 
-| Variable                 | Default     | Description                                                                                   |
-| ------------------------ | ----------- | --------------------------------------------------------------------------------------------- |
-| `EPICS_DEFAULT_PROTOCOL` | `pva`       | Protocol used when a PV name has no `ca://` or `pva://` prefix. Accepted values: `pva`, `ca`. |
-| `EPICS_CA_ADDR_LIST`     | `localhost` | Space-separated list of Channel Access address(es) / broadcast addresses.                     |
-| `EPICS_PVA_ADDR_LIST`    | `localhost` | Space-separated list of PV Access address(es) / broadcast addresses.                          |
+| Variable                   | Default     | Description                                                                                                                                        |
+| -------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `EPICS_DEFAULT_PROTOCOL`   | `pva`       | Protocol used when a PV name has no `ca://` or `pva://` prefix. Accepted values: `pva`, `ca`.                                                      |
+| `EPICS_CA_ADDR_LIST`       | `localhost` | Standard EPICS_CA_ADDR_LIST env variable. See [EPICS docs](https://epics.anl.gov/base/R3-14/12-docs/CAref.html) for reference.                     |
+| `EPICS_CA_AUTO_ADDR_LIST`  | `YES`       | Standard EPICS_CA_AUTO_ADDR_LIST env variable. See [EPICS docs](https://epics.anl.gov/base/R3-14/12-docs/CAref.html) for reference.                |
+| `EPICS_CA_MAX_ARRAY_BYTES` | `1000000`   | Standard EPICS_CA_MAX_ARRAY_BYTES env variable. See [EPICS docs](https://epics.anl.gov/base/R3-14/12-docs/CAref.html) for reference.               |
+| `EPICS_PVA_ADDR_LIST`      | `localhost` | Standard EPICS_PVA_ADDR_LIST env variable. See [EPICS docs](https://docs.epics-controls.org/en/latest/specs/pva_protocol.html) for reference.      |
+| `EPICS_PVA_AUTO_ADDR_LIST` | `YES`       | Standard EPICS_PVA_AUTO_ADDR_LIST env variable. See [EPICS docs](https://docs.epics-controls.org/en/latest/specs/pva_protocol.html) for reference. |
 
 :::{note}  
 To receive PV traffic from IOCs outside of `localhost`, add the IOC host or subnet broadcast address
