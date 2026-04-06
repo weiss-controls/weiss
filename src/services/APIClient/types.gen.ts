@@ -297,6 +297,20 @@ export type RepoCreateRequest = {
 };
 
 /**
+ * RepoRef
+ */
+export type RepoRef = {
+  /**
+   * Ref
+   */
+  ref: string;
+  /**
+   * Message
+   */
+  message: string;
+};
+
+/**
  * RootInfo
  */
 export type RootInfo = {
@@ -379,7 +393,7 @@ export type StagingTreeInfo = {
   /**
    * Refs
    */
-  refs: Array<string>;
+  refs: Array<RepoRef>;
   /**
    * Checked Out Ref
    */
@@ -727,7 +741,7 @@ export type ListRepoRefsResponses = {
    *
    * Successful Response
    */
-  200: Array<string>;
+  200: Array<RepoRef>;
 };
 
 export type ListRepoRefsResponse = ListRepoRefsResponses[keyof ListRepoRefsResponses];

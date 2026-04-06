@@ -463,16 +463,16 @@ export default function ProjectSection({
                   fontSize: "0.75rem",
                 }}
               >
-                {repo.refs?.map((ref) => (
+                {repo.refs?.map(({ ref: repoRef, message }) => (
                   <MenuItem
-                    key={ref}
-                    value={ref}
-                    sx={{ color: ref === repo.deployed_ref ? "green" : undefined }}
+                    key={repoRef}
+                    value={repoRef}
+                    sx={{ color: repoRef === repo.deployed_ref ? "green" : undefined }}
                   >
                     <Box display="flex" flexDirection="column">
-                      <Typography variant="inherit">{shortRef(ref)}</Typography>
+                      <Typography variant="inherit">{shortRef(repoRef)}</Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {ref === repo.deployed_ref ? "Deployed" : null}
+                        {repoRef === repo.deployed_ref ? `Deployed · ${message}` : message}
                       </Typography>
                     </Box>
                   </MenuItem>

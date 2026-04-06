@@ -157,6 +157,7 @@ export type {
   RenameStagingRepoPathResponse,
   RenameStagingRepoPathResponses,
   RepoCreateRequest,
+  RepoRef,
   ResetStagingRepoData,
   ResetStagingRepoError,
   ResetStagingRepoErrors,

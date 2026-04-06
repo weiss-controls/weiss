@@ -122,8 +122,13 @@ class TokenStatus(BaseModel):
     detail: str
 
 
+class RepoRef(BaseModel):
+    ref: str
+    message: str
+
+
 class StagingTreeInfo(StagingMeta):
-    refs: List[str]
+    refs: List[RepoRef]
     checked_out_ref: str
     tree: List[TreeNode]
     working_tree_status: GitWorkingTreeStatus
@@ -507,17 +512,19 @@ def unregister_repository(repo_id: str, user: User = Depends(require_developer))
     return get_all_repos_tree(user)
 
 
-@router.get("/{repo_id}/refs", response_model=list[str], operation_id="listRepoRefs")
+@router.get(
+    "/{repo_id}/refs", response_model=list[RepoRef], operation_id="listRepoRefs"
+)
 def list_repository_refs(
     repo_id: str, user: User = Depends(require_developer)
-) -> list[str]:
+) -> list[RepoRef]:
     """List 20 latest repository refs available. Assumes repo is up to date.
-    If commit is tagged, show tag instead.
+    If commit is tagged, show tag instead of SHA.
     """
     repo_path = get_user_worktree_path(repo_id, user)
     default_branch = get_default_branch(repo_path)
-    commits = run_git(
-        ["rev-list", "--max-count=20", default_branch],
+    log_lines = run_git(
+        ["log", "--pretty=format:%H|||%s", "--max-count=20", default_branch],
         cwd=repo_path,
     ).splitlines()
 
@@ -530,12 +537,11 @@ def list_repository_refs(
         tag = ref.replace("refs/tags/", "")
         commit_to_tag[sha] = tag
 
-    refs: list[str] = []
-    for sha in commits:
-        if sha in commit_to_tag:
-            refs.append(commit_to_tag[sha])
-        else:
-            refs.append(sha)
+    refs: list[RepoRef] = []
+    for entry in log_lines:
+        sha, _, message = entry.partition("|||")
+        ref = commit_to_tag.get(sha, sha)
+        refs.append(RepoRef(ref=ref, message=message))
 
     return refs
 
