@@ -18,6 +18,7 @@ services:
       SSL_KEY_FILE: ${SSL_KEY_FILE:-./nginx/certs/example-privkey.pem}
       APP_HOSTNAME: ${APP_HOSTNAME}
       DOCS_HOSTNAME: ${DOCS_HOSTNAME:-}
+      VITE_APP_VERSION: ${VITE_APP_VERSION}
     volumes:
       - ${SSL_CERT_FILE}:/etc/nginx/certs/fullchain.pem:ro
       - ${SSL_KEY_FILE}:/etc/nginx/certs/privkey.pem:ro
