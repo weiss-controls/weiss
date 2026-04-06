@@ -44,36 +44,36 @@ React context providers and custom hooks. The main layers are:
 Four context providers are composed inside a single `ContextProvider` and made available to the
 entire component tree:
 
-- **`WidgetContext`** (`useWidgetManager`) — owns the canonical list of widgets on the canvas. It
+- **`WidgetContext`** (`useWidgetManager`) - owns the canonical list of widgets on the canvas. It
   handles selection, undo/redo history, clipboard, grouping, and serialisation/deserialisation of
   OPI files.
-- **`UIContext`** (`useUIManager`) — owns global UI state: the current mode (edit vs. runtime), the
+- **`UIContext`** (`useUIManager`) - owns global UI state: the current mode (edit vs. runtime), the
   open file, repository and authentication state, and any cross-cutting user interactions such as
   loading or saving a file.
-- **`EpicsWSContext`** (`useEpicsWS`) — exposes the full WebSocket state: connection status,
+- **`EpicsWSContext`** (`useEpicsWS`) - exposes the full WebSocket state: connection status,
   `pvState` map, and subscribe/unsubscribe. Widgets read live PV data from here in runtime mode.
-- **`WSActionsContext`** (`useEpicsWS`) — exposes only `writePVValue`. Backed by the same
+- **`WSActionsContext`** (`useEpicsWS`) - exposes only `writePVValue`. Backed by the same
   `useEpicsWS` hook but kept as a separate context so widgets that only write to PVs do not
   re-render on every incoming PV update.
 
 #### Rendering layer
 
-- **`GridZoneComp`** — the main editor canvas. It handles drag-and-drop of new widgets, panning,
+- **`GridZoneComp`** - the main editor canvas. It handles drag-and-drop of new widgets, panning,
   zooming, and keyboard shortcuts. It is itself registered as a widget so that its editable
   properties (background, grid size, macros, …) are managed through the same widget pipeline as
   every other widget.
-- **`WidgetRenderer`** — iterates the widget list and renders each widget inside a resizable and
+- **`WidgetRenderer`** - iterates the widget list and renders each widget inside a resizable and
   draggable container (`react-rnd`). In runtime mode it merges live PV data from `pvState` into each
   widget before rendering; in edit mode raw widget state is passed directly.
 
 #### Widget registry and palette
 
-- **`WidgetRegistry`** — a static mapping from widget name to `WidgetDefinition`. Every widget
+- **`WidgetRegistry`** - a static mapping from widget name to `WidgetDefinition`. Every widget
   exports a definition object (component reference, label, icon, category, default properties) and
   is re-exported from a single barrel so that the registry is always in sync with the available
   widget set. The registry is the single source of truth consulted by the renderer, the picker, the
   sidebar, and the serialisation logic.
-- **`WidgetPicker`** — a collapsible drawer on the left that reads `WidgetRegistry` and groups
+- **`WidgetPicker`** - a collapsible drawer on the left that reads `WidgetRegistry` and groups
   widgets by category. Selecting a widget sets `pickedWidget` in `useWidgetManager`; the next click
   on the canvas instantiates it at that position.
 
@@ -81,11 +81,11 @@ entire component tree:
 
 `EditorSidebar` is a collapsible drawer on the right with two tabs:
 
-- **Properties tab** — reads the current selection from `useWidgetContext` and renders a property
+- **Properties tab** - reads the current selection from `useWidgetContext` and renders a property
   form for the selected widget(s). Property schemas are derived from each widget's
   `WidgetDefinition` so the sidebar always reflects the correct set of controls without any
   per-widget special casing.
-- **Projects tab** — surfaces the repository and file tree from `useUIContext`, allowing developers
+- **Projects tab** - surfaces the repository and file tree from `useUIContext`, allowing developers
   to browse registered OPI repositories, open files, and manage commits and deployments without
   leaving the editor.
 

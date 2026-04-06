@@ -1,7 +1,7 @@
 # Enabling HTTPS
 
 HTTPS is handled entirely by the nginx container (`weiss`). No changes are needed to the API or
-epicsWS services — they communicate on the internal Docker network over plain HTTP.
+epicsWS services - they communicate on the internal Docker network over plain HTTP.
 
 ---
 

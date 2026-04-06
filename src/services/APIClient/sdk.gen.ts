@@ -245,7 +245,7 @@ export const unregisterRepo = <ThrowOnError extends boolean = true>(
  * List Repository Refs
  *
  * List 20 latest repository refs available. Assumes repo is up to date.
- * If commit is tagged, show tag instead.
+ * If commit is tagged, show tag instead of SHA.
  */
 export const listRepoRefs = <ThrowOnError extends boolean = true>(
   options: Options<ListRepoRefsData, ThrowOnError>,
