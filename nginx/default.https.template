@@ -1,11 +1,11 @@
 # Redirect HTTP to HTTPS
 server {
-    listen 80 default_server;
+    listen 8081 default_server;
     return 301 https://$host$request_uri;
 }
 
 server {
-    listen 443 ssl default_server;
+    listen 8082 ssl default_server;
     server_name ${APP_HOSTNAME};
 
     ssl_certificate ${SSL_FULLCHAIN};
