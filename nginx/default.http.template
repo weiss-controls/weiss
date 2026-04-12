@@ -1,5 +1,5 @@
 server {
-    listen 80 default_server;
+    listen 8081 default_server;
     server_name ${APP_HOSTNAME};
 
     root /usr/share/nginx/html;
