@@ -4,10 +4,9 @@ WEISS is a no-code, drag-and-drop system for building web-based EPICS operation 
 provides a responsive editor, live PV communication (read and write), git-based version control and
 a lightweight deployment model.
 
-Try it out: https://demo.weiss-controls.org.  
-Documentation: https://docs.weiss-controls.org.  
-Project issue tracking:
-[WEISS Project Dashboard](https://github.com/orgs/weiss-controls/projects/1/)
+|                             Live demo                              |                           Documentation                            |                               Planned features                                |
+| :----------------------------------------------------------------: | :----------------------------------------------------------------: | :---------------------------------------------------------------------------: |
+| [https://demo.weiss-controls.org](https://demo.weiss-controls.org) | [https://docs.weiss-controls.org](https://docs.weiss-controls.org) | [GitHub Project Dashboard](https://github.com/orgs/weiss-controls/projects/1) |
 
 ![WEISS UI](docs/src/_static/example.svg)
 
