@@ -3,6 +3,6 @@ channels:
   - conda-forge
 dependencies:
   - python=3.12
-  - pyepics=3.5.8
+  - pyepics=3.5.9
   - p4p=4.2.2
-  - websockets=15.0.1
+  - websockets=16.0.0
