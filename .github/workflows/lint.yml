@@ -2,6 +2,7 @@ name: Lint & Format
 
 on:
   push:
+  pull_request:
 
 jobs:
   frontend:
