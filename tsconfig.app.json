@@ -4,6 +4,7 @@
     "target": "ES2022",
     "useDefineForClassFields": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["@types/wicg-file-system-access"],
     "module": "ESNext",
     "skipLibCheck": true,
 

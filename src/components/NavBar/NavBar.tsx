@@ -115,6 +115,7 @@ export default function NavBar() {
     login,
     logout,
     isDeveloper,
+    selectedFile,
   } = useUIContext();
   const drawerWidth = WIDGET_SELECTOR_WIDTH;
   const [importMenuAnchor, setImportMenuAnchor] = useState<null | HTMLElement>(null);
@@ -138,7 +139,8 @@ export default function NavBar() {
   };
 
   const handleDownload = () => {
-    void downloadWidgets();
+    const filename = selectedFile?.path.slice(selectedFile.path.lastIndexOf("/") + 1) ?? undefined;
+    void downloadWidgets(filename);
   };
 
   const handleImportFile = () => {
