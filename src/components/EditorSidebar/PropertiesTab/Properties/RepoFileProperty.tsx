@@ -46,9 +46,8 @@ interface RepoFilePropertyProps {
 function hasAcceptedFile(node: TreeNode, accept: Set<string>): boolean {
   if (node.type === "file") {
     if (accept.size === 0) return true;
-    const dot = node.path.lastIndexOf(".");
-    const ext = dot !== -1 ? node.path.slice(dot).toLowerCase() : "";
-    return accept.has(ext);
+    const lower = node.path.toLowerCase();
+    return [...accept].some((e) => lower.endsWith(e));
   }
   return !!node.children?.some((c) => hasAcceptedFile(c, accept));
 }
@@ -201,9 +200,8 @@ const RepoFileProperty: React.FC<RepoFilePropertyProps> = ({
     return nodes.map((node) => {
       if (node.type === "file") {
         if (acceptSet.size > 0) {
-          const dot = node.path.lastIndexOf(".");
-          const ext = dot !== -1 ? node.path.slice(dot).toLowerCase() : "";
-          if (!acceptSet.has(ext)) return null;
+          const lower = node.path.toLowerCase();
+          if (![...acceptSet].some((e) => lower.endsWith(e))) return null;
         }
         return (
           <TreeItem
