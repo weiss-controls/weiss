@@ -47,6 +47,7 @@ export function useWidgetManager() {
     createWidgetInstance(GridZone, GRID_ID),
   ]);
   const [pickedWidget, setPickedWidget] = useState<WidgetDefinition | null>(null); // widget picked from palette
+  const [isPlacementMode, setIsPlacementMode] = useState(false);
   const [selectedWidgetIDs, setSelectedWidgetIDs] = useState<string[]>([]);
   const [fileLoadedTrig, setFileLoadedTrig] = useState(0);
 
@@ -862,5 +863,7 @@ export function useWidgetManager() {
     fileLoadedTrig,
     pickedWidget,
     setPickedWidget,
+    isPlacementMode,
+    setIsPlacementMode,
   };
 }
