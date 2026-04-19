@@ -56,6 +56,9 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
     deleteWidget,
     allWidgetIDs,
     pickedWidget,
+    setPickedWidget,
+    isPlacementMode,
+    setIsPlacementMode,
     groupSelected,
     ungroupSelected,
     moveSelected,
@@ -163,6 +166,7 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
 
     addWidget(newWidget);
     setDragPreview(null);
+    setPickedWidget(null);
   };
 
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
@@ -205,10 +209,30 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
 
   const handleClick = (_e: React.MouseEvent) => {
     setContextMenuVisible(false);
+    if (isPlacementMode && pickedWidget && !isPanning) {
+      const newWidget = createWidgetInstance(
+        pickedWidget,
+        `${pickedWidget.widgetName}-${uuidv4()}`,
+      );
+      if (newWidget.editableProperties.x)
+        newWidget.editableProperties.x.value = mousePosRef.current.x;
+      if (newWidget.editableProperties.y)
+        newWidget.editableProperties.y.value = mousePosRef.current.y;
+      addWidget(newWidget);
+      setPickedWidget(null);
+      setIsPlacementMode(false);
+      setDragPreview(null);
+    }
   };
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
+    if (isPlacementMode) {
+      setPickedWidget(null);
+      setIsPlacementMode(false);
+      setDragPreview(null);
+      return;
+    }
     setContextMenuPos({ x: e.clientX, y: e.clientY });
     setContextMenuVisible(true);
   };
@@ -226,6 +250,13 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
         x: ensureGridCoordinate(userX),
         y: ensureGridCoordinate(userY),
       };
+      if (isPlacementMode && pickedWidget) {
+        setDragPreview({
+          widget: pickedWidget,
+          x: ensureGridCoordinate(userX),
+          y: ensureGridCoordinate(userY),
+        });
+      }
       if (gridGrabbed.current) {
         const dx = e.clientX - lastPosRef.current.x;
         const dy = e.clientY - lastPosRef.current.y;
@@ -241,7 +272,18 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
     };
-  }, [gridGrabbed, isPanning, setIsPanning, ensureGridCoordinate, pan, zoom, mode]);
+  }, [
+    gridGrabbed,
+    isPanning,
+    setIsPanning,
+    ensureGridCoordinate,
+    pan,
+    zoom,
+    mode,
+    isPlacementMode,
+    pickedWidget,
+    setDragPreview,
+  ]);
 
   // Shortcuts handler
   useEffect(() => {
@@ -254,6 +296,13 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
       )
         return;
       // shortcuts for all modes
+      if (e.key === "Escape" && isPlacementMode) {
+        e.preventDefault();
+        setPickedWidget(null);
+        setIsPlacementMode(false);
+        setDragPreview(null);
+        return;
+      }
       if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "c") {
         e.preventDefault();
         centerScreen();
@@ -351,7 +400,7 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
       onMouseUp={handleMouseUp}
       onClick={handleClick}
       style={{
-        cursor: gridGrabbed.current ? "grabbing" : "default",
+        cursor: isPlacementMode ? "crosshair" : gridGrabbed.current ? "grabbing" : "default",
         backgroundColor: props.backgroundColor?.value,
         backgroundImage:
           gridLineVisible && inEditMode

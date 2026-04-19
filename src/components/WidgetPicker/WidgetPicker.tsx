@@ -76,7 +76,9 @@ interface DraggableItemProps {
 }
 
 const DraggableItem: React.FC<DraggableItemProps> = ({ item, open }) => {
-  const { setPickedWidget } = useWidgetContext();
+  const { setPickedWidget, pickedWidget, isPlacementMode, setIsPlacementMode } = useWidgetContext();
+
+  const isActive = isPlacementMode && pickedWidget?.widgetName === item.widgetName;
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
     e.dataTransfer.setData("application/json", JSON.stringify(item));
@@ -85,6 +87,18 @@ const DraggableItem: React.FC<DraggableItemProps> = ({ item, open }) => {
     img.src = "";
     e.dataTransfer.setDragImage(img, 0, 0);
     setPickedWidget(item);
+    setIsPlacementMode(false);
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isActive) {
+      setPickedWidget(null);
+      setIsPlacementMode(false);
+    } else {
+      setPickedWidget(item);
+      setIsPlacementMode(true);
+    }
   };
 
   return (
@@ -92,7 +106,9 @@ const DraggableItem: React.FC<DraggableItemProps> = ({ item, open }) => {
       <Tooltip title={item.widgetLabel} placement="right">
         <ListItemButton
           draggable
+          selected={isActive}
           onDragStart={handleDragStart}
+          onClick={handleClick}
           sx={{ minHeight: 30, justifyContent: open ? "initial" : "center" }}
         >
           <ListItemIcon
