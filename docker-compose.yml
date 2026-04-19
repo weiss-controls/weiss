@@ -4,10 +4,8 @@ services:
       context: "."
       target: prod
       args:
-        GIT_REPO: ${GIT_REPO}
-        VITE_APP_VERSION: ${VITE_APP_VERSION}
         VITE_DEMO_MODE: ${VITE_DEMO_MODE}
-    image: weiss:${VITE_APP_VERSION}
+    image: weiss:${DOCKER_TAG:-latest}
     container_name: weiss
     network_mode: host
     restart: always
@@ -18,7 +16,6 @@ services:
       SSL_KEY_FILE: ${SSL_KEY_FILE:-./nginx/certs/example-privkey.pem}
       APP_HOSTNAME: ${APP_HOSTNAME}
       DOCS_HOSTNAME: ${DOCS_HOSTNAME:-}
-      VITE_APP_VERSION: ${VITE_APP_VERSION}
     volumes:
       - ${SSL_CERT_FILE}:/etc/nginx/certs/fullchain.pem:ro
       - ${SSL_KEY_FILE}:/etc/nginx/certs/privkey.pem:ro
@@ -28,7 +25,7 @@ services:
   weiss-epicsws:
     build:
       context: ./backend/epicsWS
-    image: weiss-epicsws:${VITE_APP_VERSION}
+    image: weiss-epicsws:${DOCKER_TAG:-latest}
     container_name: weiss-epicsws
     ports:
       - "8080:8080"
@@ -47,7 +44,7 @@ services:
     volumes:
       - storage:/app/storage
       - ${ROLES_CONFIG_FILE:-./roles.toml}:/config/roles.toml:ro
-    image: weiss-api:${VITE_APP_VERSION}
+    image: weiss-api:${DOCKER_TAG:-latest}
     container_name: weiss-api
     ports:
       - "8000:8000"

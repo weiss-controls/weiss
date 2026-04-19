@@ -14,11 +14,17 @@ cp .env.example .env
 These are injected at **build time** by Vite and baked into the static bundle. Changing them
 requires a rebuild.
 
-| Variable           | Default                                       | Description                                                                                                     |
-| ------------------ | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `GIT_REPO`         | `https://github.com/weiss-controls/weiss.git` | URL of the WEISS repository used for build (production build will always build from source!).                   |
-| `VITE_APP_VERSION` | `1.0.0`                                       | Application version checked out in build time and shown in the UI.                                              |
-| `VITE_DEMO_MODE`   | `true`                                        | When `true`, a demo (unauthenticated) login option is shown on the login page. Disable for private deployments. |
+| Variable         | Default | Description                                                                                                     |
+| ---------------- | ------- | --------------------------------------------------------------------------------------------------------------- |
+| `VITE_DEMO_MODE` | `true`  | When `true`, a demo (unauthenticated) login option is shown on the login page. Disable for private deployments. |
+
+---
+
+## Docker image tagging
+
+| Variable     | Default  | Description                                                                               |
+| ------------ | -------- | ----------------------------------------------------------------------------------------- |
+| `DOCKER_TAG` | `latest` | Tag applied to all Docker images built by Compose (`weiss`, `weiss-api`, `weiss-epicsws`) |
 
 ---
 

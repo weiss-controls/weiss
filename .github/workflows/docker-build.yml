@@ -24,12 +24,10 @@ jobs:
           fetch-depth: 0
 
       - name: Prepare .env
-        run: |
-          cp .env.example .env
-          sed -i "s/^VITE_APP_VERSION=.*/VITE_APP_VERSION=${{ github.event.pull_request.head.sha || github.sha }}/" .env
+        run: cp .env.example .env
 
       - name: Docker Build (Default)
-        run: docker compose -f docker-compose.yml build
+        run: docker compose build
 
       - name: Docker Build (Dev)
         run: docker compose -f docker-compose-dev.yml build

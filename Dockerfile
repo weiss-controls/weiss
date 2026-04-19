@@ -1,12 +1,10 @@
-FROM alpine/git:latest AS source_fetch
-ARG GIT_REPO=https://github.com/weiss-controls/weiss.git
-ARG VITE_APP_VERSION=main
-RUN git clone ${GIT_REPO} /app && cd /app && git checkout ${VITE_APP_VERSION}
-
 # Dev environment
 FROM node:20-alpine AS dev
 WORKDIR /app
-COPY --from=source_fetch /app ./
+COPY . .
+# set /app as safe to allow git interaction on mounted folder
+RUN apk add --no-cache git \
+ && git config --global --add safe.directory /app
 RUN npm install --global corepack@latest && corepack enable pnpm
 RUN pnpm install
 
@@ -15,11 +13,10 @@ CMD pnpm run dev --host
 # Production build
 FROM node:20-alpine AS build
 WORKDIR /app
-ARG VITE_APP_VERSION
-ENV VITE_APP_VERSION=${VITE_APP_VERSION}
 ARG VITE_DEMO_MODE
 ENV VITE_DEMO_MODE=${VITE_DEMO_MODE}
-COPY --from=source_fetch /app ./
+COPY . .
+RUN apk add --no-cache git
 RUN npm install --global corepack@latest && corepack enable pnpm
 RUN pnpm install && pnpm run build
 

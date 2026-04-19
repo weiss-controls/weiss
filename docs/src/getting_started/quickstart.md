@@ -8,10 +8,12 @@ it.
 
 Instructions available [here](https://docs.docker.com/engine/install/).
 
-2. Clone the repository:
+1. Clone the repository and checkout to the latest release (or a specific tag if you want). The
+   command below will get the latest tag without you needing to look it up:
 
 ```sh
 git clone https://github.com/weiss-controls/weiss.git
+git checkout $(git describe --tags $(git rev-list --tags --max-count=1))
 ```
 
 3. Configure your environment.

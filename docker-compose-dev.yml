@@ -3,20 +3,16 @@ services:
     build:
       context: "."
       target: dev
-      args:
-        GIT_REPO: ${GIT_REPO}
-        VITE_APP_VERSION: ${VITE_APP_VERSION}
     volumes:
       - .:/app # Mount the source code for development
       - /app/node_modules # Prevent host node_modules from interfering
-    image: weiss-dev:${VITE_APP_VERSION}
+    image: weiss-dev:${DOCKER_TAG:-latest}
     container_name: weiss-dev
     network_mode: host
     restart: always
     environment:
       NODE_ENV: development
       VITE_DEMO_MODE: ${VITE_DEMO_MODE:-false}
-      VITE_APP_VERSION: ${VITE_APP_VERSION}
     depends_on:
       - weiss-epicsws-dev
       - weiss-api-dev
@@ -25,7 +21,7 @@ services:
       context: ./backend/epicsWS
     volumes:
       - ./backend/epicsWS:/app
-    image: weiss-epicsws-dev:${VITE_APP_VERSION}
+    image: weiss-epicsws-dev:${DOCKER_TAG:-latest}
     container_name: weiss-epicsws-dev
     ports:
       - "8080:8080"
@@ -45,7 +41,7 @@ services:
       - ./backend/api:/app/api
       - storage:/app/storage
       - ${ROLES_CONFIG_FILE:-./roles.toml}:/config/roles.toml:ro
-    image: weiss-api-dev:${VITE_APP_VERSION}
+    image: weiss-api-dev:${DOCKER_TAG:-latest}
     container_name: weiss-api-dev
     ports:
       - "8000:8000"

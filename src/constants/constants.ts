@@ -64,7 +64,7 @@ export const FRONT_UI_ZIDX = parseInt(
 export const APP_SRC_URL = "https://github.com/weiss-controls/weiss";
 
 /** Running application version */
-export const APP_VERSION = import.meta.env.VITE_APP_VERSION ?? "dev";
+export const APP_VERSION = __APP_VERSION__;
 
 /** WebSocket server URL for PV communication */
 export const WS_URL = (() => {
