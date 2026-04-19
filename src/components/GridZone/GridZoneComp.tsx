@@ -263,7 +263,9 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
       // shortcuts for edit mode only
       if (e.ctrlKey && e.key.toLowerCase() === "s") {
         e.preventDefault();
-        downloadWidgets().catch((err) => {
+        downloadWidgets(
+          selectedFile?.path.slice(selectedFile.path.lastIndexOf("/") + 1) ?? undefined,
+        ).catch((err) => {
           console.error("Failed to download widgets:", err);
         });
         return;

@@ -630,55 +630,59 @@ export function useWidgetManager() {
   /**
    * Export current widgets to JSON file.
    */
-  const downloadWidgets = useCallback(async () => {
-    const defaultName = "weiss.opi.json";
+  const downloadWidgets = useCallback(
+    async (suggestedName?: string) => {
+      const defaultName = suggestedName ?? "weiss.opi.json";
 
-    const simplified = editorWidgets.map(formatWdgToExport);
+      const simplified = editorWidgets.map(formatWdgToExport);
 
-    const dataStr = JSON.stringify(simplified, null, 2) + "\n"; // end data with empty line
-    const blob = new Blob([dataStr], { type: "application/json" });
+      const dataStr = JSON.stringify(simplified, null, 2) + "\n"; // end data with empty line
+      const blob = new Blob([dataStr], { type: "application/json" });
 
-    // Extend the Window type locally with File System Access API
-    interface FileSystemWindow extends Window {
-      showSaveFilePicker?: (options?: SaveFilePickerOptions) => Promise<FileSystemFileHandle>;
-    }
-    const fsWindow = window as FileSystemWindow;
-
-    if (fsWindow.showSaveFilePicker) {
-      try {
-        const handle = await fsWindow.showSaveFilePicker({
-          suggestedName: defaultName,
-          types: [
-            {
-              description: "OPI Files",
-              accept: { "application/json": [".opi.json"] },
-            },
-          ],
-        });
-
-        const writable = await handle.createWritable();
-        await writable.write(blob);
-        await writable.close();
-        return;
-      } catch (err) {
-        if ((err as DOMException).name === "AbortError") {
-          return;
-        }
-        console.error("Failed to save via File System Access API", err);
+      // Extend the Window type locally with File System Access API
+      interface FileSystemWindow extends Window {
+        showSaveFilePicker?: (options?: SaveFilePickerOptions) => Promise<FileSystemFileHandle>;
       }
-    }
+      const fsWindow = window as FileSystemWindow;
 
-    // Fallback for browsers that dont support file system interaction
-    const filename = prompt("Enter filename:", defaultName) ?? defaultName;
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }, [editorWidgets, formatWdgToExport]);
+      if (fsWindow.showSaveFilePicker) {
+        try {
+          const handle = await fsWindow.showSaveFilePicker({
+            suggestedName: defaultName,
+            types: [
+              {
+                description: "OPI Files",
+                accept: { "application/json": [".opi.json"] },
+              },
+            ],
+          });
+
+          const writable = await handle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+          return;
+        } catch (err) {
+          if ((err as DOMException).name === "AbortError") {
+            return;
+          }
+          console.error("Failed to save via File System Access API", err);
+        }
+      }
+
+      // Fallback for browsers that dont support file system interaction
+      const filename = prompt("Enter filename:", defaultName);
+      if (filename === null) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    },
+    [editorWidgets, formatWdgToExport],
+  );
 
   /**
    * Load widgets from JSON or ExportedWidget array.

@@ -13,8 +13,9 @@ import IconButton from "@mui/material/IconButton";
 import MenuIcon from "@mui/icons-material/Menu";
 import FileUploadIcon from "@mui/icons-material/FileUpload";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
+import GithubIcon from "@mui/icons-material/GitHub";
 import Tooltip from "@mui/material/Tooltip";
-import { COLORS, RUNTIME_MODE, EDIT_MODE } from "@src/constants/constants";
+import { COLORS, RUNTIME_MODE, EDIT_MODE, APP_SRC_URL } from "@src/constants/constants";
 import { WIDGET_SELECTOR_WIDTH } from "@src/constants/constants";
 import "./NavBar.css";
 import Switch from "@mui/material/Switch";
@@ -114,6 +115,7 @@ export default function NavBar() {
     login,
     logout,
     isDeveloper,
+    selectedFile,
   } = useUIContext();
   const drawerWidth = WIDGET_SELECTOR_WIDTH;
   const [importMenuAnchor, setImportMenuAnchor] = useState<null | HTMLElement>(null);
@@ -137,7 +139,8 @@ export default function NavBar() {
   };
 
   const handleDownload = () => {
-    void downloadWidgets();
+    const filename = selectedFile?.path.slice(selectedFile.path.lastIndexOf("/") + 1) ?? undefined;
+    void downloadWidgets(filename);
   };
 
   const handleImportFile = () => {
@@ -278,6 +281,14 @@ export default function NavBar() {
                   )}
                 </Menu>
                 <HelpOverlay />
+                <Tooltip title="View source on GitHub">
+                  <IconButton
+                    size="small"
+                    onClick={() => window.open(APP_SRC_URL, "_blank", "noopener,noreferrer")}
+                  >
+                    <GithubIcon fontSize="small" sx={{ color: "white" }} />
+                  </IconButton>
+                </Tooltip>
               </>
             )}
             {isAuthenticated ? (
