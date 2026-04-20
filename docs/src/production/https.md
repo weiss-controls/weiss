@@ -15,6 +15,13 @@ openssl req -x509 -newkey rsa:4096 -keyout privkey.pem -out fullchain.pem \
   -days 365 -nodes -subj "/CN=your-server-hostname"
 ```
 
+Since NGINX runs in an unpriviledged container, you may need the following to allow the service to
+read the private key file (101 is the `nginx` UID in the container):
+
+```sh
+sudo chown root:101 /path/to/privkey.pem && sudo chmod 640 /path/to/privkey.pem
+```
+
 Place the files anywhere on the host that the `weiss` container can read (they are mounted
 read-only).
 

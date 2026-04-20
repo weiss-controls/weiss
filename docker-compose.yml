@@ -5,9 +5,11 @@ services:
       target: prod
       args:
         VITE_DEMO_MODE: ${VITE_DEMO_MODE}
+    ports:
+      - "${HTTP_PORT:-80}:8081"
+      - "${HTTPS_PORT:-443}:8082"
     image: weiss:${DOCKER_TAG:-latest}
     container_name: weiss
-    network_mode: host
     restart: always
     environment:
       NODE_ENV: production
