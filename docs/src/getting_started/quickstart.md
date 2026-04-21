@@ -24,8 +24,7 @@ First, create your `.env` file. You can start by just copying `.env.example` fro
 cp .env.example .env
 ```
 
-If you want to see PVs outside of localhost, adjust `DEFAULT_PROTOCOL` and `EPICS_XXX_ADDR_LIST`
-accordingly.
+If applicable, adjust `DEFAULT_PROTOCOL` and `EPICS_XXX_ADDR_LIST` accordingly.
 
 :::{important}  
 If running outside of your localhost, make sure to set `APP_HOSTNAME` to your server's IP address or
