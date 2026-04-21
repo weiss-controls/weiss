@@ -21,6 +21,8 @@ services:
     volumes:
       - ${SSL_CERT_FILE}:/etc/nginx/certs/fullchain.pem:ro
       - ${SSL_KEY_FILE}:/etc/nginx/certs/privkey.pem:ro
+    extra_hosts:
+      - "weiss-epicsws:host-gateway"
     depends_on:
       - weiss-epicsws
 
@@ -29,8 +31,7 @@ services:
       context: ./backend/epicsWS
     image: weiss-epicsws:${DOCKER_TAG:-latest}
     container_name: weiss-epicsws
-    ports:
-      - "8080:8080"
+    network_mode: host
     restart: always
     environment:
       EPICS_DEFAULT_PROTOCOL: ${EPICS_DEFAULT_PROTOCOL}

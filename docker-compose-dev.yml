@@ -23,8 +23,7 @@ services:
       - ./backend/epicsWS:/app
     image: weiss-epicsws-dev:${DOCKER_TAG:-latest}
     container_name: weiss-epicsws-dev
-    ports:
-      - "8080:8080"
+    network_mode: host
     restart: always
     environment:
       EPICS_DEFAULT_PROTOCOL: ${EPICS_DEFAULT_PROTOCOL}
