@@ -3,7 +3,4 @@ dist/
 .env
 .vscode/
 .idea/
-.github/
-docs/
-backend/
 roles.toml/
