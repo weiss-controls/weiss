@@ -23,6 +23,9 @@ services:
       - ${SSL_KEY_FILE}:/etc/nginx/certs/privkey.pem:ro
     extra_hosts:
       - "weiss-epicsws:host-gateway"
+    networks:
+      - default
+      - weiss-public
     depends_on:
       - weiss-epicsws
 
@@ -65,3 +68,8 @@ services:
 
 volumes:
   storage:
+
+networks:
+  weiss-public:
+    name: weiss-public
+    driver: bridge
