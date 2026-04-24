@@ -2,7 +2,7 @@
 # Copyright (C) 2026 André Favoto
 
 from fastapi import Depends, HTTPException, status
-from api.auth.auth import get_current_user, User, UserRole
+from ..auth.auth import get_current_user, User, UserRole
 
 
 def require_developer(user: User = Depends(get_current_user)) -> User:

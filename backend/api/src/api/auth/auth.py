@@ -5,8 +5,8 @@ import httpx
 import msal
 import os
 import secrets
-from api.config import FRONTEND_URL, ENABLE_HTTPS
-from api.auth import roles_config
+from ..config import FRONTEND_URL, ENABLE_HTTPS
+from ..auth import roles_config
 from fastapi import APIRouter, HTTPException, Depends, Response, Request
 from pydantic import BaseModel, Field
 from enum import Enum

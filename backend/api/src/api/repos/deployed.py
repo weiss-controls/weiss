@@ -4,7 +4,7 @@
 import os
 from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import List
-from api.repos.common import (
+from ..repos.common import (
     FileResponse,
     DeploymentMeta,
     TreeNode,
@@ -15,7 +15,7 @@ from api.repos.common import (
     DEPLOYMENTS_REL_FOLDER,
     CURRENT_SYMLINK,
 )
-from api.auth.auth import get_current_user
+from ..auth.auth import get_current_user
 
 router = APIRouter(
     prefix="/api/v1/repos/runtime",

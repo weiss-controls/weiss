@@ -14,8 +14,8 @@ from fastapi import APIRouter, HTTPException, Body, Query, Depends, UploadFile, 
 from pydantic import BaseModel, Field
 from typing import List, Tuple, Literal
 from datetime import datetime, timezone
-from api.auth.roles import require_developer, User
-from api.repos.common import (
+from ..auth.roles import require_developer, User
+from ..repos.common import (
     FileResponse,
     StagingMeta,
     TreeNode,

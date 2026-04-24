@@ -6,9 +6,9 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import asyncio
-from api.auth import auth
-from api.repos import staging, deployed
-from api.config import FRONTEND_URL, TITLE, VERSION
+from .auth import auth
+from .repos import staging, deployed
+from .config import FRONTEND_URL, TITLE, VERSION
 
 
 async def _session_pruner():
