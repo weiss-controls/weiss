@@ -21,7 +21,7 @@ WORKDIR /project
 # make the wheel outside of the venv so 'build' does not dirty requirements.txt
 RUN pip install --upgrade pip build && \
     # comment the following line if building locally/with a detached head/Git errors pop up during build
-    #export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct) && \
+    export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct) && \
     python -m build
 
 # set up a virtual environment and put it in PATH
