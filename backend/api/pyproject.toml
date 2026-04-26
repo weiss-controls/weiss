@@ -3,10 +3,8 @@ requires = ["setuptools>=64", "setuptools_scm[toml]>=6.2", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "weiss"
+name = "weiss-api"
 classifiers = [
-    "Development Status :: 3 - Beta",
-    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14"
@@ -23,8 +21,6 @@ dependencies = [
     "Authlib==1.6.9"
 ]
 dynamic = ["version"]
-license.file = "LICENSE"
-readme = "README.rst"
 requires-python = ">=3.12"    
 
 [project.optional-dependencies]
@@ -44,7 +40,7 @@ weiss = "weiss.__main__:main"
 GitHub = "https://github.com/weiss-controls/weiss"
 
 [[project.authors]] # Further authors may be added by duplicating this section
-name = "André Favotto"
+name = "André Favoto"
 
 [[project.authors]]
 email = "guilherme.de-freitas@diamond.ac.uk"

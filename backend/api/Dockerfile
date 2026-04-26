@@ -8,21 +8,23 @@ FROM docker.io/library/python:3.14.4-slim-trixie as build
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
+ARG APP_USER=weiss
+ARG APP_UID=1001
+ARG APP_GID=1001
+
 # Add any system dependencies for the developer/build environment here
 RUN apt-get update && apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
     build-essential \
-    busybox \
     git \
-    && rm -rf /var/lib/apt/lists/* \
-    && busybox --install
+    && rm -rf /var/lib/apt/lists/*
 
 COPY . /project
 WORKDIR /project
 
 # make the wheel outside of the venv so 'build' does not dirty requirements.txt
 RUN pip install --upgrade pip build && \
-    #export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct) && \
+    export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct) && \
     python -m build && \
     touch requirements.txt
 
@@ -45,7 +47,7 @@ FROM docker.io/library/python:3.14.4-slim-trixie as runtime
 RUN apt-get update && apt-get upgrade -y && \
     apt-get install -y --no-install-recommends git
 
-RUN adduser --system --no-create-home --uid 1001 nonroot
+RUN adduser --system --no-create-home --uid $APP_UID nonroot
 
 # This should be mounted instead, maybe even as a shared volume, but this will become irrelevant if this is moved
 # to a database
@@ -56,8 +58,7 @@ RUN mkdir -p /app/storage \
 COPY --from=build /venv/ /venv/
 ENV PATH=/venv/bin:$PATH
 
-USER 1001
+USER $APP_UID
 
-# change this entrypoint if it is not the same as the repo
 ENTRYPOINT ["uvicorn"]
 CMD ["api.main:app", "--host", "0.0.0.0", "--port", "8000"]
