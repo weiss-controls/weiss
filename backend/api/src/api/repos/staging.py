@@ -153,8 +153,10 @@ def run_git(cmd: list[str], cwd: str | None = None, allow_fail: bool = False) ->
     try:
         base_cmd = [
             "git",
-            "-c", f"user.name={TECHNICAL_ACCOUNT_USERNAME}",
-            "-c", f"user.email={TECHNICAL_ACCOUNT_EMAIL}",
+            "-c",
+            f"user.name={TECHNICAL_ACCOUNT_USERNAME}",
+            "-c",
+            f"user.email={TECHNICAL_ACCOUNT_EMAIL}",
         ]
 
         if auth_cmd:
