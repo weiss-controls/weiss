@@ -44,17 +44,15 @@ TECHNICAL_ACCOUNT_EMAIL = os.getenv("TECHNICAL_ACCOUNT_EMAIL", "weiss-bot@dummy"
 auth_cmd = None
 if TECHNICAL_ACCOUNT_TOKEN:
     token = TECHNICAL_ACCOUNT_TOKEN.strip()
-    auth_header = f"Authorization: Basic {base64.b64encode((TECHNICAL_ACCOUNT_USERNAME + ':' + token).encode()).decode()}"
+    auth_header = (
+        f"Authorization: Basic {base64.b64encode((TECHNICAL_ACCOUNT_USERNAME + ':' + token).encode()).decode()}"
+    )
     auth_cmd = ["-c", f"http.extraHeader={auth_header}"]
 os.environ["GIT_ASKPASS"] = "echo"
 os.environ["GIT_TERMINAL_PROMPT"] = "0"
 os.environ["GIT_HTTP_USER_AGENT"] = "WEISS/1.0"
-subprocess.run(
-    ["git", "config", "--global", "user.name", TECHNICAL_ACCOUNT_USERNAME], check=True
-)
-subprocess.run(
-    ["git", "config", "--global", "user.email", TECHNICAL_ACCOUNT_EMAIL], check=True
-)
+subprocess.run(["git", "config", "--global", "user.name", TECHNICAL_ACCOUNT_USERNAME], check=True)
+subprocess.run(["git", "config", "--global", "user.email", TECHNICAL_ACCOUNT_EMAIL], check=True)
 
 
 # -----------------------------------------------------------------------------
@@ -162,9 +160,7 @@ def run_git(cmd: list[str], cwd: str | None = None, allow_fail: bool = False) ->
                 text=True,
             )
         else:
-            result = subprocess.run(
-                ["git"] + cmd, cwd=cwd, check=True, capture_output=True, text=True
-            )
+            result = subprocess.run(["git"] + cmd, cwd=cwd, check=True, capture_output=True, text=True)
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
         if allow_fail:
@@ -340,9 +336,7 @@ def _check_token(git_url: str) -> TokenStatus:
             )
             if resp.status_code == 200:
                 return TokenStatus(configured=True, valid=True, detail="Token is valid")
-            return TokenStatus(
-                configured=True, valid=False, detail="Token authentication failed"
-            )
+            return TokenStatus(configured=True, valid=False, detail="Token authentication failed")
 
         if "gitlab" in hostname:
             base = f"https://{hostname}"
@@ -353,9 +347,7 @@ def _check_token(git_url: str) -> TokenStatus:
             )
             if resp.status_code == 200:
                 return TokenStatus(configured=True, valid=True, detail="Token is valid")
-            return TokenStatus(
-                configured=True, valid=False, detail="Token authentication failed"
-            )
+            return TokenStatus(configured=True, valid=False, detail="Token authentication failed")
 
         # Unknown platform — fall back to git ls-remote (best-effort; public repos
         # won't distinguish a bad token from a good one here).
@@ -372,15 +364,8 @@ def _check_token(git_url: str) -> TokenStatus:
                 detail="Token configured; platform unknown, remote reachable",
             )
         stderr = result.stderr.lower()
-        if (
-            "authentication" in stderr
-            or "403" in stderr
-            or "401" in stderr
-            or "could not read" in stderr
-        ):
-            return TokenStatus(
-                configured=True, valid=False, detail="Token authentication failed"
-            )
+        if "authentication" in stderr or "403" in stderr or "401" in stderr or "could not read" in stderr:
+            return TokenStatus(configured=True, valid=False, detail="Token authentication failed")
         return TokenStatus(
             configured=True,
             valid=True,
@@ -388,9 +373,7 @@ def _check_token(git_url: str) -> TokenStatus:
         )
 
     except httpx.TimeoutException:
-        return TokenStatus(
-            configured=True, valid=True, detail="Token configured; API check timed out"
-        )
+        return TokenStatus(configured=True, valid=True, detail="Token configured; API check timed out")
     except subprocess.TimeoutExpired:
         return TokenStatus(
             configured=True,
@@ -417,9 +400,7 @@ def get_token_status():
     repos = list_all_repositories()
     if not repos:
         if not TECHNICAL_ACCOUNT_TOKEN:
-            return TokenStatus(
-                configured=False, valid=False, detail="No token configured"
-            )
+            return TokenStatus(configured=False, valid=False, detail="No token configured")
         return TokenStatus(
             configured=True,
             valid=True,
@@ -433,9 +414,7 @@ def list_repositories():
     return list_all_repositories()
 
 
-@router.get(
-    "/tree", response_model=List[StagingTreeInfo], operation_id="getAllReposTree"
-)
+@router.get("/tree", response_model=List[StagingTreeInfo], operation_id="getAllReposTree")
 def get_all_repos_tree(user: User = Depends(require_developer)):
     all_trees = []
     for repo in list_all_repositories():
@@ -455,12 +434,8 @@ def get_all_repos_tree(user: User = Depends(require_developer)):
     return all_trees
 
 
-@router.post(
-    "/register", response_model=List[StagingTreeInfo], operation_id="registerRepo"
-)
-def register_repository(
-    payload: RepoCreateRequest, user: User = Depends(require_developer)
-):
+@router.post("/register", response_model=List[StagingTreeInfo], operation_id="registerRepo")
+def register_repository(payload: RepoCreateRequest, user: User = Depends(require_developer)):
     """Register a Git repository and create a clone"""
     repo_id = str(uuid.uuid4())
     created_at = datetime.now(timezone.utc).isoformat()
@@ -505,19 +480,13 @@ def unregister_repository(repo_id: str, user: User = Depends(require_developer))
 
             shutil.rmtree(repo_base)
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to delete repository: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to delete repository: {str(e)}")
     # TODO: store all repos tree and edit in place instead of recalculating
     return get_all_repos_tree(user)
 
 
-@router.get(
-    "/{repo_id}/refs", response_model=list[RepoRef], operation_id="listRepoRefs"
-)
-def list_repository_refs(
-    repo_id: str, user: User = Depends(require_developer)
-) -> list[RepoRef]:
+@router.get("/{repo_id}/refs", response_model=list[RepoRef], operation_id="listRepoRefs")
+def list_repository_refs(repo_id: str, user: User = Depends(require_developer)) -> list[RepoRef]:
     """List 20 latest repository refs available. Assumes repo is up to date.
     If commit is tagged, show tag instead of SHA.
     """
@@ -528,9 +497,7 @@ def list_repository_refs(
         cwd=repo_path,
     ).splitlines()
 
-    tag_refs = run_git(
-        ["show-ref", "--tags"], cwd=repo_path, allow_fail=True
-    ).splitlines()
+    tag_refs = run_git(["show-ref", "--tags"], cwd=repo_path, allow_fail=True).splitlines()
     commit_to_tag = {}
     for line in tag_refs:
         sha, ref = line.split()
@@ -598,9 +565,7 @@ def update_repo(repo_id: str, user: User = Depends(require_developer)):
     return get_staging_repo_tree(repo_id, user)
 
 
-@router.get(
-    "/{repo_id}/file", response_model=FileResponse, operation_id="getStagingRepoFile"
-)
+@router.get("/{repo_id}/file", response_model=FileResponse, operation_id="getStagingRepoFile")
 def staging_get_repo_file(
     repo_id: str,
     path: str = Query(..., description="Path to file inside repository"),
@@ -686,9 +651,7 @@ async def upload_staging_repo_file(
 )
 def staging_update_repo_file(
     repo_id: str,
-    path: str = Query(
-        ..., description="Path to existing file inside repository (relative to root)"
-    ),
+    path: str = Query(..., description="Path to existing file inside repository (relative to root)"),
     payload: FileUpdateRequest = Body(...),
     user: User = Depends(require_developer),
 ):
@@ -734,9 +697,7 @@ def staging_update_repo_file(
 )
 def reset_staging_repo_file(
     repo_id: str,
-    path: str = Query(
-        ..., description="Path to file inside repository (relative to root)"
-    ),
+    path: str = Query(..., description="Path to file inside repository (relative to root)"),
     user: User = Depends(require_developer),
 ):
     """
@@ -831,9 +792,7 @@ def create_staging_repo_path(
                 pass
             run_git(["add", final_path], cwd=repo_path)
     except OSError as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to create {payload.type}: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to create {payload.type}: {str(e)}")
 
     return get_staging_repo_tree(repo_id, user)
 
@@ -924,9 +883,7 @@ def rename_staging_repo_path(
     new_rel_path = os.path.join(parent_rel, new_name) if parent_rel else new_name
     new_full_path = os.path.join(repo_path, new_rel_path)
     if os.path.exists(new_full_path):
-        raise HTTPException(
-            status_code=400, detail="A file or directory with that name already exists"
-        )
+        raise HTTPException(status_code=400, detail="A file or directory with that name already exists")
 
     run_git(["mv", rel_path, new_rel_path], cwd=repo_path)
 
@@ -970,17 +927,13 @@ def move_staging_repo_path(
 
     full_dst_dir = os.path.join(repo_path, rel_dst_dir)
     if not os.path.isdir(full_dst_dir):
-        raise HTTPException(
-            status_code=400, detail="Destination must be an existing directory"
-        )
+        raise HTTPException(status_code=400, detail="Destination must be an existing directory")
 
     item_name = os.path.basename(rel_src)
     rel_dst = os.path.join(rel_dst_dir, item_name)
 
     if rel_src == rel_dst:
-        raise HTTPException(
-            status_code=400, detail="Source and destination are the same"
-        )
+        raise HTTPException(status_code=400, detail="Source and destination are the same")
 
     if os.path.exists(os.path.join(repo_path, rel_dst)):
         raise HTTPException(
@@ -1007,9 +960,7 @@ def move_staging_repo_path(
     response_model=StagingTreeInfo,
     operation_id="commitStagingRepo",
 )
-def commit_staging_repo(
-    repo_id: str, payload: CommitRequest, user: User = Depends(require_developer)
-):
+def commit_staging_repo(repo_id: str, payload: CommitRequest, user: User = Depends(require_developer)):
     """
     Commit staged changes in the staging repository and push to remote.
     If HEAD is behind remote, try rebasing first.
@@ -1064,9 +1015,7 @@ def commit_staging_repo(
 
 
 @router.post("/{repo_id}/deploy", response_model=StagingMeta, operation_id="deployRepo")
-def deploy_repo(
-    repo_id: str, payload: DeployRequest, user: User = Depends(require_developer)
-):
+def deploy_repo(repo_id: str, payload: DeployRequest, user: User = Depends(require_developer)):
     """Deploy a selected tag or commit to make it available for users"""
     ref_to_deploy = payload.deployment_version
     try:
@@ -1074,9 +1023,7 @@ def deploy_repo(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to create snapshot: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to create snapshot: {str(e)}")
     repo_meta_path, repo_meta = get_repo_meta(repo_id)
     repo_meta.current_deployment = deployment_id
     repo_meta.deployed_ref = ref_to_deploy
@@ -1084,9 +1031,7 @@ def deploy_repo(
 
     with open(repo_meta_path, "w") as f:
         f.write(repo_meta.model_dump_json(indent=2))
-    current_link = os.path.join(
-        REPOS_BASE_PATH, repo_id, DEPLOYMENTS_REL_FOLDER, CURRENT_SYMLINK
-    )
+    current_link = os.path.join(REPOS_BASE_PATH, repo_id, DEPLOYMENTS_REL_FOLDER, CURRENT_SYMLINK)
     if os.path.islink(current_link) or os.path.exists(current_link):
         os.remove(current_link)
     os.symlink(snapshot_path, current_link)
@@ -1101,9 +1046,7 @@ def undeploy_repository(repo_id: str):
     - Clear current deployment metadata in repo info
     """
     repo_meta_path, repo_meta = get_repo_meta(repo_id)
-    current_link = os.path.join(
-        REPOS_BASE_PATH, repo_id, DEPLOYMENTS_REL_FOLDER, CURRENT_SYMLINK
-    )
+    current_link = os.path.join(REPOS_BASE_PATH, repo_id, DEPLOYMENTS_REL_FOLDER, CURRENT_SYMLINK)
 
     if os.path.islink(current_link) or os.path.exists(current_link):
         try:
@@ -1141,9 +1084,7 @@ def checkout_repo_ref(
     return get_staging_repo_tree(repo_id, user)
 
 
-@router.get(
-    "/{repo_id}/tree", response_model=StagingTreeInfo, operation_id="getStagingRepoTree"
-)
+@router.get("/{repo_id}/tree", response_model=StagingTreeInfo, operation_id="getStagingRepoTree")
 def get_staging_repo_tree(
     repo_id: str,
     user: User = Depends(require_developer),

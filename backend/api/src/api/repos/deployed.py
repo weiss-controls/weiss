@@ -40,9 +40,7 @@ def get_current_snapshot_path(repo_id: str) -> str:
     """
     Resolve the path of the currently deployed snapshot for a repo.
     """
-    current_link = os.path.join(
-        REPOS_BASE_PATH, repo_id, DEPLOYMENTS_REL_FOLDER, CURRENT_SYMLINK
-    )
+    current_link = os.path.join(REPOS_BASE_PATH, repo_id, DEPLOYMENTS_REL_FOLDER, CURRENT_SYMLINK)
     if not os.path.exists(current_link) or not os.path.islink(current_link):
         raise HTTPException(status_code=404, detail="No deployed snapshot available")
     return current_link
@@ -103,12 +101,8 @@ def get_deployed_repo_tree(repo_id: str):
     )
 
 
-@router.get(
-    "/{repo_id}/file", response_model=FileResponse, operation_id="getDeployedRepoFile"
-)
-def runtime_get_repo_file(
-    repo_id: str, path: str = Query(..., description="Path to file inside repository")
-):
+@router.get("/{repo_id}/file", response_model=FileResponse, operation_id="getDeployedRepoFile")
+def runtime_get_repo_file(repo_id: str, path: str = Query(..., description="Path to file inside repository")):
     """
     Return the content of a file from the currently deployed snapshot.
     """

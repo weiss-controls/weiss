@@ -50,8 +50,6 @@ RUN apt-get update && apt-get upgrade -y && \
 RUN groupadd -g $APP_GID $APP_USER && \
     adduser --system --no-create-home --uid $APP_UID $APP_USER
 
-# This should be mounted instead, maybe even as a shared volume, but this will become irrelevant if this is moved
-# to a database
 RUN mkdir -p /app/storage \
     && chown -R $APP_USER:$APP_USER /app/storage
 

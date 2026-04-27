@@ -41,6 +41,7 @@ GitHub = "https://github.com/weiss-controls/weiss"
 
 [[project.authors]] # Further authors may be added by duplicating this section
 name = "André Favoto"
+email = andrefavotto@hotmail.com
 
 [[project.authors]]
 email = "guilherme.de-freitas@diamond.ac.uk"
