@@ -53,8 +53,6 @@ if TECHNICAL_ACCOUNT_TOKEN:
 os.environ["GIT_ASKPASS"] = "echo"
 os.environ["GIT_TERMINAL_PROMPT"] = "0"
 os.environ["GIT_HTTP_USER_AGENT"] = "WEISS/1.0"
-subprocess.run(["git", "config", "--global", "user.name", TECHNICAL_ACCOUNT_USERNAME], check=True)
-subprocess.run(["git", "config", "--global", "user.email", TECHNICAL_ACCOUNT_EMAIL], check=True)
 
 
 # -----------------------------------------------------------------------------
@@ -153,16 +151,24 @@ def get_file_ext(filename: str) -> str:
 def run_git(cmd: list[str], cwd: str | None = None, allow_fail: bool = False) -> str:
     """Run git command and raise exception if allow_fail==False (default)"""
     try:
+        base_cmd = [
+            "git",
+            "-c", f"user.name={TECHNICAL_ACCOUNT_USERNAME}",
+            "-c", f"user.email={TECHNICAL_ACCOUNT_EMAIL}",
+        ]
+
         if auth_cmd:
-            result = subprocess.run(
-                ["git"] + auth_cmd + cmd,
-                cwd=cwd,
-                check=True,
-                capture_output=True,
-                text=True,
-            )
+            full_cmd = base_cmd + auth_cmd + cmd
         else:
-            result = subprocess.run(["git"] + cmd, cwd=cwd, check=True, capture_output=True, text=True)
+            full_cmd = base_cmd + cmd
+
+        result = subprocess.run(
+            full_cmd,
+            cwd=cwd,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
         if allow_fail:
