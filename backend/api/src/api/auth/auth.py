@@ -1,17 +1,19 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 André Favoto
 
-import httpx
-import msal
 import os
 import secrets
-from ..config import FRONTEND_URL, ENABLE_HTTPS
-from ..auth import roles_config
-from fastapi import APIRouter, HTTPException, Depends, Response, Request
-from pydantic import BaseModel, Field
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Optional
-from datetime import datetime, timedelta, timezone
+
+import httpx
+import msal
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from pydantic import BaseModel, Field
+
+from ..auth import roles_config
+from ..config import ENABLE_HTTPS, FRONTEND_URL
 
 SESSION_COOKIE_NAME = "weiss_session"
 DEMO_ID_COOKIE = "weiss_demo_id"  # allow differ demo sessions

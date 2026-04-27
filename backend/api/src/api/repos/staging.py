@@ -1,35 +1,37 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 André Favoto
 
-import os
-import uuid
-import subprocess
-import json
 import base64
+import json
+import os
 import shutil
-import httpx
-from urllib.parse import urlparse
-from .common import REPOS_BASE_PATH, BARE_CLONE_NAME
-from fastapi import APIRouter, HTTPException, Body, Query, Depends, UploadFile, File
-from pydantic import BaseModel, Field
-from typing import List, Tuple, Literal
+import subprocess
+import uuid
 from datetime import datetime, timezone
-from ..auth.roles import require_developer, User
+from typing import List, Literal, Tuple
+from urllib.parse import urlparse
+
+import httpx
+from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, UploadFile
+from pydantic import BaseModel, Field
+
+from ..auth.roles import User, require_developer
 from ..repos.common import (
+    ALLOWED_EXTENSIONS,
+    CURRENT_SYMLINK,
+    DEPLOYMENTS_REL_FOLDER,
+    NEW_FILE_CONTENT,
+    OPI_EXTENSION,
+    REPO_META,
+    WORKTREES_REL_FOLDER,
     FileResponse,
     StagingMeta,
     TreeNode,
-    get_repo_meta,
     build_path_tree,
+    get_repo_meta,
     list_all_repositories,
-    DEPLOYMENTS_REL_FOLDER,
-    WORKTREES_REL_FOLDER,
-    CURRENT_SYMLINK,
-    REPO_META,
-    NEW_FILE_CONTENT,
-    ALLOWED_EXTENSIONS,
-    OPI_EXTENSION,
 )
+from .common import BARE_CLONE_NAME, REPOS_BASE_PATH
 
 router = APIRouter(
     prefix="/api/v1/repos/staging",
@@ -546,7 +548,8 @@ def update_repo(repo_id: str, user: User = Depends(require_developer)):
         except HTTPException:
             raise HTTPException(
                 status_code=409,
-                detail="Local changes conflict with latest updates. Please start from latest ref or resolve conflicts manually. Aborting.",
+                detail="Local changes conflict with latest updates. Please start from latest ref or resolve conflicts" \
+                " manually. Aborting.",
             )
 
         conflicts = run_git(
@@ -556,7 +559,8 @@ def update_repo(repo_id: str, user: User = Depends(require_developer)):
         if conflicts.strip():
             raise HTTPException(
                 status_code=409,
-                detail="Local changes conflict with latest updates. Please start from latest ref or resolve conflicts manually. Aborting.",
+                detail="Local changes conflict with latest updates. Please start from latest ref or resolve" \
+                " conflicts manually. Aborting.",
             )
 
         run_git(["stash", "drop"], cwd=repo_path)
