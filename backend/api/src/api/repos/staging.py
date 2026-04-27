@@ -548,7 +548,7 @@ def update_repo(repo_id: str, user: User = Depends(require_developer)):
         except HTTPException:
             raise HTTPException(
                 status_code=409,
-                detail="Local changes conflict with latest updates. Please start from latest ref or resolve conflicts" \
+                detail="Local changes conflict with latest updates. Please start from latest ref or resolve conflicts"
                 " manually. Aborting.",
             )
 
@@ -559,7 +559,7 @@ def update_repo(repo_id: str, user: User = Depends(require_developer)):
         if conflicts.strip():
             raise HTTPException(
                 status_code=409,
-                detail="Local changes conflict with latest updates. Please start from latest ref or resolve" \
+                detail="Local changes conflict with latest updates. Please start from latest ref or resolve"
                 " conflicts manually. Aborting.",
             )
 
