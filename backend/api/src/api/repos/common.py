@@ -1,15 +1,14 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 André Favoto
 
-import os
 import json
+import os
+from typing import List, Literal, Optional, Tuple
+
 from fastapi import HTTPException
 from pydantic import BaseModel
-from typing import List, Optional, Literal, Tuple
 
-REPOS_BASE_PATH = (
-    "/app/storage/repos"  # Abs path inside container - adjust if running locally
-)
+REPOS_BASE_PATH = "/app/storage/repos"  # Abs path inside container - adjust if running locally
 WORKTREES_REL_FOLDER = "worktrees"
 BARE_CLONE_NAME = "bare"
 DEPLOYMENTS_REL_FOLDER = "deployments"

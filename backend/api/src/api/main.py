@@ -1,14 +1,16 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 André Favoto
 
-from fastapi import FastAPI
-from pydantic import BaseModel
-from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
 import asyncio
-from api.auth import auth
-from api.repos import staging, deployed
-from api.config import FRONTEND_URL, TITLE, VERSION
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+from .auth import auth
+from .config import FRONTEND_URL, TITLE, VERSION
+from .repos import deployed, staging
 
 
 async def _session_pruner():

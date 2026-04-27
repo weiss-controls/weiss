@@ -1,34 +1,63 @@
-FROM python:3.12-slim
-
-ARG APP_USER=weiss
-ARG APP_UID=1000
-ARG APP_GID=1000
-
-ENV APP_USER=${APP_USER}
-
-RUN groupadd -g $APP_GID $APP_USER \
-    && useradd -m -u $APP_UID -g $APP_GID -s /bin/bash $APP_USER
-
-WORKDIR /app
+# This file is for use as a devcontainer and a runtime container
+#
+# The devcontainer should use the build target and run as root with podman
+# or docker with user namespaces.
+#
+FROM docker.io/library/python:3.14.4-slim-trixie as build
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential git \
+# Add any system dependencies for the developer/build environment here
+RUN apt-get update && apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --chown=$APP_USER:$APP_USER . ./api
+COPY . /project
+WORKDIR /project
 
-RUN pip install --upgrade pip \
-    && pip install -r api/requirements.txt
+# make the wheel outside of the venv so 'build' does not dirty requirements.txt
+RUN pip install --upgrade pip build && \
+    # comment the following line if building locally/with a detached head/Git errors pop up during build
+    # export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct) && \
+    python -m build
+
+# set up a virtual environment and put it in PATH
+RUN python -m venv /venv
+ENV PATH=/venv/bin:$PATH
+ENV TOX_DIRECT=1
+
+# install the wheel and generate the requirements file
+RUN pip install --upgrade pip && \
+    pip install dist/*.whl && \
+    mkdir -p lockfiles && \
+    pip freeze  > lockfiles/requirements.txt && \
+    # we don't want to include our own wheel in requirements - remove with sed
+    # and replace with a comment to avoid a zero length asset upload later
+    sed -i '/file:/s/^/# Requirements for /' lockfiles/requirements.txt
+
+FROM docker.io/library/python:3.14.4-slim-trixie as runtime
+
+ARG APP_USER=weiss
+ARG APP_UID=1001
+ARG APP_GID=1001
+
+RUN apt-get update && apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends git
+
+RUN groupadd -g $APP_GID $APP_USER && \
+    adduser --system --no-create-home --uid $APP_UID $APP_USER
 
 RUN mkdir -p /app/storage \
     && chown -R $APP_USER:$APP_USER /app/storage
 
-COPY docker-entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# copy the virtual environment from the build stage and put it in PATH
+COPY --from=build /venv/ /venv/
+ENV PATH=/venv/bin:$PATH
 
-ENTRYPOINT ["/entrypoint.sh"]
+USER $APP_UID
 
-CMD python -m uvicorn api.main:app --host 0.0.0.0 --port 8000
+ENTRYPOINT ["uvicorn"]
+CMD ["api.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -26,14 +26,10 @@ def load_roles_config() -> None:
         with open(path, "rb") as f:
             data = tomllib.load(f)
         usernames = data.get("roles", {}).get("developers", [])
-        loaded = frozenset(
-            u.strip().lower() for u in usernames if isinstance(u, str) and u.strip()
-        )
+        loaded = frozenset(u.strip().lower() for u in usernames if isinstance(u, str) and u.strip())
         with _lock:
             _developer_usernames = loaded
-        logger.info(
-            "[roles_config]: Loaded %d developer username(s) from %s", len(loaded), path
-        )
+        logger.info("[roles_config]: Loaded %d developer username(s) from %s", len(loaded), path)
     except FileNotFoundError:
         with _lock:
             _developer_usernames = frozenset()
@@ -45,9 +41,7 @@ def load_roles_config() -> None:
     except Exception as exc:
         with _lock:
             _developer_usernames = frozenset()
-        logger.error(
-            "[roles_config]: Failed to load roles config from '%s': %s", path, exc
-        )
+        logger.error("[roles_config]: Failed to load roles config from '%s': %s", path, exc)
 
 
 def reload_roles() -> int:
