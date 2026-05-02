@@ -2,6 +2,7 @@
 // Copyright (C) 2026 André Favoto
 
 import type { CreateClientConfig } from "./services/APIClient/client.gen";
+import { authService } from "@src/services/AuthService/AuthService";
 
 function resolveApiBaseUrl(): string {
   const { protocol, hostname } = window.location;
@@ -32,6 +33,10 @@ export const createClientConfig: CreateClientConfig = (config) => ({
         ...(init.headers ?? {}),
       },
     });
+
+    if (res.status === 401) {
+      authService.expireSession();
+    }
 
     if (!res.ok) {
       const msg = await res.text();
