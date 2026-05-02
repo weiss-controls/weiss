@@ -4,6 +4,11 @@ services:
       context: .
     image: weiss-docs:latest
     container_name: weiss-docs
-    ports:
-      - "127.0.0.1:8001:80"
     restart: always
+    networks:
+      - weiss-public
+
+networks:
+  weiss-public:
+    external: true
+    name: weiss-public
