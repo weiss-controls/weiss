@@ -20,9 +20,11 @@ import PushPinIcon from "@mui/icons-material/PushPin";
 import PushPinOutlinedIcon from "@mui/icons-material/PushPinOutlined";
 import ModeEditIcon from "@mui/icons-material/ModeEdit";
 import FormatListBulletedIcon from "@mui/icons-material/FormatListBulleted";
+import AccountTreeIcon from "@mui/icons-material/AccountTree";
 import { FRONT_UI_ZIDX } from "@src/constants/constants";
 import PropertyNavigator from "./PropertiesTab/PropertiesTab";
 import ProjectsTab from "./ProjectsTab/ProjectsTab";
+import WidgetTree from "@components/WidgetTree";
 import { useUIContext } from "@src/context/useUIContext";
 import { useWidgetContext } from "@src/context/useWidgetContext";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
@@ -64,7 +66,8 @@ const ResizeHandle = styled("div")({
 
 const EditorTab = {
   EDIT: 0,
-  NAVIGATE: 1,
+  LAYERS: 1,
+  NAVIGATE: 2,
 } as const;
 type EditorTab = (typeof EditorTab)[keyof typeof EditorTab];
 
@@ -97,7 +100,7 @@ const EditorSidebar: React.FC = () => {
 
   useEffect(() => {
     if (selectedWidgetIDs.length > 0) {
-      setTabIndex(EditorTab.EDIT);
+      setTabIndex((prev) => (prev === EditorTab.LAYERS ? EditorTab.LAYERS : EditorTab.EDIT));
       setOpen(true);
     } else if (!pinned) {
       setOpen(false);
@@ -153,11 +156,13 @@ const EditorSidebar: React.FC = () => {
   if (!inEditMode && !isAuthenticated) return null;
 
   const header =
-    tabIndex === 0
+    tabIndex === EditorTab.EDIT
       ? editingWidgets.length === 1
         ? `${WidgetRegistry[editingWidgets[0].widgetName]?.widgetLabel ?? editingWidgets[0].widgetName} properties`
         : "Common properties in selection"
-      : "Browse projects";
+      : tabIndex === EditorTab.LAYERS
+        ? "Widget layers"
+        : "Browse projects";
 
   return (
     <>
@@ -223,7 +228,13 @@ const EditorSidebar: React.FC = () => {
 
         {/* Content */}
         <div style={{ flex: "1 1 auto", overflowY: "auto" }}>
-          {tabIndex === 0 ? <PropertyNavigator /> : <ProjectsTab />}
+          {tabIndex === EditorTab.EDIT ? (
+            <PropertyNavigator />
+          ) : tabIndex === EditorTab.LAYERS ? (
+            <WidgetTree />
+          ) : (
+            <ProjectsTab />
+          )}
         </div>
 
         {/* Tabs */}
@@ -244,7 +255,18 @@ const EditorSidebar: React.FC = () => {
               label="Edit"
               sx={{
                 textTransform: "none",
-                width: "50%",
+                width: "33%",
+                minHeight: 0,
+                paddingTop: 1.5,
+              }}
+            />
+            <Tab
+              icon={<AccountTreeIcon fontSize="small" />}
+              iconPosition="start"
+              label="Layers"
+              sx={{
+                textTransform: "none",
+                width: "33%",
                 minHeight: 0,
                 paddingTop: 1.5,
               }}
@@ -255,7 +277,7 @@ const EditorSidebar: React.FC = () => {
               label="Navigate"
               sx={{
                 textTransform: "none",
-                width: "50%",
+                width: "34%",
                 minHeight: 0,
                 paddingTop: 1.5,
               }}
