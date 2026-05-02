@@ -158,6 +158,18 @@ class AuthService {
     }
   }
 
+  /**
+   * Clears local session state without contacting the backend.
+   * Called when the server returns 401 (session expired or invalidated externally).
+   * The guard ensures multiple simultaneous 401 responses only fire one notification.
+   */
+  expireSession(): void {
+    if (!this.currentUser) return;
+    this.currentUser = null;
+    this.notifyLogout();
+    this.notifyAuthStatus(AuthStatuses.UNAUTHENTICATED, null);
+  }
+
   getUser(): User | null {
     return this.currentUser;
   }
