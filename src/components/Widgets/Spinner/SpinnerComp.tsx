@@ -16,6 +16,7 @@ import Typography from "@mui/material/Typography";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import { useWSActionsContext } from "@src/context/useEpicsWSContext";
+import { FLEX_ALIGN_MAP } from "@src/constants/constants";
 
 const SpinnerComp: React.FC<WidgetUpdate> = ({ data }) => {
   const { writePVValue } = useWSActionsContext();
@@ -83,9 +84,8 @@ const SpinnerComp: React.FC<WidgetUpdate> = ({ data }) => {
                 minHeight: 0,
                 padding: 0,
                 pointerEvents: inEditMode ? "none" : "auto",
-                overflow: "hidden",
                 "& .MuiOutlinedInput-root": { width: "100%", height: "100%" },
-                "& .MuiInputBase-input": { width: "100%", height: "100%" },
+                "& .MuiInputBase-input": { width: "100%" },
               }}
               ref={props.ref}
               disabled={state.disabled}
@@ -135,6 +135,8 @@ const SpinnerComp: React.FC<WidgetUpdate> = ({ data }) => {
                       fontStyle: p.fontItalic?.value ? "italic" : "normal",
                       textDecoration: p.fontUnderlined?.value ? "underline" : "none",
                       color: p.textColor?.value,
+                      textAlign: (p.textHAlign?.value ??
+                        "left") as React.CSSProperties["textAlign"],
                     },
                   },
                 }}
@@ -190,7 +192,10 @@ const SpinnerComp: React.FC<WidgetUpdate> = ({ data }) => {
                     </Box>
                   </InputAdornment>
                 }
-                sx={{ pr: 0 }}
+                sx={{
+                  pr: 0,
+                  alignItems: FLEX_ALIGN_MAP[p.textVAlign?.value ?? "middle"],
+                }}
               />
             )}
           />
