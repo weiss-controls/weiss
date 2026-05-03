@@ -17,3 +17,4 @@ export { Slider } from "./Slider";
 export { Image } from "./Image";
 export { EmbeddedDisplay } from "./EmbeddedDisplay";
 export { NavigationButton } from "./NavigationButton";
+export { Spinner } from "./Spinner";
