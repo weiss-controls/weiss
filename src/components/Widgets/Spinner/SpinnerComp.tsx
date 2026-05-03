@@ -31,8 +31,8 @@ const SpinnerComp: React.FC<WidgetUpdate> = ({ data }) => {
     p.unitsFromPV?.value && pvData?.display?.units ? pvData.display.units : p.units?.value;
   const pvNumValue = pvData?.value !== undefined ? Number(pvData.value) : null;
   const labelShrink = pvNumValue !== null || isFocused;
-  const min = (p.limitsFromPV?.value ? pvData?.display?.limitLow : p.min?.value) ?? 0;
-  const max = (p.limitsFromPV?.value ? pvData?.display?.limitHigh : p.max?.value) ?? 1;
+  const min = p.limitsFromPV?.value ? pvData?.display?.limitLow : p.min?.value;
+  const max = p.limitsFromPV?.value ? pvData?.display?.limitHigh : p.max?.value;
 
   useEffect(() => {
     if (inEditMode) {
