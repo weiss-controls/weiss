@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 André Favoto
+// Copyright (C) 2026 Marco Montevechi, André Favoto
 
 import { SpinnerComp } from "./SpinnerComp";
 import { COLORS } from "@src/constants/constants";
@@ -21,5 +21,8 @@ export const Spinner: WidgetDefinition = {
     ...COMMON_PROPS,
     backgroundColor: { ...PROPERTY_SCHEMAS.backgroundColor, value: COLORS.inputColor },
     ...TEXT_PROPS,
+    limitsFromPV: PROPERTY_SCHEMAS.limitsFromPV,
+    min: PROPERTY_SCHEMAS.min,
+    max: PROPERTY_SCHEMAS.max,
   },
 };
