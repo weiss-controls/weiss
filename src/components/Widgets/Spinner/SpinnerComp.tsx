@@ -55,8 +55,6 @@ function NumberField({
             width: "100%",
             height: "100%",
             display: "flex",
-            justifyContent: FLEX_ALIGN_MAP[p.textHAlign?.value ?? "left"],
-            alignItems: FLEX_ALIGN_MAP[p.textVAlign?.value ?? "middle"],
             backgroundColor: p.backgroundColor?.value,
             borderRadius: p.borderRadius?.value,
             borderStyle: p.borderStyle?.value,
@@ -119,30 +117,33 @@ function NumberField({
                 position="end"
                 sx={{
                   flexDirection: "column",
-                  width: "100%",
+                  width: "15%",
                   height: "100%",
                   maxHeight: "unset",
                   alignSelf: "stretch",
                   borderLeft: "1px solid",
                   borderColor: "divider",
                   ml: 0,
+                  p: 0,
                   "& button": {
                     py: 0,
+                    px: 0,
                     flex: 1,
-                    borderRadius: 0.5,
+                    borderRadius: 0,
+                    height: "50%",
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                   },
                 }}
               >
-                <BaseNumberField.Increment
-                  render={<IconButton size={size} aria-label="Increase" />}
-                >
-                  <KeyboardArrowUpIcon fontSize={size} sx={{ transform: "translateY(2px)" }} />
+                <BaseNumberField.Increment render={<IconButton aria-label="Increase" />}>
+                  <KeyboardArrowUpIcon sx={{ transform: "translateY(2px)" }} />
                 </BaseNumberField.Increment>
 
-                <BaseNumberField.Decrement
-                  render={<IconButton size={size} aria-label="Decrease" />}
-                >
-                  <KeyboardArrowDownIcon fontSize={size} sx={{ transform: "translateY(-2px)" }} />
+                <BaseNumberField.Decrement render={<IconButton aria-label="Decrease" />}>
+                  <KeyboardArrowDownIcon sx={{ transform: "translateY(-2px)" }} />
                 </BaseNumberField.Decrement>
               </InputAdornment>
             }
@@ -157,22 +158,13 @@ function NumberField({
 const SpinnerComp: React.FC<WidgetUpdate> = ({ data }) => {
   const p = data.editableProperties;
   const pvData = data.pvData;
-  const { writePVValue } = useWSActionsContext();
-  const { inEditMode } = useUIContext();
-  const [inputValue, setInputValue] = useState<string>("");
 
   if (!p.visible?.value) return null;
-  const handleWrite = (value: number | string) => {
-    if (inEditMode) return;
-    if (p.pvName?.value) {
-      writePVValue(p.pvName.value, value);
-    }
-  };
 
   return (
     <AlarmBorder alarmData={pvData?.alarm} enable={p.alarmBorder?.value}>
       <div style={{ position: "relative", width: "100%", height: "100%" }}>
-        <NumberField label={p.pvName?.value} size="small" p={p} onChange: {(e) => setInputValue(e.target.value)} />
+        <NumberField label={p.pvName?.value} size="small" p={p} />
       </div>
     </AlarmBorder>
   );
