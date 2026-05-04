@@ -16,11 +16,8 @@ License: GPL-3.0-or-later. All source files carry the header:
 
 ```
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 André Favotto
+// Copyright (C) 2026 <Author(s) name(s)>
 ```
-
-The contributer's name may be changed if authored by other developers, but the GPL license must be
-preserved.
 
 ---
 
