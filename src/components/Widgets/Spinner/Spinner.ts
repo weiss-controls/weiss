@@ -4,13 +4,13 @@
 import { SpinnerComp } from "./SpinnerComp";
 import { COLORS } from "@src/constants/constants";
 import type { WidgetDefinition } from "@src/types/widgets";
-import PinRoundedIcon from "@mui/icons-material/PinRounded";
+import PinOutlinedIcon from "@mui/icons-material/PinOutlined";
 import { PROPERTY_SCHEMAS, COMMON_PROPS, TEXT_PROPS } from "@src/types/widgetProperties";
 
 export const Spinner: WidgetDefinition = {
   component: SpinnerComp,
   widgetName: "Spinner",
-  widgetIcon: PinRoundedIcon,
+  widgetIcon: PinOutlinedIcon,
   widgetLabel: "Spinner",
   category: "Controls",
   defaultProperties: {
