@@ -1,26 +1,19 @@
 <!---
-This file provides a general overview of the WEISS project architecture,
-key components, and development setup. It is intended especially for AI
-assisted development, or new developers onboarding, for a quick
-understanding of the codebase structure without having to read through
-the entire documentation.
+Conventions, patterns, and codebase context for AI-assisted development.
+For architecture, configuration, and deployment details, see docs/src/.
 -->
 
-# WEISS — Project Context
+# WEISS — AI Development Context
 
-WEISS is a web-based EPICS OPI (Operator Interface) designer and runtime viewer. It lets
-control-system engineers design display panels (OPIs) in a browser, store them in Git repositories,
-and serve them live with real-time EPICS PV data via WebSocket.
+WEISS is a web-based EPICS OPI designer and runtime viewer: engineers design display panels in a
+browser, store them in Git repositories, and serve them with real-time EPICS PV data via WebSocket.
 
-License: GPL-3.0-or-later. All source files carry the header:
+**License header** — required on every new source file:
 
 ```
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 André Favotto
+// Copyright (C) 2026 <Author(s) name(s)>
 ```
-
-The contributer's name may be changed if authored by other developers, but the GPL license must be
-preserved.
 
 ---
 
@@ -61,34 +54,38 @@ Three services in Docker:
 - `/auth/callback` → `AuthCallback`
 - `/` → `ProtectedRoute` → `App`
 
-`ContextProvider` wraps the entire app and initialises the three main managers.
+`ContextProvider` (`src/context/ContextProvider.tsx`) wraps the entire app and composes four context
+providers.
 
 ### State Management (Context)
 
-All state lives in React context — no Redux. Three providers:
+All state lives in React context — no Redux. Four context providers composed inside a single
+`ContextProvider`:
 
-| Context                               | Hook               | What it owns                                                                        |
-| ------------------------------------- | ------------------ | ----------------------------------------------------------------------------------- |
-| `WidgetContext`                       | `useWidgetManager` | All widgets on the canvas, selection, undo/redo, clipboard, grouping, import/export |
-| `EpicsWSContext` + `WSActionsContext` | `useEpicsWS`       | WebSocket lifecycle, PV subscriptions, `pvState` cache, macro substitution map      |
-| `UIContext`                           | `useUIManager`     | Edit/runtime mode toggle, auth state, repo tree, file open/save, drag/pan flags     |
+| Context            | Hook               | What it owns                                                                                      |
+| ------------------ | ------------------ | ------------------------------------------------------------------------------------------------- |
+| `WidgetContext`    | `useWidgetManager` | All widgets on the canvas, selection, undo/redo, clipboard, grouping, import/export               |
+| `UIContext`        | `useUIManager`     | Edit/runtime mode toggle, auth state, repo tree, file open/save, drag/pan flags                   |
+| `EpicsWSContext`   | `useEpicsWS`       | WebSocket lifecycle, PV subscriptions, `pvState` cache, macro substitution map                    |
+| `WSActionsContext` | `useEpicsWS`       | Exposes only `writePVValue`; separate context so write-only widgets don't re-render on PV updates |
 
-#### `useWidgetManager`
+#### `useWidgetManager` — mutation discipline
 
-- `editorWidgets: Widget[]` — flat list; grid is always `editorWidgets[0]` with `id === GRID_ID`.
-- `updateEditorWidgetList(newWidgets, keepHistory)` — the single mutation point; pushes to undo
-  stack.
-- `updateWidgetProperties(id, updates)` and `batchWidgetUpdate(multiUpdates)` for property edits.
+- `editorWidgets: Widget[]` — flat list; the grid is always `editorWidgets[0]` with
+  `id === GRID_ID`.
+- **All mutations go through** `updateEditorWidgetList(newWidgets, keepHistory)` — this is the
+  single mutation point and pushes to the undo stack.
+- `updateWidgetProperties(id, updates)` and `batchWidgetUpdate(multiUpdates)` are convenience
+  wrappers around `updateEditorWidgetList`.
 - Undo/redo via `undoStack`/`redoStack` (capped at `MAX_HISTORY`).
 - `formatWdgToExport()` / `loadWidgets()` for serialization.
 
 #### `useEpicsWS`
 
-- Maintains a `WSClient` (WebSocket) connected to the epicsWS service.
-- `PVMap: Map<originalPV, substitutedPV>` — macro substitution lives here, computed by
-  `useWidgetManager`.
 - `pvState: Record<pvName, PVData>` — reactive PV data fed to widget renders.
-- `writePVValue(pvName, value)` — sends a write message.
+- `PVMap: Map<originalPV, substitutedPV>` — macro substitution, computed by `useWidgetManager`.
+- `writePVValue(pvName, value)` — sends a write message; exposed via `WSActionsContext` so
+  write-only widgets don't re-render on every PV update.
 
 #### `useUIManager`
 
@@ -137,15 +134,23 @@ has:
   `"select"`, `"strList"`, `"strRecord"`, `"repoFile"`, `"none"`)
 - `label`, `value`, `category`, optional `options` and `limits`
 
-Pre-built reusable sets: `COMMON_PROPS`, `TEXT_PROPS` (import from `widgetProperties.ts`).
+Pre-built reusable sets (import from `widgetProperties.ts`):
+
+| Export         | Properties included                                                                                                               |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `COMMON_PROPS` | `x`, `y`, `width`, `height`, `tooltip`, `visible`, `borderColor`, `borderWidth`, `borderRadius`, `borderStyle`, `backgroundColor` |
+| `TEXT_PROPS`   | `textColor`, `fontSize`, `fontFamily`, `fontBold`, `fontItalic`, `fontUnderlined`, `textHAlign`, `textVAlign`                     |
+| `PLOT_PROPS`   | `pvNames`, `plotTitle`, `xAxisTitle`, `yAxisTitle`, `lineColors`, `logscaleY`                                                     |
 
 #### Creating a New Widget
 
 1. Create `src/components/Widgets/<Name>/` folder.
 2. `<Name>Comp.tsx` — the React component with signature `React.FC<WidgetUpdate>`:
-   - Access props via `data.editableProperties` (aliased as `p`).
-   - Access PV data via `data.pvData` / `data.multiPvData`.
-   - Check `inEditMode` from `useUIContext()` to alter edit-time rendering.
+   - Access props via `data.editableProperties`; conventionally aliased as
+     `const p = data.editableProperties`.
+   - Access PV data via `data.pvData` / `data.multiPvData` (injected at render time by
+     `WidgetRenderer`).
+   - Use `const { inEditMode } = useUIContext()` to conditionally alter edit-time rendering.
 3. `<Name>.ts` — the `WidgetDefinition` export, e.g.:
    ```ts
    export const MyWidget: WidgetDefinition = {
@@ -180,15 +185,15 @@ Saved as `.opi.json` — an array of `ExportedWidget`:
 
 ### API Client
 
-Generated by `@hey-api/openapi-ts` from `http://localhost:8000/openapi.json` into
-`src/services/APIClient/`. Regenerate with:
+`src/services/APIClient/` is **generated** by `@hey-api/openapi-ts` — do not edit manually.
+Regenerate after backend changes (API must be running on `:8000`):
 
-```
-pnpm run generate  # or: npx openapi-ts
+```bash
+pnpm exec openapi-ts
 ```
 
-Config lives in `openapi-ts.config.ts`.  
-Custom fetch (credentials: include, error handling) is in `src/hey-api-fetch.ts`.
+Config: `openapi-ts.config.ts`. Custom fetch with credentials and error handling:
+`src/hey-api-fetch.ts`.
 
 ### Auth Flow (Frontend)
 
@@ -205,10 +210,9 @@ Roles: `"developer"` (full CRUD on staging repos) | `"operator"` (read-only, dep
 
 ## Backend API
 
-**Stack:** Python ≥ 3.12, FastAPI 0.126, Uvicorn, MSAL (Microsoft OAuth), Authlib, httpx, Pydantic
-v2.
+**Stack:** Python ≥ 3.12, FastAPI, Uvicorn, MSAL (Microsoft OAuth), Pydantic v2.
 
-**Entry:** `backend/api/src/api/main.py` — creates `FastAPI` app, registers middleware, routers.
+**Entry:** `backend/api/src/api/main.py`.
 
 ### Router Structure
 
@@ -218,23 +222,14 @@ v2.
 | `staging.router`  | `/api/v1/repos/staging` | `require_developer` | Git repo CRUD, file edit, commit/push, deploy   |
 | `deployed.router` | `/api/v1/repos/runtime` | `get_current_user`  | Read deployed snapshots / trees                 |
 
-### Auth
+### Auth & Roles
 
-- Microsoft OAuth 2.0 via MSAL (`ConfidentialClientApplication`).
-- Demo mode: a `"demo"` provider creates a fake session without MSAL.
-- Sessions stored in-memory (`sessions: dict[str, Session]`). A background task prunes expired
-  sessions every hour.
-- `get_current_user(request)` — reads `weiss_session` cookie, resolves `User`.
+- `get_current_user(request)` — reads `weiss_session` cookie → `User`.
 - `require_developer` — `Depends(get_current_user)` + role check.
-
-**Users** also live in-memory (`users_db`). This is explicitly marked for replacement with a DB.
-
-### Roles
-
-`roles.toml` (mounted read-only at `/config/roles.toml`) lists developer usernames. Everyone else is
-operator. See `backend/api/roles.example.toml` for format.
-
-Hot-reload: `POST /api/v1/auth/admin/reload-roles` (developer only).
+- Sessions and users stored in-memory (marked for DB replacement).
+- Roles defined in `roles.toml` (env var `ROLES_CONFIG_FILE`). Hot-reload:
+  `POST /api/v1/auth/admin/reload-roles`.
+- Demo mode (`VITE_DEMO_MODE=true`): a `"demo"` provider creates a session without MSAL.
 
 ### Repo Management
 
@@ -255,6 +250,8 @@ Each repo directory layout:
   push, deploy.
 - **Runtime/deployed** endpoints serve the `current` snapshot tree to operators.
 - Allowed file extensions: `.opi.json`, `.svg`, `.png`, `.jpg`, `.jpeg`.
+- **Files/folders with a `_` prefix** are visible in Edit mode but hidden in Runtime mode — useful
+  for shared symbol libraries or templates that operators should not see.
 - Git operations run via `subprocess` with optional HTTP Basic auth token
   (`TECHNICAL_ACCOUNT_TOKEN`).
 
@@ -268,26 +265,57 @@ Each repo directory layout:
 4. Every endpoint needs a unique `operation_id` (used by the OpenAPI-TS client generator).
 5. After changes, regenerate the frontend client (see above).
 
-### Environment Variables (API)
+### Environment Variables
+
+All runtime configuration is provided via the `.env` file at the repository root (copy
+`.env.example`).
+
+**Frontend build-time** (baked into the static bundle at build; changing requires a rebuild):
+
+| Variable         | Default  | Description                                                                |
+| ---------------- | -------- | -------------------------------------------------------------------------- |
+| `VITE_DEMO_MODE` | `true`   | Show demo (unauthenticated) login option. Disable for private deployments. |
+| `DOCKER_TAG`     | `latest` | Tag applied to all Docker images built by Compose.                         |
+
+**EPICS settings** (consumed by `weiss-epicsws`):
+
+| Variable                   | Default     | Description                                              |
+| -------------------------- | ----------- | -------------------------------------------------------- |
+| `EPICS_DEFAULT_PROTOCOL`   | `pva`       | Protocol when PV name has no `ca://` or `pva://` prefix. |
+| `EPICS_CA_ADDR_LIST`       | `localhost` | Channel Access address list.                             |
+| `EPICS_CA_AUTO_ADDR_LIST`  | `YES`       | Enable CA auto address list.                             |
+| `EPICS_CA_MAX_ARRAY_BYTES` | `1000000`   | Max array byte size for CA.                              |
+| `EPICS_PVA_ADDR_LIST`      | `localhost` | PVAccess address list.                                   |
+| `EPICS_PVA_AUTO_ADDR_LIST` | `YES`       | Enable PVA auto address list.                            |
+
+**HTTPS / networking** (consumed by `weiss` nginx and `weiss-api`):
+
+| Variable        | Default                               | Description                                                         |
+| --------------- | ------------------------------------- | ------------------------------------------------------------------- |
+| `ENABLE_HTTPS`  | `false`                               | Enable HTTPS; marks session cookies as `Secure`.                    |
+| `SSL_CERT_FILE` | `./nginx/certs/example-fullchain.pem` | Host path to the full-chain TLS certificate (PEM).                  |
+| `SSL_KEY_FILE`  | `./nginx/certs/example-privkey.pem`   | Host path to the TLS private key (PEM).                             |
+| `APP_HOSTNAME`  | `localhost`                           | Hostname under which the app is served; used for CORS origin.       |
+| `DOCS_HOSTNAME` | _(unset)_                             | When set, nginx proxies this hostname to the docs container (8001). |
+
+**API settings** (consumed by `weiss-api`):
 
 | Variable                     | Required          | Default             | Description                          |
 | ---------------------------- | ----------------- | ------------------- | ------------------------------------ |
 | `MS_AUTH_CLIENT_ID`          | Yes (for MS auth) | —                   | Azure App Registration client ID     |
 | `MS_AUTH_CLIENT_SECRET`      | Yes (for MS auth) | —                   | Client secret                        |
 | `MS_AUTH_TENANT_ID`          | No                | `"common"`          | Azure tenant                         |
-| `APP_HOSTNAME`               | No                | `"localhost"`       | Used to derive CORS allowed origin   |
-| `ENABLE_HTTPS`               | No                | `false`             | HTTPS mode                           |
 | `DEV_MODE`                   | No                | `false`             | Appends Vite dev port to CORS origin |
 | `TECHNICAL_ACCOUNT_TOKEN`    | No                | —                   | Git HTTP auth token for push         |
 | `TECHNICAL_ACCOUNT_USERNAME` | No                | `"weiss-bot"`       | Git commit author name               |
 | `TECHNICAL_ACCOUNT_EMAIL`    | No                | `"weiss-bot@dummy"` | Git commit author email              |
-| `ROLES_CONFIG_PATH`          | No                | `./roles.toml`      | Path to roles TOML                   |
+| `ROLES_CONFIG_FILE`          | No                | `./roles.toml`      | Host path to the roles TOML file     |
 
 ---
 
 ## epicsWS Service
 
-**Stack:** Python, `websockets`, `p4p` (PVA), `aioca` (CA).
+**Stack:** Python, `websockets`, `p4p` (PVA), `PyEpics` (CA).
 
 Runs a WebSocket server on port 8080. Clients send JSON messages:
 
@@ -297,56 +325,38 @@ Runs a WebSocket server on port 8080. Clients send JSON messages:
 { "type": "write",       "pv": "MY:PV:NAME", "value": 42 }
 ```
 
-Server pushes updates:
+Server pushes `WSMessage` updates (full type in `src/types/epicsWS.ts`):
 
 ```json
-{ "pv": "MY:PV:NAME", "value": ..., "alarm": {...}, "display": {...}, "timeStamp": {...} }
+{ "type": "update", "pv": "MY:PV:NAME", "value": ..., "timeStamp": {...}, "alarm": {...}, "display": {...}, "control": {...}, "valueAlarm": {...}, "enumChoices": [...], "b64arr": "...", "b64dtype": "..." }
 ```
 
-Protocol selection: prefix `pva://` or `ca://` on the PV name, or set `EPICS_DEFAULT_PROTOCOL`.
+All fields except `type`, `pv`, `value`, and `timeStamp` are optional.  
+Protocol: prefix `pva://` or `ca://`, or set `EPICS_DEFAULT_PROTOCOL`.
 
 ---
 
-## Development Setup
-
-### Frontend only
+## Development Commands
 
 ```bash
-pnpm install
-pnpm dev          # Vite dev server on :5173
-```
+# Frontend only
+pnpm install && pnpm dev          # Vite dev server on :5173
 
-### Full stack (Docker Compose)
-
-```bash
+# Full stack (docker-compose-dev.yml)
 cp backend/api/roles.example.toml roles.toml
-# fill in .env with MS_AUTH_* vars, EPICS_CA_ADDR_LIST, etc.
 docker compose -f docker-compose-dev.yml up --build
+# → frontend :5173, API :8000 (/docs for Swagger), epicsWS :8080
+
+# Regenerate API client (API must be running on :8000)
+pnpm exec openapi-ts
+
+# Backend tests
+cd backend/api && pip install -e ".[dev]" && pytest
+
+# Linting
+pnpm lint                          # ESLint + typescript-eslint
+cd backend/api && ruff check .     # ruff
 ```
-
-- Frontend: `http://localhost:5173`
-- API: `http://localhost:8000` (also exposes `/docs` for Swagger UI)
-- epicsWS: `ws://localhost:8080`
-
-### Regenerate API client (after backend changes)
-
-```bash
-# API must be running on :8000
-pnpm exec openapi-ts   # or: npx openapi-ts
-```
-
-### Backend tests
-
-```bash
-cd backend/api
-pip install -e ".[dev]"
-pytest
-```
-
-### Linting / formatting
-
-- Frontend: `pnpm lint` (ESLint + typescript-eslint), `prettier`
-- Backend: `ruff` (linting + formatting), `mypy` (type checking)
 
 ---
 
