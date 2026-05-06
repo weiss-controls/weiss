@@ -31,9 +31,30 @@ const SpinnerComp: React.FC<WidgetUpdate> = ({ data }) => {
     p.unitsFromPV?.value && pvData?.display?.units ? pvData.display.units : p.units?.value;
   const pvNumValue = pvData?.value !== undefined ? Number(pvData.value) : null;
   const labelShrink = pvNumValue !== null || isFocused;
-  const min = p.limitsFromPV?.value ? pvData?.display?.limitLow : p.min?.value;
-  const max = p.limitsFromPV?.value ? pvData?.display?.limitHigh : p.max?.value;
-
+  const dispLimLow = pvData?.display?.limitLow; // LOPR
+  const dispLimHigh = pvData?.display?.limitHigh; // HOPR
+  const ctrlLimLow = pvData?.control?.limitLow; // DRVL
+  const ctrlLimHigh = pvData?.control?.limitHigh; // DRVH
+  const localMin = p.min?.value;
+  const localMax = p.max?.value;
+  // Replicate EPICS behaviour into widget: same limits corresponds to no limits
+  let min = undefined;
+  let max = undefined;
+  if (p.limitsFromPV?.value) {
+    // Use LOPR/HOPR first if defined, then DRVH/DRVL
+    if (dispLimHigh != dispLimLow) {
+      min = dispLimLow;
+      max = dispLimHigh;
+    } else if (ctrlLimHigh != ctrlLimLow) {
+      min = ctrlLimLow;
+      max = ctrlLimHigh;
+    }
+  } else {
+    if (localMin != localMax) {
+      min = localMin;
+      max = localMax;
+    }
+  }
   useEffect(() => {
     if (inEditMode) {
       setIsFocused(false);
