@@ -10,7 +10,6 @@ import { getDeployedRepoFile, getStagingRepoFile } from "@src/services/APIClient
 import { resolveRepoPath } from "@src/utils/repoPath";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import { createGroupWidget } from "@src/context/widgetHelpers";
-import { GRID_ID } from "@src/constants/constants";
 import type { PropertyKey } from "@src/types/widgets";
 
 /**
@@ -27,13 +26,13 @@ const _contentCache = new Map<string, Promise<ExportedWidget[]>>();
  * Any widget whose type is unrecognised is silently dropped.
  */
 function exportedToWidget(raw: ExportedWidget): Widget | null {
-  if (raw.widgetName === "GridZone" || raw.id === GRID_ID) return null;
+  if (raw.widgetName === "GridZone") return null;
 
   const children = raw.children?.map(exportedToWidget).filter((w): w is Widget => w !== null);
 
   // groups are not in the registry
   if (raw.widgetName === "Group") {
-    const group = createGroupWidget(raw.id, children ?? []);
+    const group = createGroupWidget(uuidv4(), children ?? []);
     // Overlay the serialised x/y/width/height onto the group.
     for (const key of ["x", "y", "width", "height"] as const) {
       if (raw.properties?.[key] !== undefined && group.editableProperties[key]) {
@@ -54,7 +53,7 @@ function exportedToWidget(raw: ExportedWidget): Widget | null {
   );
 
   return {
-    id: raw.id,
+    id: `${raw.widgetName}-${uuidv4()}`,
     widgetName: raw.widgetName,
     editableProperties,
     children,
@@ -76,7 +75,7 @@ function computeNatBounds(exported: ExportedWidget[]): {
   let maxY = -Infinity;
 
   for (const w of exported) {
-    if (w.widgetName === "GridZone" || w.id === GRID_ID) continue;
+    if (w.widgetName === "GridZone") continue;
     const x = (w.properties?.x as number | undefined) ?? 0;
     const y = (w.properties?.y as number | undefined) ?? 0;
     const width = (w.properties?.width as number | undefined) ?? 0;

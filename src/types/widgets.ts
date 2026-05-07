@@ -138,12 +138,10 @@ export interface Widget {
 
 /**
  * Simplified representation of a widget for export.
- * @property id Widget ID
  * @property widgetName Widget name
  * @property properties Partial properties of the widget
  */
 export interface ExportedWidget {
-  id: string;
   children?: ExportedWidget[];
   widgetName: string;
   properties: Partial<Record<PropertyKey, PropertyValue>>;

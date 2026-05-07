@@ -19,7 +19,6 @@ REPO_META = "repo.json"
 OPI_EXTENSION = ".opi.json"
 NEW_FILE_CONTENT = [
     {
-        "id": "__grid__",
         "widgetName": "GridZone",
         "properties": {
             "backgroundColor": "#e9ecef",
