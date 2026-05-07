@@ -8,6 +8,7 @@ import { useUIContext } from "@src/context/useUIContext";
 import { useWidgetContext } from "@src/context/useWidgetContext";
 import { getDeployedRepoFile, getStagingRepoFile } from "@src/services/APIClient";
 import { resolveRepoPath } from "@src/utils/repoPath";
+import { substituteInStr, substituteTextProps } from "@src/utils/macros";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import { createGroupWidget } from "@src/context/widgetHelpers";
 import type { PropertyKey } from "@src/types/widgets";
@@ -116,25 +117,27 @@ function offsetWidgets(
   });
 }
 
-/** Substitute $(MACRO) patterns in a single string using a macros map. */
-function substituteInStr(str: string, macros: Record<string, string>): string {
-  return str.replace(/\$\(([^)]+)\)/g, (match) => macros[match] ?? match);
-}
-
 /**
- * Walk the widget tree and replace macros in pvName / pvNames.
+ * Walk the widget tree and replace macros in pvName, pvNames, and all text
+ * selType properties (labels, tooltips, titles, etc.).
  */
 function applyMacros(widgets: Widget[], macros: Record<string, string>): Widget[] {
   if (Object.keys(macros).length === 0) return widgets;
   return widgets.map((w) => {
-    const props = { ...w.editableProperties };
+    let props = substituteTextProps(w.editableProperties, macros);
     if (props.pvName?.value) {
-      props.pvName = { ...props.pvName, value: substituteInStr(props.pvName.value, macros) };
+      props = {
+        ...props,
+        pvName: { ...props.pvName, value: substituteInStr(props.pvName.value, macros) },
+      };
     }
     if (props.pvNames?.value && props.pvNames.value.length > 0) {
-      props.pvNames = {
-        ...props.pvNames,
-        value: props.pvNames.value.map((pv) => substituteInStr(pv, macros)),
+      props = {
+        ...props,
+        pvNames: {
+          ...props.pvNames,
+          value: props.pvNames.value.map((pv) => substituteInStr(pv, macros)),
+        },
       };
     }
     return {

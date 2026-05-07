@@ -155,17 +155,9 @@ export default function useEpicsWS(PVMap: ReturnType<typeof useWidgetManager>["P
    * @param pv The pv to be written to (with macros if applicable)
    * @param newValue New value [@type PVValue]
    */
-  const writePVValue = useCallback(
-    (pv: string, newValue: PVValue) => {
-      const substituted = PVMap.get(pv);
-      if (substituted) {
-        ws.current?.write(substituted, newValue);
-      } else {
-        console.warn(`writePVValue: unknown PV ${pv}`);
-      }
-    },
-    [PVMap],
-  );
+  const writePVValue = useCallback((pv: string, newValue: PVValue) => {
+    ws.current?.write(pv, newValue);
+  }, []);
 
   return {
     ws,
