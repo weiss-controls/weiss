@@ -13,11 +13,17 @@ import WidgetTreeItem, {
   type WidgetTreeDndCtx,
 } from "./WidgetTreeItem";
 
+function widgetTreeLabel(w: Widget): string {
+  const alias = w.editableProperties.alias?.value;
+  if (alias) return alias;
+  return WidgetRegistry[w.widgetName]?.widgetLabel ?? w.widgetName;
+}
+
 function buildLayerItems(widgets: Widget[], groupId: string | null): WidgetLayerItem[] {
   return widgets.map((w) => ({
     id: w.id,
     itemId: w.id,
-    label: WidgetRegistry[w.widgetName]?.widgetLabel ?? w.widgetName,
+    label: widgetTreeLabel(w),
     widgetName: w.widgetName,
     groupId,
     children:
@@ -50,6 +56,7 @@ const WidgetTree: React.FC = () => {
     setSelectedWidgetIDs,
     updateEditorWidgetList,
     updateWidgetChildren,
+    updateWidgetProperties,
     getWidget,
   } = useWidgetContext();
 
@@ -172,7 +179,10 @@ const WidgetTree: React.FC = () => {
         selectedItems={selectedWidgetIDs}
         onSelectedItemsChange={handleSelectionChange}
         multiSelect
-        isItemEditable={() => false}
+        isItemEditable={(item) => item.id !== GRID_ID}
+        onItemLabelChange={(itemId, newLabel) =>
+          updateWidgetProperties(itemId, { alias: newLabel })
+        }
         defaultExpandedItems={defaultExpandedIds}
         slots={{ item: WidgetTreeItem }}
         sx={{ p: 1 }}

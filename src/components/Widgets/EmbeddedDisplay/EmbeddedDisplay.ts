@@ -13,11 +13,12 @@ export const EmbeddedDisplay: WidgetDefinition = {
   widgetLabel: "Embedded Display",
   category: "Basic",
   defaultProperties: {
+    alias: PROPERTY_SCHEMAS.alias,
     x: PROPERTY_SCHEMAS.x,
     y: PROPERTY_SCHEMAS.y,
-    tooltip: PROPERTY_SCHEMAS.tooltip,
     width: { ...PROPERTY_SCHEMAS.width, value: 300 },
     height: { ...PROPERTY_SCHEMAS.height, value: 210 },
+    tooltip: PROPERTY_SCHEMAS.tooltip,
     displayPath: PROPERTY_SCHEMAS.displayPath,
     macros: PROPERTY_SCHEMAS.macros,
   },
