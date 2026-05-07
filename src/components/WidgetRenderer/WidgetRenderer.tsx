@@ -11,7 +11,7 @@ import type { PVData } from "@src/types/epicsWS";
 import { useUIContext } from "@src/context/useUIContext";
 import { useWidgetContext } from "@src/context/useWidgetContext";
 import { useEpicsWSContext } from "@src/context/useEpicsWSContext";
-import { substituteInStr, substituteTextProps } from "@src/utils/macros";
+import { buildInternalMacros, substituteInStr, substituteTextProps } from "@src/utils/macros";
 
 const DRAG_END_DELAY = 80; //ms
 
@@ -99,9 +99,15 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
       }
 
       const merged: Widget = { ...w, pvData, multiPvData, children: newChildren };
+      const internalMacros = buildInternalMacros(
+        pvName ? substituteInStr(pvName, gridMacros) : undefined,
+        pvData,
+      );
+      const allMacros =
+        Object.keys(internalMacros).length > 0 ? { ...gridMacros, ...internalMacros } : gridMacros;
       const mergedWithMacros: Widget = {
         ...merged,
-        editableProperties: substituteTextProps(merged.editableProperties, gridMacros),
+        editableProperties: substituteTextProps(merged.editableProperties, allMacros),
       };
       nextWidgetsMap.set(w.id, mergedWithMacros);
       return mergedWithMacros;

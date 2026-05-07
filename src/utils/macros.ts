@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
+import type { PVData } from "@src/types/epicsWS";
 import type { PropertyKey, WidgetProperties, WidgetProperty } from "@src/types/widgets";
 
 /**
@@ -9,6 +10,29 @@ import type { PropertyKey, WidgetProperties, WidgetProperty } from "@src/types/w
  */
 export function substituteInStr(str: string, macros: Record<string, string>): string {
   return str.replace(/\$\(([^)]+)\)/g, (match) => macros[match] ?? match);
+}
+
+/**
+ * Build the built-in per-widget macro map from resolved PV data.
+ * Keys follow the same $(NAME) convention as user macros so they flow
+ * through substituteInStr / substituteTextProps unchanged.
+ *
+ * @param substitutedPVName The widget's PV name after user macros are applied.
+ * @param pvData            Resolved PV data for this widget (may be undefined).
+ */
+export function buildInternalMacros(
+  substitutedPVName: string | undefined,
+  pvData: PVData | undefined,
+): Record<string, string> {
+  const macros: Record<string, string> = {};
+  if (substitutedPVName) macros["$(pvname)"] = substitutedPVName;
+  if (pvData?.display?.description) macros["$(pvdesc)"] = pvData.display.description;
+  if (pvData?.display?.units) macros["$(pvunits)"] = pvData.display.units;
+  if (pvData?.value !== undefined)
+    macros["$(pvvalue)"] = Array.isArray(pvData.value)
+      ? pvData.value.join(", ")
+      : String(pvData.value);
+  return macros;
 }
 
 /**
@@ -33,7 +57,7 @@ export function substituteTextProps(
       const substituted = substituteInStr(prop.value, macros);
       resultRecord[key] = substituted !== prop.value ? { ...prop, value: substituted } : prop;
     } else if (prop.selType === "strList" && Array.isArray(prop.value)) {
-      const original = prop.value as string[];
+      const original = prop.value;
       const substituted = original.map((s) => substituteInStr(s, macros));
       resultRecord[key] = substituted.some((s, i) => s !== original[i])
         ? { ...prop, value: substituted }
