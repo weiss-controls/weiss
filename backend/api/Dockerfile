@@ -3,7 +3,7 @@
 # The devcontainer should use the build target and run as root with podman
 # or docker with user namespaces.
 #
-FROM docker.io/library/python:3.14.4-slim-trixie as build
+FROM docker.io/library/python:3.14.4-slim-trixie AS build
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
@@ -38,7 +38,7 @@ RUN pip install --upgrade pip && \
     # and replace with a comment to avoid a zero length asset upload later
     sed -i '/file:/s/^/# Requirements for /' lockfiles/requirements.txt
 
-FROM docker.io/library/python:3.14.4-slim-trixie as runtime
+FROM docker.io/library/python:3.14.4-slim-trixie AS runtime
 
 ARG APP_USER=weiss
 ARG APP_UID=1001
