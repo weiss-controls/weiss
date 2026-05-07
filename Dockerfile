@@ -1,23 +1,23 @@
 # Dev environment
-FROM node:20-alpine AS dev
+FROM node:22-alpine AS dev
 WORKDIR /app
 COPY . .
 # set /app as safe to allow git interaction on mounted folder
 RUN apk add --no-cache git \
  && git config --global --add safe.directory /app
-RUN npm install --global corepack@latest && corepack enable pnpm
+RUN npm install -g pnpm
 RUN pnpm install
 
 CMD pnpm run dev --host
 
 # Production build
-FROM node:20-alpine AS build
+FROM node:22-alpine AS build
 WORKDIR /app
 ARG VITE_DEMO_MODE
 ENV VITE_DEMO_MODE=${VITE_DEMO_MODE}
 COPY . .
 RUN apk add --no-cache git
-RUN npm install --global corepack@latest && corepack enable pnpm
+RUN npm install -g pnpm
 RUN pnpm install && pnpm run build
 
 # Production image
