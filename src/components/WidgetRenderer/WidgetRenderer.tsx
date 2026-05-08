@@ -238,7 +238,7 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
         size={{ width, height }}
         position={{ x, y }}
         className={editModeClass}
-        style={isEmbedded ? { pointerEvents: "none" } : undefined}
+        style={isEmbedded && inEditMode ? { pointerEvents: "none" } : undefined}
         onDrag={() => setIsDragging(true)}
         onDragStop={(e, d) => handleDragStop(e, d, w)}
         onResizeStart={() => setIsDragging(true)}
