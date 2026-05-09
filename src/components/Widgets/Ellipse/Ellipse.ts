@@ -20,5 +20,6 @@ export const Ellipse: WidgetDefinition = {
     backgroundColor: { ...PROPERTY_SCHEMAS.backgroundColor, value: COLORS.lightGray },
     width: { ...PROPERTY_SCHEMAS.width, value: 80 },
     height: { ...PROPERTY_SCHEMAS.height, value: 80 },
+    tooltip: { ...PROPERTY_SCHEMAS.tooltip, value: "" },
   },
 };

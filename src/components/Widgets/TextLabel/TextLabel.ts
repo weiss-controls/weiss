@@ -19,5 +19,6 @@ export const TextLabel: WidgetDefinition = {
     ...COMMON_WO_ALARMS,
     backgroundColor: { ...PROPERTY_SCHEMAS.backgroundColor, value: "transparent" },
     ...TEXT_PROPS,
+    tooltip: { ...PROPERTY_SCHEMAS.tooltip, value: "" },
   },
 };
