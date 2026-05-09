@@ -23,6 +23,7 @@ export const PROPERTY_SCHEMAS = {
   disabled:        defineProp({ selType: "boolean", label: "Disabled", value: false as boolean, category: "General" }),
   macros:          defineProp({ selType: "strRecord", label: "Macro", value: {} as Record<string, string>, category: "EPICS" }),
   // Layout
+  alias:           defineProp({ selType: "text", label: "Widget alias", value: "" as string, category: "Layout" }),
   x:               defineProp({ selType: "number", label: "X", value: 100 as number, category: "Layout" }),
   y:               defineProp({ selType: "number", label: "Y", value: 100 as number, category: "Layout" }),
   width:           defineProp({ selType: "number", label: "Width", value: 100 as number, limits: { min: 1 }, category: "Layout" }),
@@ -120,6 +121,7 @@ export const CATEGORY_DISPLAY_ORDER = [
  * Common set of widget properties shared across most widgets.
  */
 export const COMMON_PROPS: WidgetProperties = {
+  alias: PROPERTY_SCHEMAS.alias,
   x: PROPERTY_SCHEMAS.x,
   y: PROPERTY_SCHEMAS.y,
   width: PROPERTY_SCHEMAS.width,

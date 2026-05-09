@@ -162,11 +162,27 @@ export function useWidgetManager() {
 
   /**
    * Add a new widget to the editor.
+   * Auto-assigns an alias of the form "{widgetLabel} {n}" when the widget has a
+   * name property that is currently empty (new drops/placements).
    * @param newWidget Widget to add
    */
   const addWidget = useCallback(
     (newWidget: Widget) => {
-      updateEditorWidgetList((prev) => [...prev, newWidget]);
+      updateEditorWidgetList((prev) => {
+        let widget = newWidget;
+        if (widget.editableProperties.alias?.value === "") {
+          const count = prev.filter((w) => w.widgetName === widget.widgetName).length;
+          const label = WidgetRegistry[widget.widgetName]?.widgetLabel ?? widget.widgetName;
+          widget = {
+            ...widget,
+            editableProperties: {
+              ...widget.editableProperties,
+              alias: { ...widget.editableProperties.alias, value: `${label} ${count + 1}` },
+            },
+          };
+        }
+        return [...prev, widget];
+      });
     },
     [updateEditorWidgetList],
   );
@@ -619,7 +635,6 @@ export function useWidgetManager() {
         ? undefined
         : widget.children?.map((child) => formatWdgToExport(child));
     return {
-      id: widget.id,
       widgetName: widget.widgetName,
       properties: Object.fromEntries(
         Object.entries(widget.editableProperties).map(([key, def]) => [key, def.value]),
@@ -702,17 +717,17 @@ export function useWidgetManager() {
 
           const isGroup = raw.widgetName === "Group";
 
-          if (idx === 0 && raw.id === GRID_ID) {
+          if (idx === 0 && raw.widgetName === "GridZone") {
             instance = createWidgetInstance(GridZone, GRID_ID);
           } else if (isGroup) {
-            instance = createGroupWidget(raw.id);
+            instance = createGroupWidget(uuidv4());
           } else {
             const baseWdg = WidgetRegistry[raw.widgetName];
             if (!baseWdg) {
-              warnings.push(`Unknown widget type "${raw.widgetName}" (id: ${raw.id}) — skipped`);
+              warnings.push(`Unknown widget type "${raw.widgetName}" — skipped`);
               return null;
             }
-            instance = createWidgetInstance(baseWdg, raw.id);
+            instance = createWidgetInstance(baseWdg, `${raw.widgetName}-${uuidv4()}`);
           }
 
           // Recursively restore children
@@ -728,9 +743,7 @@ export function useWidgetManager() {
             if (instance.editableProperties[propName]) {
               instance.editableProperties[propName].value = val;
             } else {
-              warnings.push(
-                `Unknown property "${key}" on widget "${raw.widgetName}" (id: ${raw.id}) — ignored`,
-              );
+              warnings.push(`Unknown property "${key}" on widget "${raw.widgetName}" — ignored`);
             }
           }
           return instance;
