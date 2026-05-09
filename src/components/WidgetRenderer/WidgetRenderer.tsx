@@ -11,6 +11,7 @@ import type { PVData } from "@src/types/epicsWS";
 import { useUIContext } from "@src/context/useUIContext";
 import { useWidgetContext } from "@src/context/useWidgetContext";
 import { useEpicsWSContext } from "@src/context/useEpicsWSContext";
+import { buildInternalMacros, substituteInStr, substituteTextProps } from "@src/utils/macros";
 
 const DRAG_END_DELAY = 80; //ms
 
@@ -37,10 +38,18 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
   // Refs to track previous pvState entries and previously computed Widget objects.
   const prevPVStateRef = useRef<Record<string, PVData>>({});
   const prevWidgetsMapRef = useRef<Map<string, Widget>>(new Map());
+  const prevInEditModeRef = useRef(inEditMode);
 
   const widgetsForRender = useMemo(() => {
+    const gridMacros =
+      editorWidgets.find((w) => w.id === GRID_ID)?.editableProperties.macros?.value ?? {};
     const prevPVState = prevPVStateRef.current;
-    const prevWidgetsMap = prevWidgetsMapRef.current;
+    // On mode switch, discard the cache so every widget is fully recomputed for the new mode.
+    // Without this, widgets with no PV would pass the stability check and skip macro substitution
+    // (or, going the other way, keep stale substituted text in edit mode).
+    const modeChanged = inEditMode !== prevInEditModeRef.current;
+    prevInEditModeRef.current = inEditMode;
+    const prevWidgetsMap = modeChanged ? new Map<string, Widget>() : prevWidgetsMapRef.current;
     const nextWidgetsMap = new Map<string, Widget>();
 
     const mergeWidget = (w: Widget): Widget => {
@@ -84,13 +93,24 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
         multiPvData = {};
         for (const pv of pvNames) {
           const d = pvState[pv];
-          if (d) multiPvData[pv] = d;
+          // Key by substituted name so it matches pvNames.value after substituteTextProps
+          if (d) multiPvData[substituteInStr(pv, gridMacros)] = d;
         }
       }
 
       const merged: Widget = { ...w, pvData, multiPvData, children: newChildren };
-      nextWidgetsMap.set(w.id, merged);
-      return merged;
+      const internalMacros = buildInternalMacros(
+        pvName ? substituteInStr(pvName, gridMacros) : undefined,
+        pvData,
+      );
+      const allMacros =
+        Object.keys(internalMacros).length > 0 ? { ...gridMacros, ...internalMacros } : gridMacros;
+      const mergedWithMacros: Widget = {
+        ...merged,
+        editableProperties: substituteTextProps(merged.editableProperties, allMacros),
+      };
+      nextWidgetsMap.set(w.id, mergedWithMacros);
+      return mergedWithMacros;
     };
 
     const result = editorWidgets.map(mergeWidget);
@@ -218,7 +238,7 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
         size={{ width, height }}
         position={{ x, y }}
         className={editModeClass}
-        style={isEmbedded ? { pointerEvents: "none" } : undefined}
+        style={isEmbedded && inEditMode ? { pointerEvents: "none" } : undefined}
         onDrag={() => setIsDragging(true)}
         onDragStop={(e, d) => handleDragStop(e, d, w)}
         onResizeStart={() => setIsDragging(true)}

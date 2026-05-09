@@ -21,5 +21,6 @@ export const NavigationButton: WidgetDefinition = {
     backgroundColor: { ...PROPERTY_SCHEMAS.backgroundColor, value: COLORS.buttonColor },
     displayPath: PROPERTY_SCHEMAS.displayPath,
     disabled: PROPERTY_SCHEMAS.disabled,
+    tooltip: { ...PROPERTY_SCHEMAS.tooltip, value: "" },
   },
 };

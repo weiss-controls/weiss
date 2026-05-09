@@ -19,6 +19,7 @@ export const GraphY: WidgetDefinition = {
   category: "Monitoring",
   defaultProperties: {
     ...COMMON_PROPS,
+    tooltip: { ...PROPERTY_SCHEMAS.tooltip, value: "" },
     width: { ...PROPERTY_SCHEMAS.width, value: 480 },
     height: { ...PROPERTY_SCHEMAS.height, value: 260 },
     ...PLOT_PROPS,

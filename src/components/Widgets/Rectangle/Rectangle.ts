@@ -17,6 +17,7 @@ export const Rectangle: WidgetDefinition = {
   category: "Basic",
   defaultProperties: {
     ...FILTERED_COMMON_PROPS,
+    tooltip: { ...PROPERTY_SCHEMAS.tooltip, value: "" },
     width: { ...PROPERTY_SCHEMAS.width, value: 80 },
     height: { ...PROPERTY_SCHEMAS.height, value: 80 },
     backgroundColor: { ...PROPERTY_SCHEMAS.backgroundColor, value: COLORS.lightGray },

@@ -16,6 +16,7 @@ export const Image: WidgetDefinition = {
   category: "Basic",
   defaultProperties: {
     ...FILTERED_COMMON_PROPS,
+    tooltip: { ...PROPERTY_SCHEMAS.tooltip, value: "" },
     width: { ...PROPERTY_SCHEMAS.width, value: 120 },
     height: { ...PROPERTY_SCHEMAS.height, value: 120 },
     backgroundColor: { ...PROPERTY_SCHEMAS.backgroundColor, value: "transparent" },

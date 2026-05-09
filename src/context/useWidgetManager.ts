@@ -17,6 +17,7 @@ import { GRID_ID, MAX_HISTORY } from "@src/constants/constants";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import { v4 as uuidv4 } from "uuid";
 import { notifyUser } from "@src/services/Notifications/Notification";
+import { substituteInStr } from "@src/utils/macros";
 import {
   createGroupWidget,
   createWidgetInstance,
@@ -783,13 +784,7 @@ export function useWidgetManager() {
    * If a macro key is not found in macros, the original macro text is kept.
    */
   const substituteMacros = useCallback(
-    (pv: string): string => {
-      return pv.replace(/\$\(([^)]+)\)/g, (macro) => {
-        if (!macros) return macro;
-        const replacement = macros[macro];
-        return replacement ?? macro;
-      });
-    },
+    (pv: string): string => (macros ? substituteInStr(pv, macros) : pv),
     [macros],
   );
 
