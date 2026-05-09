@@ -16,11 +16,11 @@ const BitIndicatorComp: React.FC<WidgetUpdate> = ({ data }) => {
   const onColor = p.onColor?.value;
   const offColor = p.offColor?.value;
   const value = pvData?.value ?? 0;
-  const bitOn = value === 1;
-  const validValue = value === 1 || value === 0;
+  const bitOn = typeof value === "number" && Boolean(value);
+  const canBeEnum = value === 1 || value === 0; // analog values may also be used, but won't have enum definitions
 
   const useStr = p.useStringVal?.value;
-  const enumOption = validValue && pvData?.enumChoices ? pvData?.enumChoices[value] : "";
+  const enumOption = canBeEnum && pvData?.enumChoices ? pvData?.enumChoices[value] : "";
   const pvText = useStr ? (enumOption ?? "") : ((value as string) ?? "");
 
   const labelFromPV = p.labelFromPV?.value;
