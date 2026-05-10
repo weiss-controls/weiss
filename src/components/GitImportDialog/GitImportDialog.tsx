@@ -19,6 +19,7 @@ import type { RepoCreateRequest } from "@src/services/APIClient/types.gen";
 import { registerRepo } from "@src/services/APIClient/sdk.gen";
 import { notifyUser } from "@src/services/Notifications/Notification";
 import { useUIContext } from "@src/context/useUIContext";
+import { COLORS } from "@src/constants/constants";
 
 function isHttpsGitUrl(url: string): boolean {
   const httpsPattern = /^https:\/\/[\w.-]+\/[\w.-]+\/[\w.-]+(\.git)?$/;
@@ -128,13 +129,18 @@ export default function GitImportDialog({ open, onClose }: GitImportDialogProps)
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={resetAndClose} disabled={loading}>
+        <Button
+          onClick={resetAndClose}
+          disabled={loading}
+          sx={{ "&:not(.Mui-disabled)": { color: COLORS.midDarkBlue } }}
+        >
           Cancel
         </Button>
         <Button
           variant="contained"
           onClick={() => void handleConfirm()}
           disabled={!alias.trim() || !gitUrlValid || loading}
+          sx={{ "&:not(.Mui-disabled)": { backgroundColor: COLORS.midDarkBlue } }}
         >
           Import
         </Button>
