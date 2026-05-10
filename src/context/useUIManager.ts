@@ -60,6 +60,7 @@ export default function useUIManager(
   editorWidgets: ReturnType<typeof useWidgetManager>["editorWidgets"],
   formatWdgToExport: ReturnType<typeof useWidgetManager>["formatWdgToExport"],
   fileLoadedTrig: ReturnType<typeof useWidgetManager>["fileLoadedTrig"],
+  fileImportedTrig: ReturnType<typeof useWidgetManager>["fileImportedTrig"],
   clearAllWidgets: ReturnType<typeof useWidgetManager>["clearAllWidgets"],
   loadWidgets: ReturnType<typeof useWidgetManager>["loadWidgets"],
 ) {
@@ -123,6 +124,12 @@ export default function useUIManager(
   useEffect(() => {
     hasFileChanged.current = true;
   }, [fileLoadedTrig]);
+
+  // On local file import, clear the guard so auto-save fires immediately
+  useEffect(() => {
+    if (fileImportedTrig === 0) return;
+    hasFileChanged.current = false;
+  }, [fileImportedTrig]);
 
   const updateMode = useCallback(
     (newMode: Mode) => {

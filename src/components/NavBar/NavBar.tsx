@@ -103,7 +103,7 @@ const StyledAppBar = styled(MuiAppBar, {
 }));
 
 export default function NavBar() {
-  const { downloadWidgets, loadWidgets } = useWidgetContext();
+  const { downloadWidgets, importWidgets } = useWidgetContext();
   const {
     inEditMode,
     updateMode,
@@ -154,7 +154,7 @@ export default function NavBar() {
 
       try {
         const text = await file.text();
-        loadWidgets(text);
+        importWidgets(text);
       } catch (err) {
         console.error("File import failed:", err);
         notifyUser(

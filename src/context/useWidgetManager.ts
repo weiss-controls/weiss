@@ -51,6 +51,7 @@ export function useWidgetManager() {
   const [isPlacementMode, setIsPlacementMode] = useState(false);
   const [selectedWidgetIDs, setSelectedWidgetIDs] = useState<string[]>([]);
   const [fileLoadedTrig, setFileLoadedTrig] = useState(0);
+  const [fileImportedTrig, setFileImportedTrig] = useState(0);
 
   const clipboard = useRef<Widget[]>([]);
   const copiedSelectionBounds = useRef({ x: 0, y: 0, width: 0, height: 0 });
@@ -511,6 +512,38 @@ export function useWidgetManager() {
   }, [selectedWidgets, batchWidgetUpdate]);
 
   /**
+   * Match width of all selected widgets to the first selected widget.
+   */
+  const matchWidth = useCallback(() => {
+    if (selectedWidgets.length < 2) return;
+    const refWidget = selectedWidgets.find((w) => w.id === selectedWidgetIDs[0]);
+    const refWidth = refWidget?.editableProperties.width?.value;
+    if (refWidth === undefined) return;
+    const updates: MultiWidgetPropertyUpdates = {};
+    selectedWidgets.forEach((w) => {
+      if (!w.editableProperties.width) return;
+      updates[w.id] = { width: refWidth };
+    });
+    batchWidgetUpdate(updates);
+  }, [selectedWidgets, selectedWidgetIDs, batchWidgetUpdate]);
+
+  /**
+   * Match height of all selected widgets to the first selected widget.
+   */
+  const matchHeight = useCallback(() => {
+    if (selectedWidgets.length < 2) return;
+    const refWidget = selectedWidgets.find((w) => w.id === selectedWidgetIDs[0]);
+    const refHeight = refWidget?.editableProperties.height?.value;
+    if (refHeight === undefined) return;
+    const updates: MultiWidgetPropertyUpdates = {};
+    selectedWidgets.forEach((w) => {
+      if (!w.editableProperties.height) return;
+      updates[w.id] = { height: refHeight };
+    });
+    batchWidgetUpdate(updates);
+  }, [selectedWidgets, selectedWidgetIDs, batchWidgetUpdate]);
+
+  /**
    * Move all selected widgets by dx, dy.
    */
   const moveSelected = useCallback(
@@ -775,6 +808,17 @@ export function useWidgetManager() {
   );
 
   /**
+   * Loads widgets from local file, also triggering backend auto-save.
+   */
+  const importWidgets = useCallback(
+    (widgetsData: string | ExportedWidget[]) => {
+      loadWidgets(widgetsData);
+      setFileImportedTrig((t) => t + 1);
+    },
+    [loadWidgets],
+  );
+
+  /**
    * Macros to be substituted on pv names.
    */
   const macros = getWidget(GRID_ID)?.editableProperties.macros?.value;
@@ -861,9 +905,13 @@ export function useWidgetManager() {
     alignVerticalCenter,
     distributeHorizontal,
     distributeVertical,
+    matchWidth,
+    matchHeight,
     moveSelected,
     downloadWidgets,
     loadWidgets,
+    importWidgets,
+    fileImportedTrig,
     PVMap,
     macros,
     allWidgetIDs,

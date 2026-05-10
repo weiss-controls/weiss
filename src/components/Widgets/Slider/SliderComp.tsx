@@ -34,6 +34,7 @@ const SliderComp: React.FC<WidgetUpdate> = ({ data }) => {
   return (
     <AlarmBorder alarmData={pvData?.alarm} enable={p.alarmBorder?.value}>
       <div
+        title={p.tooltip?.value ?? ""}
         style={{
           width: "100%",
           height: "100%",
