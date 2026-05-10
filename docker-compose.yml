@@ -70,6 +70,8 @@ volumes:
   storage:
 
 networks:
+  default:
+    driver: bridge
   weiss-public:
     name: weiss-public
     driver: bridge
