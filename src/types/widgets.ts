@@ -38,7 +38,28 @@ export interface PropertyLimits {
   min?: number;
   max?: number;
 }
+/** Comparison operators supported in rule conditions */
+export type RuleOperator = "==" | "!=" | ">" | "<" | ">=" | "<=";
 
+/** A single boolean condition comparing a PV value to a constant */
+export interface RuleCondition {
+  pvName: string;
+  operator: RuleOperator;
+  value: string; // always string; engine coerces to number when both sides are numeric
+}
+
+/**
+ * A rule that overrides widget properties at runtime when its conditions are met.
+ * Rules are evaluated in order; later rules win on same-property conflicts.
+ */
+export interface Rule {
+  id: string;
+  name: string;
+  pvNames: string[]; // PVs this rule subscribes to (for WS subscription)
+  conditionLogic?: "AND" | "OR";
+  conditions: RuleCondition[];
+  actions: Partial<Record<PropertyKey, PropertyValue>>;
+}
 /**
  * Represents a single widget property.
  * @template T Type of the property value
@@ -131,6 +152,7 @@ export interface Widget {
   id: string;
   widgetName: string;
   editableProperties: WidgetProperties;
+  rules?: Rule[];
   children?: Widget[];
   pvData?: PVData;
   multiPvData?: MultiPvData;
@@ -145,6 +167,7 @@ export interface ExportedWidget {
   children?: ExportedWidget[];
   widgetName: string;
   properties: Partial<Record<PropertyKey, PropertyValue>>;
+  rules?: Rule[];
 }
 
 /**

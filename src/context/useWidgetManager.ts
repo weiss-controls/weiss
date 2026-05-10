@@ -11,6 +11,7 @@ import type {
   GridPosition,
   ExportedWidget,
   DOMRectLike,
+  Rule,
 } from "@src/types/widgets";
 import { GridZone } from "@components/GridZone";
 import { GRID_ID, MAX_HISTORY } from "@src/constants/constants";
@@ -673,6 +674,14 @@ export function useWidgetManager() {
       properties: Object.fromEntries(
         Object.entries(widget.editableProperties).map(([key, def]) => [key, def.value]),
       ),
+      ...(widget.rules?.length
+        ? {
+            rules: widget.rules.map((r) => {
+              const { conditionLogic, ...rest } = r;
+              return r.conditions.length > 1 ? r : rest;
+            }),
+          }
+        : {}),
       children: exportChildren,
     };
   }, []);
@@ -780,6 +789,12 @@ export function useWidgetManager() {
               warnings.push(`Unknown property "${key}" on widget "${raw.widgetName}" — ignored`);
             }
           }
+
+          // Restore rules
+          if (raw.rules?.length) {
+            instance.rules = raw.rules;
+          }
+
           return instance;
         };
 
@@ -816,6 +831,18 @@ export function useWidgetManager() {
       setFileImportedTrig((t) => t + 1);
     },
     [loadWidgets],
+  );
+
+  /**
+   * Replace the rules list for a single widget.
+   * Participates in undo/redo automatically via updateEditorWidgetList.
+   */
+  const updateWidgetRules = useCallback(
+    (id: string, rules: Rule[]) => {
+      const newWidgets = editorWidgets.map((w) => (w.id === id ? { ...w, rules } : w));
+      updateEditorWidgetList(newWidgets);
+    },
+    [editorWidgets, updateEditorWidgetList],
   );
 
   /**
@@ -856,6 +883,15 @@ export function useWidgetManager() {
               map.set(pv, substituted);
             }
           });
+        }
+
+        for (const rule of w.rules ?? []) {
+          for (const pv of rule.pvNames) {
+            const substituted = substituteMacros(pv);
+            if (substituted) {
+              map.set(pv, substituted);
+            }
+          }
         }
 
         if (w.children && w.children.length > 0) {
@@ -912,6 +948,7 @@ export function useWidgetManager() {
     loadWidgets,
     importWidgets,
     fileImportedTrig,
+    updateWidgetRules,
     PVMap,
     macros,
     allWidgetIDs,

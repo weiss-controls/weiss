@@ -21,7 +21,7 @@ import PushPinOutlinedIcon from "@mui/icons-material/PushPinOutlined";
 import ModeEditIcon from "@mui/icons-material/ModeEdit";
 import FormatListBulletedIcon from "@mui/icons-material/FormatListBulleted";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
-import { FRONT_UI_ZIDX } from "@src/constants/constants";
+import { COLORS, FRONT_UI_ZIDX } from "@src/constants/constants";
 import PropertyNavigator from "./PropertiesTab/PropertiesTab";
 import ProjectsTab from "./ProjectsTab/ProjectsTab";
 import WidgetTree from "@components/WidgetTree";
@@ -247,6 +247,8 @@ const EditorSidebar: React.FC = () => {
               borderTop: (theme) => `1px solid ${theme.palette.divider}`,
               width: "100%",
               paddingBottom: 0.1,
+              "& .MuiTabs-indicator": { backgroundColor: COLORS.midDarkBlue },
+              "& .Mui-selected": { color: `${COLORS.midDarkBlue} !important` },
             }}
           >
             <Tab

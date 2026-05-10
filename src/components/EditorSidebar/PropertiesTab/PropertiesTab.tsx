@@ -8,10 +8,15 @@ import type {
   PropertyValue,
   WidgetProperty,
   MultiWidgetPropertyUpdates,
+  Rule,
 } from "@src/types/widgets";
 import { CATEGORY_DISPLAY_ORDER } from "@src/types/widgetProperties";
 import PropertyGroups from "./PropertyGroups";
 import { useWidgetContext } from "@src/context/useWidgetContext";
+import { Box, Button, Tooltip } from "@mui/material";
+import RuleIcon from "@mui/icons-material/Rule";
+import { RulesDialog } from "@components/RulesDialog";
+import { COLORS } from "@src/constants/constants";
 
 const getGroupedProperties = (properties: WidgetProperties) => {
   const groups: Record<string, Record<string, WidgetProperty>> = {};
@@ -50,9 +55,10 @@ const getGroupedProperties = (properties: WidgetProperties) => {
 };
 
 const PropertiesTab: React.FC = () => {
-  const { editingWidgets, batchWidgetUpdate } = useWidgetContext();
+  const { editingWidgets, batchWidgetUpdate, updateWidgetRules } = useWidgetContext();
 
   const singleWidget = editingWidgets.length === 1;
+  const [rulesDialogOpen, setRulesDialogOpen] = useState(false);
 
   const properties: WidgetProperties = useMemo(() => {
     if (editingWidgets.length === 0) return {};
@@ -93,13 +99,56 @@ const PropertiesTab: React.FC = () => {
     batchWidgetUpdate(updates);
   };
 
+  const handleSaveRules = (rules: Rule[]) => {
+    if (!singleWidget) return;
+    updateWidgetRules(editingWidgets[0].id, rules);
+  };
+
+  const widget = singleWidget ? editingWidgets[0] : null;
+  const ruleCount = widget?.rules?.length ?? 0;
+
   return (
-    <PropertyGroups
-      groupedProperties={groupedProperties}
-      collapsedGroups={collapsedGroups}
-      onToggleGroup={toggleGroup}
-      onChange={handlePropChange}
-    />
+    <>
+      <PropertyGroups
+        groupedProperties={groupedProperties}
+        collapsedGroups={collapsedGroups}
+        onToggleGroup={toggleGroup}
+        onChange={handlePropChange}
+      />
+
+      {singleWidget && widget && (
+        <Box sx={{ px: 2, py: 1 }}>
+          <Tooltip title="Edit widget rules">
+            <Button
+              size="small"
+              startIcon={<RuleIcon fontSize="small" />}
+              onClick={() => setRulesDialogOpen(true)}
+              fullWidth
+              variant="outlined"
+              sx={{
+                "&:not(.Mui-disabled)": {
+                  color: COLORS.midDarkBlue,
+                  borderColor: COLORS.midDarkBlue,
+                },
+              }}
+            >
+              Rules{ruleCount > 0 ? ` (${ruleCount})` : ""}
+            </Button>
+          </Tooltip>
+        </Box>
+      )}
+
+      {widget && (
+        <RulesDialog
+          open={rulesDialogOpen}
+          widgetId={widget.id}
+          widgetProperties={widget.editableProperties}
+          initialRules={widget.rules ?? []}
+          onSave={handleSaveRules}
+          onClose={() => setRulesDialogOpen(false)}
+        />
+      )}
+    </>
   );
 };
 

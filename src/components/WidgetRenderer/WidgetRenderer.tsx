@@ -12,6 +12,7 @@ import { useUIContext } from "@src/context/useUIContext";
 import { useWidgetContext } from "@src/context/useWidgetContext";
 import { useEpicsWSContext } from "@src/context/useEpicsWSContext";
 import { buildInternalMacros, substituteInStr, substituteTextProps } from "@src/utils/macros";
+import { evaluateRules } from "@src/utils/ruleEngine";
 
 const DRAG_END_DELAY = 80; //ms
 
@@ -64,10 +65,14 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
       // Process children first so we can check child stability for the parent decision.
       const newChildren = w.children?.map(mergeWidget);
 
-      // Check if we have PV updates for self and children
+      // Check if we have PV updates for self, rules, and children
+      const rulePVsStable =
+        !w.rules?.length ||
+        w.rules.every((r) => r.pvNames.every((pv) => pvState[pv] === prevPVState[pv]));
       const ownPVsStable =
         (!pvName || pvState[pvName] === prevPVState[pvName]) &&
-        (!pvNames?.length || pvNames.every((pv) => pvState[pv] === prevPVState[pv]));
+        (!pvNames?.length || pvNames.every((pv) => pvState[pv] === prevPVState[pv])) &&
+        rulePVsStable;
 
       const childrenStable =
         !newChildren || newChildren.every((c, i) => c === prevWidgetsMap.get(w.children![i].id));
@@ -109,8 +114,28 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
         ...merged,
         editableProperties: substituteTextProps(merged.editableProperties, allMacros),
       };
-      nextWidgetsMap.set(w.id, mergedWithMacros);
-      return mergedWithMacros;
+
+      // Apply rule overrides (runtime only; edit-mode returns early above)
+      // For rule PV name resolution we need pvState-compatible keys (original, unsubstituted
+      // names), so $(pvname) must map to the raw pvName value, not the substituted one that
+      // buildInternalMacros produces for text display purposes.
+      const ruleEvalMacros = pvName ? { ...allMacros, "$(pvname)": pvName } : allMacros;
+      const ruleOverrides = evaluateRules(w.rules ?? [], pvState, ruleEvalMacros);
+      const hasOverrides = Object.keys(ruleOverrides).length > 0;
+      const withRules: Widget = hasOverrides
+        ? {
+            ...mergedWithMacros,
+            editableProperties: Object.fromEntries(
+              Object.entries(mergedWithMacros.editableProperties).map(([key, prop]) => {
+                const override = ruleOverrides[key as keyof typeof ruleOverrides];
+                return override !== undefined ? [key, { ...prop, value: override }] : [key, prop];
+              }),
+            ) as typeof mergedWithMacros.editableProperties,
+          }
+        : mergedWithMacros;
+
+      nextWidgetsMap.set(w.id, withRules);
+      return withRules;
     };
 
     const result = editorWidgets.map(mergeWidget);
