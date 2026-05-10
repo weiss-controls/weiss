@@ -103,6 +103,7 @@ export const ProgressBarComp: React.FC<WidgetUpdate> = ({ data }) => {
   return (
     <AlarmBorder alarmData={pvData?.alarm} enable={p.alarmBorder?.value}>
       <Box
+        title={p.tooltip?.value ?? ""}
         sx={{
           width: "100%",
           height: "100%",
