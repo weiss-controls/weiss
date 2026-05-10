@@ -26,6 +26,8 @@ import ContentCopy from "@mui/icons-material/ContentCopy";
 import ContentPaste from "@mui/icons-material/ContentPaste";
 import KeyboardArrowDown from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUp from "@mui/icons-material/KeyboardArrowUp";
+import FormatLineSpacingIcon from "@mui/icons-material/FormatLineSpacing";
+import ExpandIcon from "@mui/icons-material/Expand";
 import { useUIContext } from "@src/context/useUIContext";
 import { useWidgetContext } from "@src/context/useWidgetContext";
 
@@ -49,6 +51,10 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ pos, mousePos, visible, onClo
     alignRight,
     alignVerticalCenter,
     alignHorizontalCenter,
+    distributeHorizontal,
+    distributeVertical,
+    matchWidth,
+    matchHeight,
     deleteWidget,
     groupSelected,
     ungroupSelected,
@@ -63,6 +69,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ pos, mousePos, visible, onClo
 
   const noneSelected = selectedWidgetIDs.length === 0;
   const lessThanTwoSelected = selectedWidgetIDs.length < 2;
+  const lessThanThreeSelected = selectedWidgetIDs.length < 3;
   const hasGroupSelected = selectedWidgets.some((w) => w.widgetName === "Group");
 
   const options = [
@@ -130,6 +137,30 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ pos, mousePos, visible, onClo
       label: "Align horiz. center",
       icon: <AlignHorizontalCenter fontSize="small" />,
       action: () => alignHorizontalCenter(),
+      disabled: lessThanTwoSelected,
+    },
+    {
+      label: "Distribute horizontally",
+      icon: <FormatLineSpacingIcon fontSize="small" sx={{ transform: "rotate(90deg)" }} />,
+      action: () => distributeHorizontal(),
+      disabled: lessThanThreeSelected,
+    },
+    {
+      label: "Distribute vertically",
+      icon: <FormatLineSpacingIcon fontSize="small" />,
+      action: () => distributeVertical(),
+      disabled: lessThanThreeSelected,
+    },
+    {
+      label: "Match width",
+      icon: <ExpandIcon fontSize="small" sx={{ transform: "rotate(90deg)" }} />,
+      action: () => matchWidth(),
+      disabled: lessThanTwoSelected,
+    },
+    {
+      label: "Match height",
+      icon: <ExpandIcon fontSize="small" />,
+      action: () => matchHeight(),
       disabled: lessThanTwoSelected,
     },
     { divider: true },

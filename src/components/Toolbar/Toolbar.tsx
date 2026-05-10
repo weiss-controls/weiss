@@ -21,6 +21,8 @@ import CustomGroupIcon from "@components/CustomIcons/GroupIcon";
 import CustomUngroupIcon from "@components/CustomIcons/UngroupIcon";
 import KeyboardArrowDown from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUp from "@mui/icons-material/KeyboardArrowUp";
+import FormatLineSpacingIcon from "@mui/icons-material/FormatLineSpacing";
+import ExpandIcon from "@mui/icons-material/Expand";
 import { Rnd } from "react-rnd";
 import { grey } from "@mui/material/colors";
 import "./Toolbar.css";
@@ -44,6 +46,10 @@ const ToolbarButtons: React.FC = () => {
     alignLeft,
     alignRight,
     alignVerticalCenter,
+    distributeHorizontal,
+    distributeVertical,
+    matchWidth,
+    matchHeight,
     deleteWidget,
     groupSelected,
     ungroupSelected,
@@ -55,6 +61,7 @@ const ToolbarButtons: React.FC = () => {
 
   const noneSelected = selectedWidgetIDs.length === 0;
   const lessThanTwoSelected = selectedWidgetIDs.length < 2;
+  const lessThanThreeSelected = selectedWidgetIDs.length < 3;
   const hasGroupSelected = selectedWidgets.some((w) => w.widgetName === "Group");
   const nothingToRedo = redoStack.length === 0;
   const nothingToUndo = undoStack.length === 0;
@@ -69,7 +76,7 @@ const ToolbarButtons: React.FC = () => {
   return (
     <Rnd
       className="toolBar"
-      default={{ x: 80, y: 15, width: 490, height: 40 }}
+      default={{ x: 80, y: 15, width: 620, height: 40 }}
       bounds="window"
       enableResizing={false}
       dragHandleClassName="dragHandle"
@@ -219,6 +226,58 @@ const ToolbarButtons: React.FC = () => {
               sx={iconSx}
             >
               <AlignHorizontalCenter fontSize="small" />
+            </IconButton>
+          </span>
+        </Tooltip>
+
+        <Tooltip title="Distribute horizontally">
+          <span>
+            <IconButton
+              size="small"
+              onClick={distributeHorizontal}
+              disabled={lessThanThreeSelected}
+              sx={iconSx}
+            >
+              <FormatLineSpacingIcon fontSize="small" sx={{ transform: "rotate(90deg)" }} />
+            </IconButton>
+          </span>
+        </Tooltip>
+
+        <Tooltip title="Distribute vertically">
+          <span>
+            <IconButton
+              size="small"
+              onClick={distributeVertical}
+              disabled={lessThanThreeSelected}
+              sx={iconSx}
+            >
+              <FormatLineSpacingIcon fontSize="small" />
+            </IconButton>
+          </span>
+        </Tooltip>
+
+        <Tooltip title="Match width">
+          <span>
+            <IconButton
+              size="small"
+              onClick={matchWidth}
+              disabled={lessThanTwoSelected}
+              sx={iconSx}
+            >
+              <ExpandIcon fontSize="small" sx={{ transform: "rotate(90deg)" }} />
+            </IconButton>
+          </span>
+        </Tooltip>
+
+        <Tooltip title="Match height">
+          <span>
+            <IconButton
+              size="small"
+              onClick={matchHeight}
+              disabled={lessThanTwoSelected}
+              sx={iconSx}
+            >
+              <ExpandIcon fontSize="small" />
             </IconButton>
           </span>
         </Tooltip>
