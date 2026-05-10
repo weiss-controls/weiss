@@ -51,6 +51,7 @@ export function useWidgetManager() {
   const [isPlacementMode, setIsPlacementMode] = useState(false);
   const [selectedWidgetIDs, setSelectedWidgetIDs] = useState<string[]>([]);
   const [fileLoadedTrig, setFileLoadedTrig] = useState(0);
+  const [fileImportedTrig, setFileImportedTrig] = useState(0);
 
   const clipboard = useRef<Widget[]>([]);
   const copiedSelectionBounds = useRef({ x: 0, y: 0, width: 0, height: 0 });
@@ -775,6 +776,17 @@ export function useWidgetManager() {
   );
 
   /**
+   * Loads widgets from local file, also triggering backend auto-save.
+   */
+  const importWidgets = useCallback(
+    (widgetsData: string | ExportedWidget[]) => {
+      loadWidgets(widgetsData);
+      setFileImportedTrig((t) => t + 1);
+    },
+    [loadWidgets],
+  );
+
+  /**
    * Macros to be substituted on pv names.
    */
   const macros = getWidget(GRID_ID)?.editableProperties.macros?.value;
@@ -864,6 +876,8 @@ export function useWidgetManager() {
     moveSelected,
     downloadWidgets,
     loadWidgets,
+    importWidgets,
+    fileImportedTrig,
     PVMap,
     macros,
     allWidgetIDs,
