@@ -1,0 +1,39 @@
+name: Podman Build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: linux-amd64
+            runner: ubuntu-latest
+          - os: linux-aarch64
+            runner: ubuntu-24.04-arm
+
+    env:
+      PODMAN_COMPOSE_PROVIDER: podman-compose
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Install podman-compose
+        run: pip install podman-compose
+
+      - name: Prepare .env
+        run: cp .env.example .env
+
+      - name: Podman Build (Default)
+        run: podman compose build
+
+      - name: Podman Build (Dev)
+        run: podman compose -f docker-compose-dev.yml build
