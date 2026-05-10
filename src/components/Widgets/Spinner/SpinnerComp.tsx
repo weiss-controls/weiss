@@ -78,6 +78,7 @@ const SpinnerComp: React.FC<WidgetUpdate> = ({ data }) => {
           value={isFocused ? editValue : pvNumValue}
           disabled={!!p.disabled?.value}
           onValueChange={(v) => setEditValue(v)}
+          format={{ useGrouping: false }}
           min={min}
           max={max}
           onValueCommitted={(value, { reason }) => {
