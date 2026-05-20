@@ -32,6 +32,9 @@ import MicrosoftIcon from "@mui/icons-material/Microsoft";
 import { Roles, type OAuthProvider } from "@src/services/AuthService/AuthService.ts";
 import { OAuthProviders } from "@src/services/AuthService/AuthService.ts";
 import GitImportDialog from "@components/GitImportDialog/GitImportDialog.tsx";
+import SnapshotDialog from "@components/SnapshotDialog/SnapshotDialog.tsx";
+import CameraAltIcon from "@mui/icons-material/CameraAlt";
+import { useEpicsWSContext } from "@src/context/useEpicsWSContext.tsx";
 import { notifyUser } from "@src/services/Notifications/Notification.ts";
 import { useWidgetContext } from "@src/context/useWidgetContext.tsx";
 import { useUIContext } from "@src/context/useUIContext.tsx";
@@ -117,6 +120,8 @@ export default function NavBar() {
     isDeveloper,
     selectedFile,
   } = useUIContext();
+  const { takeSnapshot, restoreFromSnapshot } = useEpicsWSContext();
+  const [snapshotOpen, setSnapshotOpen] = useState(false);
   const drawerWidth = WIDGET_SELECTOR_WIDTH;
   const [importMenuAnchor, setImportMenuAnchor] = useState<null | HTMLElement>(null);
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
@@ -280,6 +285,15 @@ export default function NavBar() {
                     </MenuItem>
                   )}
                 </Menu>
+				<Tooltip title="PV Snapshots">
+                  <Button
+                    onClick={() => setSnapshotOpen(true)}
+                    startIcon={<CameraAltIcon />}
+                    sx={{ color: "white", textTransform: "none" }}
+                  >
+                    Snapshots
+                  </Button>
+                </Tooltip>
                 <HelpOverlay />
                 <Tooltip title="View source on GitHub">
                   <IconButton
@@ -367,6 +381,12 @@ export default function NavBar() {
             )}
           </Box>
           <GitImportDialog open={gitImportOpen} onClose={() => setGitImportOpen(false)} />
+		  <SnapshotDialog
+            open={snapshotOpen}
+            onClose={() => setSnapshotOpen(false)}
+            onTakeSnapshot={takeSnapshot}
+            onRestore={restoreFromSnapshot}
+          />
         </Toolbar>
       </StyledAppBar>
     </Box>

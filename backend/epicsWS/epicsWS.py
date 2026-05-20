@@ -177,6 +177,57 @@ async def message_handler(ws: ServerConnection):
                     client = get_client(protocol)
                     client.write_to_pv(pv_name, value)
 
+            elif msg_type == "snapshot":
+                # Capture current values of all subscribed PVs
+                snapshot_data = {}
+                for pv_name in ws_subscriptions.get(ws, set()):
+                    protocol, clean_name = parse_protocol(pv_name)
+                    client = get_client(protocol)
+                    if hasattr(client, '_latest_value'):
+                        raw = client._latest_value.get(pv_name) or client._latest_value.get(clean_name)
+                        if raw is not None:
+                            val = raw.get("value")
+                            # Convert numpy types to Python native
+                            if hasattr(val, 'item'):
+                                val = val.item()
+                            snapshot_data[pv_name] = {
+                                "value": val,
+                                "alarm": raw.get("severity", 0),
+                                "timestamp": raw.get("timestamp", 0),
+                            }
+                            # Add metadata if available
+                            meta = _pv_metadata.get(pv_name) or _pv_metadata.get(clean_name)
+                            if meta:
+                                if "display" in meta:
+                                    snapshot_data[pv_name]["display"] = meta["display"]
+
+                await ws.send(json.dumps({
+                    "type": "snapshot",
+                    "pvs": snapshot_data,
+                    "count": len(snapshot_data),
+                }))
+
+            elif msg_type == "restore":
+                # Write saved PV values back to IOC
+                pvs_to_restore = msg.get("pvs", {})
+                results = []
+                for pv_name, pv_data in pvs_to_restore.items():
+                    try:
+                        protocol, clean_name = parse_protocol(pv_name)
+                        client = get_client(protocol)
+                        value = pv_data if not isinstance(pv_data, dict) else pv_data.get("value")
+                        client.write_to_pv(clean_name, value)
+                        results.append({"pv": pv_name, "success": True})
+                    except Exception as e:
+                        results.append({"pv": pv_name, "success": False, "error": str(e)})
+
+                await ws.send(json.dumps({
+                    "type": "restore_result",
+                    "results": results,
+                    "total": len(results),
+                    "succeeded": sum(1 for r in results if r["success"]),
+                }))
+
             else:
                 await ws.send(
                     json.dumps({"type": "error", "message": "Unknown message type"})
