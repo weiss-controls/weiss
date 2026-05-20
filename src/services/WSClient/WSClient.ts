@@ -220,7 +220,7 @@ export class WSClient {
     this.socket.send(JSON.stringify({ type: "write", pv, value }));
   }
 
-/**
+  /**
    * Requests a snapshot of all currently subscribed PV values.
    * @returns A promise that resolves with the snapshot data.
    */
@@ -232,7 +232,7 @@ export class WSClient {
       }
 
       const handler = (event: MessageEvent) => {
-        const msg = JSON.parse(event.data as string);
+        const msg = JSON.parse(event.data as string) as Record<string, unknown>;
         if (msg.type === "snapshot") {
           this.socket.removeEventListener("message", handler);
           resolve(msg);
@@ -263,7 +263,7 @@ export class WSClient {
       }
 
       const handler = (event: MessageEvent) => {
-        const msg = JSON.parse(event.data as string);
+        const msg = JSON.parse(event.data as string) as Record<string, unknown>;
         if (msg.type === "restore_result") {
           this.socket.removeEventListener("message", handler);
           resolve(msg);

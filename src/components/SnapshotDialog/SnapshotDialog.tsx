@@ -47,7 +47,9 @@ const STORAGE_KEY = "weiss-snapshots";
 function loadSnapshots(): SnapshotEntry[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as SnapshotEntry[]) : [];
   } catch {
     return [];
   }
@@ -66,7 +68,10 @@ export default function SnapshotDialog({
   const [snapshots, setSnapshots] = useState<SnapshotEntry[]>(loadSnapshots);
   const [snapshotName, setSnapshotName] = useState("");
   const [tab, setTab] = useState(0);
-  const [status, setStatus] = useState<{ message: string; severity: "success" | "error" | "info" } | null>(null);
+  const [status, setStatus] = useState<{
+    message: string;
+    severity: "success" | "error" | "info";
+  } | null>(null);
   const [compareIdx, setCompareIdx] = useState<[number, number] | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -81,8 +86,11 @@ export default function SnapshotDialog({
     try {
       const result = await onTakeSnapshot();
       if (result && "pvs" in result) {
-        const pvs = result.pvs as Record<string, { value: PVValue; alarm?: number; timestamp?: number }>;
-        const count = (result.count as number) || Object.keys(pvs).length;
+        const pvs = result.pvs as Record<
+          string,
+          { value: PVValue; alarm?: number; timestamp?: number }
+        >;
+        const count = typeof result.count === "number" ? result.count : Object.keys(pvs).length;
         const entry: SnapshotEntry = {
           name: snapshotName.trim(),
           timestamp: new Date().toISOString(),
@@ -95,56 +103,72 @@ export default function SnapshotDialog({
         setSnapshotName("");
         setStatus({ message: `Saved "${entry.name}" with ${count} PVs`, severity: "success" });
       } else {
-        setStatus({ message: "Snapshot failed — no data returned. Are PVs subscribed in Runtime mode?", severity: "error" });
+        setStatus({
+          message: "Snapshot failed — no data returned. Are PVs subscribed in Runtime mode?",
+          severity: "error",
+        });
       }
     } catch (e) {
-      setStatus({ message: `Snapshot error: ${e}`, severity: "error" });
+      setStatus({ message: `Snapshot error: ${String(e)}`, severity: "error" });
     }
     setLoading(false);
   }, [snapshotName, snapshots, onTakeSnapshot]);
 
-  const handleRestore = useCallback(async (idx: number) => {
-    const snap = snapshots[idx];
-    if (!snap) return;
-    setLoading(true);
-    setStatus({ message: `Restoring ${snap.count} PVs from "${snap.name}"...`, severity: "info" });
+  const handleRestore = useCallback(
+    async (idx: number) => {
+      const snap = snapshots[idx];
+      if (!snap) return;
+      setLoading(true);
+      setStatus({
+        message: `Restoring ${snap.count} PVs from "${snap.name}"...`,
+        severity: "info",
+      });
 
-    try {
-      const pvData: Record<string, { value: PVValue }> = {};
-      for (const [pv, data] of Object.entries(snap.pvs)) {
-        pvData[pv] = { value: data.value };
+      try {
+        const pvData: Record<string, { value: PVValue }> = {};
+        for (const [pv, data] of Object.entries(snap.pvs)) {
+          pvData[pv] = { value: data.value };
+        }
+        const result = await onRestore(pvData);
+        if (result && "succeeded" in result) {
+          setStatus({
+            message: `Restored ${String(result.succeeded)}/${String(result.total)} PVs from "${snap.name}"`,
+            severity:
+              (result.succeeded as number) === (result.total as number) ? "success" : "error",
+          });
+        } else {
+          setStatus({ message: "Restore failed", severity: "error" });
+        }
+      } catch (e) {
+        setStatus({ message: `Restore error: ${String(e)}`, severity: "error" });
       }
-      const result = await onRestore(pvData);
-      if (result && "succeeded" in result) {
-        setStatus({
-          message: `Restored ${result.succeeded}/${result.total} PVs from "${snap.name}"`,
-          severity: (result.succeeded as number) === (result.total as number) ? "success" : "error",
-        });
-      } else {
-        setStatus({ message: "Restore failed", severity: "error" });
+      setLoading(false);
+    },
+    [snapshots, onRestore],
+  );
+
+  const handleDelete = useCallback(
+    (idx: number) => {
+      const updated = snapshots.filter((_, i) => i !== idx);
+      setSnapshots(updated);
+      saveSnapshots(updated);
+      setStatus({ message: "Snapshot deleted", severity: "info" });
+    },
+    [snapshots],
+  );
+
+  const handleCompare = useCallback(
+    (idx: number) => {
+      if (compareIdx === null) {
+        setCompareIdx([idx, -1]);
+        setStatus({ message: "Select a second snapshot to compare", severity: "info" });
+      } else if (compareIdx[1] === -1) {
+        setCompareIdx([compareIdx[0], idx]);
+        setTab(2);
       }
-    } catch (e) {
-      setStatus({ message: `Restore error: ${e}`, severity: "error" });
-    }
-    setLoading(false);
-  }, [snapshots, onRestore]);
-
-  const handleDelete = useCallback((idx: number) => {
-    const updated = snapshots.filter((_, i) => i !== idx);
-    setSnapshots(updated);
-    saveSnapshots(updated);
-    setStatus({ message: "Snapshot deleted", severity: "info" });
-  }, [snapshots]);
-
-  const handleCompare = useCallback((idx: number) => {
-    if (compareIdx === null) {
-      setCompareIdx([idx, -1]);
-      setStatus({ message: "Select a second snapshot to compare", severity: "info" });
-    } else if (compareIdx[1] === -1) {
-      setCompareIdx([compareIdx[0], idx]);
-      setTab(2);
-    }
-  }, [compareIdx]);
+    },
+    [compareIdx],
+  );
 
   const cancelCompare = useCallback(() => {
     setCompareIdx(null);
@@ -152,24 +176,29 @@ export default function SnapshotDialog({
   }, []);
 
   // Compare two snapshots
-  const compareData = compareIdx && compareIdx[1] !== -1 ? (() => {
-    const a = snapshots[compareIdx[0]];
-    const b = snapshots[compareIdx[1]];
-    if (!a || !b) return [];
-    const allPVs = new Set([...Object.keys(a.pvs), ...Object.keys(b.pvs)]);
-    const diffs: { pv: string; valA: string; valB: string; changed: boolean }[] = [];
-    for (const pv of allPVs) {
-      const valA = a.pvs[pv]?.value ?? "N/A";
-      const valB = b.pvs[pv]?.value ?? "N/A";
-      diffs.push({
-        pv,
-        valA: String(valA),
-        valB: String(valB),
-        changed: String(valA) !== String(valB),
-      });
-    }
-    return diffs.sort((a, b) => (a.changed === b.changed ? a.pv.localeCompare(b.pv) : a.changed ? -1 : 1));
-  })() : [];
+  const compareData =
+    compareIdx && compareIdx[1] !== -1
+      ? (() => {
+          const a = snapshots[compareIdx[0]];
+          const b = snapshots[compareIdx[1]];
+          if (!a || !b) return [];
+          const allPVs = new Set([...Object.keys(a.pvs), ...Object.keys(b.pvs)]);
+          const diffs: { pv: string; valA: string; valB: string; changed: boolean }[] = [];
+          for (const pv of allPVs) {
+            const valA = a.pvs[pv]?.value ?? "N/A";
+            const valB = b.pvs[pv]?.value ?? "N/A";
+            diffs.push({
+              pv,
+              valA: String(valA),
+              valB: String(valB),
+              changed: String(valA) !== String(valB),
+            });
+          }
+          return diffs.sort((a, b) =>
+            a.changed === b.changed ? a.pv.localeCompare(b.pv) : a.changed ? -1 : 1,
+          );
+        })()
+      : [];
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -183,7 +212,14 @@ export default function SnapshotDialog({
           </Alert>
         )}
 
-        <Tabs value={tab} onChange={(_, v) => { setTab(v); cancelCompare(); }} sx={{ mb: 2 }}>
+        <Tabs
+          value={tab}
+          onChange={(_, v: number) => {
+            setTab(v);
+            cancelCompare();
+          }}
+          sx={{ mb: 2 }}
+        >
           <Tab label="Save" />
           <Tab label={`Saved (${snapshots.length})`} />
           {compareIdx && compareIdx[1] !== -1 && <Tab label="Compare" />}
@@ -193,15 +229,17 @@ export default function SnapshotDialog({
         {tab === 0 && (
           <Box>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Capture current values of all subscribed PVs. Make sure you are in
-              Runtime mode with PVs connected.
+              Capture current values of all subscribed PVs. Make sure you are in Runtime mode with
+              PVs connected.
             </Typography>
             <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
               <TextField
                 label="Snapshot name"
                 value={snapshotName}
                 onChange={(e) => setSnapshotName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") void handleSave(); }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void handleSave();
+                }}
                 size="small"
                 fullWidth
                 placeholder="e.g., baseline_config, before_tuning"
@@ -281,8 +319,12 @@ export default function SnapshotDialog({
                 <thead>
                   <tr style={{ borderBottom: "1px solid #333" }}>
                     <th style={{ textAlign: "left", padding: "6px 8px" }}>PV</th>
-                    <th style={{ textAlign: "right", padding: "6px 8px" }}>{snapshots[compareIdx[0]]?.name}</th>
-                    <th style={{ textAlign: "right", padding: "6px 8px" }}>{snapshots[compareIdx[1]]?.name}</th>
+                    <th style={{ textAlign: "right", padding: "6px 8px" }}>
+                      {snapshots[compareIdx[0]]?.name}
+                    </th>
+                    <th style={{ textAlign: "right", padding: "6px 8px" }}>
+                      {snapshots[compareIdx[1]]?.name}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -297,7 +339,9 @@ export default function SnapshotDialog({
                       <td style={{ padding: "4px 8px", fontFamily: "monospace", fontSize: 12 }}>
                         {row.pv}
                       </td>
-                      <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>
+                      <td
+                        style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}
+                      >
                         {row.valA}
                       </td>
                       <td

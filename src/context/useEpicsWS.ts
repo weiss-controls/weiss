@@ -158,7 +158,7 @@ export default function useEpicsWS(PVMap: ReturnType<typeof useWidgetManager>["P
   const writePVValue = useCallback((pv: string, newValue: PVValue) => {
     ws.current?.write(pv, newValue);
   }, []);
-/**
+  /**
    * Takes a snapshot of all currently subscribed PV values.
    */
   const takeSnapshot = useCallback(async (): Promise<Record<string, unknown> | null> => {
@@ -175,18 +175,21 @@ export default function useEpicsWS(PVMap: ReturnType<typeof useWidgetManager>["P
   /**
    * Restores PV values from a saved snapshot.
    */
-  const restoreFromSnapshot = useCallback(async (pvs: Record<string, { value: PVValue }>): Promise<Record<string, unknown> | null> => {
-    if (!ws.current) return null;
-    try {
-      const result = await ws.current.restoreSnapshot(pvs);
-      return result;
-    } catch (e) {
-      console.error("Restore failed:", e);
-      return null;
-    }
-  }, []);
-  
-return {
+  const restoreFromSnapshot = useCallback(
+    async (pvs: Record<string, { value: PVValue }>): Promise<Record<string, unknown> | null> => {
+      if (!ws.current) return null;
+      try {
+        const result = await ws.current.restoreSnapshot(pvs);
+        return result;
+      } catch (e) {
+        console.error("Restore failed:", e);
+        return null;
+      }
+    },
+    [],
+  );
+
+  return {
     ws,
     wsConnected,
     startNewSession,

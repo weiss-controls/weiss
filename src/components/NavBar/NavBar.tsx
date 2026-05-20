@@ -285,7 +285,7 @@ export default function NavBar() {
                     </MenuItem>
                   )}
                 </Menu>
-				<Tooltip title="PV Snapshots">
+                <Tooltip title="PV Snapshots">
                   <Button
                     onClick={() => setSnapshotOpen(true)}
                     startIcon={<CameraAltIcon />}
@@ -381,7 +381,7 @@ export default function NavBar() {
             )}
           </Box>
           <GitImportDialog open={gitImportOpen} onClose={() => setGitImportOpen(false)} />
-		  <SnapshotDialog
+          <SnapshotDialog
             open={snapshotOpen}
             onClose={() => setSnapshotOpen(false)}
             onTakeSnapshot={takeSnapshot}
