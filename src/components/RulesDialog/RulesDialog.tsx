@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -49,15 +49,24 @@ interface RulesDialogProps {
   initialRules: Rule[];
   onSave: (rules: Rule[]) => void;
   onClose: () => void;
+  /** Current GridZone macro key -> value map, used as base keys for globalMacros actions. */
+  globalMacros?: Record<string, string>;
 }
 
 const OPERATORS: RuleOperator[] = ["==", "!=", ">", "<", ">=", "<="];
 
 // Properties that can be targeted by a rule action (exclude layout/meta, keep style/text)
-const ACTIONABLE_SEL_TYPES = new Set(["text", "number", "boolean", "colorSel", "select"]);
+const ACTIONABLE_SEL_TYPES = new Set([
+  "text",
+  "number",
+  "boolean",
+  "colorSel",
+  "select",
+  "strRecord",
+]);
 
 function makeEmptyCondition(): RuleCondition {
-  return { pvName: "", operator: "==", value: "" };
+  return { pvName: "$(pvname)", operator: "==", value: "" };
 }
 
 function makeEmptyRule(): Rule {
@@ -133,14 +142,68 @@ const ColorSwatch: React.FC<ColorSwatchProps> = ({ value, onChange }) => {
   );
 };
 
+// Editor for strRecord action delta — only lets the user fill values for keys that exist in baseValue
+interface MacroOverrideEditorProps {
+  baseValue: Record<string, string>;
+  delta: Record<string, string>;
+  onChange: (delta: Record<string, string>) => void;
+}
+
+const MacroOverrideEditor: React.FC<MacroOverrideEditorProps> = ({
+  baseValue,
+  delta,
+  onChange,
+}) => {
+  const keys = Object.keys(baseValue);
+  if (keys.length === 0) {
+    return (
+      <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+        No macro keys defined.
+      </Typography>
+    );
+  }
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, flex: 1 }}>
+      {keys.map((key) => (
+        <Box key={key} sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+          <Typography variant="caption" sx={{ width: 80, flexShrink: 0 }}>
+            {key}
+          </Typography>
+          <TextField
+            size="small"
+            placeholder="(no override)"
+            value={delta[key] ?? ""}
+            onChange={(e) => {
+              const next = { ...delta };
+              if (e.target.value === "") {
+                delete next[key];
+              } else {
+                next[key] = e.target.value;
+              }
+              onChange(next);
+            }}
+            sx={{ flex: 1, minWidth: 80 }}
+          />
+        </Box>
+      ))}
+    </Box>
+  );
+};
+
 // Type-aware value input for an action
 interface ActionValueInputProps {
   propKey: PropertyKey;
   value: PropertyValue;
+  baseValue?: Record<string, string>;
   onChange: (v: PropertyValue) => void;
 }
 
-const ActionValueInput: React.FC<ActionValueInputProps> = ({ propKey, value, onChange }) => {
+const ActionValueInput: React.FC<ActionValueInputProps> = ({
+  propKey,
+  value,
+  baseValue,
+  onChange,
+}) => {
   const schema = PROPERTY_SCHEMAS[propKey];
   if (!schema) return null;
 
@@ -171,6 +234,16 @@ const ActionValueInput: React.FC<ActionValueInputProps> = ({ propKey, value, onC
         onChange={(e) => onChange(Number(e.target.value))}
         sx={{ width: 100 }}
         slotProps={{ htmlInput: { step: "any" } }}
+      />
+    );
+  }
+
+  if (selType === "strRecord" && baseValue !== undefined) {
+    return (
+      <MacroOverrideEditor
+        baseValue={baseValue}
+        delta={(value as Record<string, string>) ?? {}}
+        onChange={(delta) => onChange(delta)}
       />
     );
   }
@@ -210,15 +283,19 @@ const RulesDialog: React.FC<RulesDialogProps> = ({
   initialRules,
   onSave,
   onClose,
+  globalMacros,
 }) => {
   const [rules, setRules] = useState<Rule[]>(() => initialRules);
   const [selectedIdx, setSelectedIdx] = useState<number>(0);
 
-  // Reset local state whenever the dialog opens
-  const handleEntered = () => {
-    setRules(initialRules);
-    setSelectedIdx(0);
-  };
+  // Sync from props whenever the target widget changes
+  // Do this only while the dialog is closed (avoids resetting mid-edit)
+  useEffect(() => {
+    if (!open) {
+      setRules(initialRules);
+      setSelectedIdx(0);
+    }
+  }, [initialRules, open]);
 
   const selected = rules[selectedIdx] ?? null;
 
@@ -275,9 +352,13 @@ const RulesDialog: React.FC<RulesDialogProps> = ({
   };
 
   // Action mutations
-  const actionableKeys = Object.entries(widgetProperties)
-    .filter(([key, prop]) => prop && ACTIONABLE_SEL_TYPES.has(prop.selType) && key !== "rules")
-    .map(([key]) => key as PropertyKey);
+  const actionableKeys: PropertyKey[] = [
+    ...Object.entries(widgetProperties)
+      .filter(([key, prop]) => prop && ACTIONABLE_SEL_TYPES.has(prop.selType) && key !== "rules")
+      .map(([key]) => key as PropertyKey),
+    // globalMacros is always available on every widget as a rule action
+    ...(!widgetProperties.globalMacros ? (["globalMacros"] as PropertyKey[]) : []),
+  ];
 
   const addAction = () => {
     if (!selected || actionableKeys.length === 0) return;
@@ -316,15 +397,7 @@ const RulesDialog: React.FC<RulesDialogProps> = ({
   };
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      fullWidth
-      maxWidth="md"
-      slotProps={{
-        transition: { onEntered: handleEntered },
-      }}
-    >
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
       <DialogTitle>Widget Rules</DialogTitle>
 
       <DialogContent dividers sx={{ p: 0 }}>
@@ -582,6 +655,13 @@ const RulesDialog: React.FC<RulesDialogProps> = ({
                             <ActionValueInput
                               propKey={propKey}
                               value={value}
+                              baseValue={
+                                propKey === "globalMacros"
+                                  ? (globalMacros ?? {})
+                                  : propKey === "macros"
+                                    ? (widgetProperties.macros?.value ?? {})
+                                    : undefined
+                              }
                               onChange={(v) => changeActionValue(propKey, v)}
                             />
                           ) : (

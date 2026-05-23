@@ -63,6 +63,8 @@ export default function useUIManager(
   fileImportedTrig: ReturnType<typeof useWidgetManager>["fileImportedTrig"],
   clearAllWidgets: ReturnType<typeof useWidgetManager>["clearAllWidgets"],
   loadWidgets: ReturnType<typeof useWidgetManager>["loadWidgets"],
+  snapshotEditModeMacros: ReturnType<typeof useWidgetManager>["snapshotEditModeMacros"],
+  restoreEditModeMacros: ReturnType<typeof useWidgetManager>["restoreEditModeMacros"],
 ) {
   const hasFileChanged = useRef(true);
   const restoredRef = useRef(false);
@@ -135,15 +137,17 @@ export default function useUIManager(
     (newMode: Mode) => {
       const isEdit = newMode === EDIT_MODE;
       if (isEdit) {
+        restoreEditModeMacros();
         ws.stopSession();
       } else {
+        snapshotEditModeMacros();
         setSelectedWidgetIDs([]);
         setWdgPickerOpen(false);
         ws.startNewSession();
       }
       setMode(newMode);
     },
-    [setSelectedWidgetIDs, ws],
+    [setSelectedWidgetIDs, ws, snapshotEditModeMacros, restoreEditModeMacros],
   );
 
   useEffect(() => {

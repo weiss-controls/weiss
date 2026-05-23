@@ -20,6 +20,8 @@ export const ContextProvider: React.FC<{ children: React.ReactNode }> = ({ child
     widgetManager.fileImportedTrig,
     widgetManager.clearAllWidgets,
     widgetManager.loadWidgets,
+    widgetManager.snapshotEditModeMacros,
+    widgetManager.restoreEditModeMacros,
   );
 
   return (

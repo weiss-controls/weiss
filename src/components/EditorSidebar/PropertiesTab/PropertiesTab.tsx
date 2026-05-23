@@ -17,6 +17,7 @@ import { Box, Button, Tooltip } from "@mui/material";
 import RuleIcon from "@mui/icons-material/Rule";
 import { RulesDialog } from "@components/RulesDialog";
 import { COLORS } from "@src/constants/constants";
+import { GRID_ID } from "@src/constants/constants";
 
 const getGroupedProperties = (properties: WidgetProperties) => {
   const groups: Record<string, Record<string, WidgetProperty>> = {};
@@ -55,7 +56,8 @@ const getGroupedProperties = (properties: WidgetProperties) => {
 };
 
 const PropertiesTab: React.FC = () => {
-  const { editingWidgets, batchWidgetUpdate, updateWidgetRules } = useWidgetContext();
+  const { editingWidgets, batchWidgetUpdate, batchUpdateWidgetRules, editorWidgets } =
+    useWidgetContext();
 
   const singleWidget = editingWidgets.length === 1;
   const [rulesDialogOpen, setRulesDialogOpen] = useState(false);
@@ -100,12 +102,20 @@ const PropertiesTab: React.FC = () => {
   };
 
   const handleSaveRules = (rules: Rule[]) => {
-    if (!singleWidget) return;
-    updateWidgetRules(editingWidgets[0].id, rules);
+    batchUpdateWidgetRules(
+      editingWidgets.map((w) => w.id),
+      rules,
+    );
   };
 
-  const widget = singleWidget ? editingWidgets[0] : null;
-  const ruleCount = widget?.rules?.length ?? 0;
+  const primaryWidget = editingWidgets[0]; // always defined (falls back to GridZone)
+  const ruleCount = primaryWidget?.rules?.length ?? 0;
+  const multiWidgetEdit = editingWidgets.length > 1;
+
+  const gridMacros = useMemo(
+    () => editorWidgets.find((w) => w.id === GRID_ID)?.editableProperties.macros?.value ?? {},
+    [editorWidgets],
+  );
 
   return (
     <>
@@ -116,38 +126,40 @@ const PropertiesTab: React.FC = () => {
         onChange={handlePropChange}
       />
 
-      {singleWidget && widget && (
-        <Box sx={{ px: 2, py: 1 }}>
-          <Tooltip title="Edit widget rules">
-            <Button
-              size="small"
-              startIcon={<RuleIcon fontSize="small" />}
-              onClick={() => setRulesDialogOpen(true)}
-              fullWidth
-              variant="outlined"
-              sx={{
-                "&:not(.Mui-disabled)": {
-                  color: COLORS.midDarkBlue,
-                  borderColor: COLORS.midDarkBlue,
-                },
-              }}
-            >
-              Rules{ruleCount > 0 ? ` (${ruleCount})` : ""}
-            </Button>
-          </Tooltip>
-        </Box>
-      )}
+      <Box sx={{ px: 2, py: 1 }}>
+        <Tooltip title="Edit widget rules">
+          <Button
+            size="small"
+            startIcon={<RuleIcon fontSize="small" />}
+            onClick={() => setRulesDialogOpen(true)}
+            fullWidth
+            variant="outlined"
+            sx={{
+              textTransform: "none",
+              "&:not(.Mui-disabled)": {
+                color: COLORS.midDarkBlue,
+                borderColor: COLORS.midDarkBlue,
+              },
+            }}
+          >
+            {multiWidgetEdit
+              ? `Rules (${editingWidgets.length} widgets)`
+              : ruleCount > 0
+                ? `Rules (${ruleCount})`
+                : "Rules"}
+          </Button>
+        </Tooltip>
+      </Box>
 
-      {widget && (
-        <RulesDialog
-          open={rulesDialogOpen}
-          widgetId={widget.id}
-          widgetProperties={widget.editableProperties}
-          initialRules={widget.rules ?? []}
-          onSave={handleSaveRules}
-          onClose={() => setRulesDialogOpen(false)}
-        />
-      )}
+      <RulesDialog
+        open={rulesDialogOpen}
+        widgetId={primaryWidget.id}
+        widgetProperties={properties}
+        initialRules={primaryWidget.rules ?? []}
+        onSave={handleSaveRules}
+        onClose={() => setRulesDialogOpen(false)}
+        globalMacros={gridMacros}
+      />
     </>
   );
 };

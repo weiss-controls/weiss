@@ -96,7 +96,18 @@ export function evaluateRules(
 
   for (const rule of rules) {
     if (evaluateRule(rule, pvState, macros)) {
-      Object.assign(overrides, rule.actions);
+      for (const [key, value] of Object.entries(rule.actions)) {
+        if (typeof value === "string") {
+          overrides[key as PropertyKey] = substituteMacroStr(value, macros);
+        } else if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+          // Record<string,string> delta (e.g. globalMacros partial override)
+          overrides[key as PropertyKey] = Object.fromEntries(
+            Object.entries(value).map(([k, v]) => [k, substituteMacroStr(v, macros)]),
+          ) as PropertyValue;
+        } else {
+          overrides[key as PropertyKey] = value;
+        }
+      }
     }
   }
 

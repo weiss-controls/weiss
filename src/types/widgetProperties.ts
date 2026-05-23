@@ -22,6 +22,7 @@ function defineProp<T extends PropertyValue>(prop: WidgetProperty<T>): WidgetPro
 export const PROPERTY_SCHEMAS = {
   disabled:        defineProp({ selType: "boolean", label: "Disabled", value: false as boolean, category: "General" }),
   macros:          defineProp({ selType: "strRecord", label: "Macro", value: {} as Record<string, string>, category: "EPICS" }),
+  globalMacros:    defineProp({ selType: "strRecord", label: "Global Macros", value: {} as Record<string, string>, category: "EPICS" }),
   rules:           defineProp({ selType: "none", label: "Rules", value: {} as Record<string, string>, category: "EPICS" }),
   // Layout
   alias:           defineProp({ selType: "text", label: "Widget alias", value: "" as string, category: "Layout" }),
