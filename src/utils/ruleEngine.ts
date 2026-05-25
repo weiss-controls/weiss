@@ -37,7 +37,19 @@ function evaluateCondition(
   const condNum = Number(condStr);
   const numeric = isFinite(pvNum) && isFinite(condNum);
 
-  const lhs = numeric ? pvNum : pvStr;
+  // For enum PVs: when the condition value is not numeric, resolve the PV integer
+  // index to its label so that conditions like `== "Option 2"` work correctly.
+  // When the condition IS numeric (e.g. `== 2`), index comparison runs as usual.
+  const enumLabel: string | undefined =
+    !numeric &&
+    Number.isInteger(pvNum) &&
+    pvNum >= 0 &&
+    pvData.enumChoices != null &&
+    pvNum < pvData.enumChoices.length
+      ? pvData.enumChoices[pvNum]
+      : undefined;
+
+  const lhs = numeric ? pvNum : (enumLabel ?? pvStr);
   const rhs = numeric ? condNum : condStr;
 
   const op: RuleOperator = condition.operator;
