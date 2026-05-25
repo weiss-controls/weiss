@@ -184,33 +184,30 @@ async def message_handler(ws: ServerConnection):
                     protocol, clean_name = parse_protocol(pv_name)
                     client = get_client(protocol)
                     if hasattr(client, "_latest_value"):
-                        raw = client._latest_value.get(
-                            pv_name
-                        ) or client._latest_value.get(clean_name)
+                        raw = client._latest_value.get(clean_name)
                         if raw is not None:
-                            val = raw.get("value")
-                            # Convert numpy types to Python native
-                            if hasattr(val, "item"):
-                                val = val.item()
+                            if protocol == PVA_PROVIDER_KEY:
+                                parsed = PVParser.pva_update(raw, clean_name)
+                            else:
+                                parsed = PVParser.ca_update(raw, clean_name)
                             snapshot_data[pv_name] = {
-                                "value": val,
-                                "alarm": raw.get("severity", 0),
-                                "timestamp": raw.get("timestamp", 0),
+                                "value": parsed["value"],
+                                "alarm": parsed["alarm"],
+                                "timeStamp": parsed["timeStamp"],
+                                "b64arr": parsed["b64arr"],
+                                "b64dtype": parsed["b64dtype"],
                             }
-                            # Add metadata if available
-                            meta = _pv_metadata.get(pv_name) or _pv_metadata.get(
-                                clean_name
-                            )
-                            if meta:
-                                if "display" in meta:
-                                    snapshot_data[pv_name]["display"] = meta["display"]
 
                 await ws.send(
                     json.dumps(
                         {
-                            "type": "snapshot",
-                            "pvs": snapshot_data,
-                            "count": len(snapshot_data),
+                            k: v
+                            for k, v in {
+                                "type": "snapshot",
+                                "pvs": snapshot_data,
+                                "count": len(snapshot_data),
+                            }.items()
+                            if v is not None
                         }
                     )
                 )

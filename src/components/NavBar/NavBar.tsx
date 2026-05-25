@@ -285,15 +285,17 @@ export default function NavBar() {
                     </MenuItem>
                   )}
                 </Menu>
-                <Tooltip title="PV Snapshots">
-                  <Button
-                    onClick={() => setSnapshotOpen(true)}
-                    startIcon={<CameraAltIcon />}
-                    sx={{ color: "white", textTransform: "none" }}
-                  >
-                    Snapshots
-                  </Button>
-                </Tooltip>
+                {!inEditMode && (
+                  <Tooltip title="PV Snapshots">
+                    <Button
+                      onClick={() => setSnapshotOpen(true)}
+                      startIcon={<CameraAltIcon />}
+                      sx={{ color: "white", textTransform: "none" }}
+                    >
+                      Snapshots
+                    </Button>
+                  </Tooltip>
+                )}
                 <HelpOverlay />
                 <Tooltip title="View source on GitHub">
                   <IconButton
@@ -378,6 +380,14 @@ export default function NavBar() {
                   ]}
                 </Menu>
               </>
+            )}
+            {!inEditMode && (
+              <SnapshotDialog
+                open={snapshotOpen}
+                onClose={() => setSnapshotOpen(false)}
+                onTakeSnapshot={takeSnapshot}
+                onRestore={restoreFromSnapshot}
+              />
             )}
           </Box>
           <GitImportDialog open={gitImportOpen} onClose={() => setGitImportOpen(false)} />

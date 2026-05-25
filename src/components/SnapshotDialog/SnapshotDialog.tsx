@@ -27,6 +27,7 @@ import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
 import SaveIcon from "@mui/icons-material/Save";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import type { PVValue } from "@src/types/epicsWS";
+import { COLORS } from "@src/constants/constants";
 
 interface SnapshotEntry {
   name: string;
@@ -104,7 +105,7 @@ export default function SnapshotDialog({
         setStatus({ message: `Saved "${entry.name}" with ${count} PVs`, severity: "success" });
       } else {
         setStatus({
-          message: "Snapshot failed — no data returned. Are PVs subscribed in Runtime mode?",
+          message: "Snapshot failed — no data returned. Please, check PV names and try again.",
           severity: "error",
         });
       }
@@ -317,7 +318,7 @@ export default function SnapshotDialog({
             <Box sx={{ maxHeight: 400, overflow: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
-                  <tr style={{ borderBottom: "1px solid #333" }}>
+                  <tr style={{ borderBottom: "1px solid ${COLORS.gridLineColor}" }}>
                     <th style={{ textAlign: "left", padding: "6px 8px" }}>PV</th>
                     <th style={{ textAlign: "right", padding: "6px 8px" }}>
                       {snapshots[compareIdx[0]]?.name}
@@ -332,7 +333,7 @@ export default function SnapshotDialog({
                     <tr
                       key={row.pv}
                       style={{
-                        borderBottom: "1px solid #222",
+                        borderBottom: `1px solid ${COLORS.gridLineColor}`,
                         backgroundColor: row.changed ? "rgba(239,68,68,0.08)" : undefined,
                       }}
                     >
