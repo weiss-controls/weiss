@@ -18,3 +18,4 @@ export { Image } from "./Image";
 export { EmbeddedDisplay } from "./EmbeddedDisplay";
 export { NavigationButton } from "./NavigationButton";
 export { Spinner } from "./Spinner";
+export { GraphXY } from "./GraphXY";
