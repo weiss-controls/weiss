@@ -11,15 +11,14 @@ import type { PVData } from "@src/types/epicsWS";
 import { useUIContext } from "@src/context/useUIContext";
 import { useWidgetContext } from "@src/context/useWidgetContext";
 import { useEpicsWSContext } from "@src/context/useEpicsWSContext";
-import { buildInternalMacros, substituteInStr, substituteTextProps } from "@src/utils/macros";
-import { evaluateRules } from "@src/utils/ruleEngine";
-import { flattenWidgetTree } from "@src/context/widgetHelpers";
+import {
+  hasSelectedDescendant,
+  computeGlobalMacrosOverrides,
+  computeWidgetsForRender,
+  type MergeWidgetContext,
+} from "./widgetRenderUtils";
 
 const DRAG_END_DELAY = 80; //ms
-
-const hasSelectedDescendant = (w: Widget, selectedIDs: string[]): boolean =>
-  !!w.children?.some((c) => selectedIDs.includes(c.id) || hasSelectedDescendant(c, selectedIDs));
-
 interface RendererProps {
   scale: number;
   ensureGridCoordinate: (coord: number) => number;
@@ -53,26 +52,7 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
 
   const globalMacrosOverrides = useMemo(() => {
     if (inEditMode) return {};
-    let merged: Record<string, string> = {};
-    for (const w of flattenWidgetTree(editorWidgets)) {
-      if (!w.rules?.length) continue;
-      const wPvName = w.editableProperties.pvName?.value;
-      const wPvData = wPvName ? pvState[wPvName] : undefined;
-      const wInternalMacros = buildInternalMacros(
-        wPvName ? substituteInStr(wPvName, baseGridMacros) : undefined,
-        wPvData,
-      );
-      const wMacros =
-        Object.keys(wInternalMacros).length > 0
-          ? { ...baseGridMacros, ...wInternalMacros }
-          : baseGridMacros;
-      const wRuleEvalMacros = wPvName ? { ...wMacros, "$(pvname)": wPvName } : wMacros;
-      const wOverrides = evaluateRules(w.rules, pvState, wRuleEvalMacros);
-      if (wOverrides.globalMacros && typeof wOverrides.globalMacros === "object") {
-        merged = { ...merged, ...(wOverrides.globalMacros as Record<string, string>) };
-      }
-    }
-    return merged;
+    return computeGlobalMacrosOverrides(editorWidgets, pvState, baseGridMacros);
   }, [editorWidgets, pvState, inEditMode, baseGridMacros]);
 
   // Write back globalMacros overrides to context (for PVMap subscriptions).
@@ -91,144 +71,20 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
       Object.keys(globalMacrosOverrides).length > 0
         ? { ...baseGridMacros, ...globalMacrosOverrides }
         : baseGridMacros;
-    const prevPVState = prevPVStateRef.current;
+
     // On mode switch, discard the cache so every widget is fully recomputed for the new mode.
-    // Without this, widgets with no PV would pass the stability check and skip macro substitution
-    // (or, going the other way, keep stale substituted text in edit mode).
     const modeChanged = inEditMode !== prevInEditModeRef.current;
     prevInEditModeRef.current = inEditMode;
     const prevWidgetsMap = modeChanged ? new Map<string, Widget>() : prevWidgetsMapRef.current;
-    const nextWidgetsMap = new Map<string, Widget>();
 
-    const mergeWidget = (w: Widget): Widget => {
-      if (inEditMode) {
-        nextWidgetsMap.set(w.id, w);
-        return w;
-      }
-
-      const pvName = w.editableProperties.pvName?.value;
-      const pvNames = w.editableProperties.pvNames?.value;
-
-      // Process children first so we can check child stability for the parent decision.
-      const newChildren = w.children?.map(mergeWidget);
-
-      // Check if we have PV updates for self, rules, and children
-      const rulePVsStable =
-        !w.rules?.length ||
-        w.rules.every(
-          (r) =>
-            r.pvNames.every((pv) => pvState[pv] === prevPVState[pv]) &&
-            (typeof r.actions?.pvName !== "string" ||
-              !r.actions.pvName ||
-              pvState[r.actions.pvName] === prevPVState[r.actions.pvName]),
-        );
-      const ownPVsStable =
-        (!pvName || pvState[pvName] === prevPVState[pvName]) &&
-        (!pvNames?.length || pvNames.every((pv) => pvState[pv] === prevPVState[pv])) &&
-        rulePVsStable;
-
-      const childrenStable =
-        !newChildren || newChildren.every((c, i) => c === prevWidgetsMap.get(w.children![i].id));
-
-      // Check if properties changed
-      const prevWidget = prevWidgetsMap.get(w.id);
-      const structureStable = prevWidget?.editableProperties === w.editableProperties;
-
-      if (ownPVsStable && childrenStable && structureStable) {
-        // Nothing changed
-        nextWidgetsMap.set(w.id, prevWidget);
-        return prevWidget;
-      }
-
-      // Something changed
-      // evaluate rules with original pvName data so $(pvvalue) works in action values
-      const origPvData = pvName ? pvState[pvName] : undefined;
-      const origInternalMacros = buildInternalMacros(
-        pvName ? substituteInStr(pvName, gridMacros) : undefined,
-        origPvData,
-      );
-      const origAllMacros =
-        Object.keys(origInternalMacros).length > 0
-          ? { ...gridMacros, ...origInternalMacros }
-          : gridMacros;
-      const ruleEvalMacros = pvName ? { ...origAllMacros, "$(pvname)": pvName } : origAllMacros;
-      const ruleOverrides = evaluateRules(w.rules ?? [], pvState, ruleEvalMacros);
-
-      // derive effective pvName from rule override (if any)
-      const effectivePvName =
-        typeof ruleOverrides.pvName === "string" && ruleOverrides.pvName
-          ? ruleOverrides.pvName
-          : pvName;
-
-      // look up pvData using the effective pvName
-      let pvData: PVData | undefined;
-      let multiPvData: Record<string, PVData> | undefined;
-
-      if (effectivePvName) {
-        pvData = pvState[effectivePvName];
-      }
-      if (pvNames?.length) {
-        multiPvData = {};
-        for (const pv of pvNames) {
-          const d = pvState[pv];
-          if (d) multiPvData[substituteInStr(pv, gridMacros)] = d;
-        }
-      }
-
-      // rebuild internal macros from effective pvName + effective pvData
-      const merged: Widget = { ...w, pvData, multiPvData, children: newChildren };
-      const internalMacros = buildInternalMacros(
-        effectivePvName ? substituteInStr(effectivePvName, gridMacros) : undefined,
-        pvData,
-      );
-      const allMacros =
-        Object.keys(internalMacros).length > 0 ? { ...gridMacros, ...internalMacros } : gridMacros;
-      const mergedWithMacros: Widget = {
-        ...merged,
-        editableProperties: substituteTextProps(merged.editableProperties, allMacros),
-      };
-
-      //  apply all ruleOverrides to editableProperties.
-      // - globalMacros: consumed by the pre-loop, not applied per-widget.
-      // - macros: merge delta into existing value rather than replacing wholesale.
-      // - all others: plain value replacement.
-      const perWidgetOverrides = Object.fromEntries(
-        Object.entries(ruleOverrides).filter(([k]) => k !== "globalMacros"),
-      );
-      const hasOverrides = Object.keys(perWidgetOverrides).length > 0;
-      const withRules: Widget = hasOverrides
-        ? {
-            ...mergedWithMacros,
-            editableProperties: Object.fromEntries(
-              Object.entries(mergedWithMacros.editableProperties).map(([key, prop]) => {
-                const override = perWidgetOverrides[key as keyof typeof perWidgetOverrides];
-                if (override === undefined) return [key, prop];
-                if (key === "macros" && typeof override === "object" && !Array.isArray(override)) {
-                  // Merge delta into existing macro map
-                  return [
-                    key,
-                    {
-                      ...prop,
-                      value: {
-                        ...(prop.value as Record<string, string>),
-                        ...override,
-                      },
-                    },
-                  ];
-                }
-                return [key, { ...prop, value: override }];
-              }),
-            ) as typeof mergedWithMacros.editableProperties,
-          }
-        : mergedWithMacros;
-
-      nextWidgetsMap.set(w.id, withRules);
-      return withRules;
+    const ctx: MergeWidgetContext = {
+      pvState,
+      prevPVState: prevPVStateRef.current,
+      prevWidgetsMap,
+      gridMacros,
+      inEditMode,
     };
-
-    const result = editorWidgets.map(mergeWidget);
-
-    // Update refs for the next call
+    const { result, nextWidgetsMap } = computeWidgetsForRender(editorWidgets, ctx);
     prevPVStateRef.current = pvState;
     prevWidgetsMapRef.current = nextWidgetsMap;
 

@@ -14,13 +14,11 @@ import {
   TextField,
   Select,
   MenuItem,
-  Checkbox,
   ToggleButton,
   ToggleButtonGroup,
   Divider,
   Stack,
   Tooltip,
-  Popover,
   List,
   ListItemButton,
   ListItemText,
@@ -29,8 +27,6 @@ import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
-import { Sketch } from "@uiw/react-color";
-import { v4 as uuidv4 } from "uuid";
 import type {
   Rule,
   RuleCondition,
@@ -41,6 +37,14 @@ import type {
 } from "@src/types/widgets";
 import { PROPERTY_SCHEMAS } from "@src/types/widgetProperties";
 import { COLORS } from "@src/constants/constants";
+import {
+  OPERATORS,
+  ACTIONABLE_SEL_TYPES,
+  makeEmptyCondition,
+  makeEmptyRule,
+  derivePVNames,
+} from "./ruleDialogUtils";
+import ActionValueInput from "./ActionValueInput";
 
 interface RulesDialogProps {
   open: boolean;
@@ -53,230 +57,6 @@ interface RulesDialogProps {
   globalMacros?: Record<string, string>;
 }
 
-const OPERATORS: RuleOperator[] = ["==", "!=", ">", "<", ">=", "<="];
-
-// Properties that can be targeted by a rule action (exclude layout/meta, keep style/text)
-const ACTIONABLE_SEL_TYPES = new Set([
-  "text",
-  "number",
-  "boolean",
-  "colorSel",
-  "select",
-  "strRecord",
-]);
-
-function makeEmptyCondition(): RuleCondition {
-  return { pvName: "$(pvname)", operator: "==", value: "" };
-}
-
-function makeEmptyRule(): Rule {
-  return {
-    id: uuidv4(),
-    name: "New rule",
-    pvNames: [],
-    conditionLogic: "AND",
-    conditions: [makeEmptyCondition()],
-    actions: {},
-  };
-}
-
-/** Derive the ordered list of PVs referenced by all conditions of a rule */
-function derivePVNames(conditions: RuleCondition[]): string[] {
-  const seen = new Set<string>();
-  const result: string[] = [];
-  for (const c of conditions) {
-    if (c.pvName && !seen.has(c.pvName)) {
-      seen.add(c.pvName);
-      result.push(c.pvName);
-    }
-  }
-  return result;
-}
-
-// Inline color picker
-interface ColorSwatchProps {
-  value: string;
-  onChange: (color: string) => void;
-}
-
-const ColorSwatch: React.FC<ColorSwatchProps> = ({ value, onChange }) => {
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
-  const [local, setLocal] = useState(value);
-
-  const handleClose = () => {
-    setAnchor(null);
-    if (local !== value) onChange(local);
-  };
-
-  return (
-    <>
-      <Box
-        onClick={(e) => setAnchor(e.currentTarget)}
-        sx={{
-          width: 28,
-          height: 28,
-          border: `1px solid ${COLORS.lightGray}`,
-          borderRadius: "4px",
-          backgroundColor: local,
-          cursor: "pointer",
-          flexShrink: 0,
-        }}
-      />
-      <Popover
-        open={Boolean(anchor)}
-        anchorEl={anchor}
-        onClose={handleClose}
-        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-      >
-        <Sketch
-          color={local}
-          presetColors={Object.values(COLORS)}
-          onChange={(c) => {
-            const { r, g, b, a } = c.rgba;
-            const s = `rgba(${r}, ${g}, ${b}, ${a})`;
-            setLocal(s);
-          }}
-        />
-      </Popover>
-    </>
-  );
-};
-
-// Editor for strRecord action delta — only lets the user fill values for keys that exist in baseValue
-interface MacroOverrideEditorProps {
-  baseValue: Record<string, string>;
-  delta: Record<string, string>;
-  onChange: (delta: Record<string, string>) => void;
-}
-
-const MacroOverrideEditor: React.FC<MacroOverrideEditorProps> = ({
-  baseValue,
-  delta,
-  onChange,
-}) => {
-  const keys = Object.keys(baseValue);
-  if (keys.length === 0) {
-    return (
-      <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-        No macro keys defined.
-      </Typography>
-    );
-  }
-  return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, flex: 1 }}>
-      {keys.map((key) => (
-        <Box key={key} sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-          <Typography variant="caption" sx={{ width: 80, flexShrink: 0 }}>
-            {key}
-          </Typography>
-          <TextField
-            size="small"
-            placeholder="(no override)"
-            value={delta[key] ?? ""}
-            onChange={(e) => {
-              const next = { ...delta };
-              if (e.target.value === "") {
-                delete next[key];
-              } else {
-                next[key] = e.target.value;
-              }
-              onChange(next);
-            }}
-            sx={{ flex: 1, minWidth: 80 }}
-          />
-        </Box>
-      ))}
-    </Box>
-  );
-};
-
-// Type-aware value input for an action
-interface ActionValueInputProps {
-  propKey: PropertyKey;
-  value: PropertyValue;
-  baseValue?: Record<string, string>;
-  onChange: (v: PropertyValue) => void;
-}
-
-const ActionValueInput: React.FC<ActionValueInputProps> = ({
-  propKey,
-  value,
-  baseValue,
-  onChange,
-}) => {
-  const schema = PROPERTY_SCHEMAS[propKey];
-  if (!schema) return null;
-
-  const selType = schema.selType;
-
-  if (selType === "colorSel") {
-    return (
-      <ColorSwatch value={(value as string) || (schema.value as string)} onChange={onChange} />
-    );
-  }
-
-  if (selType === "boolean") {
-    return (
-      <Checkbox
-        size="small"
-        checked={Boolean(value)}
-        onChange={(e) => onChange(e.target.checked)}
-      />
-    );
-  }
-
-  if (selType === "number") {
-    return (
-      <TextField
-        size="small"
-        type="number"
-        value={value as number}
-        onChange={(e) => onChange(Number(e.target.value))}
-        sx={{ width: 100 }}
-        slotProps={{ htmlInput: { step: "any" } }}
-      />
-    );
-  }
-
-  if (selType === "strRecord" && baseValue !== undefined) {
-    return (
-      <MacroOverrideEditor
-        baseValue={baseValue}
-        delta={(value as Record<string, string>) ?? {}}
-        onChange={(delta) => onChange(delta)}
-      />
-    );
-  }
-
-  if (selType === "select" && schema.options) {
-    return (
-      <Select
-        size="small"
-        value={value as string}
-        onChange={(e) => onChange(e.target.value)}
-        sx={{ minWidth: 120 }}
-      >
-        {schema.options.map((opt) => (
-          <MenuItem key={opt} value={opt}>
-            {opt}
-          </MenuItem>
-        ))}
-      </Select>
-    );
-  }
-
-  // text / fallback
-  return (
-    <TextField
-      size="small"
-      value={value as string}
-      onChange={(e) => onChange(e.target.value)}
-      sx={{ flex: 1, minWidth: 80 }}
-    />
-  );
-};
-
-//  Main dialog
 const RulesDialog: React.FC<RulesDialogProps> = ({
   open,
   widgetProperties,
