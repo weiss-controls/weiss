@@ -60,6 +60,18 @@ export interface Rule {
   conditions: RuleCondition[];
   actions: Partial<Record<PropertyKey, PropertyValue>>;
 }
+
+/**
+ * Serialised representation of a Rule stored in `.opi.json`.
+ * Runtime-only fields (`id`, `pvNames`) are omitted — they are reconstructed on load.
+ * `conditionLogic` is omitted when "AND" (the default).
+ */
+export interface ExportedRule {
+  name: string;
+  conditionLogic?: "OR";
+  conditions: RuleCondition[];
+  actions: Partial<Record<PropertyKey, PropertyValue>>;
+}
 /**
  * Represents a single widget property.
  * @template T Type of the property value
@@ -167,7 +179,7 @@ export interface ExportedWidget {
   children?: ExportedWidget[];
   widgetName: string;
   properties: Partial<Record<PropertyKey, PropertyValue>>;
-  rules?: Rule[];
+  rules?: ExportedRule[];
 }
 
 /**

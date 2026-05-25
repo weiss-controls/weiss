@@ -10,6 +10,7 @@ import type {
   MultiWidgetPropertyUpdates,
   GridPosition,
   ExportedWidget,
+  ExportedRule,
   DOMRectLike,
   Rule,
 } from "@src/types/widgets";
@@ -19,6 +20,7 @@ import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import { v4 as uuidv4 } from "uuid";
 import { notifyUser } from "@src/services/Notifications/Notification";
 import { substituteInStr } from "@src/utils/macros";
+import { derivePVNames } from "@components/RulesDialog/ruleDialogUtils";
 import {
   createGroupWidget,
   createWidgetInstance,
@@ -676,10 +678,10 @@ export function useWidgetManager() {
       ),
       ...(widget.rules?.length
         ? {
-            rules: widget.rules.map((r) => {
-              const { conditionLogic, ...rest } = r;
-              return r.conditions.length > 1 ? r : rest;
-            }),
+            rules: widget.rules.map(
+              ({ id: _id, pvNames: _pv, conditionLogic, ...rest }): ExportedRule =>
+                conditionLogic === "OR" ? { conditionLogic, ...rest } : rest,
+            ),
           }
         : {}),
       children: exportChildren,
@@ -790,9 +792,15 @@ export function useWidgetManager() {
             }
           }
 
-          // Restore rules
+          // Restore rules: reconstruct runtime-only fields stripped from the export
           if (raw.rules?.length) {
-            instance.rules = raw.rules;
+            instance.rules = raw.rules.map(
+              (r): Rule => ({
+                ...r,
+                id: uuidv4(),
+                pvNames: derivePVNames(r.conditions),
+              }),
+            );
           }
 
           return instance;
