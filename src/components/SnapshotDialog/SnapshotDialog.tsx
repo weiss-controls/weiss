@@ -349,7 +349,7 @@ export default function SnapshotDialog({
                           padding: "4px 8px",
                           textAlign: "right",
                           fontFamily: "monospace",
-                          color: row.changed ? "#ef4444" : undefined,
+                          color: row.changed ? COLORS.major : undefined,
                           fontWeight: row.changed ? 600 : undefined,
                         }}
                       >
