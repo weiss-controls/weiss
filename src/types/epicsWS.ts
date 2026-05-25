@@ -2,8 +2,15 @@
 // Copyright (C) 2026 André Favoto
 
 /** Type of a WebSocket message, indicating the operation or event */
-export type WSMessageType = "update" | "subscribe" | "unsubscribe" | "write";
-
+//export type WSMessageType = "update" | "subscribe" | "unsubscribe" | "write";
+export type WSMessageType =
+  | "update"
+  | "subscribe"
+  | "unsubscribe"
+  | "write"
+  | "snapshot"
+  | "restore"
+  | "restore_result";
 /** Possible PV values: scalar or array of numbers or strings */
 export type PVValue = number | number[] | string | string[];
 

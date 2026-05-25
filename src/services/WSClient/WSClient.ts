@@ -221,6 +221,66 @@ export class WSClient {
   }
 
   /**
+   * Requests a snapshot of all currently subscribed PV values.
+   * @returns A promise that resolves with the snapshot data.
+   */
+  requestSnapshot(): Promise<Record<string, unknown>> {
+    return new Promise((resolve, reject) => {
+      if (!this.connected) {
+        reject(new Error("Not connected"));
+        return;
+      }
+
+      const handler = (event: MessageEvent) => {
+        const msg = JSON.parse(event.data as string) as Record<string, unknown>;
+        if (msg.type === "snapshot") {
+          this.socket.removeEventListener("message", handler);
+          resolve(msg);
+        }
+      };
+      this.socket.addEventListener("message", handler);
+
+      // Timeout after 5 seconds
+      setTimeout(() => {
+        this.socket.removeEventListener("message", handler);
+        reject(new Error("Snapshot timeout"));
+      }, 5000);
+
+      this.socket.send(JSON.stringify({ type: "snapshot" }));
+    });
+  }
+
+  /**
+   * Restores PV values from a saved snapshot.
+   * @param pvs Record of PV names to their saved values.
+   * @returns A promise that resolves with the restore results.
+   */
+  restoreSnapshot(pvs: Record<string, { value: PVValue }>): Promise<Record<string, unknown>> {
+    return new Promise((resolve, reject) => {
+      if (!this.connected) {
+        reject(new Error("Not connected"));
+        return;
+      }
+
+      const handler = (event: MessageEvent) => {
+        const msg = JSON.parse(event.data as string) as Record<string, unknown>;
+        if (msg.type === "restore_result") {
+          this.socket.removeEventListener("message", handler);
+          resolve(msg);
+        }
+      };
+      this.socket.addEventListener("message", handler);
+
+      setTimeout(() => {
+        this.socket.removeEventListener("message", handler);
+        reject(new Error("Restore timeout"));
+      }, 10000);
+
+      this.socket.send(JSON.stringify({ type: "restore", pvs }));
+    });
+  }
+
+  /**
    * Closes the WebSocket connection.
    */
   close(): void {
