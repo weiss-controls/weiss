@@ -230,8 +230,7 @@ export default function SnapshotDialog({
         {tab === 0 && (
           <Box>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Capture current values of all subscribed PVs. Make sure you are in Runtime mode with
-              PVs connected.
+              Capture current values of all subscribed PVs.
             </Typography>
             <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
               <TextField
@@ -318,7 +317,7 @@ export default function SnapshotDialog({
             <Box sx={{ maxHeight: 400, overflow: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
-                  <tr style={{ borderBottom: "1px solid ${COLORS.gridLineColor}" }}>
+                  <tr style={{ borderBottom: `1px solid ${COLORS.gridLineColor}` }}>
                     <th style={{ textAlign: "left", padding: "6px 8px" }}>PV</th>
                     <th style={{ textAlign: "right", padding: "6px 8px" }}>
                       {snapshots[compareIdx[0]]?.name}
@@ -334,7 +333,7 @@ export default function SnapshotDialog({
                       key={row.pv}
                       style={{
                         borderBottom: `1px solid ${COLORS.gridLineColor}`,
-                        backgroundColor: row.changed ? "rgba(239,68,68,0.08)" : undefined,
+                        backgroundColor: row.changed ? `${COLORS.major}14` : undefined,
                       }}
                     >
                       <td style={{ padding: "4px 8px", fontFamily: "monospace", fontSize: 12 }}>
