@@ -31,7 +31,7 @@ const SEVERITY_LABELS: Record<number, string> = {
 
 const SEVERITY_COLORS: Record<number, string> = {
   0: COLORS.onColor,
-  1: COLORS.minor,
+  1: COLORS.gitModified,
   2: COLORS.major,
   3: COLORS.invalid,
 };
@@ -65,6 +65,7 @@ export default function AlarmPanel({ open, onClose, pvState }: AlarmPanelProps) 
         message: data.alarm?.message ?? "",
         timestamp: data.timeStamp,
         units: data.display?.units ?? "",
+        precision: data.display?.precision,
       }))
       .sort((a, b) => b.severity - a.severity || a.pv.localeCompare(b.pv));
   }, [pvState]);
@@ -99,9 +100,13 @@ export default function AlarmPanel({ open, onClose, pvState }: AlarmPanelProps) 
     return date.toLocaleTimeString();
   };
 
-  const formatValue = (value: PVData["value"], units: string) => {
+  const formatValue = (value: PVData["value"], units: string, precision?: number) => {
     if (value === undefined || value === null) return "--";
-    if (typeof value === "number") return `${value.toFixed(2)} ${units}`.trim();
+    if (typeof value === "number") {
+      const formatted =
+        precision !== undefined && precision >= 0 ? value.toFixed(precision) : String(value);
+      return `${formatted} ${units}`.trim();
+    }
     return `${String(value)} ${units}`.trim();
   };
 
@@ -220,7 +225,7 @@ export default function AlarmPanel({ open, onClose, pvState }: AlarmPanelProps) 
                         fontWeight: 600,
                       }}
                     >
-                      {formatValue(item.value, item.units)}
+                      {formatValue(item.value, item.units, item.precision)}
                     </td>
                     <td
                       style={{
