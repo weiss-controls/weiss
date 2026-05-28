@@ -136,7 +136,7 @@ export default function useEpicsWS(PVMap: ReturnType<typeof useWidgetManager>["P
     // Reconcile pvState for every widget PV that has just been remapped to a
     // different resolved target (macro change, pvName rule action, etc.).
     //
-    // Four sub-cases, handled in one unified pass:
+    // Five sub-cases, handled in one unified pass:
     //  A) Already-subscribed target, has cached data  → seed pvState from cache
     //     (no new backend message will arrive for an already-subscribed PV)
     //  B) Already-subscribed target, no cached data   → clear pvState so the
@@ -145,8 +145,24 @@ export default function useEpicsWS(PVMap: ReturnType<typeof useWidgetManager>["P
     //     the backend will push the real value once connected
     //  D) Newly-subscribed target (in toAdd), invalid → same as C; the widget
     //     correctly shows disconnected/invalid until the PV publishes
+    //  E) Widget PV removed from the map entirely      → clear stale pvState
+    //     (e.g., switching OPI files removes old widgets/PVs)
     const widgetPVsToClear: string[] = [];
     const migratedUpdates: Record<string, PVData> = {};
+
+    const currentWidgetPVSet = new Set<string>();
+    resolvedToWidgetPVs.forEach((widgetPVs) => {
+      for (const widgetPV of widgetPVs) currentWidgetPVSet.add(widgetPV);
+    });
+
+    prevResolvedMap.forEach((prevWidgetPVs) => {
+      for (const prevWidgetPV of prevWidgetPVs) {
+        if (!currentWidgetPVSet.has(prevWidgetPV)) {
+          widgetPVsToClear.push(prevWidgetPV);
+        }
+      }
+    });
+
     resolvedToWidgetPVs.forEach((widgetPVs, resolved) => {
       const cached = pvCache.current[resolved];
       const prevWidgetPVs = new Set(prevResolvedMap.get(resolved) ?? []);
