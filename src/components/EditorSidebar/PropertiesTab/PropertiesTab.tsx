@@ -8,10 +8,16 @@ import type {
   PropertyValue,
   WidgetProperty,
   MultiWidgetPropertyUpdates,
+  Rule,
 } from "@src/types/widgets";
 import { CATEGORY_DISPLAY_ORDER } from "@src/types/widgetProperties";
 import PropertyGroups from "./PropertyGroups";
 import { useWidgetContext } from "@src/context/useWidgetContext";
+import { Box, Button, Tooltip } from "@mui/material";
+import RuleIcon from "@mui/icons-material/Rule";
+import { RulesDialog } from "@components/RulesDialog";
+import { COLORS } from "@src/constants/constants";
+import { GRID_ID } from "@src/constants/constants";
 
 const getGroupedProperties = (properties: WidgetProperties) => {
   const groups: Record<string, Record<string, WidgetProperty>> = {};
@@ -50,9 +56,11 @@ const getGroupedProperties = (properties: WidgetProperties) => {
 };
 
 const PropertiesTab: React.FC = () => {
-  const { editingWidgets, batchWidgetUpdate } = useWidgetContext();
+  const { editingWidgets, batchWidgetUpdate, batchUpdateWidgetRules, editorWidgets } =
+    useWidgetContext();
 
   const singleWidget = editingWidgets.length === 1;
+  const [rulesDialogOpen, setRulesDialogOpen] = useState(false);
 
   const properties: WidgetProperties = useMemo(() => {
     if (editingWidgets.length === 0) return {};
@@ -93,13 +101,66 @@ const PropertiesTab: React.FC = () => {
     batchWidgetUpdate(updates);
   };
 
+  const handleSaveRules = (rules: Rule[]) => {
+    batchUpdateWidgetRules(
+      editingWidgets.map((w) => w.id),
+      rules,
+    );
+  };
+
+  const primaryWidget = editingWidgets[0]; // always defined (falls back to GridZone)
+  const ruleCount = primaryWidget?.rules?.length ?? 0;
+  const multiWidgetEdit = editingWidgets.length > 1;
+
+  const gridMacros = useMemo(
+    () => editorWidgets.find((w) => w.id === GRID_ID)?.editableProperties.macros?.value ?? {},
+    [editorWidgets],
+  );
+
   return (
-    <PropertyGroups
-      groupedProperties={groupedProperties}
-      collapsedGroups={collapsedGroups}
-      onToggleGroup={toggleGroup}
-      onChange={handlePropChange}
-    />
+    <>
+      <PropertyGroups
+        groupedProperties={groupedProperties}
+        collapsedGroups={collapsedGroups}
+        onToggleGroup={toggleGroup}
+        onChange={handlePropChange}
+      />
+
+      <Box sx={{ px: 2, py: 1 }}>
+        <Tooltip title="Edit widget rules">
+          <Button
+            size="small"
+            startIcon={<RuleIcon fontSize="small" />}
+            onClick={() => setRulesDialogOpen(true)}
+            fullWidth
+            variant="outlined"
+            sx={{
+              textTransform: "none",
+              "&:not(.Mui-disabled)": {
+                color: COLORS.midDarkBlue,
+                borderColor: COLORS.midDarkBlue,
+              },
+            }}
+          >
+            {multiWidgetEdit
+              ? `Rules (${editingWidgets.length} widgets)`
+              : ruleCount > 0
+                ? `Rules (${ruleCount})`
+                : "Rules"}
+          </Button>
+        </Tooltip>
+      </Box>
+
+      <RulesDialog
+        open={rulesDialogOpen}
+        widgetId={primaryWidget.id}
+        widgetProperties={properties}
+        initialRules={primaryWidget.rules ?? []}
+        onSave={handleSaveRules}
+        onClose={() => setRulesDialogOpen(false)}
+        globalMacros={gridMacros}
+      />
+    </>
   );
 };
 

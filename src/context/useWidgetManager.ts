@@ -10,7 +10,9 @@ import type {
   MultiWidgetPropertyUpdates,
   GridPosition,
   ExportedWidget,
+  ExportedRule,
   DOMRectLike,
+  Rule,
 } from "@src/types/widgets";
 import { GridZone } from "@components/GridZone";
 import { GRID_ID, MAX_HISTORY } from "@src/constants/constants";
@@ -18,6 +20,7 @@ import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import { v4 as uuidv4 } from "uuid";
 import { notifyUser } from "@src/services/Notifications/Notification";
 import { substituteInStr } from "@src/utils/macros";
+import { derivePVNames } from "@components/RulesDialog/ruleDialogUtils";
 import {
   createGroupWidget,
   createWidgetInstance,
@@ -673,6 +676,14 @@ export function useWidgetManager() {
       properties: Object.fromEntries(
         Object.entries(widget.editableProperties).map(([key, def]) => [key, def.value]),
       ),
+      ...(widget.rules?.length
+        ? {
+            rules: widget.rules.map(
+              ({ id: _id, pvNames: _pv, conditionLogic, ...rest }): ExportedRule =>
+                conditionLogic === "OR" ? { conditionLogic, ...rest } : rest,
+            ),
+          }
+        : {}),
       children: exportChildren,
     };
   }, []);
@@ -780,12 +791,28 @@ export function useWidgetManager() {
               warnings.push(`Unknown property "${key}" on widget "${raw.widgetName}" — ignored`);
             }
           }
+
+          // Restore rules: reconstruct runtime-only fields stripped from the export
+          if (raw.rules?.length) {
+            instance.rules = raw.rules.map(
+              (r): Rule => ({
+                ...r,
+                id: uuidv4(),
+                pvNames: derivePVNames(r.conditions),
+              }),
+            );
+          }
+
           return instance;
         };
 
         const imported = parsed
           .map((raw, idx) => restoreWidget(raw, idx))
           .filter((w): w is Widget => w !== null);
+
+        // Snapshot edit-mode macros so they can be restored when returning to edit mode
+        editModeMacrosRef.current =
+          imported.find((w) => w.id === GRID_ID)?.editableProperties.macros?.value ?? {};
 
         updateEditorWidgetList(imported, false);
         setSelectedWidgetIDs([]);
@@ -819,9 +846,77 @@ export function useWidgetManager() {
   );
 
   /**
-   * Macros to be substituted on pv names.
+   * Replace the rules list for a single widget.
+   * Recurses into group children so nested widgets are found correctly.
+   * Participates in undo/redo automatically via updateEditorWidgetList.
    */
-  const macros = getWidget(GRID_ID)?.editableProperties.macros?.value;
+  const updateWidgetRules = useCallback(
+    (id: string, rules: Rule[]) => {
+      const applyNested = (widgets: Widget[]): Widget[] =>
+        widgets.map((w) => {
+          if (w.id === id) return { ...w, rules };
+          if (!w.children?.length) return w;
+          const updatedChildren = applyNested(w.children);
+          if (updatedChildren.every((c, i) => c === w.children![i])) return w;
+          return { ...w, children: updatedChildren };
+        });
+      updateEditorWidgetList(applyNested(editorWidgets));
+    },
+    [editorWidgets, updateEditorWidgetList],
+  );
+
+  /**
+   * Replace the rules list for multiple widgets at once (single undo entry).
+   * All specified widgets receive an identical copy of `rules`.
+   * Recurses into group children so nested widgets are found correctly.
+   */
+  const batchUpdateWidgetRules = useCallback(
+    (ids: string[], rules: Rule[]) => {
+      const idSet = new Set(ids);
+      const applyNested = (widgets: Widget[]): Widget[] =>
+        widgets.map((w) => {
+          if (idSet.has(w.id)) return { ...w, rules };
+          if (!w.children?.length) return w;
+          const updatedChildren = applyNested(w.children);
+          if (updatedChildren.every((c, i) => c === w.children![i])) return w;
+          return { ...w, children: updatedChildren };
+        });
+      updateEditorWidgetList(applyNested(editorWidgets));
+    },
+    [editorWidgets, updateEditorWidgetList],
+  );
+
+  /**
+   * Snapshot of GridZone macros at the moment runtime mode was last entered.
+   * Used to restore edit-mode macros when switching back to edit mode,
+   * preventing rule-driven runtime overrides from persisting.
+   */
+  const editModeMacrosRef = useRef<Record<string, string>>({});
+
+  const snapshotEditModeMacros = useCallback(() => {
+    editModeMacrosRef.current = getWidget(GRID_ID)?.editableProperties.macros?.value ?? {};
+  }, [getWidget]);
+
+  const restoreEditModeMacros = useCallback(() => {
+    updateWidgetProperties(GRID_ID, { macros: editModeMacrosRef.current }, false);
+  }, [updateWidgetProperties]);
+
+  /**
+   * Macros to be substituted on pv names.
+   * In runtime mode, effectiveGridMacroOverrides (computed by WidgetRenderer from fired rules)
+   * are merged on top of the GridZone's design-time macros so that PVMap stays in sync.
+   */
+  const [effectiveGridMacroOverrides, setEffectiveGridMacroOverrides] = useState<
+    Record<string, string>
+  >({});
+  const baseMacros = getWidget(GRID_ID)?.editableProperties.macros?.value;
+  const macros = useMemo(
+    () =>
+      Object.keys(effectiveGridMacroOverrides).length > 0
+        ? { ...(baseMacros ?? {}), ...effectiveGridMacroOverrides }
+        : baseMacros,
+    [baseMacros, effectiveGridMacroOverrides],
+  );
 
   /**
    * Helper to substitute macros of the form $(NAME) in a PV string.
@@ -856,6 +951,23 @@ export function useWidgetManager() {
               map.set(pv, substituted);
             }
           });
+        }
+
+        for (const rule of w.rules ?? []) {
+          for (const pv of rule.pvNames) {
+            const substituted = substituteMacros(pv);
+            if (substituted) {
+              map.set(pv, substituted);
+            }
+          }
+          // Pre-subscribe pvName action targets so EpicsWS is ready before the rule fires
+          const pvNameAction = rule.actions?.pvName;
+          if (typeof pvNameAction === "string" && pvNameAction) {
+            const substituted = substituteMacros(pvNameAction);
+            if (substituted) {
+              map.set(pvNameAction, substituted);
+            }
+          }
         }
 
         if (w.children && w.children.length > 0) {
@@ -912,6 +1024,8 @@ export function useWidgetManager() {
     loadWidgets,
     importWidgets,
     fileImportedTrig,
+    updateWidgetRules,
+    batchUpdateWidgetRules,
     PVMap,
     macros,
     allWidgetIDs,
@@ -921,5 +1035,8 @@ export function useWidgetManager() {
     setPickedWidget,
     isPlacementMode,
     setIsPlacementMode,
+    snapshotEditModeMacros,
+    restoreEditModeMacros,
+    setEffectiveGridMacroOverrides,
   };
 }

@@ -198,3 +198,18 @@ export function getNestedMoveUpdates(
     }
   }
 }
+
+/**
+ * Flatten an entire widget tree (including all nested children) into a single
+ * array. Preserves document order (parent before children).
+ */
+export function flattenWidgetTree(widgets: Widget[]): Widget[] {
+  const result: Widget[] = [];
+  for (const w of widgets) {
+    result.push(w);
+    if (w.children?.length) {
+      result.push(...flattenWidgetTree(w.children));
+    }
+  }
+  return result;
+}

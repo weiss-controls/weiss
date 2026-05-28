@@ -19,6 +19,7 @@ import CommitIcon from "@mui/icons-material/Commit";
 import { notifyUser } from "@src/services/Notifications/Notification";
 import { useUIContext } from "@src/context/useUIContext";
 import { commitStagingRepo, syncRepo } from "@src/services/APIClient";
+import { COLORS } from "@src/constants/constants";
 
 interface GitCommitDialogProps {
   open: boolean;
@@ -112,13 +113,18 @@ export default function GitCommitDialog({ open, onClose, repoID }: GitCommitDial
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={resetAndClose} disabled={loading}>
+        <Button
+          onClick={resetAndClose}
+          disabled={loading}
+          sx={{ "&:not(.Mui-disabled)": { color: COLORS.midDarkBlue } }}
+        >
           Cancel
         </Button>
         <Button
           variant="contained"
           onClick={() => void handleConfirm()}
           disabled={!message.trim() || loading}
+          sx={{ "&:not(.Mui-disabled)": { backgroundColor: COLORS.midDarkBlue } }}
         >
           Commit
         </Button>

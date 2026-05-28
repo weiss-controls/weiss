@@ -10,12 +10,11 @@ import { WS_URL } from "@src/constants/constants";
 /**
  * Hook that manages a WebSocket session to the PV WebSocket.
  *
- * - Handles subscribing/unsubscribing PVs (using substituted names)
+ * - Handles subscribing/unsubscribing PVs (using resolved names)
  * - Caches metadata
- * - Forwards updates mapped back to original PVs
+ * - Forwards updates mapped back to widget PV names
  *
- * @param PVMap Map of original PVs to macro-substituted PVs
- * @param updatePVData Callback to update PV data in the widget manager
+ * @param PVMap Map of widget PV names (may contain macros) to resolved PV names
  */
 export default function useEpicsWS(PVMap: ReturnType<typeof useWidgetManager>["PVMap"]) {
   /** WebSocket client instance */
@@ -23,37 +22,42 @@ export default function useEpicsWS(PVMap: ReturnType<typeof useWidgetManager>["P
   const [wsConnected, setWSConnected] = useState(false);
   const pvCache = useRef<Record<string, PVData>>({});
   const [pvState, setPVState] = useState<Record<string, PVData>>({});
-  /** Tracks which substituted PVs are currently subscribed on the server */
+  /** Tracks which resolved PVs are currently subscribed on the server */
   const subscribedRef = useRef<Set<string>>(new Set());
+  /**
+   * Tracks the previous resolved→widgetPVs map so the subscription effect can
+   * detect widget PVs that have migrated to a different resolved PV.
+   */
+  const prevResolvedMapRef = useRef<Map<string, string[]>>(new Map());
 
-  /** Precompute reverse map for fast lookup (substituted: all originals that point to it) */
-  const reversePVMap = useMemo(() => {
+  /** Precompute reverse map for fast lookup (resolved PV → all widget PVs that point to it) */
+  const resolvedToWidgetPVs = useMemo(() => {
     const map = new Map<string, string[]>();
-    PVMap.forEach((substituted, original) => {
-      const existing = map.get(substituted);
+    PVMap.forEach((resolved, widgetPV) => {
+      const existing = map.get(resolved);
       if (existing) {
-        existing.push(original);
+        existing.push(widgetPV);
       } else {
-        map.set(substituted, [original]);
+        map.set(resolved, [widgetPV]);
       }
     });
     return map;
   }, [PVMap]);
 
-  /** All substituted PVs for subscription */
-  const substitutedList = useMemo(() => Array.from(PVMap.values()), [PVMap]);
+  /** All resolved PV names for subscription */
+  const resolvedPVList = useMemo(() => Array.from(PVMap.values()), [PVMap]);
 
   /**
    * Handles incoming WebSocket messages.
    * - Filters unsolicited PVs
-   * - Maps substituted PVs back to original names
+   * - Maps resolved PVs back to widget PV names
    * - Populates metadata (received only once) with previous message content.
    * - Updates PVState object
    */
   const onMessage = useCallback(
     (msg: WSMessage) => {
-      const originalPVs = reversePVMap.get(msg.pv);
-      if (!originalPVs) {
+      const widgetPVs = resolvedToWidgetPVs.get(msg.pv);
+      if (!widgetPVs) {
         console.warn(`received message from unsolicited PV: ${msg.pv}`);
         return;
       }
@@ -68,20 +72,20 @@ export default function useEpicsWS(PVMap: ReturnType<typeof useWidgetManager>["P
         control: prev.control ?? msg.control,
         valueAlarm: prev.valueAlarm ?? msg.valueAlarm,
       };
-      pvCache.current[msg.pv] = { pv: originalPVs[0], ...baseData };
+      pvCache.current[msg.pv] = { pv: widgetPVs[0], ...baseData };
       setPVState((prev) => {
         const updates: Record<string, PVData> = {};
-        for (const originalPV of originalPVs) {
-          updates[originalPV] = { pv: originalPV, ...baseData };
+        for (const widgetPV of widgetPVs) {
+          updates[widgetPV] = { pv: widgetPV, ...baseData };
         }
         return { ...prev, ...updates };
       });
     },
-    [reversePVMap],
+    [resolvedToWidgetPVs],
   );
 
   // Always kept up to date so the WSClient never captures a stale closure.
-  // Make sure reversePVMap updates are picked up w/o recreating WSClient.
+  // Make sure resolvedToWidgetPVs updates are picked up w/o recreating WSClient.
   const onMessageRef = useRef(onMessage);
   onMessageRef.current = onMessage;
   const stableMessageHandler = useRef<(msg: WSMessage) => void>((msg) => onMessageRef.current(msg));
@@ -103,16 +107,22 @@ export default function useEpicsWS(PVMap: ReturnType<typeof useWidgetManager>["P
    * appear in the map, without restarting the session.
    */
   useEffect(() => {
+    // Capture and advance the previous map before any early return so it
+    // stays in sync with every render that changes resolvedToWidgetPVs.
+    const prevResolvedMap = prevResolvedMapRef.current;
+    prevResolvedMapRef.current = resolvedToWidgetPVs;
+
     if (!wsConnected || !ws.current) {
       subscribedRef.current = new Set();
       return;
     }
 
-    const current = new Set(substitutedList);
+    const current = new Set(resolvedPVList);
     const prev = subscribedRef.current;
 
-    const toAdd = substitutedList.filter((pv) => !prev.has(pv));
+    const toAdd = resolvedPVList.filter((pv) => !prev.has(pv));
     const toRemove = [...prev].filter((pv) => !current.has(pv));
+    const toAddSet = new Set(toAdd);
 
     if (toAdd.length > 0) ws.current.subscribe(toAdd);
     if (toRemove.length > 0) {
@@ -123,8 +133,46 @@ export default function useEpicsWS(PVMap: ReturnType<typeof useWidgetManager>["P
       });
     }
 
+    // Reconcile pvState for every widget PV that has just been remapped to a
+    // different resolved target (macro change, pvName rule action, etc.).
+    //
+    // Four sub-cases, handled in one unified pass:
+    //  A) Already-subscribed target, has cached data  → seed pvState from cache
+    //     (no new backend message will arrive for an already-subscribed PV)
+    //  B) Already-subscribed target, no cached data   → clear pvState so the
+    //     widget shows disconnected/invalid instead of the previous PV's value
+    //  C) Newly-subscribed target (in toAdd), valid   → clear pvState now;
+    //     the backend will push the real value once connected
+    //  D) Newly-subscribed target (in toAdd), invalid → same as C; the widget
+    //     correctly shows disconnected/invalid until the PV publishes
+    const widgetPVsToClear: string[] = [];
+    const migratedUpdates: Record<string, PVData> = {};
+    resolvedToWidgetPVs.forEach((widgetPVs, resolved) => {
+      const cached = pvCache.current[resolved];
+      const prevWidgetPVs = new Set(prevResolvedMap.get(resolved) ?? []);
+      for (const widgetPV of widgetPVs) {
+        if (!prevWidgetPVs.has(widgetPV)) {
+          // Widget PV is newly mapped to `resolved`
+          if (cached && !toAddSet.has(resolved)) {
+            // already subscribed and backend has sent data, update immediately
+            migratedUpdates[widgetPV] = { ...cached, pv: widgetPV };
+          } else {
+            // no reliable data yet - drop stale pvState entry
+            widgetPVsToClear.push(widgetPV);
+          }
+        }
+      }
+    });
+    if (widgetPVsToClear.length > 0 || Object.keys(migratedUpdates).length > 0) {
+      setPVState((prev) => {
+        const next = { ...prev };
+        for (const widgetPV of widgetPVsToClear) delete next[widgetPV];
+        return { ...next, ...migratedUpdates };
+      });
+    }
+
     subscribedRef.current = current;
-  }, [substitutedList, wsConnected]);
+  }, [resolvedPVList, wsConnected, resolvedToWidgetPVs]);
 
   /**
    * Stops the current WebSocket session.
