@@ -10,12 +10,12 @@ import {
   TEXT_PROPS,
 } from "@src/types/widgetProperties";
 import type { WidgetDefinition } from "@src/types/widgets";
-import ScatterPlotIcon from "@mui/icons-material/ScatterPlot";
+import TimelineIcon from "@mui/icons-material/Timeline";
 
 export const GraphXY: WidgetDefinition = {
   component: GraphXYComp,
   widgetName: "GraphXY",
-  widgetIcon: ScatterPlotIcon,
+  widgetIcon: TimelineIcon,
   widgetLabel: "Graph XY",
   category: "Monitoring",
   defaultProperties: {
