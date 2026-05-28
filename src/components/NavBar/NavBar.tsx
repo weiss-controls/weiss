@@ -33,6 +33,8 @@ import { Roles, type OAuthProvider } from "@src/services/AuthService/AuthService
 import { OAuthProviders } from "@src/services/AuthService/AuthService.ts";
 import GitImportDialog from "@components/GitImportDialog/GitImportDialog.tsx";
 import SnapshotDialog from "@components/SnapshotDialog/SnapshotDialog.tsx";
+import AlarmPanel from "@components/AlarmPanel/AlarmPanel.tsx";
+import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import { useEpicsWSContext } from "@src/context/useEpicsWSContext.tsx";
 import { notifyUser } from "@src/services/Notifications/Notification.ts";
@@ -120,13 +122,14 @@ export default function NavBar() {
     isDeveloper,
     selectedFile,
   } = useUIContext();
-  const { takeSnapshot, restoreFromSnapshot } = useEpicsWSContext();
+  const { takeSnapshot, restoreFromSnapshot, pvState } = useEpicsWSContext();
   const [snapshotOpen, setSnapshotOpen] = useState(false);
+  const [alarmOpen, setAlarmOpen] = useState(false);
   const drawerWidth = WIDGET_SELECTOR_WIDTH;
   const [importMenuAnchor, setImportMenuAnchor] = useState<null | HTMLElement>(null);
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
   const [gitImportOpen, setGitImportOpen] = useState(false);
-
+  const alarmCount = Object.values(pvState).filter((d) => d.alarm && d.alarm.severity > 0).length;
   const handleImportMenuOpen = (event: React.MouseEvent<HTMLButtonElement>) => {
     setImportMenuAnchor(event.currentTarget);
   };
@@ -286,6 +289,20 @@ export default function NavBar() {
                   )}
                 </Menu>
                 {!inEditMode && (
+                  <Tooltip title="Alarm Summary">
+                    <Button
+                      onClick={() => setAlarmOpen(true)}
+                      startIcon={<NotificationsActiveIcon />}
+                      sx={{
+                        color: alarmCount > 0 ? COLORS.major : "white",
+                        textTransform: "none",
+                      }}
+                    >
+                      Alarms{alarmCount > 0 ? ` (${String(alarmCount)})` : ""}
+                    </Button>
+                  </Tooltip>
+                )}
+                {!inEditMode && (
                   <Tooltip title="PV Snapshots">
                     <Button
                       onClick={() => setSnapshotOpen(true)}
@@ -388,6 +405,9 @@ export default function NavBar() {
                 onTakeSnapshot={takeSnapshot}
                 onRestore={restoreFromSnapshot}
               />
+            )}
+            {!inEditMode && (
+              <AlarmPanel open={alarmOpen} onClose={() => setAlarmOpen(false)} pvState={pvState} />
             )}
           </Box>
           <GitImportDialog open={gitImportOpen} onClose={() => setGitImportOpen(false)} />
