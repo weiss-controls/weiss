@@ -31,13 +31,13 @@ const SEVERITY_LABELS: Record<number, string> = {
 
 const SEVERITY_COLORS: Record<number, string> = {
   0: COLORS.onColor,
-  1: "#f0c505",
+  1: COLORS.minorDark,
   2: COLORS.major,
   3: COLORS.invalid,
 };
 
 const SEVERITY_ICONS: Record<number, React.ReactNode> = {
-  1: <WarningAmberIcon fontSize="small" sx={{ color: "#f0c505" }} />,
+  1: <WarningAmberIcon fontSize="small" sx={{ color: COLORS.minorDark }} />,
   2: <ErrorIcon fontSize="small" sx={{ color: COLORS.major }} />,
   3: <HelpIcon fontSize="small" sx={{ color: COLORS.invalid }} />,
 };
@@ -158,7 +158,7 @@ export default function AlarmPanel({ open, onClose, pvState }: AlarmPanelProps) 
             }}
           >
             <ToggleButton value="all">All ({String(alarmPVs.length)})</ToggleButton>
-            <ToggleButton value="minor" sx={{ color: "#f0c505" }}>
+            <ToggleButton value="minor" sx={{ color: COLORS.minorDark }}>
               Minor ({String(counts.minor)})
             </ToggleButton>
             <ToggleButton value="major" sx={{ color: COLORS.major }}>

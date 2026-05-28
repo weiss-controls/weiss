@@ -37,6 +37,7 @@ export const COLORS = {
 
   // EPICS alarm colors
   minor: "#ffff00",
+  minorDark: "#f0c505",
   major: "#ff0000",
   invalid: "#5b00c4",
   disconnected: "#5b00c4",
