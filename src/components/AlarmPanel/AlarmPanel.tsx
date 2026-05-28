@@ -58,8 +58,8 @@ export default function AlarmPanel({ open, onClose, pvState }: AlarmPanelProps) 
   const alarmPVs = useMemo(() => {
     return Object.entries(pvState)
       .filter(([, data]) => data.alarm && data.alarm.severity > 0)
-      .map(([pv, data]) => ({
-        pv,
+      .map(([, data]) => ({
+        pv: data.pv,
         value: data.value,
         severity: data.alarm?.severity ?? 0,
         message: data.alarm?.message ?? "",
