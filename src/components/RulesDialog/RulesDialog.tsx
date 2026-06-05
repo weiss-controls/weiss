@@ -14,6 +14,7 @@ import {
   TextField,
   Select,
   MenuItem,
+  ListSubheader,
   ToggleButton,
   ToggleButtonGroup,
   Divider,
@@ -35,7 +36,7 @@ import type {
   PropertyValue,
   WidgetProperties,
 } from "@src/types/widgets";
-import { PROPERTY_SCHEMAS } from "@src/types/widgetProperties";
+import { PROPERTY_SCHEMAS, CATEGORY_DISPLAY_ORDER } from "@src/types/widgetProperties";
 import { COLORS } from "@src/constants/constants";
 import {
   OPERATORS,
@@ -131,14 +132,29 @@ const RulesDialog: React.FC<RulesDialogProps> = ({
     updateSelected({ conditions: conds, pvNames });
   };
 
-  // Action mutations
+  // Action mutations — sorted by PROPERTY_SCHEMAS definition order
+  const schemaKeyOrder = Object.keys(PROPERTY_SCHEMAS) as PropertyKey[];
   const actionableKeys: PropertyKey[] = [
-    ...Object.entries(widgetProperties)
-      .filter(([key, prop]) => prop && ACTIONABLE_SEL_TYPES.has(prop.selType) && key !== "rules")
-      .map(([key]) => key as PropertyKey),
+    ...schemaKeyOrder.filter((key) => {
+      const prop = widgetProperties[key];
+      return prop && ACTIONABLE_SEL_TYPES.has(prop.selType) && key !== "rules";
+    }),
     // globalMacros is always available on every widget as a rule action
     ...(!widgetProperties.globalMacros ? (["globalMacros"] as PropertyKey[]) : []),
   ];
+
+  // Group actionable keys by category for the property selector
+  const groupedActionableKeys = (() => {
+    const groups: Record<string, PropertyKey[]> = {};
+    for (const key of actionableKeys) {
+      const cat = PROPERTY_SCHEMAS[key]?.category ?? "Other";
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(key);
+    }
+    return [...CATEGORY_DISPLAY_ORDER, "Other"]
+      .filter((cat) => groups[cat]?.length > 0)
+      .map((cat) => ({ category: cat, keys: groups[cat] }));
+  })();
 
   const addAction = () => {
     if (!selected || actionableKeys.length === 0) return;
@@ -424,11 +440,24 @@ const RulesDialog: React.FC<RulesDialogProps> = ({
                             }
                             sx={{ width: "40%" }}
                           >
-                            {actionableKeys.map((k) => (
-                              <MenuItem key={k} value={k}>
-                                {PROPERTY_SCHEMAS[k]?.label ?? k}
-                              </MenuItem>
-                            ))}
+                            {groupedActionableKeys.map(({ category, keys: catKeys }) => [
+                              <ListSubheader
+                                key={`cat-${category}`}
+                                sx={{
+                                  lineHeight: "28px",
+                                  fontSize: "0.7rem",
+                                  letterSpacing: "0.08em",
+                                  textTransform: "uppercase",
+                                }}
+                              >
+                                {category}
+                              </ListSubheader>,
+                              ...catKeys.map((k) => (
+                                <MenuItem key={k} value={k}>
+                                  {PROPERTY_SCHEMAS[k]?.label ?? k}
+                                </MenuItem>
+                              )),
+                            ])}
                           </Select>
                           To
                           {schema ? (
