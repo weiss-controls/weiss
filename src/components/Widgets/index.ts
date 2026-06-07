@@ -19,3 +19,4 @@ export { EmbeddedDisplay } from "./EmbeddedDisplay";
 export { NavigationButton } from "./NavigationButton";
 export { Spinner } from "./Spinner";
 export { GraphXY } from "./GraphXY";
+export { Histogram } from "./Histogram";
