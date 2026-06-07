@@ -40,6 +40,8 @@ import { useEpicsWSContext } from "@src/context/useEpicsWSContext.tsx";
 import { notifyUser } from "@src/services/Notifications/Notification.ts";
 import { useWidgetContext } from "@src/context/useWidgetContext.tsx";
 import { useUIContext } from "@src/context/useUIContext.tsx";
+import ChatPanel from "@components/ChatPanel/ChatPanel.tsx";
+import SmartToyIcon from "@mui/icons-material/SmartToy";
 interface StyledAppBarProps extends MuiAppBarProps {
   open?: boolean;
   drawerWidth: number;
@@ -122,8 +124,10 @@ export default function NavBar() {
     isDeveloper,
     selectedFile,
   } = useUIContext();
-  const { takeSnapshot, restoreFromSnapshot, pvState } = useEpicsWSContext();
+  //const { takeSnapshot, restoreFromSnapshot, pvState } = useEpicsWSContext();
+  const { takeSnapshot, restoreFromSnapshot, pvState, writePVValue } = useEpicsWSContext();
   const [snapshotOpen, setSnapshotOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const [alarmOpen, setAlarmOpen] = useState(false);
   const drawerWidth = WIDGET_SELECTOR_WIDTH;
   const [importMenuAnchor, setImportMenuAnchor] = useState<null | HTMLElement>(null);
@@ -313,6 +317,17 @@ export default function NavBar() {
                     </Button>
                   </Tooltip>
                 )}
+                {!inEditMode && (
+                  <Tooltip title="AI Assistant">
+                    <Button
+                      onClick={() => setChatOpen(true)}
+                      startIcon={<SmartToyIcon />}
+                      sx={{ color: "white", textTransform: "none" }}
+                    >
+                      AI
+                    </Button>
+                  </Tooltip>
+                )}
                 <HelpOverlay />
                 <Tooltip title="View source on GitHub">
                   <IconButton
@@ -404,6 +419,14 @@ export default function NavBar() {
                 onClose={() => setSnapshotOpen(false)}
                 onTakeSnapshot={takeSnapshot}
                 onRestore={restoreFromSnapshot}
+              />
+            )}
+            {!inEditMode && (
+              <ChatPanel
+                open={chatOpen}
+                onClose={() => setChatOpen(false)}
+                pvState={pvState}
+                writePVValue={writePVValue}
               />
             )}
             {!inEditMode && (
