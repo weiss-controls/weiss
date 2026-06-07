@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Snapshot Save/Restore for WEISS
-// Contributed by Elmaddin Guliyev 2026/05/18
+// Snapshot Save/Restore for WEISS — backend-persisted version
+// Contributed by Elmaddin Guliyev
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
@@ -26,14 +26,37 @@ import RestoreIcon from "@mui/icons-material/Restore";
 import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
 import SaveIcon from "@mui/icons-material/Save";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
-import type { PVValue } from "@src/types/epicsWS";
 import { COLORS } from "@src/constants/constants";
+import type { PVValue } from "@src/types/epicsWS";
+
+function getApiBase(): string {
+  const { protocol, hostname } = window.location;
+  if (protocol === "https:") {
+    return `${protocol}//${hostname}/api/v1/snapshots`;
+  }
+  return `${protocol}//${hostname}:8000/api/v1/snapshots`;
+}
+
+const API_BASE = getApiBase();
 
 interface SnapshotEntry {
+  id: string;
   name: string;
+  opi_file: string;
   timestamp: string;
-  pvs: Record<string, { value: PVValue; alarm?: number; timestamp?: number }>;
-  count: number;
+  pv_count: number;
+}
+
+interface SnapshotPVData {
+  value: PVValue;
+  alarm?: Record<string, unknown>;
+  timeStamp?: Record<string, unknown>;
+  b64arr?: string | null;
+  b64dtype?: string | null;
+}
+
+interface SnapshotDetail extends SnapshotEntry {
+  pvs: Record<string, SnapshotPVData>;
 }
 
 interface SnapshotDialogProps {
@@ -41,23 +64,7 @@ interface SnapshotDialogProps {
   onClose: () => void;
   onTakeSnapshot: () => Promise<Record<string, unknown> | null>;
   onRestore: (pvs: Record<string, { value: PVValue }>) => Promise<Record<string, unknown> | null>;
-}
-
-const STORAGE_KEY = "weiss-snapshots";
-
-function loadSnapshots(): SnapshotEntry[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as SnapshotEntry[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveSnapshots(snapshots: SnapshotEntry[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshots));
+  opiFile: string;
 }
 
 export default function SnapshotDialog({
@@ -65,8 +72,9 @@ export default function SnapshotDialog({
   onClose,
   onTakeSnapshot,
   onRestore,
+  opiFile,
 }: SnapshotDialogProps) {
-  const [snapshots, setSnapshots] = useState<SnapshotEntry[]>(loadSnapshots);
+  const [snapshots, setSnapshots] = useState<SnapshotEntry[]>([]);
   const [snapshotName, setSnapshotName] = useState("");
   const [tab, setTab] = useState(0);
   const [status, setStatus] = useState<{
@@ -74,7 +82,38 @@ export default function SnapshotDialog({
     severity: "success" | "error" | "info";
   } | null>(null);
   const [compareIdx, setCompareIdx] = useState<[number, number] | null>(null);
+  //  const [compareData, setCompareData] = useState;
+  //  {
+  //   pv: string;
+  //    valA: string;
+  //    valB: string;
+  //    changed: boolean;
+  //  }
+  //  [] > [];
+  const [compareData, setCompareData] = useState<
+    { pv: string; valA: string; valB: string; changed: boolean }[]
+  >([]);
   const [loading, setLoading] = useState(false);
+
+  // Load snapshots from backend when dialog opens or opiFile changes
+  const fetchSnapshots = useCallback(async () => {
+    if (!opiFile) return;
+    try {
+      const res = await fetch(`${API_BASE}?opi_file=${encodeURIComponent(opiFile)}`);
+      if (res.ok) {
+        const data: SnapshotEntry[] = (await res.json()) as SnapshotEntry[];
+        setSnapshots(data);
+      }
+    } catch (e) {
+      console.error("Failed to fetch snapshots:", e);
+    }
+  }, [opiFile]);
+
+  useEffect(() => {
+    if (open) {
+      void fetchSnapshots();
+    }
+  }, [open, fetchSnapshots]);
 
   const handleSave = useCallback(async () => {
     if (!snapshotName.trim()) {
@@ -87,22 +126,33 @@ export default function SnapshotDialog({
     try {
       const result = await onTakeSnapshot();
       if (result && "pvs" in result) {
-        const pvs = result.pvs as Record<
-          string,
-          { value: PVValue; alarm?: number; timestamp?: number }
-        >;
-        const count = typeof result.count === "number" ? result.count : Object.keys(pvs).length;
-        const entry: SnapshotEntry = {
+        const pvs = result.pvs as Record<string, SnapshotPVData>;
+        const bodyStr = JSON.stringify({
           name: snapshotName.trim(),
-          timestamp: new Date().toISOString(),
+          opi_file: opiFile,
           pvs,
-          count,
-        };
-        const updated = [entry, ...snapshots];
-        setSnapshots(updated);
-        saveSnapshots(updated);
-        setSnapshotName("");
-        setStatus({ message: `Saved "${entry.name}" with ${count} PVs`, severity: "success" });
+        });
+        //console.log("Snapshot body length:", bodyStr.length, "body:", bodyStr.slice(0, 500));
+        console.log("opiFile:", opiFile, "name:", snapshotName.trim());
+        console.log("Snapshot body:", bodyStr);
+        // Save to backend
+        const res = await fetch(API_BASE, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: bodyStr,
+        });
+
+        if (res.ok) {
+          const saved: SnapshotEntry = (await res.json()) as SnapshotEntry;
+          setSnapshotName("");
+          setStatus({
+            message: `Saved "${saved.name}" with ${String(saved.pv_count)} PVs`,
+            severity: "success",
+          });
+          void fetchSnapshots();
+        } else {
+          setStatus({ message: "Failed to save snapshot to server.", severity: "error" });
+        }
       } else {
         setStatus({
           message: "Snapshot failed — no data returned. Please, check PV names and try again.",
@@ -113,7 +163,7 @@ export default function SnapshotDialog({
       setStatus({ message: `Snapshot error: ${String(e)}`, severity: "error" });
     }
     setLoading(false);
-  }, [snapshotName, snapshots, onTakeSnapshot]);
+  }, [snapshotName, opiFile, onTakeSnapshot, fetchSnapshots]);
 
   const handleRestore = useCallback(
     async (idx: number) => {
@@ -121,21 +171,31 @@ export default function SnapshotDialog({
       if (!snap) return;
       setLoading(true);
       setStatus({
-        message: `Restoring ${snap.count} PVs from "${snap.name}"...`,
+        message: `Restoring PVs from "${snap.name}"...`,
         severity: "info",
       });
 
       try {
+        // Fetch full snapshot with PV data
+        const res = await fetch(`${API_BASE}/${snap.id}?opi_file=${encodeURIComponent(opiFile)}`);
+        if (!res.ok) {
+          setStatus({ message: "Failed to load snapshot from server.", severity: "error" });
+          setLoading(false);
+          return;
+        }
+        const detail: SnapshotDetail = (await res.json()) as SnapshotDetail;
+
         const pvData: Record<string, { value: PVValue }> = {};
-        for (const [pv, data] of Object.entries(snap.pvs)) {
+        for (const [pv, data] of Object.entries(detail.pvs)) {
           pvData[pv] = { value: data.value };
         }
         const result = await onRestore(pvData);
         if (result && "succeeded" in result) {
+          const succeeded = Number(result.succeeded);
+          const total = Number(result.total);
           setStatus({
-            message: `Restored ${String(result.succeeded)}/${String(result.total)} PVs from "${snap.name}"`,
-            severity:
-              (result.succeeded as number) === (result.total as number) ? "success" : "error",
+            message: `Restored ${String(succeeded)}/${String(total)} PVs from "${snap.name}"`,
+            severity: succeeded === total ? "success" : "error",
           });
         } else {
           setStatus({ message: "Restore failed", severity: "error" });
@@ -145,61 +205,88 @@ export default function SnapshotDialog({
       }
       setLoading(false);
     },
-    [snapshots, onRestore],
+    [snapshots, opiFile, onRestore],
   );
 
   const handleDelete = useCallback(
-    (idx: number) => {
-      const updated = snapshots.filter((_, i) => i !== idx);
-      setSnapshots(updated);
-      saveSnapshots(updated);
-      setStatus({ message: "Snapshot deleted", severity: "info" });
+    async (idx: number) => {
+      const snap = snapshots[idx];
+      if (!snap) return;
+      try {
+        const res = await fetch(`${API_BASE}/${snap.id}?opi_file=${encodeURIComponent(opiFile)}`, {
+          method: "DELETE",
+        });
+        if (res.ok) {
+          setStatus({ message: "Snapshot deleted", severity: "info" });
+          void fetchSnapshots();
+        }
+      } catch (e) {
+        setStatus({ message: `Delete error: ${String(e)}`, severity: "error" });
+      }
     },
-    [snapshots],
+    [snapshots, opiFile, fetchSnapshots],
   );
 
   const handleCompare = useCallback(
-    (idx: number) => {
+    async (idx: number) => {
       if (compareIdx === null) {
         setCompareIdx([idx, -1]);
-        setStatus({ message: "Select a second snapshot to compare", severity: "info" });
+        setStatus({
+          message: "Select a second snapshot to compare",
+          severity: "info",
+        });
       } else if (compareIdx[1] === -1) {
         setCompareIdx([compareIdx[0], idx]);
-        setTab(2);
+        // Fetch both snapshots for comparison
+        const snapA = snapshots[compareIdx[0]];
+        const snapB = snapshots[idx];
+        if (!snapA || !snapB) return;
+        try {
+          const [resA, resB] = await Promise.all([
+            fetch(`${API_BASE}/${snapA.id}?opi_file=${encodeURIComponent(opiFile)}`),
+            fetch(`${API_BASE}/${snapB.id}?opi_file=${encodeURIComponent(opiFile)}`),
+          ]);
+          if (resA.ok && resB.ok) {
+            const detailA: SnapshotDetail = (await resA.json()) as SnapshotDetail;
+            const detailB: SnapshotDetail = (await resB.json()) as SnapshotDetail;
+            const allPVs = new Set([...Object.keys(detailA.pvs), ...Object.keys(detailB.pvs)]);
+            const diffs: {
+              pv: string;
+              valA: string;
+              valB: string;
+              changed: boolean;
+            }[] = [];
+            for (const pv of allPVs) {
+              const valA = detailA.pvs[pv]?.value ?? "N/A";
+              const valB = detailB.pvs[pv]?.value ?? "N/A";
+              diffs.push({
+                pv,
+                valA: String(valA),
+                valB: String(valB),
+                changed: String(valA) !== String(valB),
+              });
+            }
+            setCompareData(
+              diffs.sort((a, b) =>
+                a.changed === b.changed ? a.pv.localeCompare(b.pv) : a.changed ? -1 : 1,
+              ),
+            );
+            setTab(2);
+            setStatus(null);
+          }
+        } catch (e) {
+          setStatus({ message: `Compare error: ${String(e)}`, severity: "error" });
+        }
       }
     },
-    [compareIdx],
+    [compareIdx, snapshots, opiFile],
   );
 
   const cancelCompare = useCallback(() => {
     setCompareIdx(null);
+    setCompareData([]);
     setStatus(null);
   }, []);
-
-  // Compare two snapshots
-  const compareData =
-    compareIdx && compareIdx[1] !== -1
-      ? (() => {
-          const a = snapshots[compareIdx[0]];
-          const b = snapshots[compareIdx[1]];
-          if (!a || !b) return [];
-          const allPVs = new Set([...Object.keys(a.pvs), ...Object.keys(b.pvs)]);
-          const diffs: { pv: string; valA: string; valB: string; changed: boolean }[] = [];
-          for (const pv of allPVs) {
-            const valA = a.pvs[pv]?.value ?? "N/A";
-            const valB = b.pvs[pv]?.value ?? "N/A";
-            diffs.push({
-              pv,
-              valA: String(valA),
-              valB: String(valB),
-              changed: String(valA) !== String(valB),
-            });
-          }
-          return diffs.sort((a, b) =>
-            a.changed === b.changed ? a.pv.localeCompare(b.pv) : a.changed ? -1 : 1,
-          );
-        })()
-      : [];
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -222,7 +309,7 @@ export default function SnapshotDialog({
           sx={{ mb: 2 }}
         >
           <Tab label="Save" />
-          <Tab label={`Saved (${snapshots.length})`} />
+          <Tab label={`Saved (${String(snapshots.length)})`} />
           {compareIdx && compareIdx[1] !== -1 && <Tab label="Compare" />}
         </Tabs>
 
@@ -267,18 +354,18 @@ export default function SnapshotDialog({
             ) : (
               <List dense>
                 {snapshots.map((snap, idx) => (
-                  <Box key={`${snap.name}-${snap.timestamp}`}>
+                  <Box key={snap.id}>
                     <ListItem>
                       <ListItemText
                         primary={snap.name}
-                        secondary={`${new Date(snap.timestamp).toLocaleString()} · ${snap.count} PVs`}
+                        secondary={`${new Date(snap.timestamp).toLocaleString()} · ${String(snap.pv_count)} PVs`}
                       />
                       <ListItemSecondaryAction>
-                        <Chip label={`${snap.count} PVs`} size="small" sx={{ mr: 1 }} />
+                        <Chip label={`${String(snap.pv_count)} PVs`} size="small" sx={{ mr: 1 }} />
                         <IconButton
                           edge="end"
                           title="Compare"
-                          onClick={() => handleCompare(idx)}
+                          onClick={() => void handleCompare(idx)}
                           color={compareIdx?.[0] === idx ? "primary" : "default"}
                         >
                           <CompareArrowsIcon />
@@ -292,7 +379,11 @@ export default function SnapshotDialog({
                         >
                           <RestoreIcon />
                         </IconButton>
-                        <IconButton edge="end" title="Delete" onClick={() => handleDelete(idx)}>
+                        <IconButton
+                          edge="end"
+                          title="Delete"
+                          onClick={() => void handleDelete(idx)}
+                        >
                           <DeleteIcon />
                         </IconButton>
                       </ListItemSecondaryAction>
@@ -315,9 +406,19 @@ export default function SnapshotDialog({
               {compareData.filter((d) => d.changed).length} differences
             </Typography>
             <Box sx={{ maxHeight: 400, overflow: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  fontSize: 13,
+                }}
+              >
                 <thead>
-                  <tr style={{ borderBottom: `1px solid ${COLORS.gridLineColor}` }}>
+                  <tr
+                    style={{
+                      borderBottom: `2px solid ${COLORS.gridLineColor}`,
+                    }}
+                  >
                     <th style={{ textAlign: "left", padding: "6px 8px" }}>PV</th>
                     <th style={{ textAlign: "right", padding: "6px 8px" }}>
                       {snapshots[compareIdx[0]]?.name}
@@ -336,11 +437,21 @@ export default function SnapshotDialog({
                         backgroundColor: row.changed ? `${COLORS.major}14` : undefined,
                       }}
                     >
-                      <td style={{ padding: "4px 8px", fontFamily: "monospace", fontSize: 12 }}>
+                      <td
+                        style={{
+                          padding: "4px 8px",
+                          fontFamily: "monospace",
+                          fontSize: 12,
+                        }}
+                      >
                         {row.pv}
                       </td>
                       <td
-                        style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}
+                        style={{
+                          padding: "4px 8px",
+                          textAlign: "right",
+                          fontFamily: "monospace",
+                        }}
                       >
                         {row.valA}
                       </td>

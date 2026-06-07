@@ -404,6 +404,7 @@ export default function NavBar() {
                 onClose={() => setSnapshotOpen(false)}
                 onTakeSnapshot={takeSnapshot}
                 onRestore={restoreFromSnapshot}
+                opiFile={selectedFile?.path ?? "default"}
               />
             )}
             {!inEditMode && (
@@ -411,12 +412,6 @@ export default function NavBar() {
             )}
           </Box>
           <GitImportDialog open={gitImportOpen} onClose={() => setGitImportOpen(false)} />
-          <SnapshotDialog
-            open={snapshotOpen}
-            onClose={() => setSnapshotOpen(false)}
-            onTakeSnapshot={takeSnapshot}
-            onRestore={restoreFromSnapshot}
-          />
         </Toolbar>
       </StyledAppBar>
     </Box>
