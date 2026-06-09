@@ -10,7 +10,6 @@ from pydantic import BaseModel
 
 from .auth import auth
 from .config import FRONTEND_URL, TITLE, VERSION
-
 from .repos import deployed, staging
 from .snapshots import router as snapshots_router
 
