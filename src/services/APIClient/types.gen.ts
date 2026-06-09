@@ -325,6 +325,120 @@ export type RootInfo = {
 };
 
 /**
+ * SnapshotDetail
+ */
+export type SnapshotDetail = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Opi File
+   */
+  opi_file: string;
+  /**
+   * Timestamp
+   */
+  timestamp: string;
+  /**
+   * Pv Count
+   */
+  pv_count: number;
+  /**
+   * Pvs
+   */
+  pvs: {
+    [key: string]: SnapshotPvData;
+  };
+};
+
+/**
+ * SnapshotEntry
+ */
+export type SnapshotEntry = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Opi File
+   */
+  opi_file: string;
+  /**
+   * Timestamp
+   */
+  timestamp: string;
+  /**
+   * Pv Count
+   */
+  pv_count: number;
+};
+
+/**
+ * SnapshotPVData
+ */
+export type SnapshotPvData = {
+  /**
+   * Value
+   */
+  value: unknown;
+  /**
+   * Alarm
+   */
+  alarm?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Timestamp
+   */
+  timeStamp?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * B64Arr
+   */
+  b64arr?: string | null;
+  /**
+   * B64Dtype
+   */
+  b64dtype?: string | null;
+};
+
+/**
+ * SnapshotSaveRequest
+ */
+export type SnapshotSaveRequest = {
+  /**
+   * Name
+   *
+   * Snapshot name
+   */
+  name: string;
+  /**
+   * Opi File
+   *
+   * OPI file path this snapshot belongs to
+   */
+  opi_file: string;
+  /**
+   * Pvs
+   *
+   * PV name to value mapping
+   */
+  pvs: {
+    [key: string]: SnapshotPvData;
+  };
+};
+
+/**
  * StagingMeta
  */
 export type StagingMeta = {
@@ -1370,6 +1484,137 @@ export type GetDeployedRepoFileResponses = {
 
 export type GetDeployedRepoFileResponse =
   GetDeployedRepoFileResponses[keyof GetDeployedRepoFileResponses];
+
+export type ListSnapshotsData = {
+  body?: never;
+  path?: never;
+  query: {
+    /**
+     * Opi File
+     *
+     * OPI file path
+     */
+    opi_file: string;
+  };
+  url: "/api/v1/snapshots";
+};
+
+export type ListSnapshotsErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type ListSnapshotsError = ListSnapshotsErrors[keyof ListSnapshotsErrors];
+
+export type ListSnapshotsResponses = {
+  /**
+   * Response Listsnapshots
+   *
+   * Successful Response
+   */
+  200: Array<SnapshotEntry>;
+};
+
+export type ListSnapshotsResponse = ListSnapshotsResponses[keyof ListSnapshotsResponses];
+
+export type SaveSnapshotData = {
+  body: SnapshotSaveRequest;
+  path?: never;
+  query?: never;
+  url: "/api/v1/snapshots";
+};
+
+export type SaveSnapshotErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type SaveSnapshotError = SaveSnapshotErrors[keyof SaveSnapshotErrors];
+
+export type SaveSnapshotResponses = {
+  /**
+   * Successful Response
+   */
+  200: SnapshotEntry;
+};
+
+export type SaveSnapshotResponse = SaveSnapshotResponses[keyof SaveSnapshotResponses];
+
+export type DeleteSnapshotData = {
+  body?: never;
+  path: {
+    /**
+     * Snapshot Id
+     */
+    snapshot_id: string;
+  };
+  query: {
+    /**
+     * Opi File
+     *
+     * OPI file path
+     */
+    opi_file: string;
+  };
+  url: "/api/v1/snapshots/{snapshot_id}";
+};
+
+export type DeleteSnapshotErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type DeleteSnapshotError = DeleteSnapshotErrors[keyof DeleteSnapshotErrors];
+
+export type DeleteSnapshotResponses = {
+  /**
+   * Successful Response
+   */
+  200: unknown;
+};
+
+export type GetSnapshotData = {
+  body?: never;
+  path: {
+    /**
+     * Snapshot Id
+     */
+    snapshot_id: string;
+  };
+  query: {
+    /**
+     * Opi File
+     *
+     * OPI file path
+     */
+    opi_file: string;
+  };
+  url: "/api/v1/snapshots/{snapshot_id}";
+};
+
+export type GetSnapshotErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type GetSnapshotError = GetSnapshotErrors[keyof GetSnapshotErrors];
+
+export type GetSnapshotResponses = {
+  /**
+   * Successful Response
+   */
+  200: SnapshotDetail;
+};
+
+export type GetSnapshotResponse = GetSnapshotResponses[keyof GetSnapshotResponses];
 
 export type RootInfoData = {
   body?: never;

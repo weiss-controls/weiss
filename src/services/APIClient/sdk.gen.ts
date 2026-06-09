@@ -29,6 +29,9 @@ import type {
   CreateStagingRepoPathData,
   CreateStagingRepoPathErrors,
   CreateStagingRepoPathResponses,
+  DeleteSnapshotData,
+  DeleteSnapshotErrors,
+  DeleteSnapshotResponses,
   DeleteStagingRepoPathData,
   DeleteStagingRepoPathErrors,
   DeleteStagingRepoPathResponses,
@@ -45,6 +48,9 @@ import type {
   GetDeployedRepoTreeData,
   GetDeployedRepoTreeErrors,
   GetDeployedRepoTreeResponses,
+  GetSnapshotData,
+  GetSnapshotErrors,
+  GetSnapshotResponses,
   GetStagingRepoFileData,
   GetStagingRepoFileErrors,
   GetStagingRepoFileResponses,
@@ -62,6 +68,9 @@ import type {
   ListRepoRefsResponses,
   ListReposData,
   ListReposResponses,
+  ListSnapshotsData,
+  ListSnapshotsErrors,
+  ListSnapshotsResponses,
   MoveStagingRepoPathData,
   MoveStagingRepoPathErrors,
   MoveStagingRepoPathResponses,
@@ -79,6 +88,9 @@ import type {
   ResetStagingRepoResponses,
   RootInfoData,
   RootInfoResponses,
+  SaveSnapshotData,
+  SaveSnapshotErrors,
+  SaveSnapshotResponses,
   SyncRepoData,
   SyncRepoErrors,
   SyncRepoResponses,
@@ -569,6 +581,62 @@ export const getDeployedRepoFile = <ThrowOnError extends boolean = true>(
     GetDeployedRepoFileErrors,
     ThrowOnError
   >({ url: "/api/v1/repos/runtime/{repo_id}/file", ...options });
+
+/**
+ * List all snapshots for an OPI file
+ *
+ * List all saved snapshots for a given OPI file.
+ */
+export const listSnapshots = <ThrowOnError extends boolean = true>(
+  options: Options<ListSnapshotsData, ThrowOnError>,
+) =>
+  (options.client ?? client).get<ListSnapshotsResponses, ListSnapshotsErrors, ThrowOnError>({
+    url: "/api/v1/snapshots",
+    ...options,
+  });
+
+/**
+ * Save a PV snapshot
+ *
+ * Save current PV values as a named snapshot for an OPI file.
+ */
+export const saveSnapshot = <ThrowOnError extends boolean = true>(
+  options: Options<SaveSnapshotData, ThrowOnError>,
+) =>
+  (options.client ?? client).put<SaveSnapshotResponses, SaveSnapshotErrors, ThrowOnError>({
+    url: "/api/v1/snapshots",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+
+/**
+ * Delete a snapshot
+ *
+ * Delete a saved snapshot.
+ */
+export const deleteSnapshot = <ThrowOnError extends boolean = true>(
+  options: Options<DeleteSnapshotData, ThrowOnError>,
+) =>
+  (options.client ?? client).delete<DeleteSnapshotResponses, DeleteSnapshotErrors, ThrowOnError>({
+    url: "/api/v1/snapshots/{snapshot_id}",
+    ...options,
+  });
+
+/**
+ * Get a snapshot with all PV values
+ *
+ * Get full snapshot data including all PV values.
+ */
+export const getSnapshot = <ThrowOnError extends boolean = true>(
+  options: Options<GetSnapshotData, ThrowOnError>,
+) =>
+  (options.client ?? client).get<GetSnapshotResponses, GetSnapshotErrors, ThrowOnError>({
+    url: "/api/v1/snapshots/{snapshot_id}",
+    ...options,
+  });
 
 /**
  * Root

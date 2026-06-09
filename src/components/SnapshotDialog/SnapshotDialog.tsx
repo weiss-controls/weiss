@@ -28,36 +28,13 @@ import SaveIcon from "@mui/icons-material/Save";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import { COLORS } from "@src/constants/constants";
 import type { PVValue } from "@src/types/epicsWS";
-
-function getApiBase(): string {
-  const { protocol, hostname } = window.location;
-  if (protocol === "https:") {
-    return `${protocol}//${hostname}/api/v1/snapshots`;
-  }
-  return `${protocol}//${hostname}:8000/api/v1/snapshots`;
-}
-
-const API_BASE = getApiBase();
-
-interface SnapshotEntry {
-  id: string;
-  name: string;
-  opi_file: string;
-  timestamp: string;
-  pv_count: number;
-}
-
-interface SnapshotPVData {
-  value: PVValue;
-  alarm?: Record<string, unknown>;
-  timeStamp?: Record<string, unknown>;
-  b64arr?: string | null;
-  b64dtype?: string | null;
-}
-
-interface SnapshotDetail extends SnapshotEntry {
-  pvs: Record<string, SnapshotPVData>;
-}
+import type { SnapshotEntry } from "@src/services/APIClient/types.gen";
+import {
+  saveSnapshot,
+  listSnapshots,
+  getSnapshot,
+  deleteSnapshot,
+} from "@src/services/APIClient/sdk.gen";
 
 interface SnapshotDialogProps {
   open: boolean;
@@ -82,14 +59,6 @@ export default function SnapshotDialog({
     severity: "success" | "error" | "info";
   } | null>(null);
   const [compareIdx, setCompareIdx] = useState<[number, number] | null>(null);
-  //  const [compareData, setCompareData] = useState;
-  //  {
-  //   pv: string;
-  //    valA: string;
-  //    valB: string;
-  //    changed: boolean;
-  //  }
-  //  [] > [];
   const [compareData, setCompareData] = useState<
     { pv: string; valA: string; valB: string; changed: boolean }[]
   >([]);
@@ -99,9 +68,11 @@ export default function SnapshotDialog({
   const fetchSnapshots = useCallback(async () => {
     if (!opiFile) return;
     try {
-      const res = await fetch(`${API_BASE}?opi_file=${encodeURIComponent(opiFile)}`);
-      if (res.ok) {
-        const data: SnapshotEntry[] = (await res.json()) as SnapshotEntry[];
+      const { data } = await listSnapshots({
+        query: { opi_file: opiFile },
+        throwOnError: false,
+      });
+      if (data) {
         setSnapshots(data);
       }
     } catch (e) {
@@ -126,27 +97,21 @@ export default function SnapshotDialog({
     try {
       const result = await onTakeSnapshot();
       if (result && "pvs" in result) {
-        const pvs = result.pvs as Record<string, SnapshotPVData>;
-        const bodyStr = JSON.stringify({
-          name: snapshotName.trim(),
-          opi_file: opiFile,
-          pvs,
-        });
-        //console.log("Snapshot body length:", bodyStr.length, "body:", bodyStr.slice(0, 500));
-        console.log("opiFile:", opiFile, "name:", snapshotName.trim());
-        console.log("Snapshot body:", bodyStr);
-        // Save to backend
-        const res = await fetch(API_BASE, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: bodyStr,
+        const pvs = result.pvs as Record<string, unknown>;
+
+        const { data } = await saveSnapshot({
+          body: {
+            name: snapshotName.trim(),
+            opi_file: opiFile,
+            pvs: pvs as Record<string, { value: unknown }>,
+          },
+          throwOnError: false,
         });
 
-        if (res.ok) {
-          const saved: SnapshotEntry = (await res.json()) as SnapshotEntry;
+        if (data) {
           setSnapshotName("");
           setStatus({
-            message: `Saved "${saved.name}" with ${String(saved.pv_count)} PVs`,
+            message: `Saved "${data.name}" with ${String(data.pv_count)} PVs`,
             severity: "success",
           });
           void fetchSnapshots();
@@ -176,23 +141,26 @@ export default function SnapshotDialog({
       });
 
       try {
-        // Fetch full snapshot with PV data
-        const res = await fetch(`${API_BASE}/${snap.id}?opi_file=${encodeURIComponent(opiFile)}`);
-        if (!res.ok) {
+        const { data: detail } = await getSnapshot({
+          path: { snapshot_id: snap.id },
+          query: { opi_file: opiFile },
+          throwOnError: false,
+        });
+
+        if (!detail) {
           setStatus({ message: "Failed to load snapshot from server.", severity: "error" });
           setLoading(false);
           return;
         }
-        const detail: SnapshotDetail = (await res.json()) as SnapshotDetail;
 
         const pvData: Record<string, { value: PVValue }> = {};
-        for (const [pv, data] of Object.entries(detail.pvs)) {
-          pvData[pv] = { value: data.value };
+        for (const [pv, d] of Object.entries(detail.pvs)) {
+          pvData[pv] = { value: d.value as PVValue };
         }
-        const result = await onRestore(pvData);
-        if (result && "succeeded" in result) {
-          const succeeded = Number(result.succeeded);
-          const total = Number(result.total);
+        const restoreResult = await onRestore(pvData);
+        if (restoreResult && "succeeded" in restoreResult) {
+          const succeeded = Number(restoreResult.succeeded);
+          const total = Number(restoreResult.total);
           setStatus({
             message: `Restored ${String(succeeded)}/${String(total)} PVs from "${snap.name}"`,
             severity: succeeded === total ? "success" : "error",
@@ -213,13 +181,13 @@ export default function SnapshotDialog({
       const snap = snapshots[idx];
       if (!snap) return;
       try {
-        const res = await fetch(`${API_BASE}/${snap.id}?opi_file=${encodeURIComponent(opiFile)}`, {
-          method: "DELETE",
+        await deleteSnapshot({
+          path: { snapshot_id: snap.id },
+          query: { opi_file: opiFile },
+          throwOnError: false,
         });
-        if (res.ok) {
-          setStatus({ message: "Snapshot deleted", severity: "info" });
-          void fetchSnapshots();
-        }
+        setStatus({ message: "Snapshot deleted", severity: "info" });
+        void fetchSnapshots();
       } catch (e) {
         setStatus({ message: `Delete error: ${String(e)}`, severity: "error" });
       }
@@ -237,19 +205,24 @@ export default function SnapshotDialog({
         });
       } else if (compareIdx[1] === -1) {
         setCompareIdx([compareIdx[0], idx]);
-        // Fetch both snapshots for comparison
         const snapA = snapshots[compareIdx[0]];
         const snapB = snapshots[idx];
         if (!snapA || !snapB) return;
         try {
           const [resA, resB] = await Promise.all([
-            fetch(`${API_BASE}/${snapA.id}?opi_file=${encodeURIComponent(opiFile)}`),
-            fetch(`${API_BASE}/${snapB.id}?opi_file=${encodeURIComponent(opiFile)}`),
+            getSnapshot({
+              path: { snapshot_id: snapA.id },
+              query: { opi_file: opiFile },
+              throwOnError: false,
+            }),
+            getSnapshot({
+              path: { snapshot_id: snapB.id },
+              query: { opi_file: opiFile },
+              throwOnError: false,
+            }),
           ]);
-          if (resA.ok && resB.ok) {
-            const detailA: SnapshotDetail = (await resA.json()) as SnapshotDetail;
-            const detailB: SnapshotDetail = (await resB.json()) as SnapshotDetail;
-            const allPVs = new Set([...Object.keys(detailA.pvs), ...Object.keys(detailB.pvs)]);
+          if (resA.data && resB.data) {
+            const allPVs = new Set([...Object.keys(resA.data.pvs), ...Object.keys(resB.data.pvs)]);
             const diffs: {
               pv: string;
               valA: string;
@@ -257,13 +230,13 @@ export default function SnapshotDialog({
               changed: boolean;
             }[] = [];
             for (const pv of allPVs) {
-              const valA = detailA.pvs[pv]?.value ?? "N/A";
-              const valB = detailB.pvs[pv]?.value ?? "N/A";
+              const valA = JSON.stringify(resA.data.pvs[pv]?.value ?? "N/A");
+              const valB = JSON.stringify(resB.data.pvs[pv]?.value ?? "N/A");
               diffs.push({
                 pv,
-                valA: String(valA),
-                valB: String(valB),
-                changed: String(valA) !== String(valB),
+                valA,
+                valB,
+                changed: valA !== valB,
               });
             }
             setCompareData(
@@ -358,7 +331,7 @@ export default function SnapshotDialog({
                     <ListItem>
                       <ListItemText
                         primary={snap.name}
-                        secondary={`${new Date(snap.timestamp).toLocaleString()} · ${String(snap.pv_count)} PVs`}
+                        secondary={`${new Date(snap.timestamp).toLocaleString()} \u00b7 ${String(snap.pv_count)} PVs`}
                       />
                       <ListItemSecondaryAction>
                         <Chip label={`${String(snap.pv_count)} PVs`} size="small" sx={{ mr: 1 }} />
@@ -402,7 +375,7 @@ export default function SnapshotDialog({
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
               Comparing <strong>{snapshots[compareIdx[0]]?.name}</strong> vs{" "}
               <strong>{snapshots[compareIdx[1]]?.name}</strong>
-              {" · "}
+              {" \u00b7 "}
               {compareData.filter((d) => d.changed).length} differences
             </Typography>
             <Box sx={{ maxHeight: 400, overflow: "auto" }}>
