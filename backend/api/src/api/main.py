@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from .auth import auth
 from .config import FRONTEND_URL, TITLE, VERSION
 from .repos import deployed, staging
+from .snapshots import snapshots
 
 
 async def _session_pruner():
@@ -53,6 +54,7 @@ class Health(BaseModel):
 app.include_router(auth.router)
 app.include_router(staging.router)
 app.include_router(deployed.router)
+app.include_router(snapshots.router)
 
 
 @app.get("/", operation_id="rootInfo", response_model=RootInfo)
