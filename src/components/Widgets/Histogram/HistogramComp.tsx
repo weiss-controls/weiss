@@ -13,6 +13,8 @@ import { useUIContext } from "@src/context/useUIContext";
 const HistogramComp: React.FC<WidgetUpdate> = ({ data }) => {
   const { inEditMode } = useUIContext();
   const p = data.editableProperties;
+  const bufferSize: number = p.plotBufferSize?.value ?? 500;
+  const lineColors = p.lineColors?.value;
   const pvData = data.pvData;
   const alarmData = pvData?.alarm;
 
@@ -39,7 +41,7 @@ const HistogramComp: React.FC<WidgetUpdate> = ({ data }) => {
         {
           x: preview,
           type: "histogram",
-          marker: { color: COLORS.highlighted },
+          marker: { color: lineColors?.[0] ?? COLORS.highlighted },
         } as Plotly.Data,
       ]);
       return;
@@ -58,23 +60,23 @@ const HistogramComp: React.FC<WidgetUpdate> = ({ data }) => {
         {
           x: [...(value as number[])],
           type: "histogram",
-          marker: { color: COLORS.highlighted },
+          marker: { color: lineColors?.[0] ?? COLORS.highlighted },
         } as Plotly.Data,
       ]);
     } else if (typeof value === "number") {
       valueBuffer.current.push(value);
-      if (valueBuffer.current.length > 500) {
-        valueBuffer.current = valueBuffer.current.slice(-500);
+      if (valueBuffer.current.length > bufferSize) {
+        valueBuffer.current = valueBuffer.current.slice(-bufferSize);
       }
       setPlotData([
         {
           x: [...valueBuffer.current],
           type: "histogram",
-          marker: { color: COLORS.highlighted },
+          marker: { color: lineColors?.[0] ?? COLORS.highlighted },
         } as Plotly.Data,
       ]);
     }
-  }, [inEditMode, pvData]);
+  }, [inEditMode, pvData, bufferSize, lineColors]);
 
   useEffect(() => {
     setLayout({

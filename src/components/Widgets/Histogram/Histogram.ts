@@ -20,6 +20,8 @@ export const Histogram: WidgetDefinition = {
     width: { ...PROPERTY_SCHEMAS.width, value: 480 },
     height: { ...PROPERTY_SCHEMAS.height, value: 300 },
     backgroundColor: { ...PROPERTY_SCHEMAS.backgroundColor, value: "white" },
+    lineColors: PROPERTY_SCHEMAS.lineColors,
+    plotBufferSize: PROPERTY_SCHEMAS.plotBufferSize,
     plotTitle: PROPERTY_SCHEMAS.plotTitle,
     xAxisTitle: PROPERTY_SCHEMAS.xAxisTitle,
     yAxisTitle: PROPERTY_SCHEMAS.yAxisTitle,
