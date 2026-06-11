@@ -64,6 +64,22 @@ export function useWidgetManager() {
     [editorWidgets],
   );
 
+  /**
+   * Flat map of widget id -> Widget for all widgets (including nested group children).
+   * Excludes the grid itself.
+   */
+  const widgetIdMap = useMemo(() => {
+    const map = new Map<string, Widget>();
+    const traverse = (widgets: Widget[]) => {
+      for (const w of widgets) {
+        if (w.id !== GRID_ID) map.set(w.id, w);
+        if (w.children) traverse(w.children);
+      }
+    };
+    traverse(editorWidgets);
+    return map;
+  }, [editorWidgets]);
+
   const selectedWidgets: Widget[] = useMemo(
     () => getSelectedWidgets(editorWidgets, selectedWidgetIDs),
     [editorWidgets, selectedWidgetIDs],
@@ -1029,6 +1045,7 @@ export function useWidgetManager() {
     PVMap,
     macros,
     allWidgetIDs,
+    widgetIdMap,
     formatWdgToExport,
     fileLoadedTrig,
     pickedWidget,
