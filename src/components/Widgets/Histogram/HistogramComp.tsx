@@ -14,7 +14,7 @@ const HistogramComp: React.FC<WidgetUpdate> = ({ data }) => {
   const { inEditMode } = useUIContext();
   const p = data.editableProperties;
   const bufferSize: number = p.plotBufferSize?.value ?? 500;
-  const lineColors = p.lineColors?.value;
+  const barColor: string = p.barColor?.value ?? COLORS.highlighted;
   const pvData = data.pvData;
   const alarmData = pvData?.alarm;
 
@@ -41,7 +41,7 @@ const HistogramComp: React.FC<WidgetUpdate> = ({ data }) => {
         {
           x: preview,
           type: "histogram",
-          marker: { color: lineColors?.[0] ?? COLORS.highlighted },
+          marker: { color: barColor },
         } as Plotly.Data,
       ]);
       return;
@@ -60,7 +60,7 @@ const HistogramComp: React.FC<WidgetUpdate> = ({ data }) => {
         {
           x: [...(value as number[])],
           type: "histogram",
-          marker: { color: lineColors?.[0] ?? COLORS.highlighted },
+          marker: { color: barColor },
         } as Plotly.Data,
       ]);
     } else if (typeof value === "number") {
@@ -72,11 +72,11 @@ const HistogramComp: React.FC<WidgetUpdate> = ({ data }) => {
         {
           x: [...valueBuffer.current],
           type: "histogram",
-          marker: { color: lineColors?.[0] ?? COLORS.highlighted },
+          marker: { color: barColor },
         } as Plotly.Data,
       ]);
     }
-  }, [inEditMode, pvData, bufferSize, lineColors]);
+  }, [inEditMode, pvData, bufferSize, barColor]);
 
   useEffect(() => {
     setLayout({
