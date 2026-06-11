@@ -3,6 +3,8 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { GridPosition, WidgetDefinition, WidgetUpdate } from "@src/types/widgets";
+import type { PVData } from "@src/types/epicsWS";
+import { useEpicsWSContext } from "@src/context/useEpicsWSContext";
 import { createWidgetInstance } from "@src/context/widgetHelpers";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import {
@@ -62,7 +64,11 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
     groupSelected,
     ungroupSelected,
     moveSelected,
+    PVMap,
+    widgetIdMap,
   } = useWidgetContext();
+
+  const { pvState } = useEpicsWSContext();
 
   const gridRef = useRef<HTMLDivElement>(null);
   const lastPosRef = useRef<GridPosition>({ x: 0, y: 0 });
@@ -73,6 +79,9 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
   const [pan, setPan] = useState<GridPosition>({ x: 0, y: 0 });
   const [contextMenuPos, setContextMenuPos] = useState<GridPosition>({ x: 0, y: 0 });
   const [contextMenuVisible, setContextMenuVisible] = useState(false);
+  const [contextMenuPVName, setContextMenuPVName] = useState<string | null>(null);
+  const [contextMenuPVData, setContextMenuPVData] = useState<PVData | null>(null);
+
   const [shouldCenterPan, setShouldCenterPan] = useState(true);
   const [dragPreview, setDragPreview] = useState<{
     widget: WidgetDefinition;
@@ -234,6 +243,29 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
       return;
     }
     setContextMenuPos({ x: e.clientX, y: e.clientY });
+
+    if (!inEditMode) {
+      // Walk up the DOM from the click target to find a widget
+      let el: Element | null = document.elementFromPoint(e.clientX, e.clientY);
+      let foundPVName: string | null = null;
+      let foundPVData: PVData | null = null;
+      while (el && el !== document.body) {
+        const widget = widgetIdMap.get(el.id);
+        if (widget) {
+          const rawPvName = widget.editableProperties.pvName?.value;
+          if (rawPvName) {
+            const substituted = PVMap.get(rawPvName) ?? rawPvName;
+            foundPVName = substituted;
+            foundPVData = pvState[rawPvName] ?? null;
+          }
+          break;
+        }
+        el = el.parentElement;
+      }
+      setContextMenuPVName(foundPVName);
+      setContextMenuPVData(foundPVData);
+    }
+
     setContextMenuVisible(true);
   };
 
@@ -445,6 +477,8 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
         onClose={() => {
           setContextMenuVisible(false);
         }}
+        pvName={contextMenuPVName}
+        pvData={contextMenuPVData}
       />
       {isReposLoading && (
         <Box
