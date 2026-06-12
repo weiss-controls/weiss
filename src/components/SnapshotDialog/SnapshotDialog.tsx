@@ -24,6 +24,7 @@ import Tab from "@mui/material/Tab";
 import DeleteIcon from "@mui/icons-material/Delete";
 import RestoreIcon from "@mui/icons-material/Restore";
 import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 import SaveIcon from "@mui/icons-material/Save";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import { COLORS } from "@src/constants/constants";
@@ -62,6 +63,10 @@ export default function SnapshotDialog({
   const [compareData, setCompareData] = useState<
     { pv: string; valA: string; valB: string; changed: boolean }[]
   >([]);
+  const [viewData, setViewData] = useState<{
+    name: string;
+    pvs: { pv: string; value: string }[];
+  } | null>(null);
   const [loading, setLoading] = useState(false);
 
   // Load snapshots from backend when dialog opens or opiFile changes
@@ -254,13 +259,36 @@ export default function SnapshotDialog({
     },
     [compareIdx, snapshots, opiFile],
   );
-
+  const handleView = useCallback(
+    async (idx: number) => {
+      const snap = snapshots[idx];
+      if (!snap) return;
+      try {
+        const { data: detail } = await getSnapshot({
+          path: { snapshot_id: snap.id },
+          query: { opi_file: opiFile },
+          throwOnError: false,
+        });
+        if (detail) {
+          const pvs = Object.entries(detail.pvs).map(([pv, d]) => ({
+            pv,
+            value: JSON.stringify(d.value),
+          }));
+          setViewData({ name: snap.name, pvs });
+          setTab(3);
+        }
+      } catch (e) {
+        setStatus({ message: `View error: ${String(e)}`, severity: "error" });
+      }
+    },
+    [snapshots, opiFile],
+  );
   const cancelCompare = useCallback(() => {
     setCompareIdx(null);
     setCompareData([]);
+    setViewData(null);
     setStatus(null);
   }, []);
-
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -284,6 +312,7 @@ export default function SnapshotDialog({
           <Tab label="Save" />
           <Tab label={`Saved (${String(snapshots.length)})`} />
           {compareIdx && compareIdx[1] !== -1 && <Tab label="Compare" />}
+          {viewData && <Tab label="View" />}
         </Tabs>
 
         {/* SAVE TAB */}
@@ -335,6 +364,9 @@ export default function SnapshotDialog({
                       />
                       <ListItemSecondaryAction>
                         <Chip label={`${String(snap.pv_count)} PVs`} size="small" sx={{ mr: 1 }} />
+                        <IconButton edge="end" title="View" onClick={() => void handleView(idx)}>
+                          <VisibilityIcon />
+                        </IconButton>
                         <IconButton
                           edge="end"
                           title="Compare"
@@ -438,6 +470,55 @@ export default function SnapshotDialog({
                         }}
                       >
                         {row.valB}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Box>
+          </Box>
+        )}
+        {/* VIEW TAB */}
+        {tab === 3 && viewData && (
+          <Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              Snapshot: <strong>{viewData.name}</strong>
+              {" \u00b7 "}
+              {viewData.pvs.length} PVs
+            </Typography>
+            <Box sx={{ maxHeight: 400, overflow: "auto" }}>
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  fontSize: 13,
+                }}
+              >
+                <thead>
+                  <tr
+                    style={{
+                      borderBottom: `2px solid ${COLORS.gridLineColor}`,
+                    }}
+                  >
+                    <th style={{ textAlign: "left", padding: "6px 8px" }}>PV Name</th>
+                    <th style={{ textAlign: "right", padding: "6px 8px" }}>Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {viewData.pvs.map((row) => (
+                    <tr
+                      key={row.pv}
+                      style={{
+                        borderBottom: `1px solid ${COLORS.gridLineColor}`,
+                      }}
+                    >
+                      <td style={{ padding: "4px 8px", fontFamily: "monospace", fontSize: 12 }}>
+                        {row.pv}
+                      </td>
+                      <td
+                        style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}
+                      >
+                        {row.value}
                       </td>
                     </tr>
                   ))}
