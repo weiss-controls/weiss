@@ -94,7 +94,9 @@ export function useWidgetManager() {
 
   const computeGroupBounds = useCallback(
     (widgetIds: string[]): DOMRectLike | null => {
-      const widgets = editorWidgets.filter((w) => widgetIds.includes(w.id));
+      const widgets = widgetIds
+        .map((id) => widgetIdMap.get(id))
+        .filter((w): w is Widget => w !== undefined);
       if (!widgets.length) return null;
 
       const xs = widgets.map((w) => w.editableProperties.x!.value);
@@ -107,7 +109,7 @@ export function useWidgetManager() {
       const maxY = Math.max(...ys.map((y, i) => y + hs[i]));
       return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
     },
-    [editorWidgets],
+    [widgetIdMap],
   );
 
   const selectionBounds = useMemo(
