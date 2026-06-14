@@ -26,6 +26,7 @@ const SpinnerComp: React.FC<WidgetUpdate> = ({ data }) => {
   const id = React.useId();
 
   const p = data.editableProperties;
+  const runtimePVName = data.runtimePVName;
   const pvData = data.pvData;
   const units =
     p.unitsFromPV?.value && pvData?.display?.units ? pvData.display.units : p.units?.value;
@@ -65,10 +66,8 @@ const SpinnerComp: React.FC<WidgetUpdate> = ({ data }) => {
   if (!p.visible?.value) return null;
 
   const handleWrite = (value: number | null) => {
-    if (inEditMode || value === null) return;
-    if (p.pvName?.value) {
-      writePVValue(p.pvName.value, value);
-    }
+    if (inEditMode || value === null || !runtimePVName) return;
+    writePVValue(runtimePVName, value);
   };
 
   return (

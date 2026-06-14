@@ -13,6 +13,7 @@ const ToggleButtonComp: React.FC<WidgetUpdate> = ({ data }) => {
   const { writePVValue } = useWSActionsContext();
   const { inEditMode } = useUIContext();
   const p = data.editableProperties;
+  const runtimePVName = data.runtimePVName;
   const pvData = data.pvData;
   const value = pvData?.value;
   const validValue = value === 1 || value === 0;
@@ -37,8 +38,8 @@ const ToggleButtonComp: React.FC<WidgetUpdate> = ({ data }) => {
   }
 
   const handleClick = (_e: React.MouseEvent) => {
-    if (!inEditMode && validValue && p.pvName?.value) {
-      writePVValue(p.pvName.value, Number(!value));
+    if (!inEditMode && validValue && runtimePVName) {
+      writePVValue(runtimePVName, Number(!value));
     }
   };
 

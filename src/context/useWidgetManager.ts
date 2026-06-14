@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
-import { useState, useCallback, useRef, useMemo } from "react";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import type {
   Widget,
   WidgetDefinition,
@@ -922,7 +922,7 @@ export function useWidgetManager() {
   /**
    * Macros to be substituted on pv names.
    * In runtime mode, effectiveGridMacroOverrides (computed by WidgetRenderer from fired rules)
-   * are merged on top of the GridZone's design-time macros so that PVMap stays in sync.
+   * are merged on top of the GridZone's design-time macros so that annotatedEditorWidgets stays in sync.
    */
   const [effectiveGridMacroOverrides, setEffectiveGridMacroOverrides] = useState<
     Record<string, string>
@@ -946,56 +946,69 @@ export function useWidgetManager() {
   );
 
   /**
-   * Map of all PVs held by widgets: { widget PV: macros-substituted PV }
+   * Stamps runtimePVName/runtimePVNames directly into editorWidgets whenever
+   * macros or PV-name properties change. No save in history.
    */
-  const PVMap = useMemo(() => {
-    const map = new Map<string, string>();
+  useEffect(() => {
+    const annotateWidget = (w: Widget): Widget => {
+      const pvName = w.editableProperties?.pvName?.value;
+      const pvNames = w.editableProperties?.pvNames?.value;
 
-    const collectPVs = (widgets: typeof editorWidgets) => {
+      const runtimePVName = pvName ? substituteMacros(pvName) : undefined;
+      const runtimePVNames = pvNames?.length ? pvNames.map(substituteMacros) : undefined;
+      const annotatedChildren = w.children?.map(annotateWidget);
+
+      const pvNameUnchanged = runtimePVName === w.runtimePVName;
+      const pvNamesUnchanged =
+        (!runtimePVNames && !w.runtimePVNames) ||
+        (runtimePVNames?.length === w.runtimePVNames?.length &&
+          runtimePVNames?.every((v, i) => v === w.runtimePVNames![i]));
+      const childrenUnchanged =
+        !annotatedChildren || annotatedChildren.every((c, i) => c === w.children![i]);
+
+      if (pvNameUnchanged && pvNamesUnchanged && childrenUnchanged) return w;
+
+      return {
+        ...w,
+        ...(runtimePVName !== undefined ? { runtimePVName } : {}),
+        ...(runtimePVNames !== undefined ? { runtimePVNames } : {}),
+        ...(annotatedChildren ? { children: annotatedChildren } : {}),
+      };
+    };
+
+    const annotated = editorWidgets.map(annotateWidget);
+    if (annotated.some((w, i) => w !== editorWidgets[i])) {
+      setEditorWidgets(annotated);
+    }
+  }, [editorWidgets, substituteMacros]);
+
+  /**
+   * Flat deduplicated list of all resolved PV names that need WebSocket subscriptions:
+   * widget runtimePVName/runtimePVNames values plus rule condition/action PV targets.
+   */
+  const resolvedPVList = useMemo(() => {
+    const pvSet = new Set<string>();
+    const collect = (widgets: Widget[]) => {
       for (const w of widgets) {
-        const single = w.editableProperties?.pvName?.value;
-        if (single) {
-          const substitutedSingle = substituteMacros(single);
-          if (substitutedSingle) {
-            map.set(single, substitutedSingle);
-          }
-        }
-
-        const multiPV = w.editableProperties?.pvNames?.value;
-        if (multiPV) {
-          Object.values(multiPV).forEach((pv) => {
-            const substituted = substituteMacros(pv);
-            if (substituted) {
-              map.set(pv, substituted);
-            }
-          });
-        }
-
+        if (w.runtimePVName) pvSet.add(w.runtimePVName);
+        if (w.runtimePVNames) for (const pv of w.runtimePVNames) pvSet.add(pv);
         for (const rule of w.rules ?? []) {
           for (const pv of rule.pvNames) {
             const substituted = substituteMacros(pv);
-            if (substituted) {
-              map.set(pv, substituted);
-            }
+            if (substituted) pvSet.add(substituted);
           }
           // Pre-subscribe pvName action targets so EpicsWS is ready before the rule fires
           const pvNameAction = rule.actions?.pvName;
           if (typeof pvNameAction === "string" && pvNameAction) {
             const substituted = substituteMacros(pvNameAction);
-            if (substituted) {
-              map.set(pvNameAction, substituted);
-            }
+            if (substituted) pvSet.add(substituted);
           }
         }
-
-        if (w.children && w.children.length > 0) {
-          collectPVs(w.children);
-        }
+        if (w.children?.length) collect(w.children);
       }
     };
-
-    collectPVs(editorWidgets);
-    return map;
+    collect(editorWidgets);
+    return [...pvSet];
   }, [editorWidgets, substituteMacros]);
 
   return {
@@ -1044,7 +1057,7 @@ export function useWidgetManager() {
     fileImportedTrig,
     updateWidgetRules,
     batchUpdateWidgetRules,
-    PVMap,
+    resolvedPVList,
     macros,
     allWidgetIDs,
     widgetIdMap,

@@ -10,7 +10,7 @@ import { useWidgetManager } from "./useWidgetManager";
 
 export const ContextProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const widgetManager = useWidgetManager();
-  const ws = useEpicsWS(widgetManager.PVMap);
+  const ws = useEpicsWS(widgetManager.resolvedPVList);
   const ui = useUIManager(
     ws,
     widgetManager.setSelectedWidgetIDs,

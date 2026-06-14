@@ -64,7 +64,6 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
     groupSelected,
     ungroupSelected,
     moveSelected,
-    PVMap,
     widgetIdMap,
   } = useWidgetContext();
 
@@ -252,11 +251,10 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
       while (el && el !== document.body) {
         const widget = widgetIdMap.get(el.id);
         if (widget) {
-          const rawPvName = widget.editableProperties.pvName?.value;
-          if (rawPvName) {
-            const substituted = PVMap.get(rawPvName) ?? rawPvName;
-            foundPVName = substituted;
-            foundPVData = pvState[rawPvName] ?? null;
+          const runtimePVName = widget.runtimePVName ?? widget.editableProperties.pvName?.value;
+          if (runtimePVName) {
+            foundPVName = runtimePVName;
+            foundPVData = pvState[runtimePVName] ?? null;
           }
           break;
         }
