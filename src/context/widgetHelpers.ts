@@ -119,6 +119,20 @@ export function getWidgetNested(widgets: Widget[], id: string): Widget | undefin
   return undefined;
 }
 
+/**
+ * Given a widget ID, return the ID of its top-level ancestor in the flat editorWidgets list.
+ * If the widget is already top-level, returns its own ID.
+ * This is used to ensure that selecting a child widget inside a group promotes the selection
+ * to the parent group, keeping the group intact during multi-select drag/resize.
+ */
+export function getTopLevelId(widgets: Widget[], id: string): string {
+  for (const w of widgets) {
+    if (w.id === id) return id;
+    if (w.children && getWidgetNested(w.children, id)) return w.id;
+  }
+  return id;
+}
+
 export function getSelectedWidgets(widgets: Widget[], selectedIds: string[]): Widget[] {
   const result: Widget[] = [];
   for (const w of widgets) {

@@ -4,6 +4,7 @@
 import { FRONT_UI_ZIDX, GRID_ID } from "@src/constants/constants";
 import { useUIContext } from "@src/context/useUIContext";
 import { useWidgetContext } from "@src/context/useWidgetContext";
+import { getTopLevelId } from "@src/context/widgetHelpers";
 import React, { useRef, useState, useEffect } from "react";
 
 interface SelectionManagerProps {
@@ -90,9 +91,13 @@ const SelectionManager: React.FC<SelectionManagerProps> = ({ gridRef, zoom, pan 
           return;
         }
         if (e.ctrlKey) {
-          setSelectedWidgetIDs((prev) =>
-            prev.includes(wId) ? prev.filter((pid) => pid !== wId) : [...prev, wId],
-          );
+          const effectiveId = getTopLevelId(editorWidgets, wId);
+          setSelectedWidgetIDs((prev) => {
+            const sanitized = prev.map((id) => getTopLevelId(editorWidgets, id));
+            return sanitized.includes(effectiveId)
+              ? sanitized.filter((pid) => pid !== effectiveId)
+              : [...sanitized, effectiveId];
+          });
         } else if (!selectedWidgetIDs.includes(wId)) {
           setSelectedWidgetIDs([wId]);
         }

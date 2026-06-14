@@ -231,7 +231,6 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
   const renderSelectionGroup = () => {
     if (!selectionBounds || selectedWidgetIDs.length <= 1) return null;
 
-    const selectedWidgets = editorWidgets.filter((w) => selectedWidgetIDs.includes(w.id));
     const canDrag = inEditMode && !isPanning;
     const canResize = inEditMode && !isPanning;
 
