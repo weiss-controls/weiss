@@ -7,6 +7,7 @@ import type { WidgetUpdate } from "@src/types/widgets";
 import AlarmBorder from "@components/AlarmBorder/AlarmBorder";
 import { useUIContext } from "@src/context/useUIContext";
 import { useWSActionsContext } from "@src/context/useEpicsWSContext";
+import { formatDisplayValue } from "@src/utils/displayFormat";
 
 const InputFieldComp: React.FC<WidgetUpdate> = ({ data }) => {
   const { writePVValue } = useWSActionsContext();
@@ -18,6 +19,7 @@ const InputFieldComp: React.FC<WidgetUpdate> = ({ data }) => {
   const pvData = data.pvData;
   const units =
     p.unitsFromPV?.value && pvData?.display?.units ? pvData.display.units : p.units?.value;
+  const displayFormat = p.displayFormat?.value ?? "Default";
 
   useEffect(() => {
     if (inEditMode) setInputValue("");
@@ -64,7 +66,7 @@ const InputFieldComp: React.FC<WidgetUpdate> = ({ data }) => {
             isFocused
               ? inputValue
               : !inEditMode && pvData?.value !== undefined
-                ? String(pvData.value) + (units ? ` ${units}` : "")
+                ? formatDisplayValue(pvData.value, displayFormat) + (units ? ` ${units}` : "")
                 : inputValue
           }
           onFocus={() => {

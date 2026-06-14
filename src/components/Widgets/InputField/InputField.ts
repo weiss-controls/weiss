@@ -20,6 +20,7 @@ export const InputField: WidgetDefinition = {
     unitsFromPV: PROPERTY_SCHEMAS.unitsFromPV,
     units: PROPERTY_SCHEMAS.units,
     disabled: PROPERTY_SCHEMAS.disabled,
+    displayFormat: PROPERTY_SCHEMAS.displayFormat,
     ...COMMON_PROPS,
     backgroundColor: { ...PROPERTY_SCHEMAS.backgroundColor, value: COLORS.inputColor },
     ...FILTERED_TEXT_PROPS,

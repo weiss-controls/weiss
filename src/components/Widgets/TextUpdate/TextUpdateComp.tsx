@@ -6,6 +6,7 @@ import type { WidgetUpdate } from "@src/types/widgets";
 import { FLEX_ALIGN_MAP } from "@src/constants/constants";
 import AlarmBorder from "@components/AlarmBorder/AlarmBorder";
 import { useUIContext } from "@src/context/useUIContext";
+import { formatDisplayValue } from "@src/utils/displayFormat";
 
 const TextUpdateComp: React.FC<WidgetUpdate> = ({ data }) => {
   const p = data.editableProperties;
@@ -16,19 +17,26 @@ const TextUpdateComp: React.FC<WidgetUpdate> = ({ data }) => {
 
   const units = p.unitsFromPV?.value ? pvData?.display?.units : p.units?.value;
   const precision = p.precisionFromPV?.value ? pvData?.display?.precision : p.precision?.value;
+  const displayFormat = p.displayFormat?.value ?? "Default";
 
-  let displayValue = pvData?.value;
+  let displayValue: string;
 
-  if (!inEditMode && typeof pvData?.value === "number") {
-    const val = pvData.value;
-    if (typeof precision === "number" && precision > 0 && !pvData.enumChoices) {
-      displayValue = val.toFixed(precision);
-    } else if (pvData.enumChoices && pvData.enumChoices.length > 0) {
-      const validIdx = val <= pvData.enumChoices.length;
-      displayValue = validIdx ? pvData.enumChoices[val] : val;
-    }
-  } else if (inEditMode) {
+  if (inEditMode) {
     displayValue = p.pvName?.value ?? p.label?.value ?? "";
+  } else {
+    const val = pvData?.value;
+    if (val === undefined || val === null) {
+      displayValue = "";
+    } else if (
+      typeof val === "number" &&
+      pvData?.enumChoices?.length &&
+      (displayFormat === "Default" || displayFormat === "String")
+    ) {
+      const label = val < pvData.enumChoices.length ? pvData.enumChoices[val] : undefined;
+      displayValue = label ?? formatDisplayValue(val, displayFormat, precision);
+    } else {
+      displayValue = formatDisplayValue(val, displayFormat, precision);
+    }
   }
 
   return (

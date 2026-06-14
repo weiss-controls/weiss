@@ -7,6 +7,7 @@ import type { WidgetUpdate } from "@src/types/widgets";
 import AlarmBorder from "@components/AlarmBorder/AlarmBorder";
 import { useWSActionsContext } from "@src/context/useEpicsWSContext";
 import { useUIContext } from "@src/context/useUIContext";
+import { formatDisplayValue } from "@src/utils/displayFormat";
 
 const SliderComp: React.FC<WidgetUpdate> = ({ data }) => {
   const { writePVValue } = useWSActionsContext();
@@ -24,6 +25,7 @@ const SliderComp: React.FC<WidgetUpdate> = ({ data }) => {
   const value = inEditMode ? 0 : runtimeVal;
   const isHorizontal = p.horizontal?.value ?? true;
   const orientation = isHorizontal ? "horizontal" : "vertical";
+  const displayFormat = p.displayFormat?.value ?? "Default";
 
   const handleChange = (_: Event | React.SyntheticEvent<Element, Event>, newValue: number) => {
     if (!inEditMode && p.pvName?.value && typeof newValue === "number") {
@@ -59,6 +61,8 @@ const SliderComp: React.FC<WidgetUpdate> = ({ data }) => {
           step={step}
           marks={step !== undefined}
           disabled={p.disabled?.value}
+          valueLabelDisplay="auto"
+          valueLabelFormat={(v) => formatDisplayValue(v, displayFormat)}
           onChange={handleChange}
           sx={{
             color: p.backgroundColor?.value ?? "primary.main",

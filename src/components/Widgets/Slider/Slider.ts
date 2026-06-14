@@ -26,5 +26,6 @@ export const Slider: WidgetDefinition = {
     limitsFromPV: PROPERTY_SCHEMAS.limitsFromPV,
     stepSize: PROPERTY_SCHEMAS.stepSize,
     horizontal: PROPERTY_SCHEMAS.horizontal,
+    displayFormat: PROPERTY_SCHEMAS.displayFormat,
   },
 };

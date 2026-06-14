@@ -24,5 +24,6 @@ export const TextUpdate: WidgetDefinition = {
     units: PROPERTY_SCHEMAS.units,
     precisionFromPV: PROPERTY_SCHEMAS.precisionFromPV,
     precision: PROPERTY_SCHEMAS.precision,
+    displayFormat: PROPERTY_SCHEMAS.displayFormat,
   },
 };
