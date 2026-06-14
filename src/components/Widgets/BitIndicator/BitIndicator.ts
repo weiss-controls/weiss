@@ -28,6 +28,7 @@ export const BitIndicator: WidgetDefinition = {
     useStringVal: PROPERTY_SCHEMAS.useStringVal,
     offLabel: PROPERTY_SCHEMAS.offLabel,
     onLabel: PROPERTY_SCHEMAS.onLabel,
+    displayFormat: PROPERTY_SCHEMAS.displayFormat,
     ...FILTERED_TEXT_PROPS,
   },
 };

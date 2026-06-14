@@ -33,6 +33,18 @@ export type PropertySelectorType =
 /** Allowed values for a widget property */
 export type PropertyValue = string | number | boolean | string[] | Record<string, string>;
 
+export const valueDisplayFormats = [
+  "Default",
+  "String",
+  "Hexadecimal",
+  "Scientific",
+  "Engineering",
+  "Timestamp",
+];
+
+/** Display formats allowed to be applied to values */
+export type ValueDisplayFormat = (typeof valueDisplayFormats)[number];
+
 /** Format of numerical limits for a property */
 export interface PropertyLimits {
   min?: number;

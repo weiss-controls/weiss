@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
-import type { WidgetProperty, PropertyValue, WidgetProperties } from "./widgets";
+import {
+  type WidgetProperty,
+  type PropertyValue,
+  type WidgetProperties,
+  type ValueDisplayFormat,
+  valueDisplayFormats,
+} from "./widgets";
 import { COLORS } from "@src/constants/constants";
 
 /**
@@ -30,9 +36,10 @@ export const PROPERTY_SCHEMAS = {
   y:               defineProp({ selType: "number", label: "Y", value: 100 as number, category: "Layout" }),
   width:           defineProp({ selType: "number", label: "Width", value: 100 as number, limits: { min: 1 }, category: "Layout" }),
   height:          defineProp({ selType: "number", label: "Height", value: 40 as number, limits: { min: 1 }, category: "Layout" }),
-  label:           defineProp({ selType: "text", label: "Label", value: "" as string, category: "Text" }),
+  label:           defineProp({ selType: "text", label: "Label", value: "" as string, category: "Text" }),  
   tooltip:         defineProp({ selType: "text", label: "Tooltip", value: "$(pvname) - $(pvdesc)" as string, category: "Text" }),
   visible:         defineProp({ selType: "none", label: "Visible", value: true as boolean, category: "Layout" }),
+  displayFormat:   defineProp({ selType: "select", label: "Display Format", value: "Default" as ValueDisplayFormat, options: [...valueDisplayFormats], category: "Layout" }),
   // Style
   backgroundColor: defineProp({ selType: "colorSel", label: "Background Color", value: COLORS.backgroundColor, category: "Style" }),
   borderColor:     defineProp({ selType: "colorSel", label: "Border Color", value: COLORS.textColor, category: "Style" }),

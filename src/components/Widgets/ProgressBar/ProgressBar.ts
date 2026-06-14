@@ -21,6 +21,7 @@ export const ProgressBar: WidgetDefinition = {
     horizontal: PROPERTY_SCHEMAS.horizontal,
     showValue: PROPERTY_SCHEMAS.showValue,
     valuePlcmnt: PROPERTY_SCHEMAS.valuePlcmnt,
+    displayFormat: PROPERTY_SCHEMAS.displayFormat,
     showPercentage: PROPERTY_SCHEMAS.showPercentage,
     barColor: PROPERTY_SCHEMAS.barColor,
     ...TEXT_PROPS,

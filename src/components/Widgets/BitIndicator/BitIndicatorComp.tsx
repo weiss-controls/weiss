@@ -5,6 +5,7 @@ import React from "react";
 import type { WidgetUpdate } from "@src/types/widgets";
 import AlarmBorder from "@components/AlarmBorder/AlarmBorder";
 import { useUIContext } from "@src/context/useUIContext";
+import { formatDisplayValue } from "@src/utils/displayFormat";
 
 const BitIndicatorComp: React.FC<WidgetUpdate> = ({ data }) => {
   const p = data.editableProperties;
@@ -21,7 +22,8 @@ const BitIndicatorComp: React.FC<WidgetUpdate> = ({ data }) => {
 
   const useStr = p.useStringVal?.value;
   const enumOption = canBeEnum && pvData?.enumChoices ? pvData?.enumChoices[value] : "";
-  const pvText = useStr ? (enumOption ?? "") : ((value as string) ?? "");
+  const displayFormat = p.displayFormat?.value ?? "Default";
+  const pvText = useStr ? (enumOption ?? "") : formatDisplayValue(value, displayFormat);
 
   const labelFromPV = p.labelFromPV?.value;
   const offLabel = p.offLabel?.value ?? "";
