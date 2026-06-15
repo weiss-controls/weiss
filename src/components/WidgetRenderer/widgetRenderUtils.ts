@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
-import type { Widget, Rule } from "@src/types/widgets";
+import type {
+  Widget,
+  Rule,
+  WidgetProperties,
+  WidgetProperty,
+  PropertyKey,
+} from "@src/types/widgets";
 import type { PVData } from "@src/types/epicsWS";
 import { flattenWidgetTree } from "@src/context/widgetHelpers";
 import { buildInternalMacros, substituteInStr, substituteTextProps } from "@src/utils/macros";
@@ -49,7 +55,9 @@ export interface MergeWidgetContext {
   pvState: Record<string, PVData>;
   prevPVState: Record<string, PVData>;
   prevWidgetsMap: Map<string, Widget>;
+  prevRawPropsMap: Map<string, WidgetProperties>;
   gridMacros: Record<string, string>;
+  prevGridMacros: Record<string, string>;
   inEditMode: boolean;
 }
 
@@ -63,7 +71,7 @@ const getStableWidget = (
   ctx: MergeWidgetContext,
   newChildren: Widget[] | undefined,
 ): Widget | undefined => {
-  const { pvState, prevPVState, prevWidgetsMap, gridMacros } = ctx;
+  const { pvState, prevPVState, prevWidgetsMap, prevRawPropsMap, gridMacros, prevGridMacros } = ctx;
   const pvName = w.runtimePVName;
   const pvNames = w.runtimePVNames;
 
@@ -87,9 +95,15 @@ const getStableWidget = (
     !newChildren || newChildren.every((c, i) => c === prevWidgetsMap.get(w.children![i].id));
 
   const prevWidget = prevWidgetsMap.get(w.id);
-  const structureStable = prevWidget?.editableProperties === w.editableProperties;
+  // Compare raw-to-raw: prevRawPropsMap holds the unsubstituted editableProperties from
+  // the previous render, so this is not affected by substituteTextProps creating new objects.
+  const structureStable = prevRawPropsMap.get(w.id) === w.editableProperties;
+  // If gridMacros changed (e.g. a rule updated a globalMacro like $(IDX)), any widget
+  // whose text props reference that macro must be recomputed even if its own PV and
+  // raw props are unchanged.
+  const macrosStable = gridMacros === prevGridMacros;
 
-  return ownPVsStable && childrenStable && structureStable ? prevWidget : undefined;
+  return ownPVsStable && childrenStable && structureStable && macrosStable ? prevWidget : undefined;
 };
 
 /**
@@ -100,13 +114,19 @@ const getStableWidget = (
 export function computeWidgetsForRender(
   editorWidgets: Widget[],
   ctx: MergeWidgetContext,
-): { result: Widget[]; nextWidgetsMap: Map<string, Widget> } {
-  const { pvState, gridMacros, inEditMode } = ctx;
+): {
+  result: Widget[];
+  nextWidgetsMap: Map<string, Widget>;
+  nextRawPropsMap: Map<string, WidgetProperties>;
+} {
+  const { pvState, gridMacros, inEditMode, prevWidgetsMap } = ctx;
   const nextWidgetsMap = new Map<string, Widget>();
+  const nextRawPropsMap = new Map<string, WidgetProperties>();
 
   const mergeWidget = (w: Widget): Widget => {
     if (inEditMode) {
       nextWidgetsMap.set(w.id, w);
+      nextRawPropsMap.set(w.id, w.editableProperties);
       return w;
     }
     const pvName = w.runtimePVName;
@@ -118,6 +138,7 @@ export function computeWidgetsForRender(
     const stableWidget = getStableWidget(w, ctx, newChildren);
     if (stableWidget) {
       nextWidgetsMap.set(w.id, stableWidget);
+      nextRawPropsMap.set(w.id, w.editableProperties);
       return stableWidget;
     }
 
@@ -157,10 +178,54 @@ export function computeWidgetsForRender(
     const internalMacros = buildInternalMacros(effectivePvName, pvData);
     const allMacros =
       Object.keys(internalMacros).length > 0 ? { ...gridMacros, ...internalMacros } : gridMacros;
-    const mergedWithMacros: Widget = {
-      ...merged,
-      editableProperties: substituteTextProps(merged.editableProperties, allMacros),
-    };
+
+    // Substitute macros in text properties, then stabilise the reference.
+    //
+    // For each prop where the reference changed, compare the substituted value against
+    // the previous substituted value.  If the value is identical (same string / same array
+    // elements), reuse the previous prop object so the reference stays stable.
+    const prevSubstitutedProps = prevWidgetsMap.get(w.id)?.editableProperties;
+    const freshSubstitutedProps = substituteTextProps(merged.editableProperties, allMacros);
+
+    let substitutedProps: WidgetProperties;
+    if (!prevSubstitutedProps || freshSubstitutedProps === merged.editableProperties) {
+      // No previous state, or nothing was substituted: use as-is.
+      substitutedProps = freshSubstitutedProps;
+    } else {
+      type PropsRecord = Record<PropertyKey, WidgetProperty>;
+      const freshRec = freshSubstitutedProps as PropsRecord;
+      const prevRec = prevSubstitutedProps as PropsRecord;
+      const stabilized: PropsRecord = { ...freshRec };
+      let anyRealChange = false;
+      for (const k of Object.keys(freshRec) as PropertyKey[]) {
+        const fp = freshRec[k];
+        const pp = prevRec[k];
+        if (fp === pp) continue; // reference already stable
+        const fv = fp?.value;
+        const pv = pp?.value;
+        if (fv === pv) {
+          // Same primitive value: reuse previous prop object.
+          stabilized[k] = pp;
+        } else if (
+          Array.isArray(fv) &&
+          Array.isArray(pv) &&
+          fv.length === pv.length &&
+          fv.every((x, i) => x === pv[i])
+        ) {
+          // Same array contents: reuse previous prop object.
+          stabilized[k] = pp;
+        } else {
+          anyRealChange = true;
+        }
+      }
+      // If all values were identical, return the exact previous container object so
+      // that stability checks on editableProperties in downstream components pass.
+      substitutedProps = anyRealChange
+        ? (stabilized as unknown as WidgetProperties)
+        : prevSubstitutedProps;
+    }
+
+    const mergedWithMacros: Widget = { ...merged, editableProperties: substitutedProps };
 
     // Apply per-widget rule overrides to editableProperties:
     // - globalMacros: consumed by computeGlobalMacrosOverrides, not applied here.
@@ -196,9 +261,10 @@ export function computeWidgetsForRender(
       : mergedWithMacros;
 
     nextWidgetsMap.set(w.id, withRules);
+    nextRawPropsMap.set(w.id, w.editableProperties);
     return withRules;
   };
 
   const result = editorWidgets.map(mergeWidget);
-  return { result, nextWidgetsMap };
+  return { result, nextWidgetsMap, nextRawPropsMap };
 }

@@ -48,6 +48,7 @@ export function substituteTextProps(
 
   const result: WidgetProperties = {};
   const resultRecord = result as Record<PropertyKey, WidgetProperty>;
+  let changed = false;
   for (const key of Object.keys(props) as PropertyKey[]) {
     const prop = props[key];
     if (!prop) {
@@ -55,16 +56,24 @@ export function substituteTextProps(
     }
     if (prop.selType === "text" && typeof prop.value === "string") {
       const substituted = substituteInStr(prop.value, macros);
-      resultRecord[key] = substituted !== prop.value ? { ...prop, value: substituted } : prop;
+      if (substituted !== prop.value) {
+        resultRecord[key] = { ...prop, value: substituted };
+        changed = true;
+      } else {
+        resultRecord[key] = prop;
+      }
     } else if (prop.selType === "strList" && Array.isArray(prop.value)) {
       const original = prop.value;
       const substituted = original.map((s) => substituteInStr(s, macros));
-      resultRecord[key] = substituted.some((s, i) => s !== original[i])
-        ? { ...prop, value: substituted }
-        : prop;
+      if (substituted.some((s, i) => s !== original[i])) {
+        resultRecord[key] = { ...prop, value: substituted };
+        changed = true;
+      } else {
+        resultRecord[key] = prop;
+      }
     } else {
       resultRecord[key] = prop;
     }
   }
-  return result;
+  return changed ? result : props;
 }

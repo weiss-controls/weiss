@@ -3,7 +3,12 @@
 
 import React, { useEffect, useMemo, useRef, type ReactNode } from "react";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
-import type { Widget, MultiWidgetPropertyUpdates, DOMRectLike } from "@src/types/widgets";
+import type {
+  Widget,
+  MultiWidgetPropertyUpdates,
+  DOMRectLike,
+  WidgetProperties,
+} from "@src/types/widgets";
 import { Rnd, type DraggableData, type Position, type RndDragEvent } from "react-rnd";
 import { GRID_ID } from "@src/constants/constants";
 import "./WidgetRenderer.css";
@@ -40,6 +45,8 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
   // Refs to track previous pvState entries and previously computed Widget objects.
   const prevPVStateRef = useRef<Record<string, PVData>>({});
   const prevWidgetsMapRef = useRef<Map<string, Widget>>(new Map());
+  const prevRawPropsMapRef = useRef<Map<string, WidgetProperties>>(new Map());
+  const prevGridMacrosRef = useRef<Record<string, string>>({});
   const prevInEditModeRef = useRef(inEditMode);
 
   // Compute the merged globalMacros overrides produced by all widgets' rules.
@@ -76,17 +83,24 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
     const modeChanged = inEditMode !== prevInEditModeRef.current;
     prevInEditModeRef.current = inEditMode;
     const prevWidgetsMap = modeChanged ? new Map<string, Widget>() : prevWidgetsMapRef.current;
+    const prevRawPropsMap = modeChanged
+      ? new Map<string, WidgetProperties>()
+      : prevRawPropsMapRef.current;
 
     const ctx: MergeWidgetContext = {
       pvState,
       prevPVState: prevPVStateRef.current,
       prevWidgetsMap,
+      prevRawPropsMap,
       gridMacros,
+      prevGridMacros: prevGridMacrosRef.current,
       inEditMode,
     };
-    const { result, nextWidgetsMap } = computeWidgetsForRender(editorWidgets, ctx);
+    const { result, nextWidgetsMap, nextRawPropsMap } = computeWidgetsForRender(editorWidgets, ctx);
     prevPVStateRef.current = pvState;
     prevWidgetsMapRef.current = nextWidgetsMap;
+    prevRawPropsMapRef.current = nextRawPropsMap;
+    prevGridMacrosRef.current = gridMacros;
 
     return result;
   }, [editorWidgets, pvState, inEditMode, globalMacrosOverrides, baseGridMacros]);
