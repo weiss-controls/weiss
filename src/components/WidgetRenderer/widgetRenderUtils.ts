@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
-import type { Widget } from "@src/types/widgets";
+import type { Widget, Rule } from "@src/types/widgets";
 import type { PVData } from "@src/types/epicsWS";
 import { flattenWidgetTree } from "@src/context/widgetHelpers";
 import { buildInternalMacros, substituteInStr, substituteTextProps } from "@src/utils/macros";
@@ -28,12 +28,9 @@ export function computeGlobalMacrosOverrides(
   let merged: Record<string, string> = {};
   for (const w of flattenWidgetTree(widgets)) {
     if (!w.rules?.length) continue;
-    const wPvName = w.editableProperties.pvName?.value;
+    const wPvName = w.runtimePVName;
     const wPvData = wPvName ? pvState[wPvName] : undefined;
-    const wInternalMacros = buildInternalMacros(
-      wPvName ? substituteInStr(wPvName, baseGridMacros) : undefined,
-      wPvData,
-    );
+    const wInternalMacros = buildInternalMacros(wPvName, wPvData);
     const wMacros =
       Object.keys(wInternalMacros).length > 0
         ? { ...baseGridMacros, ...wInternalMacros }
@@ -57,6 +54,45 @@ export interface MergeWidgetContext {
 }
 
 /**
+ * Returns the previously cached `Widget` if nothing relevant changed (PV data,
+ * children, own property structure), or `undefined` if the widget needs to be
+ * recomputed.
+ */
+const getStableWidget = (
+  w: Widget,
+  ctx: MergeWidgetContext,
+  newChildren: Widget[] | undefined,
+): Widget | undefined => {
+  const { pvState, prevPVState, prevWidgetsMap, gridMacros } = ctx;
+  const pvName = w.runtimePVName;
+  const pvNames = w.runtimePVNames;
+
+  const ruleConditionPVsStable = (r: Rule) =>
+    r.pvNames.every((pv: string) => {
+      const resolved = substituteInStr(pv, gridMacros);
+      return pvState[resolved] === prevPVState[resolved];
+    });
+  const ruleActionPVStable = (r: Rule) => {
+    const actionPV = r.actions?.pvName;
+    return typeof actionPV !== "string" || !actionPV || pvState[actionPV] === prevPVState[actionPV];
+  };
+
+  const rulePVsStable =
+    !w.rules?.length || w.rules.every((r) => ruleConditionPVsStable(r) && ruleActionPVStable(r));
+  const ownPVsStable =
+    (!pvName || pvState[pvName] === prevPVState[pvName]) &&
+    (!pvNames?.length || pvNames.every((pv) => pvState[pv] === prevPVState[pv])) &&
+    rulePVsStable;
+  const childrenStable =
+    !newChildren || newChildren.every((c, i) => c === prevWidgetsMap.get(w.children![i].id));
+
+  const prevWidget = prevWidgetsMap.get(w.id);
+  const structureStable = prevWidget?.editableProperties === w.editableProperties;
+
+  return ownPVsStable && childrenStable && structureStable ? prevWidget : undefined;
+};
+
+/**
  * Merges PV data, macro substitutions, and rule overrides into every widget
  * in `editorWidgets`.  Returns the merged array and the new widget cache map
  * that should be stored back to `prevWidgetsMapRef` by the caller.
@@ -65,7 +101,7 @@ export function computeWidgetsForRender(
   editorWidgets: Widget[],
   ctx: MergeWidgetContext,
 ): { result: Widget[]; nextWidgetsMap: Map<string, Widget> } {
-  const { pvState, prevPVState, prevWidgetsMap, gridMacros, inEditMode } = ctx;
+  const { pvState, gridMacros, inEditMode } = ctx;
   const nextWidgetsMap = new Map<string, Widget>();
 
   const mergeWidget = (w: Widget): Widget => {
@@ -73,46 +109,21 @@ export function computeWidgetsForRender(
       nextWidgetsMap.set(w.id, w);
       return w;
     }
-
-    const pvName = w.editableProperties.pvName?.value;
-    const pvNames = w.editableProperties.pvNames?.value;
+    const pvName = w.runtimePVName;
+    const pvNames = w.runtimePVNames;
 
     // Process children first so we can check child stability for the parent decision.
     const newChildren = w.children?.map(mergeWidget);
 
-    // Check if PV data changed for this widget's own PVs and rule PVs.
-    const rulePVsStable =
-      !w.rules?.length ||
-      w.rules.every(
-        (r) =>
-          r.pvNames.every((pv) => pvState[pv] === prevPVState[pv]) &&
-          (typeof r.actions?.pvName !== "string" ||
-            !r.actions.pvName ||
-            pvState[r.actions.pvName] === prevPVState[r.actions.pvName]),
-      );
-    const ownPVsStable =
-      (!pvName || pvState[pvName] === prevPVState[pvName]) &&
-      (!pvNames?.length || pvNames.every((pv) => pvState[pv] === prevPVState[pv])) &&
-      rulePVsStable;
-
-    const childrenStable =
-      !newChildren || newChildren.every((c, i) => c === prevWidgetsMap.get(w.children![i].id));
-
-    // Check if the widget's own property structure changed.
-    const prevWidget = prevWidgetsMap.get(w.id);
-    const structureStable = prevWidget?.editableProperties === w.editableProperties;
-
-    if (ownPVsStable && childrenStable && structureStable) {
-      nextWidgetsMap.set(w.id, prevWidget);
-      return prevWidget;
+    const stableWidget = getStableWidget(w, ctx, newChildren);
+    if (stableWidget) {
+      nextWidgetsMap.set(w.id, stableWidget);
+      return stableWidget;
     }
 
-    // Evaluate rules with the original pvName data so $(pvvalue) works in action values.
+    // Evaluate rules using the widget's resolved PV name so $(pvvalue) works in action values.
     const origPvData = pvName ? pvState[pvName] : undefined;
-    const origInternalMacros = buildInternalMacros(
-      pvName ? substituteInStr(pvName, gridMacros) : undefined,
-      origPvData,
-    );
+    const origInternalMacros = buildInternalMacros(pvName, origPvData);
     const origAllMacros =
       Object.keys(origInternalMacros).length > 0
         ? { ...gridMacros, ...origInternalMacros }
@@ -120,7 +131,7 @@ export function computeWidgetsForRender(
     const ruleEvalMacros = pvName ? { ...origAllMacros, "$(pvname)": pvName } : origAllMacros;
     const ruleOverrides = evaluateRules(w.rules ?? [], pvState, ruleEvalMacros);
 
-    // Derive effective pvName from rule override (if any).
+    // Derive effective pvName from rule override (if any); it is already resolved.
     const effectivePvName =
       typeof ruleOverrides.pvName === "string" && ruleOverrides.pvName
         ? ruleOverrides.pvName
@@ -135,19 +146,15 @@ export function computeWidgetsForRender(
     }
     if (pvNames?.length) {
       multiPvData = {};
-      for (const pv of pvNames) {
-        const d = pvState[pv];
-        if (d) multiPvData[substituteInStr(pv, gridMacros)] = d;
+      for (const resolved of pvNames) {
+        const d = pvState[resolved];
+        if (d) multiPvData[resolved] = d;
       }
     }
 
-    // Rebuild internal macros from effective pvName + effective pvData, then
-    // apply macro substitution across all text properties.
+    // Build internal macros from effective pvName (already resolved) + pvData.
     const merged: Widget = { ...w, pvData, multiPvData, children: newChildren };
-    const internalMacros = buildInternalMacros(
-      effectivePvName ? substituteInStr(effectivePvName, gridMacros) : undefined,
-      pvData,
-    );
+    const internalMacros = buildInternalMacros(effectivePvName, pvData);
     const allMacros =
       Object.keys(internalMacros).length > 0 ? { ...gridMacros, ...internalMacros } : gridMacros;
     const mergedWithMacros: Widget = {

@@ -44,7 +44,7 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
 
   // Compute the merged globalMacros overrides produced by all widgets' rules.
   // Separate from widgetsForRender so a useEffect can write the result back to context
-  // (to keep PVMap subscriptions current) without the state write happening inside a useMemo.
+  // (to keep subscriptions current) without the state write happening inside a useMemo.
   const baseGridMacros = useMemo(
     () => editorWidgets.find((w) => w.id === GRID_ID)?.editableProperties.macros?.value ?? {},
     [editorWidgets],
@@ -55,7 +55,7 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
     return computeGlobalMacrosOverrides(editorWidgets, pvState, baseGridMacros);
   }, [editorWidgets, pvState, inEditMode, baseGridMacros]);
 
-  // Write back globalMacros overrides to context (for PVMap subscriptions).
+  // Write back globalMacros overrides to context (to keep subscriptions current).
   // JSON.stringify guard prevents unnecessary state updates and infinite loops.
   const prevGlobalMacrosJsonRef = useRef<string>("");
   useEffect(() => {

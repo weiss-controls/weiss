@@ -16,6 +16,7 @@ const InputFieldComp: React.FC<WidgetUpdate> = ({ data }) => {
   const [isFocused, setIsFocused] = useState(false);
 
   const p = data.editableProperties;
+  const runtimePVName = data.runtimePVName;
   const pvData = data.pvData;
   const units =
     p.unitsFromPV?.value && pvData?.display?.units ? pvData.display.units : p.units?.value;
@@ -28,9 +29,9 @@ const InputFieldComp: React.FC<WidgetUpdate> = ({ data }) => {
   if (!p.visible?.value) return null;
 
   const handleWrite = (value: number | string) => {
-    if (inEditMode) return;
+    if (inEditMode || !runtimePVName) return;
     if (p.pvName?.value) {
-      writePVValue(p.pvName.value, value);
+      writePVValue(runtimePVName, value);
     }
   };
 

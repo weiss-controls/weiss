@@ -13,10 +13,11 @@ const ActionButtonComp: React.FC<WidgetUpdate> = ({ data }) => {
   const { writePVValue } = useWSActionsContext();
   const { inEditMode } = useUIContext();
   const p = data.editableProperties;
+  const runtimePVName = data.runtimePVName;
   const pvData = data.pvData;
 
   const handleClick = (_e: React.MouseEvent) => {
-    if (!inEditMode) {
+    if (!inEditMode && runtimePVName) {
       if (p.pvName?.value && p.actionValue?.value !== undefined) {
         const actionValue = p.actionValue.value;
         // convert to number if is number as string
@@ -24,7 +25,7 @@ const ActionButtonComp: React.FC<WidgetUpdate> = ({ data }) => {
           typeof actionValue === "string" && !isNaN(Number(actionValue))
             ? Number(actionValue)
             : actionValue;
-        writePVValue(p.pvName.value, value);
+        writePVValue(runtimePVName, value);
       }
     }
   };

@@ -13,6 +13,7 @@ const SliderComp: React.FC<WidgetUpdate> = ({ data }) => {
   const { writePVValue } = useWSActionsContext();
   const { inEditMode } = useUIContext();
   const p = data.editableProperties;
+  const runtimePVName = data.runtimePVName;
   const pvData = data.pvData;
   if (!p.visible?.value) return null;
 
@@ -28,8 +29,8 @@ const SliderComp: React.FC<WidgetUpdate> = ({ data }) => {
   const displayFormat = p.displayFormat?.value ?? "Default";
 
   const handleChange = (_: Event | React.SyntheticEvent<Element, Event>, newValue: number) => {
-    if (!inEditMode && p.pvName?.value && typeof newValue === "number") {
-      writePVValue(p.pvName.value, newValue);
+    if (!inEditMode && runtimePVName && typeof newValue === "number") {
+      writePVValue(runtimePVName, newValue);
     }
   };
 

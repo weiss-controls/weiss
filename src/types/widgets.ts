@@ -169,6 +169,10 @@ export interface WidgetDefinition {
  * @property widgetName Registry key linking to the WidgetDefinition
  * @property editableProperties Current editable property values
  * @property children Optional child widgets (for group widgets)
+ * @property runtimePVName Runtime-only: macro-resolved form of editableProperties.pvName.value.
+ *   Set by useWidgetManager; never serialized.
+ * @property runtimePVNames Runtime-only: macro-resolved parallel array for editableProperties.pvNames.value.
+ *   Set by useWidgetManager; never serialized.
  * @property pvData Optional PV data, merged at render time only
  * @property multiPvData Optional multi-PV data, merged at render time only
  */
@@ -178,6 +182,8 @@ export interface Widget {
   editableProperties: WidgetProperties;
   rules?: Rule[];
   children?: Widget[];
+  runtimePVName?: string;
+  runtimePVNames?: string[];
   pvData?: PVData;
   multiPvData?: MultiPvData;
 }

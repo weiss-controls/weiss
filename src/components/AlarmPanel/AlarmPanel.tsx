@@ -21,7 +21,6 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
 import { COLORS } from "@src/constants/constants";
 import type { PVData } from "@src/types/epicsWS";
-import { useWidgetContext } from "@src/context/useWidgetContext";
 
 const SEVERITY_LABELS: Record<number, string> = {
   0: "NO_ALARM",
@@ -54,14 +53,12 @@ type SeverityFilter = "all" | "minor" | "major" | "invalid";
 export default function AlarmPanel({ open, onClose, pvState }: AlarmPanelProps) {
   const [search, setSearch] = useState("");
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
-  const { PVMap } = useWidgetContext();
-
   // Collect all PVs in alarm
   const alarmPVs = useMemo(() => {
     return Object.entries(pvState)
       .filter(([, data]) => data.alarm && data.alarm.severity > 0)
       .map(([, data]) => ({
-        pv: PVMap.get(data.pv) ?? data.pv,
+        pv: data.pv,
         value: data.value,
         severity: data.alarm?.severity ?? 0,
         message: data.alarm?.message ?? "",
@@ -70,7 +67,7 @@ export default function AlarmPanel({ open, onClose, pvState }: AlarmPanelProps) 
         precision: data.display?.precision,
       }))
       .sort((a, b) => b.severity - a.severity || a.pv.localeCompare(b.pv));
-  }, [pvState, PVMap]);
+  }, [pvState]);
 
   // Apply filters
   const filteredPVs = useMemo(() => {
