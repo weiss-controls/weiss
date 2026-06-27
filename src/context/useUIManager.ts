@@ -55,7 +55,7 @@ export interface SelectedPathInfo {
  * Hook that manages global UI state for WEISS.
  */
 export default function useUIManager(
-  ws: ReturnType<typeof useEpicsWS>,
+  ws: Omit<ReturnType<typeof useEpicsWS>, "pvState">,
   setSelectedWidgetIDs: ReturnType<typeof useWidgetManager>["setSelectedWidgetIDs"],
   editorWidgets: ReturnType<typeof useWidgetManager>["editorWidgets"],
   formatWdgToExport: ReturnType<typeof useWidgetManager>["formatWdgToExport"],

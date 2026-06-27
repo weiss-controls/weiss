@@ -15,7 +15,7 @@ import "./WidgetRenderer.css";
 import type { PVData } from "@src/types/epicsWS";
 import { useUIContext } from "@src/context/useUIContext";
 import { useWidgetContext } from "@src/context/useWidgetContext";
-import { useEpicsWSContext } from "@src/context/useEpicsWSContext";
+import { usePVStateContext } from "@src/context/useEpicsWSContext";
 import {
   hasSelectedDescendant,
   computeGlobalMacrosOverrides,
@@ -31,7 +31,7 @@ interface RendererProps {
 
 const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }) => {
   const { inEditMode, setIsDragging, isPanning, isTextEditing } = useUIContext();
-  const { pvState } = useEpicsWSContext();
+  const pvState = usePVStateContext();
   const {
     editorWidgets,
     selectedWidgetIDs,

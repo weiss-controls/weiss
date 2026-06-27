@@ -37,6 +37,7 @@ import AlarmPanel from "@components/AlarmPanel/AlarmPanel.tsx";
 import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import { useEpicsWSContext } from "@src/context/useEpicsWSContext.tsx";
+import { usePVStateContext } from "@src/context/useEpicsWSContext.tsx";
 import { notifyUser } from "@src/services/Notifications/Notification.ts";
 import { useWidgetContext } from "@src/context/useWidgetContext.tsx";
 import { useUIContext } from "@src/context/useUIContext.tsx";
@@ -107,6 +108,34 @@ const StyledAppBar = styled(MuiAppBar, {
   }),
 }));
 
+/**
+ * Isolated sub-component that subscribes to pvState.
+ * Keeps NavBar itself free of PV-tick re-renders.
+ */
+function AlarmButtonAndPanel({ inEditMode }: { inEditMode: boolean }) {
+  const pvState = usePVStateContext();
+  const [alarmOpen, setAlarmOpen] = useState(false);
+  const alarmCount = Object.values(pvState).filter((d) => d.alarm && d.alarm.severity > 0).length;
+  if (inEditMode) return null;
+  return (
+    <>
+      <Tooltip title="Alarm Summary">
+        <Button
+          onClick={() => setAlarmOpen(true)}
+          startIcon={<NotificationsActiveIcon />}
+          sx={{
+            color: alarmCount > 0 ? COLORS.major : "white",
+            textTransform: "none",
+          }}
+        >
+          Alarms{alarmCount > 0 ? ` (${String(alarmCount)})` : ""}
+        </Button>
+      </Tooltip>
+      <AlarmPanel open={alarmOpen} onClose={() => setAlarmOpen(false)} />
+    </>
+  );
+}
+
 export default function NavBar() {
   const { downloadWidgets, importWidgets } = useWidgetContext();
   const {
@@ -122,14 +151,12 @@ export default function NavBar() {
     isDeveloper,
     selectedFile,
   } = useUIContext();
-  const { takeSnapshot, restoreFromSnapshot, pvState } = useEpicsWSContext();
+  const { takeSnapshot, restoreFromSnapshot } = useEpicsWSContext();
   const [snapshotOpen, setSnapshotOpen] = useState(false);
-  const [alarmOpen, setAlarmOpen] = useState(false);
   const drawerWidth = WIDGET_SELECTOR_WIDTH;
   const [importMenuAnchor, setImportMenuAnchor] = useState<null | HTMLElement>(null);
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
   const [gitImportOpen, setGitImportOpen] = useState(false);
-  const alarmCount = Object.values(pvState).filter((d) => d.alarm && d.alarm.severity > 0).length;
   const handleImportMenuOpen = (event: React.MouseEvent<HTMLButtonElement>) => {
     setImportMenuAnchor(event.currentTarget);
   };
@@ -288,20 +315,7 @@ export default function NavBar() {
                     </MenuItem>
                   )}
                 </Menu>
-                {!inEditMode && (
-                  <Tooltip title="Alarm Summary">
-                    <Button
-                      onClick={() => setAlarmOpen(true)}
-                      startIcon={<NotificationsActiveIcon />}
-                      sx={{
-                        color: alarmCount > 0 ? COLORS.major : "white",
-                        textTransform: "none",
-                      }}
-                    >
-                      Alarms{alarmCount > 0 ? ` (${String(alarmCount)})` : ""}
-                    </Button>
-                  </Tooltip>
-                )}
+                {!inEditMode && <AlarmButtonAndPanel inEditMode={inEditMode} />}
                 {!inEditMode && (
                   <Tooltip title="PV Snapshots">
                     <Button
@@ -406,9 +420,6 @@ export default function NavBar() {
                 onRestore={restoreFromSnapshot}
                 opiFile={selectedFile?.path ?? "default"}
               />
-            )}
-            {!inEditMode && (
-              <AlarmPanel open={alarmOpen} onClose={() => setAlarmOpen(false)} pvState={pvState} />
             )}
           </Box>
           <GitImportDialog open={gitImportOpen} onClose={() => setGitImportOpen(false)} />

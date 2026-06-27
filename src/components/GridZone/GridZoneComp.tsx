@@ -4,7 +4,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { GridPosition, WidgetDefinition, WidgetUpdate } from "@src/types/widgets";
 import type { PVData } from "@src/types/epicsWS";
-import { useEpicsWSContext } from "@src/context/useEpicsWSContext";
+import { usePVStateContext } from "@src/context/useEpicsWSContext";
 import { createWidgetInstance } from "@src/context/widgetHelpers";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import {
@@ -67,7 +67,7 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
     widgetIdMap,
   } = useWidgetContext();
 
-  const { pvState } = useEpicsWSContext();
+  const pvState = usePVStateContext();
 
   const gridRef = useRef<HTMLDivElement>(null);
   const lastPosRef = useRef<GridPosition>({ x: 0, y: 0 });

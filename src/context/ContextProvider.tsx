@@ -2,7 +2,7 @@
 // Copyright (C) 2026 André Favoto
 
 import useEpicsWS from "./useEpicsWS";
-import { EpicsWSContext, WSActionsContext } from "./useEpicsWSContext";
+import { EpicsWSContext, PVStateContext, WSActionsContext } from "./useEpicsWSContext";
 import { UIContext } from "./useUIContext";
 import useUIManager from "./useUIManager";
 import { WidgetContext } from "./useWidgetContext";
@@ -10,7 +10,7 @@ import { useWidgetManager } from "./useWidgetManager";
 
 export const ContextProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const widgetManager = useWidgetManager();
-  const ws = useEpicsWS(widgetManager.resolvedPVList);
+  const { pvState, ...ws } = useEpicsWS(widgetManager.resolvedPVList);
   const ui = useUIManager(
     ws,
     widgetManager.setSelectedWidgetIDs,
@@ -27,9 +27,11 @@ export const ContextProvider: React.FC<{ children: React.ReactNode }> = ({ child
   return (
     <WidgetContext.Provider value={widgetManager}>
       <EpicsWSContext.Provider value={ws}>
-        <WSActionsContext.Provider value={{ writePVValue: ws.writePVValue }}>
-          <UIContext.Provider value={ui}>{children}</UIContext.Provider>
-        </WSActionsContext.Provider>
+        <PVStateContext.Provider value={pvState}>
+          <WSActionsContext.Provider value={{ writePVValue: ws.writePVValue }}>
+            <UIContext.Provider value={ui}>{children}</UIContext.Provider>
+          </WSActionsContext.Provider>
+        </PVStateContext.Provider>
       </EpicsWSContext.Provider>
     </WidgetContext.Provider>
   );

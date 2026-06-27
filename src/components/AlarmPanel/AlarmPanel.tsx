@@ -3,6 +3,7 @@
 // Contributed by Elmaddin Guliyev
 
 import { useState, useMemo } from "react";
+import { usePVStateContext } from "@src/context/useEpicsWSContext";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
@@ -45,12 +46,12 @@ const SEVERITY_ICONS: Record<number, React.ReactNode> = {
 interface AlarmPanelProps {
   open: boolean;
   onClose: () => void;
-  pvState: Record<string, PVData>;
 }
 
 type SeverityFilter = "all" | "minor" | "major" | "invalid";
 
-export default function AlarmPanel({ open, onClose, pvState }: AlarmPanelProps) {
+export default function AlarmPanel({ open, onClose }: AlarmPanelProps) {
+  const pvState = usePVStateContext();
   const [search, setSearch] = useState("");
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
   // Collect all PVs in alarm
