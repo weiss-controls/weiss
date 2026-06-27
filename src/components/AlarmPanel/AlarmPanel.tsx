@@ -55,10 +55,10 @@ export default function AlarmPanel({ open, onClose }: AlarmPanelProps) {
   const [search, setSearch] = useState("");
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
 
-  // Subscribe only to alarm fingerprints: { [pvName]: `${severity}:${message}` }.
+  // Subscribe only to alarm status: { [pvName]: `${severity}:${message}` }.
   // useShallow compares each string value with Object.is, so this component
   // re-renders only when a PV enters/leaves alarm or its severity/message changes
-  const alarmFingerprints = usePVStore(
+  const alarmStatus = usePVStore(
     useShallow((state) =>
       Object.fromEntries(
         Object.entries(state.pvs)
@@ -68,10 +68,10 @@ export default function AlarmPanel({ open, onClose }: AlarmPanelProps) {
     ),
   );
 
-  // Collect all PVs in alarm — recomputed only when alarm fingerprints change.
+  // Collect all PVs in alarm — recomputed only when alarm status change.
   const alarmPVs = useMemo(() => {
     const pvs = usePVStore.getState().pvs;
-    return Object.keys(alarmFingerprints)
+    return Object.keys(alarmStatus)
       .flatMap((pvName) => {
         const data = pvs[pvName];
         if (!data) return [];
@@ -88,7 +88,7 @@ export default function AlarmPanel({ open, onClose }: AlarmPanelProps) {
         ];
       })
       .sort((a, b) => b.severity - a.severity || a.pv.localeCompare(b.pv));
-  }, [alarmFingerprints]);
+  }, [alarmStatus]);
 
   // Apply filters
   const filteredPVs = useMemo(() => {
