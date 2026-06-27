@@ -73,7 +73,7 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
   // editorWidgets[GRID_ID].editableProperties.macros.value, because the latter
   // only ever holds design-time values — effectiveGridMacroOverrides are merged
   // inside useWidgetManager but never written back into the grid widget property.
-  const globalMacros = contextMacros ?? {};
+  const globalMacros = useMemo(() => contextMacros ?? {}, [contextMacros]);
 
   // Layout computation: applies grid-macro substitution to all widget props.
   const widgetsForLayout = useMemo(() => {

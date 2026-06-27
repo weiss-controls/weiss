@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { WSClient } from "@src/services/WSClient/WSClient";
-import type { PVValue, WSMessage } from "@src/types/epicsWS";
+import type { PVData, PVValue, WSMessage } from "@src/types/epicsWS";
 import { WS_URL } from "@src/constants/constants";
 import { usePVStore } from "@src/services/pvStore";
 
@@ -22,18 +22,20 @@ export default function useEpicsWS(resolvedPVList: string[]) {
   const [wsConnected, setWSConnected] = useState(false);
   /** Tracks which resolved PVs are currently subscribed on the server */
   const subscribedRef = useRef<Set<string>>(new Set());
-
   /**
-   * Handles incoming WebSocket messages.
-   * Merges partial/sticky metadata fields and writes to the Zustand pvStore.
+   * PV updates accumulate here between animation frames.
+   * A single requestAnimationFrame flush writes them all to the Zustand store
+   * in one call, capping the React re-render rate at ~60 fps regardless of how
+   * fast the WebSocket server sends messages.
    */
-  const onMessage = useCallback((msg: WSMessage) => {
-    if (!subscribedRef.current.has(msg.pv)) {
-      console.warn(`received message from unsolicited PV: ${msg.pv}`);
-      return;
-    }
-    const prev = usePVStore.getState().pvs[msg.pv] ?? {};
-    const data = {
+  const pendingPVsRef = useRef<Record<string, PVData>>({});
+  const rafHandleRef = useRef<number | null>(null);
+
+  /** Merge a WSMessage into the pending accumulator (sticky metadata fields). */
+  function buildPVData(msg: WSMessage): PVData {
+    const prev: Partial<PVData> =
+      pendingPVsRef.current[msg.pv] ?? usePVStore.getState().pvs[msg.pv] ?? {};
+    return {
       pv: msg.pv,
       value: msg.value ?? prev.value,
       enumChoices: msg.enumChoices ?? prev.enumChoices,
@@ -43,7 +45,27 @@ export default function useEpicsWS(resolvedPVList: string[]) {
       control: prev.control ?? msg.control,
       valueAlarm: prev.valueAlarm ?? msg.valueAlarm,
     };
-    usePVStore.getState().setPVs({ [msg.pv]: data });
+  }
+
+  /**
+   * Handles incoming WebSocket messages.
+   * Merges partial/sticky metadata fields into the per-frame accumulator.
+   * The actual Zustand store write is deferred to the next animation frame so
+   * that multiple messages arriving in the same frame are batched into one
+   * React re-render cycle.
+   */
+  const onMessage = useCallback((msg: WSMessage) => {
+    if (!subscribedRef.current.has(msg.pv)) {
+      console.warn(`received message from unsolicited PV: ${msg.pv}`);
+      return;
+    }
+    pendingPVsRef.current[msg.pv] = buildPVData(msg);
+    rafHandleRef.current ??= requestAnimationFrame(() => {
+      rafHandleRef.current = null;
+      const updates = pendingPVsRef.current;
+      pendingPVsRef.current = {};
+      usePVStore.getState().setPVs(updates);
+    });
   }, []);
 
   // Always kept up to date so the WSClient never captures a stale closure.
@@ -93,6 +115,11 @@ export default function useEpicsWS(resolvedPVList: string[]) {
     ws.current.unsubscribe([...subscribedRef.current]);
     ws.current.close();
     ws.current = null;
+    if (rafHandleRef.current !== null) {
+      cancelAnimationFrame(rafHandleRef.current);
+      rafHandleRef.current = null;
+    }
+    pendingPVsRef.current = {};
     setWSConnected(false);
     usePVStore.getState().clearPVs();
   }, [setWSConnected]);
