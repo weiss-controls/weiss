@@ -27,8 +27,8 @@ jobs:
       - name: Prettier
         run: pnpm prettier --check .
 
-      - name: ESLint
-        run: pnpm eslint .
+      - name: Oxlint
+        run: pnpm run lint
 
       - name: TypeScript type-check
         run: pnpm tsc --noEmit
