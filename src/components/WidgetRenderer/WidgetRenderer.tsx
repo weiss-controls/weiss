@@ -12,16 +12,15 @@ import type {
 import { Rnd, type DraggableData, type Position, type RndDragEvent } from "react-rnd";
 import { GRID_ID } from "@src/constants/constants";
 import "./WidgetRenderer.css";
-import type { PVData } from "@src/types/epicsWS";
 import { useUIContext } from "@src/context/useUIContext";
 import { useWidgetContext } from "@src/context/useWidgetContext";
-import { useEpicsWSContext } from "@src/context/useEpicsWSContext";
+import { usePVStore } from "@src/services/pvStore";
 import {
   hasSelectedDescendant,
-  computeGlobalMacrosOverrides,
-  computeWidgetsForRender,
-  type MergeWidgetContext,
+  collectGlobalMacroOverrides,
+  applyGlobalMacros,
 } from "./widgetRenderUtils";
+import LiveWidget from "./LiveWidget";
 
 const DRAG_END_DELAY = 80; //ms
 interface RendererProps {
@@ -31,7 +30,6 @@ interface RendererProps {
 
 const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }) => {
   const { inEditMode, setIsDragging, isPanning, isTextEditing } = useUIContext();
-  const { pvState } = useEpicsWSContext();
   const {
     editorWidgets,
     selectedWidgetIDs,
@@ -39,76 +37,76 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
     selectionBounds,
     updateWidgetProperties,
     selectedWidgets,
-    setEffectiveGridMacroOverrides,
+    setMacroOverrides,
+    macros: contextMacros,
   } = useWidgetContext();
 
-  // Refs to track previous pvState entries and previously computed Widget objects.
-  const prevPVStateRef = useRef<Record<string, PVData>>({});
   const prevWidgetsMapRef = useRef<Map<string, Widget>>(new Map());
   const prevRawPropsMapRef = useRef<Map<string, WidgetProperties>>(new Map());
-  const prevGridMacrosRef = useRef<Record<string, string>>({});
+  const prevGlobalMacrosRef = useRef<Record<string, string>>({});
   const prevInEditModeRef = useRef(inEditMode);
 
-  // Compute the merged globalMacros overrides produced by all widgets' rules.
-  // Separate from widgetsForRender so a useEffect can write the result back to context
-  // (to keep subscriptions current) without the state write happening inside a useMemo.
-  const baseGridMacros = useMemo(
+  const baseGlobalMacros = useMemo(
     () => editorWidgets.find((w) => w.id === GRID_ID)?.editableProperties.macros?.value ?? {},
     [editorWidgets],
   );
 
-  const globalMacrosOverrides = useMemo(() => {
-    if (inEditMode) return {};
-    return computeGlobalMacrosOverrides(editorWidgets, pvState, baseGridMacros);
-  }, [editorWidgets, pvState, inEditMode, baseGridMacros]);
-
-  // Write back globalMacros overrides to context (to keep subscriptions current).
-  // JSON.stringify guard prevents unnecessary state updates and infinite loops.
+  // Keep effectiveGridMacroOverrides in sync with live PV data via a Zustand
+  // subscription.  This runs off the render cycle — WidgetRenderer only
+  // re-renders if the computed overrides actually change.
   const prevGlobalMacrosJsonRef = useRef<string>("");
   useEffect(() => {
-    const json = JSON.stringify(globalMacrosOverrides);
-    if (json !== prevGlobalMacrosJsonRef.current) {
-      prevGlobalMacrosJsonRef.current = json;
-      setEffectiveGridMacroOverrides(globalMacrosOverrides);
-    }
-  }, [globalMacrosOverrides, setEffectiveGridMacroOverrides]);
+    if (inEditMode) return;
+    const unsubscribe = usePVStore.subscribe((state) => {
+      const overrides = collectGlobalMacroOverrides(editorWidgets, state.pvs, baseGlobalMacros);
+      const json = JSON.stringify(overrides);
+      if (json !== prevGlobalMacrosJsonRef.current) {
+        prevGlobalMacrosJsonRef.current = json;
+        setMacroOverrides(overrides);
+      }
+    });
+    return unsubscribe;
+  }, [editorWidgets, baseGlobalMacros, inEditMode, setMacroOverrides]);
 
-  const widgetsForRender = useMemo(() => {
-    const gridMacros =
-      Object.keys(globalMacrosOverrides).length > 0
-        ? { ...baseGridMacros, ...globalMacrosOverrides }
-        : baseGridMacros;
+  // globalMacros = design-time macros merged with any rule-driven overrides.
+  // We read this from WidgetContext (useWidgetManager.macros) rather than from
+  // editorWidgets[GRID_ID].editableProperties.macros.value, because the latter
+  // only ever holds design-time values — macroOverrides are merged
+  // inside useWidgetManager but never written back into the grid widget property.
+  const globalMacros = useMemo(() => contextMacros ?? {}, [contextMacros]);
 
-    // On mode switch, discard the cache so every widget is fully recomputed for the new mode.
+  // Layout computation: applies grid-macro substitution to all widget props.
+  const widgetsForLayout = useMemo(() => {
     const modeChanged = inEditMode !== prevInEditModeRef.current;
     prevInEditModeRef.current = inEditMode;
     const prevWidgetsMap = modeChanged ? new Map<string, Widget>() : prevWidgetsMapRef.current;
     const prevRawPropsMap = modeChanged
       ? new Map<string, WidgetProperties>()
       : prevRawPropsMapRef.current;
+    const prevGlobalMacros = modeChanged ? {} : prevGlobalMacrosRef.current;
 
-    const ctx: MergeWidgetContext = {
-      pvState,
-      prevPVState: prevPVStateRef.current,
+    const { result, nextWidgetsMap, nextRawPropsMap } = applyGlobalMacros(
+      editorWidgets,
+      globalMacros,
+      inEditMode,
       prevWidgetsMap,
       prevRawPropsMap,
-      gridMacros,
-      prevGridMacros: prevGridMacrosRef.current,
-      inEditMode,
-    };
-    const { result, nextWidgetsMap, nextRawPropsMap } = computeWidgetsForRender(editorWidgets, ctx);
-    prevPVStateRef.current = pvState;
+      prevGlobalMacros,
+    );
     prevWidgetsMapRef.current = nextWidgetsMap;
     prevRawPropsMapRef.current = nextRawPropsMap;
-    prevGridMacrosRef.current = gridMacros;
-
+    prevGlobalMacrosRef.current = globalMacros;
     return result;
-  }, [editorWidgets, pvState, inEditMode, globalMacrosOverrides, baseGridMacros]);
+  }, [editorWidgets, globalMacros, inEditMode]);
 
-  /** Core widget content renderer */
+  /** Core widget content renderer, delegates PV data to LiveWidget */
   const renderWidgetContent = (w: Widget): ReactNode => {
-    const Comp = WidgetRegistry[w.widgetName]?.component;
-    return Comp ? <Comp data={w} /> : null;
+    if (inEditMode) {
+      // In edit mode, render the component directly (no PV data needed).
+      const Comp = WidgetRegistry[w.widgetName]?.component;
+      return Comp ? <Comp data={w} /> : null;
+    }
+    return <LiveWidget w={w} globalMacros={globalMacros} />;
   };
 
   const handleDragStop = (_e: RndDragEvent, d: DraggableData, w: Widget) => {
@@ -302,7 +300,7 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
     );
   };
 
-  const topLevelWidgets = widgetsForRender.filter((w) => w.id !== GRID_ID);
+  const topLevelWidgets = widgetsForLayout.filter((w) => w.id !== GRID_ID);
 
   return (
     <>

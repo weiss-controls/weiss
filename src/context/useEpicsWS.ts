@@ -5,13 +5,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { WSClient } from "@src/services/WSClient/WSClient";
 import type { PVData, PVValue, WSMessage } from "@src/types/epicsWS";
 import { WS_URL } from "@src/constants/constants";
+import { usePVStore } from "@src/services/pvStore";
 
 /**
  * Hook that manages a WebSocket session to the PV WebSocket.
  *
- * - Handles subscribing/unsubscribing resolved PV names
- * - Caches metadata
- * - Stores pvState keyed by resolved PV name
+ * PV data is written directly to the Zustand pvStore (no React state).
+ * This means PV updates trigger zero React re-renders at the provider level —
+ * only components that subscribe to specific PVs via usePVStore re-render.
  *
  * @param resolvedPVList  Flat deduplicated list of all resolved PV names to subscribe to
  */
@@ -19,24 +20,22 @@ export default function useEpicsWS(resolvedPVList: string[]) {
   /** WebSocket client instance */
   const ws = useRef<WSClient | null>(null);
   const [wsConnected, setWSConnected] = useState(false);
-  /** Per-resolved-PV cache for merging partial/sticky metadata fields across messages */
-  const pvCache = useRef<Record<string, PVData>>({});
-  /** pvState is keyed by resolved PV name (i.e. runtimePVName) */
-  const [pvState, setPVState] = useState<Record<string, PVData>>({});
   /** Tracks which resolved PVs are currently subscribed on the server */
   const subscribedRef = useRef<Set<string>>(new Set());
-
   /**
-   * Handles incoming WebSocket messages.
-   * Merges partial/sticky metadata fields and updates pvState keyed by resolved PV name.
+   * PV updates accumulate here between animation frames.
+   * A single requestAnimationFrame flush writes them all to the Zustand store
+   * in one call, capping the React re-render rate at ~60 fps regardless of how
+   * fast the WebSocket server sends messages.
    */
-  const onMessage = useCallback((msg: WSMessage) => {
-    if (!subscribedRef.current.has(msg.pv)) {
-      console.warn(`received message from unsolicited PV: ${msg.pv}`);
-      return;
-    }
-    const prev = pvCache.current[msg.pv] ?? {};
-    const data: PVData = {
+  const pendingPVsRef = useRef<Record<string, PVData>>({});
+  const rafHandleRef = useRef<number | null>(null);
+
+  /** Merge a WSMessage into the pending accumulator (sticky metadata fields). */
+  function buildPVData(msg: WSMessage): PVData {
+    const prev: Partial<PVData> =
+      pendingPVsRef.current[msg.pv] ?? usePVStore.getState().pvs[msg.pv] ?? {};
+    return {
       pv: msg.pv,
       value: msg.value ?? prev.value,
       enumChoices: msg.enumChoices ?? prev.enumChoices,
@@ -46,8 +45,27 @@ export default function useEpicsWS(resolvedPVList: string[]) {
       control: prev.control ?? msg.control,
       valueAlarm: prev.valueAlarm ?? msg.valueAlarm,
     };
-    pvCache.current[msg.pv] = data;
-    setPVState((prev) => ({ ...prev, [msg.pv]: data }));
+  }
+
+  /**
+   * Handles incoming WebSocket messages.
+   * Merges partial/sticky metadata fields into the per-frame accumulator.
+   * The actual Zustand store write is deferred to the next animation frame so
+   * that multiple messages arriving in the same frame are batched into one
+   * React re-render cycle.
+   */
+  const onMessage = useCallback((msg: WSMessage) => {
+    if (!subscribedRef.current.has(msg.pv)) {
+      console.warn(`received message from unsolicited PV: ${msg.pv}`);
+      return;
+    }
+    pendingPVsRef.current[msg.pv] = buildPVData(msg);
+    rafHandleRef.current ??= requestAnimationFrame(() => {
+      rafHandleRef.current = null;
+      const updates = pendingPVsRef.current;
+      pendingPVsRef.current = {};
+      usePVStore.getState().setPVs(updates);
+    });
   }, []);
 
   // Always kept up to date so the WSClient never captures a stale closure.
@@ -84,12 +102,7 @@ export default function useEpicsWS(resolvedPVList: string[]) {
     if (toAdd.length > 0) ws.current.subscribe(toAdd);
     if (toRemove.length > 0) {
       ws.current.unsubscribe(toRemove);
-      toRemove.forEach((pv) => delete pvCache.current[pv]);
-      setPVState((prev) => {
-        const next = { ...prev };
-        for (const pv of toRemove) delete next[pv];
-        return next;
-      });
+      usePVStore.getState().removePVs(toRemove);
     }
     subscribedRef.current = current;
   }, [resolvedPVList, wsConnected]);
@@ -102,9 +115,13 @@ export default function useEpicsWS(resolvedPVList: string[]) {
     ws.current.unsubscribe([...subscribedRef.current]);
     ws.current.close();
     ws.current = null;
-    pvCache.current = {};
+    if (rafHandleRef.current !== null) {
+      cancelAnimationFrame(rafHandleRef.current);
+      rafHandleRef.current = null;
+    }
+    pendingPVsRef.current = {};
     setWSConnected(false);
-    setPVState({});
+    usePVStore.getState().clearPVs();
   }, [setWSConnected]);
 
   /**
@@ -120,20 +137,18 @@ export default function useEpicsWS(resolvedPVList: string[]) {
 
   /**
    * Writes a new value to a PV.
-   * @param pv The pv to be written to (with macros if applicable)
-   * @param newValue New value [@type PVValue]
    */
   const writePVValue = useCallback((pv: string, newValue: PVValue) => {
     ws.current?.write(pv, newValue);
   }, []);
+
   /**
    * Takes a snapshot of all currently subscribed PV values.
    */
   const takeSnapshot = useCallback(async (): Promise<Record<string, unknown> | null> => {
     if (!ws.current) return null;
     try {
-      const result = await ws.current.requestSnapshot();
-      return result;
+      return await ws.current.requestSnapshot();
     } catch (e) {
       console.error("Snapshot failed:", e);
       return null;
@@ -147,8 +162,7 @@ export default function useEpicsWS(resolvedPVList: string[]) {
     async (pvs: Record<string, { value: PVValue }>): Promise<Record<string, unknown> | null> => {
       if (!ws.current) return null;
       try {
-        const result = await ws.current.restoreSnapshot(pvs);
-        return result;
+        return await ws.current.restoreSnapshot(pvs);
       } catch (e) {
         console.error("Restore failed:", e);
         return null;
@@ -165,6 +179,5 @@ export default function useEpicsWS(resolvedPVList: string[]) {
     writePVValue,
     takeSnapshot,
     restoreFromSnapshot,
-    pvState,
   };
 }

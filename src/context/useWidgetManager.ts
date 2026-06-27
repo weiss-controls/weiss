@@ -921,19 +921,17 @@ export function useWidgetManager() {
 
   /**
    * Macros to be substituted on pv names.
-   * In runtime mode, effectiveGridMacroOverrides (computed by WidgetRenderer from fired rules)
+   * In runtime mode, macroOverrides (computed by WidgetRenderer from fired rules)
    * are merged on top of the GridZone's design-time macros so that annotatedEditorWidgets stays in sync.
    */
-  const [effectiveGridMacroOverrides, setEffectiveGridMacroOverrides] = useState<
-    Record<string, string>
-  >({});
+  const [macroOverrides, setMacroOverrides] = useState<Record<string, string>>({});
   const baseMacros = getWidget(GRID_ID)?.editableProperties.macros?.value;
   const macros = useMemo(
     () =>
-      Object.keys(effectiveGridMacroOverrides).length > 0
-        ? { ...(baseMacros ?? {}), ...effectiveGridMacroOverrides }
+      Object.keys(macroOverrides).length > 0
+        ? { ...(baseMacros ?? {}), ...macroOverrides }
         : baseMacros,
-    [baseMacros, effectiveGridMacroOverrides],
+    [baseMacros, macroOverrides],
   );
 
   /**
@@ -1011,64 +1009,87 @@ export function useWidgetManager() {
     return [...pvSet];
   }, [editorWidgets, substituteMacros]);
 
-  return {
-    editorWidgets,
-    setEditorWidgets,
-    selectedWidgetIDs,
-    editingWidgets,
-    selectionBounds,
-    undoStack,
-    redoStack,
-    setSelectedWidgetIDs,
-    selectedWidgets,
-    updateEditorWidgetList,
-    batchWidgetUpdate,
-    getWidget,
-    addWidget,
-    deleteWidget,
-    clearAllWidgets,
-    computeGroupBounds,
-    groupSelected,
-    ungroupSelected,
-    copyWidget,
-    pasteWidget,
-    updateWidgetProperties,
-    updateWidgetChildren,
-    stepForward,
-    stepBackwards,
-    bringToFront,
-    sendToBack,
-    handleRedo,
-    handleUndo,
-    alignLeft,
-    alignRight,
-    alignTop,
-    alignBottom,
-    alignHorizontalCenter,
-    alignVerticalCenter,
-    distributeHorizontal,
-    distributeVertical,
-    matchWidth,
-    matchHeight,
-    moveSelected,
-    downloadWidgets,
-    loadWidgets,
-    importWidgets,
-    fileImportedTrig,
-    updateWidgetRules,
-    batchUpdateWidgetRules,
-    resolvedPVList,
-    macros,
-    allWidgetIDs,
-    widgetIdMap,
-    formatWdgToExport,
-    fileLoadedTrig,
-    pickedWidget,
-    setPickedWidget,
-    isPlacementMode,
-    setIsPlacementMode,
-    snapshotEditModeMacros,
-    restoreEditModeMacros,
-    setEffectiveGridMacroOverrides,
-  };
+  return useMemo(
+    () => ({
+      editorWidgets,
+      setEditorWidgets,
+      selectedWidgetIDs,
+      editingWidgets,
+      selectionBounds,
+      undoStack,
+      redoStack,
+      setSelectedWidgetIDs,
+      selectedWidgets,
+      updateEditorWidgetList,
+      batchWidgetUpdate,
+      getWidget,
+      addWidget,
+      deleteWidget,
+      clearAllWidgets,
+      computeGroupBounds,
+      groupSelected,
+      ungroupSelected,
+      copyWidget,
+      pasteWidget,
+      updateWidgetProperties,
+      updateWidgetChildren,
+      stepForward,
+      stepBackwards,
+      bringToFront,
+      sendToBack,
+      handleRedo,
+      handleUndo,
+      alignLeft,
+      alignRight,
+      alignTop,
+      alignBottom,
+      alignHorizontalCenter,
+      alignVerticalCenter,
+      distributeHorizontal,
+      distributeVertical,
+      matchWidth,
+      matchHeight,
+      moveSelected,
+      downloadWidgets,
+      loadWidgets,
+      importWidgets,
+      fileImportedTrig,
+      updateWidgetRules,
+      batchUpdateWidgetRules,
+      resolvedPVList,
+      macros,
+      allWidgetIDs,
+      widgetIdMap,
+      formatWdgToExport,
+      fileLoadedTrig,
+      pickedWidget,
+      setPickedWidget,
+      isPlacementMode,
+      setIsPlacementMode,
+      snapshotEditModeMacros,
+      restoreEditModeMacros,
+      setMacroOverrides,
+    }),
+    // Stable setState/useCallback refs are intentionally omitted.
+    // Listing only the reactive state values.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      editorWidgets,
+      selectedWidgetIDs,
+      editingWidgets,
+      selectionBounds,
+      undoStack,
+      redoStack,
+      selectedWidgets,
+      resolvedPVList,
+      macros,
+      allWidgetIDs,
+      widgetIdMap,
+      fileLoadedTrig,
+      fileImportedTrig,
+      pickedWidget,
+      isPlacementMode,
+      macroOverrides,
+    ],
+  );
 }

@@ -3,6 +3,8 @@
 // Contributed by Elmaddin Guliyev
 
 import { useState, useMemo } from "react";
+import { useShallow } from "zustand/react/shallow";
+import { usePVStore } from "@src/services/pvStore";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
@@ -45,29 +47,48 @@ const SEVERITY_ICONS: Record<number, React.ReactNode> = {
 interface AlarmPanelProps {
   open: boolean;
   onClose: () => void;
-  pvState: Record<string, PVData>;
 }
 
 type SeverityFilter = "all" | "minor" | "major" | "invalid";
 
-export default function AlarmPanel({ open, onClose, pvState }: AlarmPanelProps) {
+export default function AlarmPanel({ open, onClose }: AlarmPanelProps) {
   const [search, setSearch] = useState("");
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
-  // Collect all PVs in alarm
+
+  // Subscribe only to alarm status: { [pvName]: `${severity}:${message}` }.
+  // useShallow compares each string value with Object.is, so this component
+  // re-renders only when a PV enters/leaves alarm or its severity/message changes
+  const alarmStatus = usePVStore(
+    useShallow((state) =>
+      Object.fromEntries(
+        Object.entries(state.pvs)
+          .filter(([, d]) => d.alarm && d.alarm.severity > 0)
+          .map(([k, d]) => [k, `${String(d.alarm!.severity)}:${d.alarm!.message ?? ""}`]),
+      ),
+    ),
+  );
+
+  // Collect all PVs in alarm — recomputed only when alarm status change.
   const alarmPVs = useMemo(() => {
-    return Object.entries(pvState)
-      .filter(([, data]) => data.alarm && data.alarm.severity > 0)
-      .map(([, data]) => ({
-        pv: data.pv,
-        value: data.value,
-        severity: data.alarm?.severity ?? 0,
-        message: data.alarm?.message ?? "",
-        timestamp: data.timeStamp,
-        units: data.display?.units ?? "",
-        precision: data.display?.precision,
-      }))
+    const pvs = usePVStore.getState().pvs;
+    return Object.keys(alarmStatus)
+      .flatMap((pvName) => {
+        const data = pvs[pvName];
+        if (!data) return [];
+        return [
+          {
+            pv: data.pv,
+            value: data.value,
+            severity: data.alarm?.severity ?? 0,
+            message: data.alarm?.message ?? "",
+            timestamp: data.timeStamp,
+            units: data.display?.units ?? "",
+            precision: data.display?.precision,
+          },
+        ];
+      })
       .sort((a, b) => b.severity - a.severity || a.pv.localeCompare(b.pv));
-  }, [pvState]);
+  }, [alarmStatus]);
 
   // Apply filters
   const filteredPVs = useMemo(() => {

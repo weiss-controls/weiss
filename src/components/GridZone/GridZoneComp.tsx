@@ -4,7 +4,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { GridPosition, WidgetDefinition, WidgetUpdate } from "@src/types/widgets";
 import type { PVData } from "@src/types/epicsWS";
-import { useEpicsWSContext } from "@src/context/useEpicsWSContext";
+import { usePVStore } from "@src/services/pvStore";
 import { createWidgetInstance } from "@src/context/widgetHelpers";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import {
@@ -66,8 +66,6 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
     moveSelected,
     widgetIdMap,
   } = useWidgetContext();
-
-  const { pvState } = useEpicsWSContext();
 
   const gridRef = useRef<HTMLDivElement>(null);
   const lastPosRef = useRef<GridPosition>({ x: 0, y: 0 });
@@ -254,7 +252,7 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
           const runtimePVName = widget.runtimePVName ?? widget.editableProperties.pvName?.value;
           if (runtimePVName) {
             foundPVName = runtimePVName;
-            foundPVData = pvState[runtimePVName] ?? null;
+            foundPVData = usePVStore.getState().pvs[runtimePVName] ?? null;
           }
           break;
         }

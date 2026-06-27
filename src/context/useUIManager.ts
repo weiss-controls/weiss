@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { EDIT_MODE, RUNTIME_MODE, type Mode } from "@src/constants/constants";
 import { useWidgetManager } from "./useWidgetManager";
 import type { ExportedWidget } from "@src/types/widgets";
-import useEpicsWS from "./useEpicsWS";
 import {
   authService,
   Roles,
@@ -55,7 +54,9 @@ export interface SelectedPathInfo {
  * Hook that manages global UI state for WEISS.
  */
 export default function useUIManager(
-  ws: ReturnType<typeof useEpicsWS>,
+  wsConnected: boolean,
+  startNewSession: () => void,
+  stopSession: () => void,
   setSelectedWidgetIDs: ReturnType<typeof useWidgetManager>["setSelectedWidgetIDs"],
   editorWidgets: ReturnType<typeof useWidgetManager>["editorWidgets"],
   formatWdgToExport: ReturnType<typeof useWidgetManager>["formatWdgToExport"],
@@ -138,16 +139,22 @@ export default function useUIManager(
       const isEdit = newMode === EDIT_MODE;
       if (isEdit) {
         restoreEditModeMacros();
-        ws.stopSession();
+        stopSession();
       } else {
         snapshotEditModeMacros();
         setSelectedWidgetIDs([]);
         setWdgPickerOpen(false);
-        ws.startNewSession();
+        startNewSession();
       }
       setMode(newMode);
     },
-    [setSelectedWidgetIDs, ws, snapshotEditModeMacros, restoreEditModeMacros],
+    [
+      setSelectedWidgetIDs,
+      startNewSession,
+      stopSession,
+      snapshotEditModeMacros,
+      restoreEditModeMacros,
+    ],
   );
 
   useEffect(() => {
@@ -186,16 +193,16 @@ export default function useUIManager(
    * Handles WS reconnection when needed
    */
   useEffect(() => {
-    if (inEditMode || ws.wsConnected) return;
+    if (inEditMode || wsConnected) return;
 
     let triedReconnect = false;
 
     const intervalId = setInterval(() => {
-      if (!inEditMode && !ws.wsConnected) {
+      if (!inEditMode && !wsConnected) {
         triedReconnect = true;
         console.warn("Socket disconnected. Attempting reconnection...");
         notifyUser("Connection lost. Attempting to reconnect...", "warning");
-        ws.startNewSession();
+        startNewSession();
       }
     }, RECONNECT_TIMEOUT);
 
@@ -205,7 +212,7 @@ export default function useUIManager(
         notifyUser("Reconnected to server.", "success");
       }
     };
-  }, [inEditMode, ws]);
+  }, [inEditMode, wsConnected, startNewSession]);
 
   // Fetch and load file whenever selectedFile changes.
   useEffect(() => {
@@ -311,35 +318,58 @@ export default function useUIManager(
     };
   }, [editorWidgets, selectedFile, isDeveloper, inEditMode, formatWdgToExport, setReposTreeInfo]);
 
-  return {
-    isTextEditing,
-    setIsTextEditing,
-    mode,
-    updateMode,
-    wdgPickerOpen,
-    setWdgPickerOpen,
-    inEditMode,
-    isDragging,
-    setIsDragging,
-    isPanning,
-    setIsPanning,
-    isDemo,
-    user,
-    isDeveloper,
-    authChecked,
-    isAuthenticated,
-    login,
-    logout,
-    reposTreeInfo,
-    setReposTreeInfo,
-    updateReposTreeInfo,
-    isReposLoading,
-    setIsReposLoading,
-    selectedFile,
-    setSelectedFile,
-    reloadSelectedFile,
-    imageSrc,
-    imageName,
-    tokenStatus,
-  };
+  return useMemo(
+    () => ({
+      isTextEditing,
+      setIsTextEditing,
+      mode,
+      updateMode,
+      wdgPickerOpen,
+      setWdgPickerOpen,
+      inEditMode,
+      isDragging,
+      setIsDragging,
+      isPanning,
+      setIsPanning,
+      isDemo,
+      user,
+      isDeveloper,
+      authChecked,
+      isAuthenticated,
+      login,
+      logout,
+      reposTreeInfo,
+      setReposTreeInfo,
+      updateReposTreeInfo,
+      isReposLoading,
+      setIsReposLoading,
+      selectedFile,
+      setSelectedFile,
+      reloadSelectedFile,
+      imageSrc,
+      imageName,
+      tokenStatus,
+    }),
+    // Stable setState/useCallback refs are intentionally omitted.
+    // Listing only the reactive state values.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      isTextEditing,
+      wdgPickerOpen,
+      mode,
+      inEditMode,
+      isDragging,
+      isPanning,
+      user,
+      isDeveloper,
+      authChecked,
+      isAuthenticated,
+      reposTreeInfo,
+      isReposLoading,
+      selectedFile,
+      imageSrc,
+      imageName,
+      tokenStatus,
+    ],
+  );
 }

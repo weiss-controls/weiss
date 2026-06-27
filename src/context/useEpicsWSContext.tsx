@@ -16,7 +16,7 @@ export const useEpicsWSContext = () => {
 
 /**
  * Stable context for PV write actions only.
- * Separated from main context to avoid users re-render on every PV update
+ * Separated from main context to avoid re-renders on connection state changes.
  */
 export type WSActionsContextType = Pick<EpicsWSContextType, "writePVValue">;
 
