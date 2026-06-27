@@ -3,7 +3,8 @@
 // Contributed by Elmaddin Guliyev
 
 import { useState, useMemo } from "react";
-import { usePVStateContext } from "@src/context/useEpicsWSContext";
+import { useShallow } from "zustand/react/shallow";
+import { usePVStore } from "@src/services/pvStore";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
@@ -51,24 +52,43 @@ interface AlarmPanelProps {
 type SeverityFilter = "all" | "minor" | "major" | "invalid";
 
 export default function AlarmPanel({ open, onClose }: AlarmPanelProps) {
-  const pvState = usePVStateContext();
   const [search, setSearch] = useState("");
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
-  // Collect all PVs in alarm
+
+  // Subscribe only to alarm fingerprints: { [pvName]: `${severity}:${message}` }.
+  // useShallow compares each string value with Object.is, so this component
+  // re-renders only when a PV enters/leaves alarm or its severity/message changes
+  const alarmFingerprints = usePVStore(
+    useShallow((state) =>
+      Object.fromEntries(
+        Object.entries(state.pvs)
+          .filter(([, d]) => d.alarm && d.alarm.severity > 0)
+          .map(([k, d]) => [k, `${String(d.alarm!.severity)}:${d.alarm!.message ?? ""}`]),
+      ),
+    ),
+  );
+
+  // Collect all PVs in alarm — recomputed only when alarm fingerprints change.
   const alarmPVs = useMemo(() => {
-    return Object.entries(pvState)
-      .filter(([, data]) => data.alarm && data.alarm.severity > 0)
-      .map(([, data]) => ({
-        pv: data.pv,
-        value: data.value,
-        severity: data.alarm?.severity ?? 0,
-        message: data.alarm?.message ?? "",
-        timestamp: data.timeStamp,
-        units: data.display?.units ?? "",
-        precision: data.display?.precision,
-      }))
+    const pvs = usePVStore.getState().pvs;
+    return Object.keys(alarmFingerprints)
+      .flatMap((pvName) => {
+        const data = pvs[pvName];
+        if (!data) return [];
+        return [
+          {
+            pv: data.pv,
+            value: data.value,
+            severity: data.alarm?.severity ?? 0,
+            message: data.alarm?.message ?? "",
+            timestamp: data.timeStamp,
+            units: data.display?.units ?? "",
+            precision: data.display?.precision,
+          },
+        ];
+      })
       .sort((a, b) => b.severity - a.severity || a.pv.localeCompare(b.pv));
-  }, [pvState]);
+  }, [alarmFingerprints]);
 
   // Apply filters
   const filteredPVs = useMemo(() => {

@@ -37,7 +37,7 @@ import AlarmPanel from "@components/AlarmPanel/AlarmPanel.tsx";
 import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import { useEpicsWSContext } from "@src/context/useEpicsWSContext.tsx";
-import { usePVStateContext } from "@src/context/useEpicsWSContext.tsx";
+import { usePVStore } from "@src/services/pvStore";
 import { notifyUser } from "@src/services/Notifications/Notification.ts";
 import { useWidgetContext } from "@src/context/useWidgetContext.tsx";
 import { useUIContext } from "@src/context/useUIContext.tsx";
@@ -113,9 +113,10 @@ const StyledAppBar = styled(MuiAppBar, {
  * Keeps NavBar itself free of PV-tick re-renders.
  */
 function AlarmButtonAndPanel({ inEditMode }: { inEditMode: boolean }) {
-  const pvState = usePVStateContext();
+  const alarmCount = usePVStore(
+    (state) => Object.values(state.pvs).filter((d) => d.alarm && d.alarm.severity > 0).length,
+  );
   const [alarmOpen, setAlarmOpen] = useState(false);
-  const alarmCount = Object.values(pvState).filter((d) => d.alarm && d.alarm.severity > 0).length;
   if (inEditMode) return null;
   return (
     <>

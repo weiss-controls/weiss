@@ -112,7 +112,7 @@ const PropertiesTab: React.FC = () => {
   const ruleCount = primaryWidget?.rules?.length ?? 0;
   const multiWidgetEdit = editingWidgets.length > 1;
 
-  const gridMacros = useMemo(
+  const globalMacros = useMemo(
     () => editorWidgets.find((w) => w.id === GRID_ID)?.editableProperties.macros?.value ?? {},
     [editorWidgets],
   );
@@ -158,7 +158,7 @@ const PropertiesTab: React.FC = () => {
         initialRules={primaryWidget.rules ?? []}
         onSave={handleSaveRules}
         onClose={() => setRulesDialogOpen(false)}
-        globalMacros={gridMacros}
+        globalMacros={globalMacros}
       />
     </>
   );

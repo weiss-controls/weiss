@@ -3,7 +3,7 @@
 
 import { memo, useMemo } from "react";
 import useEpicsWS from "./useEpicsWS";
-import { EpicsWSContext, PVStateContext, WSActionsContext } from "./useEpicsWSContext";
+import { EpicsWSContext, WSActionsContext } from "./useEpicsWSContext";
 import { UIContext } from "./useUIContext";
 import useUIManager from "./useUIManager";
 import { WidgetContext } from "./useWidgetContext";
@@ -97,17 +97,15 @@ const EPICSProvider: React.FC<{
 
   return (
     <EpicsWSContext.Provider value={wsContextValue}>
-      <PVStateContext.Provider value={epicsWS.pvState}>
-        <WSActionsContext.Provider value={wsActionsValue}>
-          <UIProvider
-            wsConnected={epicsWS.wsConnected}
-            startNewSession={epicsWS.startNewSession}
-            stopSession={epicsWS.stopSession}
-          >
-            {children}
-          </UIProvider>
-        </WSActionsContext.Provider>
-      </PVStateContext.Provider>
+      <WSActionsContext.Provider value={wsActionsValue}>
+        <UIProvider
+          wsConnected={epicsWS.wsConnected}
+          startNewSession={epicsWS.startNewSession}
+          stopSession={epicsWS.stopSession}
+        >
+          {children}
+        </UIProvider>
+      </WSActionsContext.Provider>
     </EpicsWSContext.Provider>
   );
 };

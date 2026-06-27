@@ -1011,7 +1011,6 @@ export function useWidgetManager() {
     return [...pvSet];
   }, [editorWidgets, substituteMacros]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   return useMemo(
     () => ({
       editorWidgets,
@@ -1075,6 +1074,7 @@ export function useWidgetManager() {
     }),
     // Stable setState/useCallback refs are intentionally omitted.
     // Listing only the reactive state values.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       editorWidgets,
       selectedWidgetIDs,

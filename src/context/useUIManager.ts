@@ -318,7 +318,6 @@ export default function useUIManager(
     };
   }, [editorWidgets, selectedFile, isDeveloper, inEditMode, formatWdgToExport, setReposTreeInfo]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   return useMemo(
     () => ({
       isTextEditing,
@@ -353,6 +352,7 @@ export default function useUIManager(
     }),
     // Stable setState/useCallback refs are intentionally omitted.
     // Listing only the reactive state values.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       isTextEditing,
       wdgPickerOpen,
