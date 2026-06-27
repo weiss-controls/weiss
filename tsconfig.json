@@ -4,10 +4,9 @@
   "compilerOptions": {
     "lib": ["es2021", "dom", "dom.iterable"],
     "types": ["@types/wicg-file-system-access"],
-    "baseUrl": ".",
     "paths": {
-      "@src/*": ["src/*"],
-      "@components/*": ["src/components/*"]
+      "@src/*": ["./src/*"],
+      "@components/*": ["./src/components/*"]
     },
     "noImplicitAny": true,
     "noImplicitThis": true,
