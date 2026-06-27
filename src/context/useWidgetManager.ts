@@ -921,19 +921,17 @@ export function useWidgetManager() {
 
   /**
    * Macros to be substituted on pv names.
-   * In runtime mode, effectiveGridMacroOverrides (computed by WidgetRenderer from fired rules)
+   * In runtime mode, macroOverrides (computed by WidgetRenderer from fired rules)
    * are merged on top of the GridZone's design-time macros so that annotatedEditorWidgets stays in sync.
    */
-  const [effectiveGridMacroOverrides, setEffectiveGridMacroOverrides] = useState<
-    Record<string, string>
-  >({});
+  const [macroOverrides, setMacroOverrides] = useState<Record<string, string>>({});
   const baseMacros = getWidget(GRID_ID)?.editableProperties.macros?.value;
   const macros = useMemo(
     () =>
-      Object.keys(effectiveGridMacroOverrides).length > 0
-        ? { ...(baseMacros ?? {}), ...effectiveGridMacroOverrides }
+      Object.keys(macroOverrides).length > 0
+        ? { ...(baseMacros ?? {}), ...macroOverrides }
         : baseMacros,
-    [baseMacros, effectiveGridMacroOverrides],
+    [baseMacros, macroOverrides],
   );
 
   /**
@@ -1070,7 +1068,7 @@ export function useWidgetManager() {
       setIsPlacementMode,
       snapshotEditModeMacros,
       restoreEditModeMacros,
-      setEffectiveGridMacroOverrides,
+      setMacroOverrides,
     }),
     // Stable setState/useCallback refs are intentionally omitted.
     // Listing only the reactive state values.
@@ -1091,7 +1089,7 @@ export function useWidgetManager() {
       fileImportedTrig,
       pickedWidget,
       isPlacementMode,
-      effectiveGridMacroOverrides,
+      macroOverrides,
     ],
   );
 }

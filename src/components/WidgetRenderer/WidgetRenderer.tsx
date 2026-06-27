@@ -37,7 +37,7 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
     selectionBounds,
     updateWidgetProperties,
     selectedWidgets,
-    setEffectiveGridMacroOverrides,
+    setMacroOverrides,
     macros: contextMacros,
   } = useWidgetContext();
 
@@ -62,16 +62,16 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
       const json = JSON.stringify(overrides);
       if (json !== prevGlobalMacrosJsonRef.current) {
         prevGlobalMacrosJsonRef.current = json;
-        setEffectiveGridMacroOverrides(overrides);
+        setMacroOverrides(overrides);
       }
     });
     return unsubscribe;
-  }, [editorWidgets, baseGlobalMacros, inEditMode, setEffectiveGridMacroOverrides]);
+  }, [editorWidgets, baseGlobalMacros, inEditMode, setMacroOverrides]);
 
   // globalMacros = design-time macros merged with any rule-driven overrides.
   // We read this from WidgetContext (useWidgetManager.macros) rather than from
   // editorWidgets[GRID_ID].editableProperties.macros.value, because the latter
-  // only ever holds design-time values — effectiveGridMacroOverrides are merged
+  // only ever holds design-time values — macroOverrides are merged
   // inside useWidgetManager but never written back into the grid widget property.
   const globalMacros = useMemo(() => contextMacros ?? {}, [contextMacros]);
 

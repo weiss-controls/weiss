@@ -18,7 +18,7 @@ const EMPTY_PVS: Record<string, PVData> = {};
  * that this component re-renders only when:
  *   1. Its own PV data changes, or
  *   2. Its base widget object changes (widget config / grid-macro change), or
- *   3. globalMacros change (effectiveGridMacroOverrides update).
+ *   3. globalMacros change (macroOverrides update).
  *
  * All other PV ticks in the system are invisible to this component.
  */
