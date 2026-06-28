@@ -3,24 +3,16 @@
 
 import React, { useEffect, useMemo, useRef, type ReactNode } from "react";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
-import type {
-  Widget,
-  MultiWidgetPropertyUpdates,
-  DOMRectLike,
-  WidgetProperties,
-} from "@src/types/widgets";
+import type { Widget, MultiWidgetPropertyUpdates, DOMRectLike } from "@src/types/widgets";
 import { Rnd, type DraggableData, type Position, type RndDragEvent } from "react-rnd";
 import { GRID_ID } from "@src/constants/constants";
 import "./WidgetRenderer.css";
 import { useUIContext } from "@src/context/useUIContext";
 import { useWidgetContext } from "@src/context/useWidgetContext";
 import { usePVStore } from "@src/services/pvStore";
-import {
-  hasSelectedDescendant,
-  collectGlobalMacroOverrides,
-  applyGlobalMacros,
-} from "./widgetRenderUtils";
+import { hasSelectedDescendant, applyGlobalMacros } from "./widgetRenderUtils";
 import LiveWidget from "./LiveWidget";
+import { collectGlobalMacroOverrides } from "@src/utils/macros";
 
 const DRAG_END_DELAY = 80; //ms
 interface RendererProps {
@@ -41,17 +33,14 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
     macros: contextMacros,
   } = useWidgetContext();
 
-  const prevWidgetsMapRef = useRef<Map<string, Widget>>(new Map());
-  const prevRawPropsMapRef = useRef<Map<string, WidgetProperties>>(new Map());
   const prevGlobalMacrosRef = useRef<Record<string, string>>({});
-  const prevInEditModeRef = useRef(inEditMode);
 
   const baseGlobalMacros = useMemo(
     () => editorWidgets.find((w) => w.id === GRID_ID)?.editableProperties.macros?.value ?? {},
     [editorWidgets],
   );
 
-  // Keep effectiveGridMacroOverrides in sync with live PV data via a Zustand
+  // Keep macroOverrides in sync with live PV data via a Zustand
   // subscription.  This runs off the render cycle — WidgetRenderer only
   // re-renders if the computed overrides actually change.
   const prevGlobalMacrosJsonRef = useRef<string>("");
@@ -75,28 +64,12 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
   // inside useWidgetManager but never written back into the grid widget property.
   const globalMacros = useMemo(() => contextMacros ?? {}, [contextMacros]);
 
-  // Layout computation: applies grid-macro substitution to all widget props.
+  // Layout computation: applies grid-macro substitution to all widget text props.
   const widgetsForLayout = useMemo(() => {
-    const modeChanged = inEditMode !== prevInEditModeRef.current;
-    prevInEditModeRef.current = inEditMode;
-    const prevWidgetsMap = modeChanged ? new Map<string, Widget>() : prevWidgetsMapRef.current;
-    const prevRawPropsMap = modeChanged
-      ? new Map<string, WidgetProperties>()
-      : prevRawPropsMapRef.current;
-    const prevGlobalMacros = modeChanged ? {} : prevGlobalMacrosRef.current;
-
-    const { result, nextWidgetsMap, nextRawPropsMap } = applyGlobalMacros(
-      editorWidgets,
-      globalMacros,
-      inEditMode,
-      prevWidgetsMap,
-      prevRawPropsMap,
-      prevGlobalMacros,
-    );
-    prevWidgetsMapRef.current = nextWidgetsMap;
-    prevRawPropsMapRef.current = nextRawPropsMap;
+    if (inEditMode) return editorWidgets;
+    const { applied } = applyGlobalMacros(editorWidgets, globalMacros);
     prevGlobalMacrosRef.current = globalMacros;
-    return result;
+    return applied;
   }, [editorWidgets, globalMacros, inEditMode]);
 
   /** Core widget content renderer, delegates PV data to LiveWidget */

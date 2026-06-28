@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
+import { flattenWidgetTree } from "@src/context/widgetHelpers";
 import type { PVData } from "@src/types/epicsWS";
-import type { PropertyKey, WidgetProperties, WidgetProperty } from "@src/types/widgets";
+import type { PropertyKey, Widget, WidgetProperties, WidgetProperty } from "@src/types/widgets";
+import { evaluateRules } from "./ruleEngine";
 
 /**
  * Substitute $(MACRO_NAME) patterns in a single string using a macros map.
@@ -76,4 +78,34 @@ export function substituteTextProps(
     }
   }
   return changed ? result : props;
+}
+
+/**
+ * Walks every widget in the tree (including nested children), evaluates their
+ * rules against the current PV state, and aggregates any `globalMacros` action
+ * values into a single merged map.  Called from the `usePVStore.subscribe()`
+ * effect in WidgetRenderer; only runs in runtime mode.
+ */
+export function collectGlobalMacroOverrides(
+  widgets: Widget[],
+  pvState: Record<string, PVData>,
+  baseGlobalMacros: Record<string, string>,
+): Record<string, string> {
+  let merged: Record<string, string> = {};
+  for (const w of flattenWidgetTree(widgets)) {
+    if (!w.rules?.length) continue;
+    const wPvName = w.runtimePVName;
+    const wPvData = wPvName ? pvState[wPvName] : undefined;
+    const wInternalMacros = buildInternalMacros(wPvName, wPvData);
+    const wMacros =
+      Object.keys(wInternalMacros).length > 0
+        ? { ...baseGlobalMacros, ...wInternalMacros }
+        : baseGlobalMacros;
+    const wRuleEvalMacros = wPvName ? { ...wMacros, "$(pvname)": wPvName } : wMacros;
+    const wOverrides = evaluateRules(w.rules, pvState, wRuleEvalMacros);
+    if (wOverrides.globalMacros && typeof wOverrides.globalMacros === "object") {
+      merged = { ...merged, ...(wOverrides.globalMacros as Record<string, string>) };
+    }
+  }
+  return merged;
 }
