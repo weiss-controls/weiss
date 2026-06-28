@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
-import React, { useEffect, useMemo, useRef, type ReactNode } from "react";
+import React, { useEffect, useRef, type ReactNode } from "react";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import type { Widget, MultiWidgetPropertyUpdates, DOMRectLike } from "@src/types/widgets";
 import { Rnd, type DraggableData, type Position, type RndDragEvent } from "react-rnd";
@@ -10,7 +10,7 @@ import "./WidgetRenderer.css";
 import { useUIContext } from "@src/context/useUIContext";
 import { useWidgetContext } from "@src/context/useWidgetContext";
 import { usePVStore } from "@src/services/pvStore";
-import { hasSelectedDescendant, applyGlobalMacros } from "./widgetRenderUtils";
+import { hasSelectedDescendant } from "./widgetRenderUtils";
 import LiveWidget from "./LiveWidget";
 import { collectGlobalMacroOverrides } from "@src/utils/macros";
 
@@ -30,20 +30,13 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
     updateWidgetProperties,
     selectedWidgets,
     setMacroOverrides,
-    macros: contextMacros,
+    baseGlobalMacros,
+    globalMacros,
   } = useWidgetContext();
 
-  const prevGlobalMacrosRef = useRef<Record<string, string>>({});
-
-  const baseGlobalMacros = useMemo(
-    () => editorWidgets.find((w) => w.id === GRID_ID)?.editableProperties.macros?.value ?? {},
-    [editorWidgets],
-  );
-
-  // Keep macroOverrides in sync with live PV data via a Zustand
-  // subscription.  This runs off the render cycle — WidgetRenderer only
-  // re-renders if the computed overrides actually change.
   const prevGlobalMacrosJsonRef = useRef<string>("");
+
+  // Keep macroOverrides in sync with live PV data based on rules evaluation.
   useEffect(() => {
     if (inEditMode) return;
     const unsubscribe = usePVStore.subscribe((state) => {
@@ -56,21 +49,6 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
     });
     return unsubscribe;
   }, [editorWidgets, baseGlobalMacros, inEditMode, setMacroOverrides]);
-
-  // globalMacros = design-time macros merged with any rule-driven overrides.
-  // We read this from WidgetContext (useWidgetManager.macros) rather than from
-  // editorWidgets[GRID_ID].editableProperties.macros.value, because the latter
-  // only ever holds design-time values — macroOverrides are merged
-  // inside useWidgetManager but never written back into the grid widget property.
-  const globalMacros = useMemo(() => contextMacros ?? {}, [contextMacros]);
-
-  // Layout computation: applies grid-macro substitution to all widget text props.
-  const widgetsForLayout = useMemo(() => {
-    if (inEditMode) return editorWidgets;
-    const { applied } = applyGlobalMacros(editorWidgets, globalMacros);
-    prevGlobalMacrosRef.current = globalMacros;
-    return applied;
-  }, [editorWidgets, globalMacros, inEditMode]);
 
   /** Core widget content renderer, delegates PV data to LiveWidget */
   const renderWidgetContent = (w: Widget): ReactNode => {
@@ -273,7 +251,7 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
     );
   };
 
-  const topLevelWidgets = widgetsForLayout.filter((w) => w.id !== GRID_ID);
+  const topLevelWidgets = editorWidgets.filter((w) => w.id !== GRID_ID);
 
   return (
     <>

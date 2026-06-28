@@ -7,7 +7,7 @@ import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import type { Widget } from "@src/types/widgets";
 import type { PVData } from "@src/types/epicsWS";
 import { usePVStore } from "@src/services/pvStore";
-import { substituteInStr } from "@src/utils/macros";
+import { substituteMacroInStr } from "@src/utils/macros";
 import { applyWidgetPVData } from "./widgetRenderUtils";
 
 const EMPTY_PVS: Record<string, PVData> = {};
@@ -37,12 +37,12 @@ const LiveWidget = memo(function WidgetRenderItem({
     w.runtimePVNames?.forEach((pv) => names.add(pv));
     w.rules?.forEach((rule) => {
       rule.pvNames.forEach((pv) => {
-        const resolved = substituteInStr(pv, globalMacros);
+        const resolved = substituteMacroInStr(pv, globalMacros);
         if (resolved) names.add(resolved);
       });
       // Rule action may reference a separate write PV.
       if (typeof rule.actions?.pvName === "string" && rule.actions.pvName) {
-        const resolved = substituteInStr(rule.actions.pvName, globalMacros);
+        const resolved = substituteMacroInStr(rule.actions.pvName, globalMacros);
         if (resolved) names.add(resolved);
       }
     });
@@ -63,7 +63,7 @@ const LiveWidget = memo(function WidgetRenderItem({
     }),
   );
 
-  // Inject pvData + pvvalue/pvname macros + rule overrides.
+  // Inject pvData + runtime macros + rule overrides.
   const mergedWidget = useMemo(
     () => applyWidgetPVData(w, relevantPvs, globalMacros),
     [w, relevantPvs, globalMacros],

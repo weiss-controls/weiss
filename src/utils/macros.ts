@@ -10,30 +10,35 @@ import { evaluateRules } from "./ruleEngine";
  * Substitute $(MACRO_NAME) patterns in a single string using a macros map.
  * Unresolved macros (no matching key) are left as-is.
  */
-export function substituteInStr(str: string, macros: Record<string, string>): string {
+export function substituteMacroInStr(str: string, macros: Record<string, string>): string {
+  if (!str.includes("$(")) return str; // skip regex search if str has no macros at all
   return str.replace(/\$\(([^)]+)\)/g, (match) => macros[match] ?? match);
 }
 
 /**
- * Build the built-in per-widget macro map from resolved PV data.
+ * Build the built-in per-widget macro map from runtime PV data.
  * Keys follow the same $(NAME) convention as user macros so they flow
- * through substituteInStr / substituteTextProps unchanged.
+ * through substituteMacroInStr / substituteTextProps unchanged.
+ * e.g.: $(pvname), $(pvdesc), $(pvvalue)
  *
  * @param substitutedPVName The widget's PV name after user macros are applied.
  * @param pvData            Resolved PV data for this widget (may be undefined).
  */
-export function buildInternalMacros(
+export function buildRuntimeMacros(
   substitutedPVName: string | undefined,
   pvData: PVData | undefined,
 ): Record<string, string> {
   const macros: Record<string, string> = {};
-  if (substitutedPVName) macros["$(pvname)"] = substitutedPVName;
-  if (pvData?.display?.description) macros["$(pvdesc)"] = pvData.display.description;
-  if (pvData?.display?.units) macros["$(pvunits)"] = pvData.display.units;
+  macros["$(pvname)"] = substitutedPVName ?? "Unknown PV name";
+  macros["$(pvdesc)"] = pvData?.display?.description ?? "";
+  macros["$(pvunits)"] = pvData?.display?.units ?? "";
   if (pvData?.value !== undefined)
     macros["$(pvvalue)"] = Array.isArray(pvData.value)
       ? pvData.value.join(", ")
       : String(pvData.value);
+  else {
+    macros["$(pvvalue)"] = "";
+  }
   return macros;
 }
 
@@ -57,7 +62,7 @@ export function substituteTextProps(
       continue;
     }
     if (prop.selType === "text" && typeof prop.value === "string") {
-      const substituted = substituteInStr(prop.value, macros);
+      const substituted = substituteMacroInStr(prop.value, macros);
       if (substituted !== prop.value) {
         resultRecord[key] = { ...prop, value: substituted };
         changed = true;
@@ -66,7 +71,7 @@ export function substituteTextProps(
       }
     } else if (prop.selType === "strList" && Array.isArray(prop.value)) {
       const original = prop.value;
-      const substituted = original.map((s) => substituteInStr(s, macros));
+      const substituted = original.map((s) => substituteMacroInStr(s, macros));
       if (substituted.some((s, i) => s !== original[i])) {
         resultRecord[key] = { ...prop, value: substituted };
         changed = true;
@@ -96,7 +101,7 @@ export function collectGlobalMacroOverrides(
     if (!w.rules?.length) continue;
     const wPvName = w.runtimePVName;
     const wPvData = wPvName ? pvState[wPvName] : undefined;
-    const wInternalMacros = buildInternalMacros(wPvName, wPvData);
+    const wInternalMacros = buildRuntimeMacros(wPvName, wPvData);
     const wMacros =
       Object.keys(wInternalMacros).length > 0
         ? { ...baseGlobalMacros, ...wInternalMacros }

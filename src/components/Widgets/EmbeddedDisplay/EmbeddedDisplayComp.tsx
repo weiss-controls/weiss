@@ -8,7 +8,7 @@ import { useUIContext } from "@src/context/useUIContext";
 import { useWidgetContext } from "@src/context/useWidgetContext";
 import { getDeployedRepoFile, getStagingRepoFile } from "@src/services/APIClient";
 import { resolveRepoPath } from "@src/utils/repoPath";
-import { substituteInStr, substituteTextProps } from "@src/utils/macros";
+import { substituteMacroInStr, substituteTextProps } from "@src/utils/macros";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import { createGroupWidget } from "@src/context/widgetHelpers";
 import type { PropertyKey } from "@src/types/widgets";
@@ -128,7 +128,7 @@ function applyMacros(widgets: Widget[], macros: Record<string, string>): Widget[
     if (props.pvName?.value) {
       props = {
         ...props,
-        pvName: { ...props.pvName, value: substituteInStr(props.pvName.value, macros) },
+        pvName: { ...props.pvName, value: substituteMacroInStr(props.pvName.value, macros) },
       };
     }
     if (props.pvNames?.value && props.pvNames.value.length > 0) {
@@ -136,7 +136,7 @@ function applyMacros(widgets: Widget[], macros: Record<string, string>): Widget[
         ...props,
         pvNames: {
           ...props.pvNames,
-          value: props.pvNames.value.map((pv) => substituteInStr(pv, macros)),
+          value: props.pvNames.value.map((pv) => substituteMacroInStr(pv, macros)),
         },
       };
     }
