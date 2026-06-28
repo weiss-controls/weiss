@@ -26,11 +26,13 @@ import {
   createWidgetInstance,
   deepCloneWidget,
   deepCloneWidgetList,
+  ensureGridCoordinate,
   getNestedMoveUpdates,
   getSelectedWidgets,
   getWidgetNested,
   updateWidgets,
 } from "./widgetHelpers";
+import type { DraggableData, Position, RndDragEvent } from "react-rnd";
 
 /**
  * Hook to manage the editor's widgets and their state.
@@ -52,10 +54,14 @@ export function useWidgetManager() {
   ]);
   const [pickedWidget, setPickedWidget] = useState<WidgetDefinition | null>(null); // widget picked from palette
   const [isPlacementMode, setIsPlacementMode] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [selectedWidgetIDs, setSelectedWidgetIDs] = useState<string[]>([]);
   const [fileLoadedTrig, setFileLoadedTrig] = useState(0);
   const [fileImportedTrig, setFileImportedTrig] = useState(0);
   const [macroOverrides, setMacroOverrides] = useState<Record<string, string>>({});
+  const [gridSize, setGridSize] = useState<number>(1);
+  const [snapToGrid, setSnapToGrid] = useState<boolean>(true);
+  const DRAG_END_DELAY = 80; //ms
 
   const clipboard = useRef<Widget[]>([]);
   const copiedSelectionBounds = useRef({ x: 0, y: 0, width: 0, height: 0 });
@@ -585,6 +591,73 @@ export function useWidgetManager() {
     [selectedWidgets, batchWidgetUpdate],
   );
 
+  const handleDragStop = (_e: RndDragEvent, d: DraggableData, w: Widget) => {
+    setIsDragging(false);
+    if (w.editableProperties.x?.value == d.x && w.editableProperties.y?.value == d.y) return;
+    updateWidgetProperties(w.id, {
+      x: ensureGridCoordinate(d.x, snapToGrid, gridSize),
+      y: ensureGridCoordinate(d.y, snapToGrid, gridSize),
+    });
+  };
+
+  const handleResizeStop = (ref: HTMLElement, position: Position, w: Widget) => {
+    setIsDragging(false);
+    const newWidth = ensureGridCoordinate(parseInt(ref.style.width), snapToGrid, gridSize);
+    const newHeight = ensureGridCoordinate(parseInt(ref.style.height), snapToGrid, gridSize);
+    const newX = ensureGridCoordinate(position.x, snapToGrid, gridSize);
+    const newY = ensureGridCoordinate(position.y, snapToGrid, gridSize);
+
+    if (
+      w.editableProperties.width?.value === newWidth &&
+      w.editableProperties.height?.value === newHeight
+    )
+      return;
+
+    updateWidgetProperties(w.id, { width: newWidth, height: newHeight, x: newX, y: newY });
+  };
+
+  const handleSelGroupResizeStop = (ref: HTMLElement, bounds: DOMRectLike, widgets: Widget[]) => {
+    setIsDragging(false);
+    const newGroupWidth = ref.offsetWidth;
+    const newGroupHeight = ref.offsetHeight;
+    const scaleX = newGroupWidth / bounds.width;
+    const scaleY = newGroupHeight / bounds.height;
+
+    const updates: MultiWidgetPropertyUpdates = {};
+    widgets.forEach((w) => {
+      const { width, height, x, y } = {
+        width: w.editableProperties.width!.value,
+        height: w.editableProperties.height!.value,
+        x: w.editableProperties.x!.value,
+        y: w.editableProperties.y!.value,
+      };
+      const relativeX = x - bounds.x;
+      const relativeY = y - bounds.y;
+      updates[w.id] = {
+        width: ensureGridCoordinate(width * scaleX, snapToGrid, gridSize),
+        height: ensureGridCoordinate(height * scaleY, snapToGrid, gridSize),
+        x: ensureGridCoordinate(bounds.x + relativeX * scaleX, snapToGrid, gridSize),
+        y: ensureGridCoordinate(bounds.y + relativeY * scaleY, snapToGrid, gridSize),
+      };
+    });
+    batchWidgetUpdate(updates);
+  };
+
+  const handleSelGroupDragStop = (dx: number, dy: number) => {
+    setTimeout(() => setIsDragging(false), DRAG_END_DELAY);
+    const updates: MultiWidgetPropertyUpdates = {};
+    selectedWidgets.forEach((widget) => {
+      const xProp = widget.editableProperties.x;
+      const yProp = widget.editableProperties.y;
+      if (!xProp || !yProp) return;
+      updates[widget.id] = {
+        x: ensureGridCoordinate(xProp.value + dx, snapToGrid, gridSize),
+        y: ensureGridCoordinate(yProp.value + dy, snapToGrid, gridSize),
+      };
+    });
+    batchWidgetUpdate(updates);
+  };
+
   /**
    * Undo the last editor state change.
    */
@@ -1068,11 +1141,24 @@ export function useWidgetManager() {
       snapshotEditModeMacros,
       restoreEditModeMacros,
       setMacroOverrides,
+      setIsDragging,
+      handleDragStop,
+      handleResizeStop,
+      handleSelGroupDragStop,
+      handleSelGroupResizeStop,
+      setGridSize,
+      setSnapToGrid,
+      gridSize,
+      snapToGrid,
+      isDragging,
     }),
     // Stable setState/useCallback refs are intentionally omitted.
     // Listing only the reactive state values.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
+      gridSize,
+      snapToGrid,
+      isDragging,
       editorWidgets,
       selectedWidgetIDs,
       editingWidgets,

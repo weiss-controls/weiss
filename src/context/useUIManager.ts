@@ -25,6 +25,8 @@ import {
   type TokenStatus,
   type User,
 } from "@src/services/APIClient";
+import { usePVStore } from "@src/services/pvStore";
+import { collectGlobalMacroOverrides } from "@src/utils/macros";
 
 const IMAGE_EXTENSIONS = new Set([".svg", ".png", ".jpg", ".jpeg"]);
 const MIME_MAP: Record<string, string> = {
@@ -66,6 +68,8 @@ export default function useUIManager(
   loadWidgets: ReturnType<typeof useWidgetManager>["loadWidgets"],
   snapshotEditModeMacros: ReturnType<typeof useWidgetManager>["snapshotEditModeMacros"],
   restoreEditModeMacros: ReturnType<typeof useWidgetManager>["restoreEditModeMacros"],
+  baseGlobalMacros: ReturnType<typeof useWidgetManager>["baseGlobalMacros"],
+  setMacroOverrides: ReturnType<typeof useWidgetManager>["setMacroOverrides"],
 ) {
   const hasFileChanged = useRef(true);
   const restoredRef = useRef(false);
@@ -74,7 +78,6 @@ export default function useUIManager(
   const [isTextEditing, setIsTextEditing] = useState(false);
   const [wdgPickerOpen, setWdgPickerOpen] = useState(false);
   const [mode, setMode] = useState<Mode>(EDIT_MODE);
-  const [isDragging, setIsDragging] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
   const [user, setUser] = useState<User | null>(() => authService.getUser());
   const [authChecked, setAuthChecked] = useState(false);
@@ -317,6 +320,22 @@ export default function useUIManager(
       }
     };
   }, [editorWidgets, selectedFile, isDeveloper, inEditMode, formatWdgToExport, setReposTreeInfo]);
+  const prevGlobalMacrosJsonRef = useRef<string>("");
+
+  // Keep macroOverrides in sync with live PV data based on rules evaluation.
+  // This is needed because macros can be overriden via rules during runtime
+  useEffect(() => {
+    if (inEditMode) return;
+    const unsubscribe = usePVStore.subscribe((state) => {
+      const overrides = collectGlobalMacroOverrides(editorWidgets, state.pvs, baseGlobalMacros);
+      const json = JSON.stringify(overrides);
+      if (json !== prevGlobalMacrosJsonRef.current) {
+        prevGlobalMacrosJsonRef.current = json;
+        setMacroOverrides(overrides);
+      }
+    });
+    return unsubscribe;
+  }, [editorWidgets, baseGlobalMacros, inEditMode, setMacroOverrides]);
 
   return useMemo(
     () => ({
@@ -327,8 +346,6 @@ export default function useUIManager(
       wdgPickerOpen,
       setWdgPickerOpen,
       inEditMode,
-      isDragging,
-      setIsDragging,
       isPanning,
       setIsPanning,
       isDemo,
@@ -358,7 +375,6 @@ export default function useUIManager(
       wdgPickerOpen,
       mode,
       inEditMode,
-      isDragging,
       isPanning,
       user,
       isDeveloper,

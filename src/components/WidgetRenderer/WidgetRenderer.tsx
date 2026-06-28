@@ -1,54 +1,34 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
-import React, { useEffect, useRef, type ReactNode } from "react";
+import React, { type ReactNode } from "react";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
-import type { Widget, MultiWidgetPropertyUpdates, DOMRectLike } from "@src/types/widgets";
-import { Rnd, type DraggableData, type Position, type RndDragEvent } from "react-rnd";
+import type { Widget } from "@src/types/widgets";
+import { Rnd } from "react-rnd";
 import { GRID_ID } from "@src/constants/constants";
 import "./WidgetRenderer.css";
 import { useUIContext } from "@src/context/useUIContext";
 import { useWidgetContext } from "@src/context/useWidgetContext";
-import { usePVStore } from "@src/services/pvStore";
 import { hasSelectedDescendant } from "./widgetRenderUtils";
 import LiveWidget from "./LiveWidget";
-import { collectGlobalMacroOverrides } from "@src/utils/macros";
-
-const DRAG_END_DELAY = 80; //ms
 interface RendererProps {
   scale: number;
-  ensureGridCoordinate: (coord: number) => number;
 }
 
-const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }) => {
-  const { inEditMode, setIsDragging, isPanning, isTextEditing } = useUIContext();
+const WidgetRenderer: React.FC<RendererProps> = ({ scale }) => {
+  const { inEditMode, isPanning, isTextEditing } = useUIContext();
   const {
     editorWidgets,
     selectedWidgetIDs,
-    batchWidgetUpdate,
     selectionBounds,
-    updateWidgetProperties,
     selectedWidgets,
-    setMacroOverrides,
-    baseGlobalMacros,
+    setIsDragging,
     globalMacros,
+    handleDragStop,
+    handleResizeStop,
+    handleSelGroupDragStop,
+    handleSelGroupResizeStop,
   } = useWidgetContext();
-
-  const prevGlobalMacrosJsonRef = useRef<string>("");
-
-  // Keep macroOverrides in sync with live PV data based on rules evaluation.
-  useEffect(() => {
-    if (inEditMode) return;
-    const unsubscribe = usePVStore.subscribe((state) => {
-      const overrides = collectGlobalMacroOverrides(editorWidgets, state.pvs, baseGlobalMacros);
-      const json = JSON.stringify(overrides);
-      if (json !== prevGlobalMacrosJsonRef.current) {
-        prevGlobalMacrosJsonRef.current = json;
-        setMacroOverrides(overrides);
-      }
-    });
-    return unsubscribe;
-  }, [editorWidgets, baseGlobalMacros, inEditMode, setMacroOverrides]);
 
   /** Core widget content renderer, delegates PV data to LiveWidget */
   const renderWidgetContent = (w: Widget): ReactNode => {
@@ -58,73 +38,6 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale, ensureGridCoordinate }
       return Comp ? <Comp data={w} /> : null;
     }
     return <LiveWidget w={w} globalMacros={globalMacros} />;
-  };
-
-  const handleDragStop = (_e: RndDragEvent, d: DraggableData, w: Widget) => {
-    setIsDragging(false);
-    if (w.editableProperties.x?.value == d.x && w.editableProperties.y?.value == d.y) return;
-    updateWidgetProperties(w.id, {
-      x: ensureGridCoordinate(d.x),
-      y: ensureGridCoordinate(d.y),
-    });
-  };
-
-  const handleResizeStop = (ref: HTMLElement, position: Position, w: Widget) => {
-    setIsDragging(false);
-    const newWidth = ensureGridCoordinate(parseInt(ref.style.width));
-    const newHeight = ensureGridCoordinate(parseInt(ref.style.height));
-    const newX = ensureGridCoordinate(position.x);
-    const newY = ensureGridCoordinate(position.y);
-
-    if (
-      w.editableProperties.width?.value === newWidth &&
-      w.editableProperties.height?.value === newHeight
-    )
-      return;
-
-    updateWidgetProperties(w.id, { width: newWidth, height: newHeight, x: newX, y: newY });
-  };
-
-  const handleSelGroupResizeStop = (ref: HTMLElement, bounds: DOMRectLike, widgets: Widget[]) => {
-    setIsDragging(false);
-    const newGroupWidth = ref.offsetWidth;
-    const newGroupHeight = ref.offsetHeight;
-    const scaleX = newGroupWidth / bounds.width;
-    const scaleY = newGroupHeight / bounds.height;
-
-    const updates: MultiWidgetPropertyUpdates = {};
-    widgets.forEach((w) => {
-      const { width, height, x, y } = {
-        width: w.editableProperties.width!.value,
-        height: w.editableProperties.height!.value,
-        x: w.editableProperties.x!.value,
-        y: w.editableProperties.y!.value,
-      };
-      const relativeX = x - bounds.x;
-      const relativeY = y - bounds.y;
-      updates[w.id] = {
-        width: ensureGridCoordinate(width * scaleX),
-        height: ensureGridCoordinate(height * scaleY),
-        x: ensureGridCoordinate(bounds.x + relativeX * scaleX),
-        y: ensureGridCoordinate(bounds.y + relativeY * scaleY),
-      };
-    });
-    batchWidgetUpdate(updates);
-  };
-
-  const handleSelGroupDragStop = (dx: number, dy: number) => {
-    setTimeout(() => setIsDragging(false), DRAG_END_DELAY);
-    const updates: MultiWidgetPropertyUpdates = {};
-    selectedWidgets.forEach((widget) => {
-      const xProp = widget.editableProperties.x;
-      const yProp = widget.editableProperties.y;
-      if (!xProp || !yProp) return;
-      updates[widget.id] = {
-        x: ensureGridCoordinate(xProp.value + dx),
-        y: ensureGridCoordinate(yProp.value + dy),
-      };
-    });
-    batchWidgetUpdate(updates);
   };
 
   const renderRecursive = (

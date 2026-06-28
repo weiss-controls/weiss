@@ -88,8 +88,7 @@ export function substituteTextProps(
 /**
  * Walks every widget in the tree (including nested children), evaluates their
  * rules against the current PV state, and aggregates any `globalMacros` action
- * values into a single merged map.  Called from the `usePVStore.subscribe()`
- * effect in WidgetRenderer; only runs in runtime mode.
+ * values into a single merged map.
  */
 export function collectGlobalMacroOverrides(
   widgets: Widget[],

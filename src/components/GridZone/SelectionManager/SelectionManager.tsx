@@ -2,7 +2,6 @@
 // Copyright (C) 2026 André Favoto
 
 import { FRONT_UI_ZIDX, GRID_ID } from "@src/constants/constants";
-import { useUIContext } from "@src/context/useUIContext";
 import { useWidgetContext } from "@src/context/useWidgetContext";
 import { getTopLevelId } from "@src/context/widgetHelpers";
 import React, { useRef, useState, useEffect } from "react";
@@ -17,8 +16,7 @@ interface SelectionManagerProps {
 const CLICK_THRESHOLD = 3;
 
 const SelectionManager: React.FC<SelectionManagerProps> = ({ gridRef, zoom, pan }) => {
-  const { editorWidgets, setSelectedWidgetIDs, selectedWidgetIDs } = useWidgetContext();
-  const { isDragging } = useUIContext();
+  const { editorWidgets, setSelectedWidgetIDs, selectedWidgetIDs, isDragging } = useWidgetContext();
   const [selectionArea, setSelectionArea] = useState<{
     start?: { x: number; y: number };
     end?: { x: number; y: number };
