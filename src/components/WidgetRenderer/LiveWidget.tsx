@@ -10,8 +10,6 @@ import { usePVStore } from "@src/services/pvStore";
 import { substituteMacroInStr } from "@src/utils/macros";
 import { applyWidgetPVData } from "./widgetRenderUtils";
 
-const EMPTY_PVS: Record<string, PVData> = {};
-
 /**
  * Renders a single widget's content by subscribing only to the PV(s) that
  * widget actually uses.  React.memo + the per-PV Zustand selector guarantee
@@ -49,11 +47,11 @@ const LiveWidget = memo(function WidgetRenderItem({
     return [...names];
   }, [w, globalMacros]);
 
-  // Subscribe only to this widget's relevant PVs.
+  // Subscribe (from Zustand store) only to this widget's relevant PVs.
   // `useShallow` ensures re-render only when any selected value changes by reference.
   const relevantPvs = usePVStore(
     useShallow((state) => {
-      if (!pvNames.length) return EMPTY_PVS;
+      if (!pvNames.length) return {};
       const result: Record<string, PVData> = {};
       for (const pv of pvNames) {
         const d = state.pvs[pv];

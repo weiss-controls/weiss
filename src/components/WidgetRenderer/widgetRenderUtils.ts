@@ -28,7 +28,8 @@ export function applyWidgetPVData(
   const pvNames = w.runtimePVNames;
 
   /**
-   * TODO: this should be multiple functions. So far, workflow is:
+   * TODO: this should be split into multiple functions.
+   * So far, workflow is:
    * 1 - Apply received pvData (before rules)
    * 2 - Populate internal content ($(pvname), $(pvvalue), etc)
    * 3 - Evaluate rules against these.
@@ -44,7 +45,7 @@ export function applyWidgetPVData(
       ? { ...globalMacros, ...origInternalMacros }
       : globalMacros;
   const ovr = evaluateRules(w.rules ?? [], runtimeData, allMacros);
-  // skip globalMacros — handled globally at grid level
+  // skip globalMacros rules — handled globally for all widgets
   const ruleOverrides = Object.fromEntries(
     Object.entries(ovr).filter(([k]) => k !== "globalMacros"),
   );

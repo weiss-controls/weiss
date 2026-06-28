@@ -88,16 +88,18 @@ export function substituteTextProps(
 /**
  * Walks every widget in the tree (including nested children), evaluates their
  * rules against the current PV state, and aggregates any `globalMacros` action
- * values into a single merged map.
+ * values into a single map.
  */
 export function collectGlobalMacroOverrides(
   widgets: Widget[],
   pvState: Record<string, PVData>,
   baseGlobalMacros: Record<string, string>,
 ): Record<string, string> {
-  let merged: Record<string, string> = {};
+  let overrides: Record<string, string> = {};
   for (const w of flattenWidgetTree(widgets)) {
     if (!w.rules?.length) continue;
+    const hasGlobMacroRule = w.rules.some((r) => r.actions.globalMacros !== undefined);
+    if (!hasGlobMacroRule) continue;
     const wPvName = w.runtimePVName;
     const wPvData = wPvName ? pvState[wPvName] : undefined;
     const wInternalMacros = buildRuntimeMacros(wPvName, wPvData);
@@ -108,8 +110,8 @@ export function collectGlobalMacroOverrides(
     const wRuleEvalMacros = wPvName ? { ...wMacros, "$(pvname)": wPvName } : wMacros;
     const wOverrides = evaluateRules(w.rules, pvState, wRuleEvalMacros);
     if (wOverrides.globalMacros && typeof wOverrides.globalMacros === "object") {
-      merged = { ...merged, ...(wOverrides.globalMacros as Record<string, string>) };
+      overrides = { ...overrides, ...(wOverrides.globalMacros as Record<string, string>) };
     }
   }
-  return merged;
+  return overrides;
 }

@@ -301,6 +301,8 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
     isPlacementMode,
     pickedWidget,
     setDragPreview,
+    snapToGrid,
+    gridSize,
   ]);
 
   // Shortcuts handler
