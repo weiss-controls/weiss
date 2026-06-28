@@ -2,7 +2,7 @@
 // GraphXY widget — X vs Y scatter/line plot for WEISS
 // Contributed by Elmaddin Guliyev
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useRef } from "react";
 import type { WidgetUpdate } from "@src/types/widgets";
 import Plot from "react-plotly.js";
 import { COLORS } from "@src/constants/constants";
@@ -38,40 +38,34 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
   // Ring buffers: one per PV
   const valueBuffers = useRef<Record<string, number[]>>({});
   const prevPvTimestamps = useRef<Record<string, TimeStamp>>({});
-  const [plotData, setPlotData] = useState<Plotly.Data[]>([]);
-  const [layout, setLayout] = useState<Partial<Plotly.Layout>>({});
+  const plotData = useRef<Plotly.Data[]>([{}]);
+  const xLabel = pvNames.length > 0 ? pvNames[0] : "X";
 
-  // Build traces
-  useEffect(() => {
-    // Edit-mode preview
-    if (inEditMode) {
-      valueBuffers.current = {};
-      const previewPvs = pvNames.length > 0 ? pvNames : ["X PV", "Y PV"];
-      if (previewPvs.length >= 2) {
-        const xPreview = [1, 2, 3, 4, 5, 6, 7, 8];
-        const traces: Plotly.Data[] = [];
-        for (let i = 1; i < previewPvs.length; i++) {
-          const yPreview = xPreview.map((v) => v * (1 + i * 0.3) + Math.sin(v * i) * 2);
-          traces.push({
-            x: xPreview,
-            y: yPreview,
-            type: "scatter",
-            mode: plotLineStyle as Plotly.PlotData["mode"],
-            line: { color: lineColors?.[i - 1] ?? "auto" },
-            marker: { size: 6 },
-            name: `${previewPvs[0]} vs ${previewPvs[i]}`,
-          });
-        }
-        setPlotData(traces);
+  const buildPreviewTraces = () => {
+    plotData.current = [{}];
+    valueBuffers.current = {};
+    const previewPvs = pvNames.length > 0 ? pvNames : ["X PV", "Y PV"];
+    if (previewPvs.length >= 2) {
+      const xPreview = [1, 2, 3, 4, 5, 6, 7, 8];
+      for (let i = 1; i < previewPvs.length; i++) {
+        const yPreview = xPreview.map((v) => v * (1 + i * 0.3) + Math.sin(v * i) * 2);
+        plotData.current.push({
+          x: xPreview,
+          y: yPreview,
+          type: "scatter",
+          mode: plotLineStyle as Plotly.PlotData["mode"],
+          line: { color: lineColors?.[i - 1] ?? "auto" },
+          marker: { size: 6 },
+          name: `${previewPvs[0]} vs ${previewPvs[i]}`,
+        });
       }
-      return;
     }
+  };
 
-    if (!data.multiPvData || pvNames.length < 2) return;
-
-    // Check for new data
+  const buildRuntimeTraces = () => {
+    if (!pvData) return;
     let updated = false;
-    for (const [pvName, pv] of Object.entries(data.multiPvData)) {
+    for (const [pvName, pv] of Object.entries(pvData)) {
       const newValTs = pv.timeStamp;
       const oldValTs = prevPvTimestamps.current[pvName];
       if (newValTs === oldValTs) continue;
@@ -89,7 +83,7 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
     if (!updated) return;
 
     const xPvName = pvNames[0];
-    const xPv = data.multiPvData[xPvName];
+    const xPv = pvData[xPvName];
     if (!xPv) return;
 
     // X data: either from buffer (scalar) or array
@@ -104,10 +98,9 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
     if (!xData || xData.length === 0) return;
 
     // Build Y traces
-    const traces: Plotly.Data[] = [];
     for (let i = 1; i < pvNames.length; i++) {
       const yPvName = pvNames[i];
-      const yPv = data.multiPvData[yPvName];
+      const yPv = pvData[yPvName];
       if (!yPv) continue;
 
       const yVal = yPv.value;
@@ -123,7 +116,7 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
       // Align lengths
       const len = Math.min(xData.length, yData.length);
 
-      traces.push({
+      plotData.current.push({
         x: xData.slice(-len),
         y: yData.slice(-len),
         type: "scatter",
@@ -133,65 +126,66 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
         name: `${yPvName}`,
       });
     }
+  };
 
-    setPlotData(traces);
-  }, [inEditMode, data.multiPvData, bufferSize, plotLineStyle, lineColors, pvNames]);
+  if (inEditMode) {
+    buildPreviewTraces();
+  } else {
+    buildRuntimeTraces();
+  }
 
   // Layout
-  useEffect(() => {
-    const xLabel = pvNames.length > 0 ? pvNames[0] : "X";
-    setLayout({
+  const layout: Partial<Plotly.Layout> = {
+    title: {
+      text: p.plotTitle?.value ?? "",
+      font: {
+        family: p.fontFamily?.value,
+        size: p.fontSize?.value,
+        weight: p.fontBold?.value ? 800 : 0,
+        style: p.fontItalic?.value ? "italic" : "normal",
+        lineposition: p.fontUnderlined?.value ? "under" : "none",
+        color: p.textColor?.value,
+      },
+      x: titleXpos,
+      y: titleYpos,
+    },
+    xaxis: {
       title: {
-        text: p.plotTitle?.value ?? "",
+        text: p.xAxisTitle?.value ?? xLabel,
         font: {
           family: p.fontFamily?.value,
-          size: p.fontSize?.value,
-          weight: p.fontBold?.value ? 800 : 0,
-          style: p.fontItalic?.value ? "italic" : "normal",
-          lineposition: p.fontUnderlined?.value ? "under" : "none",
-          color: p.textColor?.value,
-        },
-        x: titleXpos,
-        y: titleYpos,
-      },
-      xaxis: {
-        title: {
-          text: p.xAxisTitle?.value ?? xLabel,
-          font: {
-            family: p.fontFamily?.value,
-            size: (p.fontSize?.value ?? 12) - 2,
-            color: COLORS.lightGray,
-          },
-        },
-        type: "linear",
-      },
-      yaxis: {
-        type: p.logscaleY?.value ? "log" : "linear",
-        title: {
-          text: p.yAxisTitle?.value ?? "",
-          font: {
-            family: p.fontFamily?.value,
-            size: (p.fontSize?.value ?? 12) - 2,
-            color: COLORS.lightGray,
-          },
+          size: (p.fontSize?.value ?? 12) - 2,
+          color: COLORS.lightGray,
         },
       },
-      paper_bgcolor: p.backgroundColor?.value,
-      plot_bgcolor: p.backgroundColor?.value,
-      margin: { b: 45, l: 45, t: 50, r: 30 },
-      width: p.width?.value,
-      height: p.height?.value,
-      showlegend: p.showLegend?.value,
-      legend: {
-        orientation: "h",
-        x: 1,
-        xanchor: "right",
-        y: 0.975,
-        bgcolor: "00000000",
+      type: "linear",
+    },
+    yaxis: {
+      type: p.logscaleY?.value ? "log" : "linear",
+      title: {
+        text: p.yAxisTitle?.value ?? "",
+        font: {
+          family: p.fontFamily?.value,
+          size: (p.fontSize?.value ?? 12) - 2,
+          color: COLORS.lightGray,
+        },
       },
-      uirevision: String(inEditMode),
-    });
-  }, [p, pvNames, inEditMode, titleXpos, titleYpos]);
+    },
+    paper_bgcolor: p.backgroundColor?.value,
+    plot_bgcolor: p.backgroundColor?.value,
+    margin: { b: 45, l: 45, t: 50, r: 30 },
+    width: p.width?.value,
+    height: p.height?.value,
+    showlegend: p.showLegend?.value,
+    legend: {
+      orientation: "h",
+      x: 1,
+      xanchor: "right",
+      y: 0.975,
+      bgcolor: "00000000",
+    },
+    uirevision: String(inEditMode),
+  };
 
   return (
     <AlarmBorder alarmData={alarmData} enable={p.alarmBorder?.value}>
@@ -208,7 +202,7 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
         }}
       >
         <Plot
-          data={plotData}
+          data={plotData.current}
           layout={layout}
           config={{
             responsive: true,

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useRef } from "react";
 import type { WidgetUpdate } from "@src/types/widgets";
 import Plot from "react-plotly.js";
 import { COLORS } from "@src/constants/constants";
@@ -27,131 +27,124 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
   const titleYpos = textVAlign == "bottom" ? 0.05 : textVAlign == "middle" ? 0.5 : 0.95;
 
   const valueBuffers = useRef<Record<string, number[]>>({});
-  const [plotData, setPlotData] = useState<Plotly.Data[]>([]);
   const prevPvTimestamps = useRef<Record<string, TimeStamp>>({});
-  const [layout, setLayout] = useState<Partial<Plotly.Layout>>({});
+  const plotData = useRef<Plotly.Data[]>([{}]);
+  const previewPvs = pvNames ?? ["<pvname>"];
 
-  // build traces
-  useEffect(() => {
-    if (inEditMode) {
-      valueBuffers.current = {};
-      const previewPvs = pvNames ?? ["<pvname>"];
-      const previewTraces = previewPvs.map((pvName, idx) => {
-        const base = idx * 0.5;
-        const y = [base, base + 3, base + 2, base + 5];
-        return {
-          y,
-          type: "scatter",
-          mode: plotLineStyle,
-          line: { color: lineColors?.[idx] ?? "auto" },
-          name: pvName,
-        } as Plotly.Data;
-      });
-      setPlotData(previewTraces);
-      return;
-    }
+  const buildPreviewTraces = () => {
+    plotData.current = [{}];
+    plotData.current = previewPvs.map((pvName, idx) => {
+      const base = idx * 0.5;
+      const y = [base, base + 3, base + 2, base + 5];
+      return {
+        y,
+        type: "scatter",
+        mode: plotLineStyle,
+        line: { color: lineColors?.[idx] ?? "auto" },
+        name: pvName,
+      } as Plotly.Data;
+    });
+  };
 
-    if (!multiPvData) return;
-    let updated = false;
-
-    for (const [pvName, pv] of Object.entries(multiPvData)) {
-      const newValTs = pv.timeStamp;
-      const oldValTs = prevPvTimestamps.current[pvName];
-      if (newValTs === oldValTs) continue;
-      prevPvTimestamps.current[pvName] = newValTs;
-      updated = true;
-      const newVal = pv.value;
-      if (typeof newVal === "number") {
-        if (!valueBuffers.current[pvName]) valueBuffers.current[pvName] = [];
-        const buf = valueBuffers.current[pvName];
-        buf.push(newVal);
-        if (buf.length > bufferSize) buf.shift();
+  const buildRuntimeTraces = () => {
+    plotData.current = [{}];
+    if (multiPvData) {
+      for (const [pvName, pv] of Object.entries(multiPvData)) {
+        const newValTs = pv.timeStamp;
+        const oldValTs = prevPvTimestamps.current[pvName];
+        if (newValTs === oldValTs) continue;
+        prevPvTimestamps.current[pvName] = newValTs;
+        const newVal = pv.value;
+        if (typeof newVal === "number") {
+          if (!valueBuffers.current[pvName]) valueBuffers.current[pvName] = [];
+          const buf = valueBuffers.current[pvName];
+          buf.push(newVal);
+          if (buf.length > bufferSize) buf.shift();
+        }
       }
+      plotData.current = Object.entries(multiPvData)
+        .map(([pvName, pv]) => {
+          const pvIdx = pvNames?.indexOf(pvName) ?? -1;
+          if (pvIdx === -1) return null;
+
+          const v = pv.value;
+          const y =
+            typeof v === "number"
+              ? [...(valueBuffers.current[pvName] ?? [])]
+              : Array.isArray(v)
+                ? [...v]
+                : null;
+
+          if (!y) return null;
+
+          return {
+            y,
+            type: "scatter",
+            mode: plotLineStyle,
+            line: { color: lineColors?.[pvIdx] },
+            name: pvName,
+          } as Plotly.Data;
+        })
+        .filter((t): t is Plotly.Data => t !== null);
     }
+  };
 
-    if (!updated) return;
+  if (inEditMode) {
+    buildPreviewTraces();
+  } else {
+    buildRuntimeTraces();
+  }
 
-    const traces = Object.entries(multiPvData)
-      .map(([pvName, pv]) => {
-        const pvIdx = pvNames?.indexOf(pvName) ?? -1;
-        if (pvIdx === -1) return null;
-
-        const v = pv.value;
-        const y =
-          typeof v === "number"
-            ? [...(valueBuffers.current[pvName] ?? [])]
-            : Array.isArray(v)
-              ? [...v]
-              : null;
-
-        if (!y) return null;
-
-        return {
-          y,
-          type: "scatter",
-          mode: plotLineStyle,
-          line: { color: lineColors?.[pvIdx] },
-          name: pvName,
-        } as Plotly.Data;
-      })
-      .filter((t): t is Plotly.Data => t !== null);
-
-    setPlotData(traces);
-  }, [inEditMode, multiPvData, bufferSize, plotLineStyle, lineColors, pvNames]);
-
-  useEffect(() => {
-    setLayout({
+  const layout: Partial<Plotly.Layout> = {
+    title: {
+      text: p.plotTitle?.value,
+      font: {
+        family: p.fontFamily?.value,
+        size: p.fontSize?.value,
+        weight: p.fontBold?.value ? 800 : 0,
+        style: p.fontItalic?.value ? "italic" : "normal",
+        lineposition: p.fontUnderlined?.value ? "under" : "none",
+        color: p.textColor?.value,
+      },
+      x: titleXpos,
+      y: titleYpos,
+    },
+    xaxis: {
       title: {
-        text: p.plotTitle?.value,
+        text: p.xAxisTitle?.value,
         font: {
           family: p.fontFamily?.value,
-          size: p.fontSize?.value,
-          weight: p.fontBold?.value ? 800 : 0,
-          style: p.fontItalic?.value ? "italic" : "normal",
-          lineposition: p.fontUnderlined?.value ? "under" : "none",
-          color: p.textColor?.value,
-        },
-        x: titleXpos,
-        y: titleYpos,
-      },
-      xaxis: {
-        title: {
-          text: p.xAxisTitle?.value,
-          font: {
-            family: p.fontFamily?.value,
-            size: (p.fontSize?.value ?? 12) - 2,
-            color: COLORS.lightGray,
-          },
+          size: (p.fontSize?.value ?? 12) - 2,
+          color: COLORS.lightGray,
         },
       },
-      yaxis: {
-        type: p.logscaleY?.value ? "log" : "linear",
-        title: {
-          text: p.yAxisTitle?.value,
-          font: {
-            family: p.fontFamily?.value,
-            size: (p.fontSize?.value ?? 12) - 2,
-            color: COLORS.lightGray,
-          },
+    },
+    yaxis: {
+      type: p.logscaleY?.value ? "log" : "linear",
+      title: {
+        text: p.yAxisTitle?.value,
+        font: {
+          family: p.fontFamily?.value,
+          size: (p.fontSize?.value ?? 12) - 2,
+          color: COLORS.lightGray,
         },
       },
-      paper_bgcolor: p.backgroundColor?.value,
-      plot_bgcolor: p.backgroundColor?.value,
-      margin: { b: 35, l: 35, t: 50, r: 30 },
-      width: p.width?.value,
-      height: p.height?.value,
-      showlegend: p.showLegend?.value,
-      legend: {
-        orientation: "h",
-        x: 1,
-        xanchor: "right",
-        y: 0.975,
-        bgcolor: "00000000",
-      },
-
-      uirevision: String(inEditMode),
-    });
-  }, [p, pvNames, inEditMode, titleXpos, titleYpos]);
+    },
+    paper_bgcolor: p.backgroundColor!.value,
+    plot_bgcolor: p.backgroundColor!.value,
+    margin: { b: 35, l: 35, t: 50, r: 30 },
+    width: p.width!.value,
+    height: p.height!.value,
+    showlegend: p.showLegend!.value,
+    legend: {
+      orientation: "h",
+      x: 1,
+      xanchor: "right",
+      y: 0.975,
+      bgcolor: "00000000",
+    },
+    uirevision: String(inEditMode),
+  };
 
   return (
     <AlarmBorder alarmData={alarmData} enable={p.alarmBorder?.value}>
@@ -168,7 +161,7 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
         }}
       >
         <Plot
-          data={plotData}
+          data={plotData.current}
           layout={layout}
           config={{
             responsive: true,
