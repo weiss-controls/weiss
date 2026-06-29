@@ -60,6 +60,9 @@ export interface RuleCondition {
   value: string; // always string; engine coerces to number when both sides are numeric
 }
 
+//** Map with PropertyKeys affected and the new Values */
+export type RuleOverrides = Partial<Record<PropertyKey, PropertyValue>>;
+
 /**
  * A rule that overrides widget properties at runtime when its conditions are met.
  * Rules are evaluated in order; later rules win on same-property conflicts.
@@ -70,7 +73,7 @@ export interface Rule {
   pvNames: string[]; // PVs this rule subscribes to (for WS subscription)
   conditionLogic?: "AND" | "OR";
   conditions: RuleCondition[];
-  actions: Partial<Record<PropertyKey, PropertyValue>>;
+  actions: RuleOverrides;
 }
 
 /**

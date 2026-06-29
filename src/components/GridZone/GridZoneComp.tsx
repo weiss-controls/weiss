@@ -1,19 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import type { GridPosition, WidgetDefinition, WidgetUpdate } from "@src/types/widgets";
 import type { PVData } from "@src/types/epicsWS";
 import { usePVStore } from "@src/services/pvStore";
-import { createWidgetInstance } from "@src/context/widgetHelpers";
+import { createWidgetInstance, ensureGridCoordinate } from "@src/context/widgetHelpers";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
-import {
-  FRONT_UI_ZIDX,
-  GRID_ID,
-  MAX_ZOOM,
-  MIN_ZOOM,
-  ROUNDING_CONST,
-} from "@src/constants/constants";
+import { FRONT_UI_ZIDX, GRID_ID, MAX_ZOOM, MIN_ZOOM } from "@src/constants/constants";
 import ContextMenu from "@components/ContextMenu/ContextMenu";
 import "./GridZone.css";
 import WidgetRenderer from "@components/WidgetRenderer/WidgetRenderer.tsx";
@@ -65,8 +59,14 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
     ungroupSelected,
     moveSelected,
     widgetIdMap,
+    setGridSize,
+    setSnapToGrid,
+    gridSize,
+    snapToGrid,
   } = useWidgetContext();
 
+  setGridSize(props.gridSize!.value);
+  setSnapToGrid(props.snapToGrid!.value);
   const gridRef = useRef<HTMLDivElement>(null);
   const lastPosRef = useRef<GridPosition>({ x: 0, y: 0 });
   const mousePosRef = useRef<GridPosition>({ x: 0, y: 0 });
@@ -85,17 +85,8 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
     x: number;
     y: number;
   } | null>(null);
-  const gridSize = props.gridSize!.value;
-  const snapToGrid = props.snapToGrid?.value;
-  const gridLineVisible = props.gridLineVisible?.value;
 
-  const ensureGridCoordinate = useCallback(
-    (coord: number) => {
-      const aligned = snapToGrid ? Math.round(coord / gridSize) * gridSize : coord;
-      return Math.round(aligned * ROUNDING_CONST) / ROUNDING_CONST;
-    },
-    [snapToGrid, gridSize],
-  );
+  const gridLineVisible = props.gridLineVisible?.value;
 
   const centerScreen = () => {
     setZoom(1);
@@ -138,8 +129,8 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
 
     setDragPreview({
       widget: pickedWidget,
-      x: ensureGridCoordinate(userX),
-      y: ensureGridCoordinate(userY),
+      x: ensureGridCoordinate(userX, snapToGrid, gridSize),
+      y: ensureGridCoordinate(userY, snapToGrid, gridSize),
     });
   };
 
@@ -166,9 +157,9 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
 
     const newWidget = createWidgetInstance(droppedComp, `${entry.widgetName}-${uuidv4()}`);
     if (newWidget.editableProperties.x)
-      newWidget.editableProperties.x.value = ensureGridCoordinate(userX);
+      newWidget.editableProperties.x.value = ensureGridCoordinate(userX, snapToGrid, gridSize);
     if (newWidget.editableProperties.y)
-      newWidget.editableProperties.y.value = ensureGridCoordinate(userY);
+      newWidget.editableProperties.y.value = ensureGridCoordinate(userY, snapToGrid, gridSize);
 
     addWidget(newWidget);
     setDragPreview(null);
@@ -275,14 +266,14 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
       const userY = (rawY - pan.y) / zoom;
 
       mousePosRef.current = {
-        x: ensureGridCoordinate(userX),
-        y: ensureGridCoordinate(userY),
+        x: ensureGridCoordinate(userX, snapToGrid, gridSize),
+        y: ensureGridCoordinate(userY, snapToGrid, gridSize),
       };
       if (isPlacementMode && pickedWidget) {
         setDragPreview({
           widget: pickedWidget,
-          x: ensureGridCoordinate(userX),
-          y: ensureGridCoordinate(userY),
+          x: ensureGridCoordinate(userX, snapToGrid, gridSize),
+          y: ensureGridCoordinate(userY, snapToGrid, gridSize),
         });
       }
       if (gridGrabbed.current) {
@@ -304,13 +295,14 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
     gridGrabbed,
     isPanning,
     setIsPanning,
-    ensureGridCoordinate,
     pan,
     zoom,
     mode,
     isPlacementMode,
     pickedWidget,
     setDragPreview,
+    snapToGrid,
+    gridSize,
   ]);
 
   // Shortcuts handler
@@ -462,7 +454,7 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
             }}
           />
         )}
-        <WidgetRenderer scale={zoom} ensureGridCoordinate={ensureGridCoordinate} />
+        <WidgetRenderer scale={zoom} />
       </div>
       {inEditMode && <SelectionManager gridRef={gridRef} zoom={zoom} pan={pan} />}
       <ToolbarButtons />

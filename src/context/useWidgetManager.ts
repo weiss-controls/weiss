@@ -19,18 +19,20 @@ import { GRID_ID, MAX_HISTORY } from "@src/constants/constants";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import { v4 as uuidv4 } from "uuid";
 import { notifyUser } from "@src/services/Notifications/Notification";
-import { substituteInStr } from "@src/utils/macros";
+import { substituteMacroInStr } from "@src/utils/macros";
 import { derivePVNames } from "@components/RulesDialog/ruleDialogUtils";
 import {
   createGroupWidget,
   createWidgetInstance,
   deepCloneWidget,
   deepCloneWidgetList,
+  ensureGridCoordinate,
   getNestedMoveUpdates,
   getSelectedWidgets,
   getWidgetNested,
   updateWidgets,
 } from "./widgetHelpers";
+import type { DraggableData, Position, RndDragEvent } from "react-rnd";
 
 /**
  * Hook to manage the editor's widgets and their state.
@@ -52,9 +54,14 @@ export function useWidgetManager() {
   ]);
   const [pickedWidget, setPickedWidget] = useState<WidgetDefinition | null>(null); // widget picked from palette
   const [isPlacementMode, setIsPlacementMode] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [selectedWidgetIDs, setSelectedWidgetIDs] = useState<string[]>([]);
   const [fileLoadedTrig, setFileLoadedTrig] = useState(0);
   const [fileImportedTrig, setFileImportedTrig] = useState(0);
+  const [macroOverrides, setMacroOverrides] = useState<Record<string, string>>({});
+  const [gridSize, setGridSize] = useState<number>(1);
+  const [snapToGrid, setSnapToGrid] = useState<boolean>(true);
+  const DRAG_END_DELAY = 80; //ms
 
   const clipboard = useRef<Widget[]>([]);
   const copiedSelectionBounds = useRef({ x: 0, y: 0, width: 0, height: 0 });
@@ -584,6 +591,73 @@ export function useWidgetManager() {
     [selectedWidgets, batchWidgetUpdate],
   );
 
+  const handleDragStop = (_e: RndDragEvent, d: DraggableData, w: Widget) => {
+    setIsDragging(false);
+    if (w.editableProperties.x?.value == d.x && w.editableProperties.y?.value == d.y) return;
+    updateWidgetProperties(w.id, {
+      x: ensureGridCoordinate(d.x, snapToGrid, gridSize),
+      y: ensureGridCoordinate(d.y, snapToGrid, gridSize),
+    });
+  };
+
+  const handleResizeStop = (ref: HTMLElement, position: Position, w: Widget) => {
+    setIsDragging(false);
+    const newWidth = ensureGridCoordinate(parseInt(ref.style.width), snapToGrid, gridSize);
+    const newHeight = ensureGridCoordinate(parseInt(ref.style.height), snapToGrid, gridSize);
+    const newX = ensureGridCoordinate(position.x, snapToGrid, gridSize);
+    const newY = ensureGridCoordinate(position.y, snapToGrid, gridSize);
+
+    if (
+      w.editableProperties.width?.value === newWidth &&
+      w.editableProperties.height?.value === newHeight
+    )
+      return;
+
+    updateWidgetProperties(w.id, { width: newWidth, height: newHeight, x: newX, y: newY });
+  };
+
+  const handleSelGroupResizeStop = (ref: HTMLElement, bounds: DOMRectLike, widgets: Widget[]) => {
+    setIsDragging(false);
+    const newGroupWidth = ref.offsetWidth;
+    const newGroupHeight = ref.offsetHeight;
+    const scaleX = newGroupWidth / bounds.width;
+    const scaleY = newGroupHeight / bounds.height;
+
+    const updates: MultiWidgetPropertyUpdates = {};
+    widgets.forEach((w) => {
+      const { width, height, x, y } = {
+        width: w.editableProperties.width!.value,
+        height: w.editableProperties.height!.value,
+        x: w.editableProperties.x!.value,
+        y: w.editableProperties.y!.value,
+      };
+      const relativeX = x - bounds.x;
+      const relativeY = y - bounds.y;
+      updates[w.id] = {
+        width: ensureGridCoordinate(width * scaleX, snapToGrid, gridSize),
+        height: ensureGridCoordinate(height * scaleY, snapToGrid, gridSize),
+        x: ensureGridCoordinate(bounds.x + relativeX * scaleX, snapToGrid, gridSize),
+        y: ensureGridCoordinate(bounds.y + relativeY * scaleY, snapToGrid, gridSize),
+      };
+    });
+    batchWidgetUpdate(updates);
+  };
+
+  const handleSelGroupDragStop = (dx: number, dy: number) => {
+    setTimeout(() => setIsDragging(false), DRAG_END_DELAY);
+    const updates: MultiWidgetPropertyUpdates = {};
+    selectedWidgets.forEach((widget) => {
+      const xProp = widget.editableProperties.x;
+      const yProp = widget.editableProperties.y;
+      if (!xProp || !yProp) return;
+      updates[widget.id] = {
+        x: ensureGridCoordinate(xProp.value + dx, snapToGrid, gridSize),
+        y: ensureGridCoordinate(yProp.value + dy, snapToGrid, gridSize),
+      };
+    });
+    batchWidgetUpdate(updates);
+  };
+
   /**
    * Undo the last editor state change.
    */
@@ -920,27 +994,24 @@ export function useWidgetManager() {
   }, [updateWidgetProperties]);
 
   /**
-   * Macros to be substituted on pv names.
-   * In runtime mode, macroOverrides (computed by WidgetRenderer from fired rules)
-   * are merged on top of the GridZone's design-time macros so that annotatedEditorWidgets stays in sync.
+   * Macros to be substituted on pv names (design-time).
    */
-  const [macroOverrides, setMacroOverrides] = useState<Record<string, string>>({});
-  const baseMacros = getWidget(GRID_ID)?.editableProperties.macros?.value;
-  const macros = useMemo(
-    () =>
-      Object.keys(macroOverrides).length > 0
-        ? { ...(baseMacros ?? {}), ...macroOverrides }
-        : baseMacros,
-    [baseMacros, macroOverrides],
+  const baseGlobalMacros = useMemo(
+    () => getWidget(GRID_ID)?.editableProperties.macros?.value ?? {},
+    [getWidget],
   );
 
   /**
-   * Helper to substitute macros of the form $(NAME) in a PV string.
-   * If a macro key is not found in macros, the original macro text is kept.
+   * In runtime mode, macroOverrides (computed by WidgetRenderer from fired rules)
+   * are merged on top of the GridZone's design-time macros so that
+   * annotatedEditorWidgets stays in sync.
    */
-  const substituteMacros = useCallback(
-    (pv: string): string => (macros ? substituteInStr(pv, macros) : pv),
-    [macros],
+  const globalMacros = useMemo(
+    () =>
+      Object.keys(macroOverrides).length > 0
+        ? { ...baseGlobalMacros, ...macroOverrides }
+        : baseGlobalMacros,
+    [baseGlobalMacros, macroOverrides],
   );
 
   /**
@@ -948,13 +1019,13 @@ export function useWidgetManager() {
    * macros or PV-name properties change. No save in history.
    */
   useEffect(() => {
-    const annotateWidget = (w: Widget): Widget => {
+    const addRuntimePVs = (w: Widget): Widget => {
       const pvName = w.editableProperties?.pvName?.value;
       const pvNames = w.editableProperties?.pvNames?.value;
 
-      const runtimePVName = pvName ? substituteMacros(pvName) : undefined;
-      const runtimePVNames = pvNames?.length ? pvNames.map(substituteMacros) : undefined;
-      const annotatedChildren = w.children?.map(annotateWidget);
+      const runtimePVName = pvName ? substituteMacroInStr(pvName, globalMacros) : undefined;
+      const runtimePVNames = pvNames?.map((name) => substituteMacroInStr(name, globalMacros));
+      const wRuntimeChildren = w.children?.map(addRuntimePVs);
 
       const pvNameUnchanged = runtimePVName === w.runtimePVName;
       const pvNamesUnchanged =
@@ -962,7 +1033,7 @@ export function useWidgetManager() {
         (runtimePVNames?.length === w.runtimePVNames?.length &&
           runtimePVNames?.every((v, i) => v === w.runtimePVNames![i]));
       const childrenUnchanged =
-        !annotatedChildren || annotatedChildren.every((c, i) => c === w.children![i]);
+        !wRuntimeChildren || wRuntimeChildren.every((c, i) => c === w.children![i]);
 
       if (pvNameUnchanged && pvNamesUnchanged && childrenUnchanged) return w;
 
@@ -970,15 +1041,15 @@ export function useWidgetManager() {
         ...w,
         ...(runtimePVName !== undefined ? { runtimePVName } : {}),
         ...(runtimePVNames !== undefined ? { runtimePVNames } : {}),
-        ...(annotatedChildren ? { children: annotatedChildren } : {}),
+        ...(wRuntimeChildren ? { children: wRuntimeChildren } : {}),
       };
     };
 
-    const annotated = editorWidgets.map(annotateWidget);
-    if (annotated.some((w, i) => w !== editorWidgets[i])) {
-      setEditorWidgets(annotated);
+    const withRuntime = editorWidgets.map(addRuntimePVs);
+    if (withRuntime.some((w, i) => w !== editorWidgets[i])) {
+      setEditorWidgets(withRuntime);
     }
-  }, [editorWidgets, substituteMacros]);
+  }, [editorWidgets, globalMacros]);
 
   /**
    * Flat deduplicated list of all resolved PV names that need WebSocket subscriptions:
@@ -992,13 +1063,13 @@ export function useWidgetManager() {
         if (w.runtimePVNames) for (const pv of w.runtimePVNames) pvSet.add(pv);
         for (const rule of w.rules ?? []) {
           for (const pv of rule.pvNames) {
-            const substituted = substituteMacros(pv);
+            const substituted = substituteMacroInStr(pv, globalMacros);
             if (substituted) pvSet.add(substituted);
           }
           // Pre-subscribe pvName action targets so EpicsWS is ready before the rule fires
           const pvNameAction = rule.actions?.pvName;
           if (typeof pvNameAction === "string" && pvNameAction) {
-            const substituted = substituteMacros(pvNameAction);
+            const substituted = substituteMacroInStr(pvNameAction, globalMacros);
             if (substituted) pvSet.add(substituted);
           }
         }
@@ -1007,7 +1078,7 @@ export function useWidgetManager() {
     };
     collect(editorWidgets);
     return [...pvSet];
-  }, [editorWidgets, substituteMacros]);
+  }, [editorWidgets, globalMacros]);
 
   return useMemo(
     () => ({
@@ -1057,7 +1128,8 @@ export function useWidgetManager() {
       updateWidgetRules,
       batchUpdateWidgetRules,
       resolvedPVList,
-      macros,
+      baseGlobalMacros,
+      globalMacros,
       allWidgetIDs,
       widgetIdMap,
       formatWdgToExport,
@@ -1069,11 +1141,24 @@ export function useWidgetManager() {
       snapshotEditModeMacros,
       restoreEditModeMacros,
       setMacroOverrides,
+      setIsDragging,
+      handleDragStop,
+      handleResizeStop,
+      handleSelGroupDragStop,
+      handleSelGroupResizeStop,
+      setGridSize,
+      setSnapToGrid,
+      gridSize,
+      snapToGrid,
+      isDragging,
     }),
     // Stable setState/useCallback refs are intentionally omitted.
     // Listing only the reactive state values.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
+      gridSize,
+      snapToGrid,
+      isDragging,
       editorWidgets,
       selectedWidgetIDs,
       editingWidgets,
@@ -1082,7 +1167,8 @@ export function useWidgetManager() {
       redoStack,
       selectedWidgets,
       resolvedPVList,
-      macros,
+      baseGlobalMacros,
+      globalMacros,
       allWidgetIDs,
       widgetIdMap,
       fileLoadedTrig,

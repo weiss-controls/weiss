@@ -7,9 +7,11 @@ import type {
   RuleOperator,
   PropertyKey,
   PropertyValue,
+  Widget,
+  RuleOverrides,
 } from "@src/types/widgets";
 import type { PVData } from "@src/types/epicsWS";
-import { substituteInStr as substituteMacroStr } from "@src/utils/macros";
+import { substituteMacroInStr as substituteMacroStr } from "@src/utils/macros";
 
 /**
  * Evaluate a single condition against the current pvState.
@@ -103,8 +105,8 @@ export function evaluateRules(
   rules: Rule[],
   pvState: Record<string, PVData>,
   macros: Record<string, string> = {},
-): Partial<Record<PropertyKey, PropertyValue>> {
-  const overrides: Partial<Record<PropertyKey, PropertyValue>> = {};
+): RuleOverrides {
+  const overrides: RuleOverrides = {};
 
   for (const rule of rules) {
     if (evaluateRule(rule, pvState, macros)) {
@@ -124,4 +126,23 @@ export function evaluateRules(
   }
 
   return overrides;
+}
+
+export function applyRules(w: Widget, overrides: RuleOverrides): Widget {
+  return {
+    ...w,
+    editableProperties: Object.fromEntries(
+      Object.entries(w.editableProperties).map(([key, prop]) => {
+        const override = overrides[key as keyof RuleOverrides];
+        if (override === undefined) return [key, prop];
+        if (key === "macros" && typeof override === "object" && !Array.isArray(override)) {
+          return [
+            key,
+            { ...prop, value: { ...(prop.value as Record<string, string>), ...override } },
+          ];
+        }
+        return [key, { ...prop, value: override }];
+      }),
+    ) as typeof w.editableProperties,
+  };
 }

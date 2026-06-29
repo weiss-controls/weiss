@@ -14,6 +14,14 @@ import type {
   PropertyValue,
 } from "@src/types/widgets";
 
+/** Make sure the given coordinate is aligned with grid if snapToGrid.
+ * Round returned coordinate to `gridDecimalPlaces` digits.
+ */
+export const ensureGridCoordinate = (coord: number, snapToGrid: boolean, gridSize: number) => {
+  const aligned = snapToGrid ? Math.round(coord / gridSize) * gridSize : coord;
+  return Math.round(aligned * ROUNDING_CONST) / ROUNDING_CONST;
+};
+
 /**
  * Deep clone a single widget including its editable properties and children recursively.
  * @param widget Widget to clone

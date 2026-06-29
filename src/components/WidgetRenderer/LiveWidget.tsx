@@ -7,10 +7,8 @@ import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import type { Widget } from "@src/types/widgets";
 import type { PVData } from "@src/types/epicsWS";
 import { usePVStore } from "@src/services/pvStore";
-import { substituteInStr } from "@src/utils/macros";
+import { substituteMacroInStr } from "@src/utils/macros";
 import { applyWidgetPVData } from "./widgetRenderUtils";
-
-const EMPTY_PVS: Record<string, PVData> = {};
 
 /**
  * Renders a single widget's content by subscribing only to the PV(s) that
@@ -37,23 +35,23 @@ const LiveWidget = memo(function WidgetRenderItem({
     w.runtimePVNames?.forEach((pv) => names.add(pv));
     w.rules?.forEach((rule) => {
       rule.pvNames.forEach((pv) => {
-        const resolved = substituteInStr(pv, globalMacros);
+        const resolved = substituteMacroInStr(pv, globalMacros);
         if (resolved) names.add(resolved);
       });
       // Rule action may reference a separate write PV.
       if (typeof rule.actions?.pvName === "string" && rule.actions.pvName) {
-        const resolved = substituteInStr(rule.actions.pvName, globalMacros);
+        const resolved = substituteMacroInStr(rule.actions.pvName, globalMacros);
         if (resolved) names.add(resolved);
       }
     });
     return [...names];
   }, [w, globalMacros]);
 
-  // Subscribe only to this widget's relevant PVs.
+  // Subscribe (from Zustand store) only to this widget's relevant PVs.
   // `useShallow` ensures re-render only when any selected value changes by reference.
   const relevantPvs = usePVStore(
     useShallow((state) => {
-      if (!pvNames.length) return EMPTY_PVS;
+      if (!pvNames.length) return {};
       const result: Record<string, PVData> = {};
       for (const pv of pvNames) {
         const d = state.pvs[pv];
@@ -63,7 +61,7 @@ const LiveWidget = memo(function WidgetRenderItem({
     }),
   );
 
-  // Inject pvData + pvvalue/pvname macros + rule overrides.
+  // Inject pvData + runtime macros + rule overrides.
   const mergedWidget = useMemo(
     () => applyWidgetPVData(w, relevantPvs, globalMacros),
     [w, relevantPvs, globalMacros],
