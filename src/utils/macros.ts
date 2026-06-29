@@ -34,7 +34,7 @@ export function buildRuntimeMacros(
   macros["$(pvunits)"] = pvData?.display?.units ?? "";
   if (pvData?.value !== undefined)
     macros["$(pvvalue)"] = Array.isArray(pvData.value)
-      ? pvData.value.join(", ")
+      ? "pvvalue macro not supported for arrays"
       : String(pvData.value);
   else {
     macros["$(pvvalue)"] = "";
