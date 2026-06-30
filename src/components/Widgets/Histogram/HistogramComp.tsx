@@ -2,7 +2,7 @@
 // Histogram widget for WEISS
 // Contributed by Elmaddin Guliyev
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useMemo, useRef } from "react";
 import type { WidgetUpdate } from "@src/types/widgets";
 import Plot from "react-plotly.js";
 import { COLORS } from "@src/constants/constants";
@@ -25,30 +25,40 @@ const HistogramComp: React.FC<WidgetUpdate> = ({ data }) => {
 
   const valueBuffer = useRef<number[]>([]);
   const prevTimestamp = useRef<TimeStamp | undefined>(undefined);
-  const [plotData, setPlotData] = useState<Plotly.Data[]>([]);
-  const [layout, setLayout] = useState<Partial<Plotly.Layout>>({});
+  const plotData = useRef<Plotly.Data[]>([{}]);
 
-  useEffect(() => {
-    if (inEditMode) {
-      valueBuffer.current = [];
-      const preview: number[] = [];
-      for (let i = 0; i < 200; i++) {
-        preview.push(
-          50 + 15 * Math.sqrt(-2 * Math.log(Math.random())) * Math.cos(2 * Math.PI * Math.random()),
-        );
+  // build (once) a normal distribution for preview
+  const preview = useMemo(() => {
+    const minValue = 0;
+    const maxValue = 100;
+    const mean = 50;
+    const stdDev = 15;
+    const sampleScale = 100;
+    const data: number[] = [];
+    for (let x = minValue; x <= maxValue; x++) {
+      const normalizedDistance = (x - mean) / stdDev;
+      const pdf = Math.exp(-0.5 * normalizedDistance ** 2);
+      const count = Math.round(pdf * sampleScale);
+
+      for (let i = 0; i < count; i++) {
+        data.push(x);
       }
-      setPlotData([
-        {
-          x: preview,
-          type: "histogram",
-          marker: { color: barColor },
-        } as Plotly.Data,
-      ]);
-      return;
     }
+    return data;
+  }, []);
 
+  const buildPreviewTraces = () => {
+    plotData.current = [
+      {
+        x: preview,
+        type: "histogram",
+        marker: { color: barColor },
+      } as Plotly.Data,
+    ];
+  };
+
+  const buildRuntimeTraces = () => {
     if (!pvData) return;
-
     const newTs = pvData.timeStamp;
     if (newTs === prevTimestamp.current) return;
     prevTimestamp.current = newTs;
@@ -56,73 +66,77 @@ const HistogramComp: React.FC<WidgetUpdate> = ({ data }) => {
     const value = pvData.value;
 
     if (Array.isArray(value)) {
-      setPlotData([
+      plotData.current = [
         {
           x: [...(value as number[])],
           type: "histogram",
           marker: { color: barColor },
         } as Plotly.Data,
-      ]);
+      ];
     } else if (typeof value === "number") {
       valueBuffer.current.push(value);
       if (valueBuffer.current.length > bufferSize) {
         valueBuffer.current = valueBuffer.current.slice(-bufferSize);
       }
-      setPlotData([
+      plotData.current = [
         {
           x: [...valueBuffer.current],
           type: "histogram",
           marker: { color: barColor },
         } as Plotly.Data,
-      ]);
+      ];
     }
-  }, [inEditMode, pvData, bufferSize, barColor]);
+  };
 
-  useEffect(() => {
-    setLayout({
+  if (inEditMode) {
+    buildPreviewTraces();
+  } else {
+    buildRuntimeTraces();
+  }
+
+  const layout: Partial<Plotly.Layout> = {
+    title: {
+      text: p.plotTitle?.value ?? "",
+      font: {
+        family: p.fontFamily?.value,
+        size: p.fontSize?.value,
+        weight: p.fontBold?.value ? 800 : 0,
+        style: p.fontItalic?.value ? "italic" : "normal",
+        lineposition: p.fontUnderlined?.value ? "under" : "none",
+        color: p.textColor?.value,
+      },
+      x: titleXpos,
+      y: titleYpos,
+    },
+    xaxis: {
       title: {
-        text: p.plotTitle?.value ?? "",
+        text: p.xAxisTitle?.value ?? "",
         font: {
           family: p.fontFamily?.value,
-          size: p.fontSize?.value,
-          weight: p.fontBold?.value ? 800 : 0,
-          style: p.fontItalic?.value ? "italic" : "normal",
-          lineposition: p.fontUnderlined?.value ? "under" : "none",
-          color: p.textColor?.value,
-        },
-        x: titleXpos,
-        y: titleYpos,
-      },
-      xaxis: {
-        title: {
-          text: p.xAxisTitle?.value ?? "",
-          font: {
-            family: p.fontFamily?.value,
-            size: (p.fontSize?.value ?? 12) - 2,
-            color: COLORS.lightGray,
-          },
+          size: (p.fontSize?.value ?? 12) - 2,
+          color: COLORS.lightGray,
         },
       },
-      yaxis: {
-        title: {
-          text: p.yAxisTitle?.value ?? "Count",
-          font: {
-            family: p.fontFamily?.value,
-            size: (p.fontSize?.value ?? 12) - 2,
-            color: COLORS.lightGray,
-          },
+    },
+    yaxis: {
+      title: {
+        text: p.yAxisTitle?.value ?? "Count",
+        font: {
+          family: p.fontFamily?.value,
+          size: (p.fontSize?.value ?? 12) - 2,
+          color: COLORS.lightGray,
         },
       },
-      bargap: 0.05,
-      paper_bgcolor: p.backgroundColor?.value,
-      plot_bgcolor: p.backgroundColor?.value,
-      margin: { b: 45, l: 45, t: 50, r: 30 },
-      width: p.width?.value,
-      height: p.height?.value,
-      showlegend: false,
-      uirevision: String(inEditMode),
-    });
-  }, [p, inEditMode, titleXpos, titleYpos]);
+    },
+    bargap: 0.05,
+    paper_bgcolor: p.backgroundColor?.value,
+    plot_bgcolor: p.backgroundColor?.value,
+    margin: { b: 45, l: 45, t: 50, r: 30 },
+    width: p.width?.value,
+    height: p.height?.value,
+    showlegend: false,
+    uirevision: String(inEditMode),
+  };
 
   return (
     <AlarmBorder alarmData={alarmData} enable={p.alarmBorder?.value}>
@@ -139,7 +153,7 @@ const HistogramComp: React.FC<WidgetUpdate> = ({ data }) => {
         }}
       >
         <Plot
-          data={plotData}
+          data={plotData.current}
           layout={layout}
           config={{
             responsive: true,
