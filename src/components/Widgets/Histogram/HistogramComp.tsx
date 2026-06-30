@@ -2,7 +2,7 @@
 // Histogram widget for WEISS
 // Contributed by Elmaddin Guliyev
 
-import React, { useRef } from "react";
+import React, { useMemo, useRef } from "react";
 import type { WidgetUpdate } from "@src/types/widgets";
 import Plot from "react-plotly.js";
 import { COLORS } from "@src/constants/constants";
@@ -27,13 +27,27 @@ const HistogramComp: React.FC<WidgetUpdate> = ({ data }) => {
   const prevTimestamp = useRef<TimeStamp | undefined>(undefined);
   const plotData = useRef<Plotly.Data[]>([{}]);
 
-  const buildPreviewTraces = () => {
-    valueBuffer.current = [];
-    const nPoints = 200;
-    const preview: number[] = [];
-    for (let i = 0; i < nPoints; i++) {
-      preview.push(50 + 15 * Math.sqrt(-2 * Math.log(i)) * Math.cos(2 * Math.PI * i));
+  // build (once) a normal distribution for preview
+  const preview = useMemo(() => {
+    const minValue = 0;
+    const maxValue = 100;
+    const mean = 50;
+    const stdDev = 15;
+    const sampleScale = 100;
+    const data: number[] = [];
+    for (let x = minValue; x <= maxValue; x++) {
+      const normalizedDistance = (x - mean) / stdDev;
+      const pdf = Math.exp(-0.5 * normalizedDistance ** 2);
+      const count = Math.round(pdf * sampleScale);
+
+      for (let i = 0; i < count; i++) {
+        data.push(x);
+      }
     }
+    return data;
+  }, []);
+
+  const buildPreviewTraces = () => {
     plotData.current = [
       {
         x: preview,
