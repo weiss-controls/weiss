@@ -89,11 +89,11 @@ the canvas, and will be serialised/deserialised using `widgetName` as the key.
 
 ## Step 3 - Writing the React component
 
-Now it's time to actually design your widget. The component should receive a single `data` prop of
-type `Widget` (the runtime version of `WidgetDefinition`). Use `data.editableProperties` to read
-property values, and `data.pvData`/`data.multiPvData` for live EPICS data (injected automatically at
-render time by `WidgetRenderer`). All properties defined in your definition file will be available
-for usage by your component.
+Now it's time to actually design your widget. The component receives a single prop of type
+`WidgetUpdate` (defined as `{ data: Widget }`, where `Widget` is the runtime instance of a widget).
+Use `data.editableProperties` to read property values, and `data.pvData`/`data.multiPvData` for live
+EPICS data (injected automatically at render time by `WidgetRenderer`). All properties defined in
+your definition file will be available for usage by your component.
 
 ```tsx
 // src/components/Widgets/MyWidget/MyWidgetComp.tsx

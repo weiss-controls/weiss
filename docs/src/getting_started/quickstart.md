@@ -24,7 +24,7 @@ First, create your `.env` file. You can start by just copying `.env.example` fro
 cp .env.example .env
 ```
 
-If applicable, adjust `DEFAULT_PROTOCOL` and `EPICS_XXX_ADDR_LIST` accordingly.
+If applicable, adjust `EPICS_DEFAULT_PROTOCOL` and `EPICS_XXX_ADDR_LIST` accordingly.
 
 :::{important}  
 If running outside of your localhost, make sure to set `APP_HOSTNAME` to your server's IP address or
@@ -33,8 +33,8 @@ policy to allow requests from the frontend - all other origins are blocked.
 :::
 
 The whole behaviour of the app is configured via environment variables. For this tutorial, most of
-the times you don't need to change anything unless you want to. Take a look at the other variables
-to get familiarized with the options.
+the time you don't need to change anything unless you want to. Take a look at the other variables to
+get familiarized with the options.
 
 4. Build and start the system. From the root of the repo, run:
 

@@ -46,6 +46,8 @@ These are not all the shared elements of the frontend composition, but the more 
 Starting by these will naturally guide you through the other related files.  
 :::
 
+(state-management-layer)=
+
 #### State management layer
 
 - **`WidgetContext`** (`useWidgetManager`) - owns the canonical list of widgets on the canvas. It
@@ -63,8 +65,8 @@ Starting by these will naturally guide you through the other related files.
 
 Live PV data is stored in a [Zustand](https://zustand.pmnd.rs/) module-level store (`usePVStore`,
 `src/services/pvStore.ts`). `useEpicsWS` collects incoming WebSocket messages in a buffer and
-flushes them into the store via `requestAnimationFrame`, capping updates at ~60 fps. Widget
-components subscribe with a PV-specific selector:
+flushes them into the store via `requestAnimationFrame`, capping updates at the user's monitor
+update rate. Widget components subscribe with a PV-specific selector:
 
 ```ts
 const pvData = usePVStore((state) => state.pvs["MY:PV"]);
@@ -74,8 +76,8 @@ This means each widget re-renders only when its own PV changes, with no re-rende
 through React context.
 
 :::{note}  
-The state management layer are the brains of the application. All global UI states and behaviors
-pass through one of the above.  
+The state management layer is the brains of the application. All global UI states and behaviors pass
+through one of the above.  
 :::
 
 #### Rendering layer
@@ -86,7 +88,7 @@ pass through one of the above.
   every other widget.
 - **`WidgetRenderer`** - iterates the widget list and renders each widget inside a resizable and
   draggable container (`react-rnd`). It either renders the static component directly (editMode), or
-  delegates it to`LiveWidget`if in runtime.
+  delegates it to `LiveWidget` if in runtime.
 - **`LiveWidget`** - operates in runtime mode only. Subscribes to `usePVStore` with a PV-specific
   selector (using `useShallow` for reference equality), then calls `applyWidgetPVData()`
   (`widgetRenderUtils.ts`) to merge PV data, evaluate configured rules, and resolve macros before

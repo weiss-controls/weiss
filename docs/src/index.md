@@ -38,7 +38,7 @@ within a single, consistent web-based environment.
 - **Client-side rendering**: the client browser performs most work; backend load stays minimal.
 - **Ease of access**: use any modern browser - no remote desktops or local tools required. Access
   control relies on standard security mechanisms (network restrictions, authentication, reverse
-  proxies, etc).
+  proxies, etc.).
 - **Built for scale**: concurrent users do not require dedicated VMs or graphical sessions.
 - **Global ecosystem**: web technologies have one of the largest developer ecosystems, offering
   libraries, tools, and best practices beyond the scientific environment niche.
@@ -60,8 +60,8 @@ within a single, consistent web-based environment.
   only interact with the production version, ensuring controlled releases.
 - **Extensible widget library**: ready-to-use components for common controls and displays, others
   can be easily created.
-- **Portable JSON format**: import, export or create OPIs programatically using straightforward JSON
-  files.
+- **Portable JSON format**: import, export or create OPIs programmatically using straightforward
+  JSON files.
 
 Further planned improvements are tracked in the
 [WEISS Project Dashboard](https://github.com/orgs/weiss-controls/projects/1/).
@@ -82,6 +82,7 @@ Further planned improvements are tracked in the
 :caption: Getting Started
 
 getting_started/quickstart
+getting_started/tutorial
 ```
 
 ```{toctree}

@@ -15,7 +15,7 @@ openssl req -x509 -newkey rsa:4096 -keyout privkey.pem -out fullchain.pem \
   -days 365 -nodes -subj "/CN=your-server-hostname"
 ```
 
-Since NGINX runs in an unpriviledged container, you may need the following to allow the service to
+Since NGINX runs in an unprivileged container, you may need the following to allow the service to
 read the private key file (101 is the `nginx` UID in the container):
 
 ```sh

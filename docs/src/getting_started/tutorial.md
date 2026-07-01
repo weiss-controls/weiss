@@ -18,7 +18,7 @@ Create a new repository on your preferred git hosting service (GitHub, GitLab, e
 into a namespace where your Git settings have access to (if applicable). Make sure to add at least
 one file to it, e.g. a `README.md` or `.gitignore`, so it is not empty.
 
-:::{hint}  
+:::{tip}  
  Alternatively, you can create a fork of
 [weiss-demo-opis](https://github.com/weiss-controls/weiss-demo-opis) to use as a playground.  
  :::
@@ -32,18 +32,18 @@ then click "Import".
 ## Create a new OPI
 
 Once the repository is imported, you can see its content in the file browser (if any). Note that not
-all file types will be visible, so you may se an empty repository even if it is not. The file types
+all file types will be visible, so you may see an empty repository even if it is not. The file types
 supported by WEISS are:
 
 - **OPI files** - files with the `.opi.json` extension.
 - **Image files** - files with the `.svg`, `.png`, `.jpg`, or `.jpeg` extension.
 
-  Create your new OPI file by clicking "New File" on the navigator sidebar and providing a name when
-  prompted. You may also create subfolders to organize your content, and reorganize items by drag
-  and drop. The supported file extension for OPI files is `.opi.json`, but you can omit it when
-  creating a new file, as WEISS will automatically append it if missing.
+Create your new OPI file by clicking "New File" on the navigator sidebar and providing a name when
+prompted. You may also create subfolders to organize your content, and reorganize items by drag and
+drop. The supported file extension for OPI files is `.opi.json`, but you can omit it when creating a
+new file, as WEISS will automatically append it if missing.
 
-![Create file animation](../_static/import-repo.gif)
+![Create file animation](../_static/create-file.gif)
 
 :::{note}  
  As part of the git-oriented system, WEISS will highlight the new file name with green. Modified
@@ -60,7 +60,10 @@ pointer is. You can move, resize, and configure the widget using the right sideb
 ![Add widgets animation](../_static/add-widget.gif)
 
 Tools for alignment, grouping, resizing and layering are available in the floating toolbar at the
-top of the canvas. You can also use keyboard shortcuts for common actions.
+top of the canvas, or with the right-click menu. You can also use keyboard shortcuts for common
+actions (see help icon on the upper-right side of the app header).
+
+## Create PV connections
 
 Configure your OPI macros (if any) by clicking on an empty space in the canvas. The right sidebar
 will show the "GridZone" properties, such as the macros, grid size, snapping, background color, etc.
@@ -79,10 +82,11 @@ connection to the PVs and start updating the widgets accordingly.
 
 :::{hint}  
  If your PVs are not connecting, check if your IOC can be seen from the server running WEISS. You
-may need to update the `EPICS_XXX_ADDR_LIST` environment variable in your `.env` file to include the
-IOC's address or appropriate gateway. If change is needed, update the variables then update the
-containers with `docker compose up -d --build`.  
-The local volume will persist your repository files, so you won't lose your work in progress.  
+may need to update the `EPICS_XXX_ADDR_LIST` environment variables in your `.env` file to include
+the IOC's address or appropriate gateway.  
+If change is needed, update the variables then update the containers with
+`docker compose up -d --build`. The local volume will persist your repository files, so you won't
+lose your work in progress.  
 :::
 
 ## Commit & push your changes
@@ -95,7 +99,7 @@ If you are happy with your changes, you can create a new commit by clicking the 
 the repository additional options menu. Provide a commit message, optionally a tag, and click
 "Commit". The commit will be created and pushed to the upstream repository.
 
-After seeing the successfull message, you can click the dropdown close to the repository alias, and
+After seeing the successful message, you can click the dropdown close to the repository alias, and
 see that the repository history is now updated.
 
 ![Commit](../_static/add-commit.gif)
@@ -103,30 +107,34 @@ see that the repository history is now updated.
 Besides committing, you can also revert local changes or fetch the latest changes from upstream.
 These options are available in the same menu.
 
-:::{important}  
-To keep things simple, WEISS does not support branching or conflict resolution in the UI.  
-If conflicts arise, a notification will be shown, and you will need to resolve it manually by
-cloning the repository and pushing afterwards. To avoid this, it is a good practice to always pull
-the latest changes before starting to work, and avoid working on the same file in parallel with
-other developers.  
+:::{warning}  
+To keep things simple, WEISS **does not** support branching or conflict resolution in the UI. If
+conflicts arise, a notification will be shown, and you will need to resolve it manually by cloning
+the repository and pushing afterwards.  
+To avoid this, it is a good practice to always pull the latest changes before starting to work, and
+avoid working on the same file in parallel with other developers.  
 :::
 
 ## Deploy to users!
 
-After commiting your changes, you can select the commit or tag you want to deploy to production, and
-click "Deploy" on the same menu. WEISS will create a snapshot of the repository at that commit and
-make it available to all users with the "Operator".
-
-![Deploy](../_static/deploy.gif)
+After committing your changes, you can select the commit or tag you want to deploy to production,
+and click "Deploy" on the same menu. WEISS will create a snapshot of the repository at that commit
+and make it available to all users with the "Operator" role.
 
 To verify that it works, if running on "Demo" mode, you can logout and login as an "Operator" to see
 the deployed repository available for usage. Alternatively, you can open a new browser window in
 incognito mode and access the app with an "Operator" user simultaneously.
 
-:::{hint}  
-If a version needs to be rolled back, just select the previous commit/tag, and click "Deploy" again.
-You may also undeploy a repository by selecting the "Undeploy" option in the same menu.  
+![Deploy](../_static/deploy.gif)
+
+:::{seealso}  
+**Rollbacks:** If a version needs to be rolled back, just select the previous commit/tag, and click
+"Deploy" again.  
+**Undeployments:** You may also undeploy a repository by selecting the "Undeploy" option in the same
+menu.  
 :::
+
+---
 
 This tutorial showed the basic workflow of creating a simple OPI and deploying it to users.
 Documentation for more advanced features such as embedded displays, rules and complex macro handling

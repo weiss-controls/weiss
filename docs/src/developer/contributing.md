@@ -42,7 +42,7 @@ There are no strict rules for pull requests, however, some basic guidelines are 
 
 - If you have different scopes to propose changes, open different pull requests.
 - Keep commit history clean: avoid several commits for the same feature;
-- Separate each significant change in their own commit;
+- Separate each significant change into its own commit;
 - Submit meaningful commit messages - this facilitates debugging and understanding the history in
   the future.
 - Make sure all pipelines are passing before requesting a review - feel free to ask for assistance

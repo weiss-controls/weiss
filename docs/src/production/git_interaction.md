@@ -6,7 +6,7 @@ This section guides you through it and how to manage repositories from WEISS.
 
 ## Importing a repository
 
-An user with the **developer** role can import a repository from the _Browse projects_ sidebar:
+A user with the **developer** role can import a repository from the _Browse projects_ sidebar:
 
 1. In **Edit mode**, open the right sidebar in the "Navigate" tab.
 2. Click the **Import new repository** button and provide:
@@ -61,7 +61,7 @@ when pushing commits. Some important keys to consider:
   and `TECHNICAL_ACCOUNT_EMAIL`, **the LDAP identity of each user is also added to each commit**,
   leaving a clear and auditable trail in the repository history. See
   [example](https://github.com/weiss-controls/weiss-demo-opis/commits/main/).
-- **Access is minimal and revocable.** The personal access token (PAT) can scoped to only the
+- **Access is minimal and revocable.** The personal access token (PAT) can be scoped to only the
   specific repositories and permissions it needs (write to contents). It can be revoked or rotated
   at any time without affecting any person's account.
 - **It does not share credentials.** The alternative - using a developer's personal token - would
@@ -88,7 +88,7 @@ WEISS. Some useful links:
   or [Project Access Tokens](https://docs.gitlab.com/user/project/settings/project_access_tokens/)
 
 :::{note}  
-Fine-grained tokens expire. It's recommmended to rotate the token and redeploy when applicable.  
+Fine-grained tokens expire. It's recommended to rotate the token and redeploy when applicable.  
 :::
 
 For these settings, only the following variables in your `.env` file are relevant:
