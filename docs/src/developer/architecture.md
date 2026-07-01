@@ -48,20 +48,30 @@ Starting by these will naturally guide you through the other related files.
 
 #### State management layer
 
-TODO: update this section - not all info here is still valid
-
 - **`WidgetContext`** (`useWidgetManager`) - owns the canonical list of widgets on the canvas. It
   handles selection, undo/redo history, clipboard, grouping, and serialisation/deserialisation of
   OPI files.
 - **`UIContext`** (`useUIManager`) - owns global UI state: the current mode (edit vs. runtime), the
   open file, repository and authentication state, and any cross-cutting user interactions such as
   loading or saving a file.
-- **`EpicsWSContext`** (`useEpicsWS`) - exposes the full WebSocket state: connection status,
-  subscribe/unsubscribe methods, reconnection callbacks, etc. Widgets read live PV data from here in
-  runtime mode.
+- **`EpicsWSContext`** (`useEpicsWS`) - exposes the WebSocket connection state and lifecycle methods
+  (`wsConnected`, `startNewSession`, `stopSession`). It does **not** carry live PV data — PV values
+  are served by the Zustand `pvStore` described below.
 - **`WSActionsContext`** (`useEpicsWS`) - exposes only `writePVValue`. Backed by the same
-  `useEpicsWS` hook but kept as a separate context so widgets that only write to PVs do not
-  re-render on every incoming PV update.
+  `useEpicsWS` hook but kept as a separate context so write-only widgets do not re-render on
+  connection state changes.
+
+Live PV data is stored in a [Zustand](https://zustand.pmnd.rs/) module-level store (`usePVStore`,
+`src/services/pvStore.ts`). `useEpicsWS` collects incoming WebSocket messages in a buffer and
+flushes them into the store via `requestAnimationFrame`, capping updates at ~60 fps. Widget
+components subscribe with a PV-specific selector:
+
+```ts
+const pvData = usePVStore((state) => state.pvs["MY:PV"]);
+```
+
+This means each widget re-renders only when its own PV changes, with no re-render propagation
+through React context.
 
 :::{note}  
 The state management layer are the brains of the application. All global UI states and behaviors
@@ -77,23 +87,41 @@ pass through one of the above.
 - **`WidgetRenderer`** - iterates the widget list and renders each widget inside a resizable and
   draggable container (`react-rnd`). It either renders the static component directly (editMode), or
   delegates it to`LiveWidget`if in runtime.
-- **`LiveWidget`** Operates in runtime mode only. Responsible for merging live PV data from
-  `pvState` into it's respective widget, evaluating their configured rules if any, then rendering
-  the appropriate widget content accordingly.
+- **`LiveWidget`** - operates in runtime mode only. Subscribes to `usePVStore` with a PV-specific
+  selector (using `useShallow` for reference equality), then calls `applyWidgetPVData()`
+  (`widgetRenderUtils.ts`) to merge PV data, evaluate configured rules, and resolve macros before
+  rendering the widget component.
 
 #### Services
 
-- APIClient
+- **`APIClient`** - auto-generated TypeScript client produced by `@hey-api/openapi-ts` from the
+  FastAPI OpenAPI schema. Provides type-safe wrappers for all backend REST endpoints (auth, repo
+  CRUD, file read/write, Git operations).
 
-- AuthService
+  :::{warning} Do not edit this folder manually. Regenerate it with `pnpm exec openapi-ts` after any
+  backend endpoint changes (API must be running on `:8000`). :::
 
-- Dialog
+- **`AuthService`** - singleton (`authService`) that drives the full OAuth login lifecycle. Handles
+  provider redirect, code exchange, session restoration on page load (`restoreSession()`), and
+  logout. Broadcasts auth state changes to React via a callback observer consumed by `useUIManager`.
 
-- Notifications
+- **`Dialog`** - imperative confirmation dialog. Call `confirmDialog(options)` from anywhere in the
+  app to open a modal; it returns a `Promise<boolean>` resolved when the user confirms or cancels.
 
-- WSClient
+  :::{note} `<DialogService />` must be mounted once in the component tree (currently in `App.tsx`)
+  to register the underlying handler. The same applies to `<NotificationService />` below. :::
 
-- pvStore
+- **`Notifications`** - fire-and-forget toast notifications. Call `notifyUser(message, severity?)`
+  to display a 4-second auto-dismiss snackbar. Accepted severity values: `"success"`, `"info"`,
+  `"warning"`, `"error"`.
+
+- **`WSClient`** - stateful WebSocket class injected into `useEpicsWS`. Manages
+  subscribe/unsubscribe/write messaging to the EPICS bridge, auto-reconnects with exponential
+  backoff on unexpected disconnection, and decodes base64-encoded binary arrays before data reaches
+  `pvStore`.
+
+- **`pvStore`** - Zustand store for live EPICS PV data. See the
+  [State management layer](#state-management-layer) section above for a full description.
 
 ---
 

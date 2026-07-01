@@ -82,10 +82,10 @@ The token must have **repository write** permission for every repository you wan
 WEISS. Some useful links:
 
 - **GitHub**:
-  [Managing your personal access tokens](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)
+  [Managing your Personal Access Tokens](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)
 
-- **GitLab**: [Personal access tokens](https://docs.gitlab.com/user/profile/personal_access_tokens/)
-  or [Project access tokens](https://docs.gitlab.com/user/project/settings/project_access_tokens/)
+- **GitLab**: [Personal Access Tokens](https://docs.gitlab.com/user/profile/personal_access_tokens/)
+  or [Project Access Tokens](https://docs.gitlab.com/user/project/settings/project_access_tokens/)
 
 :::{note}  
 Fine-grained tokens expire. It's recommmended to rotate the token and redeploy when applicable.  

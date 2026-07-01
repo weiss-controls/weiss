@@ -8,7 +8,7 @@ it.
 
 Instructions available [here](https://docs.docker.com/engine/install/).
 
-1. Clone the repository and checkout to the latest release (or a specific tag if you want). The
+2. Clone the repository and checkout to the latest release (or a specific tag if you want). The
    command below will get the latest tag without you needing to look it up:
 
 ```sh
