@@ -339,6 +339,18 @@ export default function NavBar() {
                 </Tooltip>
               </>
             )}
+            {!isDeveloper && <AlarmButtonAndPanel inEditMode={inEditMode} />}
+            {!isDeveloper && (
+              <Tooltip title="PV Snapshots">
+                <Button
+                  onClick={() => setSnapshotOpen(true)}
+                  startIcon={<CameraAltIcon />}
+                  sx={{ color: "white", textTransform: "none" }}
+                >
+                  Snapshots
+                </Button>
+              </Tooltip>
+            )}
             {isAuthenticated ? (
               <>
                 <IconButton onClick={handleUserMenuOpen}>
