@@ -11,8 +11,8 @@
 # Changes take effect either after the server restarts or after calling:
 #   POST /api/v1/auth/admin/reload-roles   (requires developer role)
 
-[roles]
-developers = [
-    # "person1@example.com",
-    # "person2@example.com",
-]
+# [roles]
+# developers = [
+#    "person1@example.com",
+#    "person2@example.com",
+# ]
