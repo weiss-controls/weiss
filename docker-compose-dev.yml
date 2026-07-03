@@ -39,7 +39,7 @@ services:
     volumes:
       - ./backend/api:/app/api
       - storage:/app/storage
-      - ${ROLES_CONFIG_FILE:-./roles.toml}:/config/roles.toml:ro
+      - ${ROLES_CONFIG_FILE:-./backend/roles.example.toml}:/config/roles.toml:ro
     image: weiss-api-dev:${DOCKER_TAG:-latest}
     container_name: weiss-api-dev
     ports:
