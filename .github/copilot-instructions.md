@@ -38,8 +38,8 @@ Three services in Docker:
 
 ## Frontend
 
-**Stack:** React 19, TypeScript 5.8, Vite 7, MUI 7, react-rnd, react-router-dom 7, Plotly.js,
-`@hey-api/openapi-ts` (generated API client).
+**Stack:** React 19, TypeScript 5.8, Vite 7, MUI 7, Zustand, react-rnd, react-router-dom 7,
+Plotly.js, `@hey-api/openapi-ts` (generated API client).
 
 **Path aliases** (configured in `vite.config.ts`):
 
@@ -55,19 +55,26 @@ Three services in Docker:
 - `/` → `ProtectedRoute` → `App`
 
 `ContextProvider` (`src/context/ContextProvider.tsx`) wraps the entire app and composes four context
-providers.
+providers in three explicit layers (Widget → EPICS → UI).
 
-### State Management (Context)
+### State Management
 
-All state lives in React context — no Redux. Four context providers composed inside a single
-`ContextProvider`:
+Global state is split between React context (for UI/widget/WS lifecycle) and a Zustand store (for
+live PV data). Four context providers are composed inside a single `ContextProvider` in three
+explicit layers (Widget → EPICS → UI):
 
-| Context            | Hook               | What it owns                                                                                      |
-| ------------------ | ------------------ | ------------------------------------------------------------------------------------------------- |
-| `WidgetContext`    | `useWidgetManager` | All widgets on the canvas, selection, undo/redo, clipboard, grouping, import/export               |
-| `UIContext`        | `useUIManager`     | Edit/runtime mode toggle, auth state, repo tree, file open/save, drag/pan flags                   |
-| `EpicsWSContext`   | `useEpicsWS`       | WebSocket lifecycle, PV subscriptions, `pvState` cache, macro substitution map                    |
-| `WSActionsContext` | `useEpicsWS`       | Exposes only `writePVValue`; separate context so write-only widgets don't re-render on PV updates |
+| Context            | Hook               | What it owns                                                                                |
+| ------------------ | ------------------ | ------------------------------------------------------------------------------------------- |
+| `WidgetContext`    | `useWidgetManager` | All widgets on the canvas, selection, undo/redo, clipboard, grouping, import/export         |
+| `UIContext`        | `useUIManager`     | Edit/runtime mode toggle, auth state, repo tree, file open/save, drag/pan flags             |
+| `EpicsWSContext`   | `useEpicsWS`       | WebSocket lifecycle and connection state; memoized on `wsConnected` only                    |
+| `WSActionsContext` | `useEpicsWS`       | Exposes only `writePVValue`; stable (empty dep array) so write-only widgets never re-render |
+
+Live PV data is **not** in React context. It lives in a [Zustand](https://zustand.pmnd.rs/) store
+(`usePVStore` in `src/services/pvStore.ts`). `useEpicsWS` writes incoming updates via
+`usePVStore.getState().setPVs()`, batched on `requestAnimationFrame` (~60 fps cap). Widget
+components consume PV data by calling `usePVStore(selector)` with a PV-specific selector, so they
+re-render only when their own PV changes — not on every update across the system.
 
 #### `useWidgetManager` — mutation discipline
 
@@ -82,10 +89,12 @@ All state lives in React context — no Redux. Four context providers composed i
 
 #### `useEpicsWS`
 
-- `pvState: Record<pvName, PVData>` — reactive PV data fed to widget renders.
-- `PVMap: Map<originalPV, substitutedPV>` — macro substitution, computed by `useWidgetManager`.
+- Manages the WebSocket connection lifecycle (`ws`, `wsConnected`, `startNewSession`,
+  `stopSession`).
+- Writes incoming PV updates to the Zustand `usePVStore`, batched per animation frame — no React
+  state involved, so PV ticks cause zero re-renders at the context level.
 - `writePVValue(pvName, value)` — sends a write message; exposed via `WSActionsContext` so
-  write-only widgets don't re-render on every PV update.
+  write-only widgets don't re-render on connection state changes.
 
 #### `useUIManager`
 
@@ -374,6 +383,8 @@ cd backend/api && ruff check .     # ruff
 | Widget manager hook         | `src/context/useWidgetManager.ts`                 |
 | UI manager hook             | `src/context/useUIManager.ts`                     |
 | EPICS WS hook               | `src/context/useEpicsWS.ts`                       |
+| PV data store (Zustand)     | `src/services/pvStore.ts`                         |
+| Per-widget PV rendering     | `src/components/WidgetRenderer/LiveWidget.tsx`    |
 | Generated API client        | `src/services/APIClient/` (do not edit manually)  |
 | Auth service                | `src/services/AuthService/AuthService.ts`         |
 | API entry point             | `backend/api/src/api/main.py`                     |
@@ -411,9 +422,8 @@ cd backend/api && ruff check .     # ruff
 ### Frontend
 
 - **`pvData` / `multiPvData` on `Widget` type** — render-time concerns leaking into the data model.
-  These fields could belong in a separate render-only type.
-- **Manual memoization in `WidgetRenderer`** — `prevWidgetsMapRef` + `prevPVStateRef` diffing is
-  complex to maintain and may not scale well at high widget counts or PV update rates.
+  These fields are injected by `LiveWidget` at render time and are never serialized, but they could
+  belong in a separate render-only type.
 - **Hybrid flat + nested widget tree** — top-level is a flat array, groups have `children`. A fully
   normalized structure (map by ID with parent/child ID refs) would simplify traversal helpers.
 - **Generated API client tracked in git** — `src/services/APIClient/` produces noisy diffs on every
