@@ -35,6 +35,7 @@ export interface DragDropCtx {
   onDragEnterDir: (itemId: string) => void;
   onDragLeaveDir: (itemId: string) => void;
   onDrop: (targetDirId: string) => void;
+  onContextMenu?: (itemId: string, event: React.MouseEvent) => void;
 }
 
 const DragDropContext = createContext<DragDropCtx | null>(null);
@@ -190,6 +191,11 @@ const CustomTreeItem = forwardRef<HTMLLIElement, UseTreeItemParameters>(
           <TreeItemContent
             {...getContentProps()}
             {...dragHandlers}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              dndCtx?.onContextMenu?.(itemId, e);
+            }}
             style={{
               ...(isDragging ? { opacity: 0.5 } : {}),
               ...(isDropTarget

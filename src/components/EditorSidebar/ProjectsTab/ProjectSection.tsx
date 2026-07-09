@@ -29,11 +29,14 @@ import FolderIcon from "@mui/icons-material/Folder";
 import { useRichTreeViewApiRef } from "@mui/x-tree-view/hooks";
 import {
   checkoutRepoRef,
+  createStagingRepoPath,
+  deleteStagingRepoPath,
   deployRepo,
   moveStagingRepoPath,
   renameStagingRepoPath,
   syncRepo,
   resetStagingRepo,
+  resetStagingRepoPath,
   undeployRepo,
   unregisterRepo,
   type GitFileStatus,
@@ -49,6 +52,7 @@ import CustomTreeItem, {
 } from "./ProjectTreeItem";
 import { notifyUser } from "@src/services/Notifications/Notification";
 import FileToolbar from "./FileToolbar";
+import FileContextMenu from "./FileContextMenu";
 import { useUIContext } from "@src/context/useUIContext";
 import GitCommitDialog from "@src/components/GitCommitDialog/GitCommitDialog";
 import { confirmDialog } from "@src/services/Dialog/Dialog";
@@ -59,6 +63,19 @@ const isImageFile = (name: string) => {
   const dot = name.lastIndexOf(".");
   return dot !== -1 && IMAGE_EXTENSIONS.has(name.slice(dot).toLowerCase());
 };
+
+function isFilePath(path: string): boolean {
+  const lastSegment = path.slice(path.lastIndexOf("/") + 1);
+  return lastSegment.includes(".");
+}
+
+function normalizeOpiFileName(name: string): string | null {
+  const trimmed = name.trim();
+  if (!trimmed) return null;
+  if (trimmed.toLowerCase().endsWith(".opi.json")) return trimmed;
+  if (trimmed.includes(".")) return null;
+  return `${trimmed}.opi.json`;
+}
 
 const hasDirtyDescendant = (children?: RichTreeItem[]): boolean =>
   !!children?.some((c) => c.gitStatus ?? hasDirtyDescendant(c.children));
@@ -93,6 +110,9 @@ export default function ProjectSection({
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; itemId: string } | null>(
+    null,
+  );
   const menuOpen = Boolean(menuAnchor);
   const apiRef = useRichTreeViewApiRef();
   const revertingLabelRef = useRef(false);
@@ -265,6 +285,92 @@ export default function ProjectSection({
     }
   };
 
+  const handleResetPath = async (path: string) => {
+    if (!isStagingTree(repo)) return;
+    const confirmed = await confirmDialog({
+      title: `Revert changes to ${path.slice(path.lastIndexOf("/") + 1)}?`,
+      message: "Confirming will discard all uncommitted changes to this item",
+      confirmText: "Revert",
+      cancelText: "Cancel",
+    });
+    if (!confirmed) return;
+    setIsReposLoading(true);
+    try {
+      const updatedTree = await resetStagingRepoPath({
+        path: { repo_id: repo.id },
+        query: { path },
+      }).then((r) => r.data);
+      onRepoUpdate(updatedTree);
+      notifyUser(`Reverted changes to ${path.slice(path.lastIndexOf("/") + 1)}`, "success");
+    } catch (err) {
+      notifyUser(`Failed to revert: ${err as string}`, "error");
+    } finally {
+      setIsReposLoading(false);
+    }
+  };
+
+  const handleContextMenuNewFile = async (itemId: string) => {
+    const basePath = isFilePath(itemId) ? itemId.slice(0, itemId.lastIndexOf("/")) : itemId;
+    const input = prompt("Enter new file name:");
+    if (!input) return;
+    const fileName = normalizeOpiFileName(input);
+    if (!fileName) {
+      notifyUser(
+        "Only .opi.json files are allowed. Either leave extension empty or use .opi.json",
+        "error",
+      );
+      return;
+    }
+    const fullPath = basePath ? `${basePath}/${fileName}` : fileName;
+    try {
+      const updt = await createStagingRepoPath({
+        path: { repo_id: repo.id },
+        body: { path: fullPath, type: "file" },
+      }).then((r) => r.data);
+      onRepoUpdate(updt);
+    } catch (err) {
+      notifyUser(`Failed to create file: ${err as string}`, "error");
+    }
+  };
+
+  const handleContextMenuNewFolder = async (itemId: string) => {
+    const basePath = isFilePath(itemId) ? itemId.slice(0, itemId.lastIndexOf("/")) : itemId;
+    const name = prompt("Enter new folder name:");
+    if (!name) return;
+    const fullPath = basePath ? `${basePath}/${name}` : name;
+    try {
+      const updt = await createStagingRepoPath({
+        path: { repo_id: repo.id },
+        body: { path: fullPath, type: "directory" },
+      }).then((r) => r.data);
+      onRepoUpdate(updt);
+    } catch (err) {
+      notifyUser(`Failed to create folder: ${err as string}`, "error");
+    }
+  };
+
+  const handleContextMenuDelete = async (itemId: string) => {
+    const confirmed = await confirmDialog({
+      title: `Delete ${itemId.slice(itemId.lastIndexOf("/") + 1)}?`,
+      message: "Confirming will remove this item",
+      confirmText: "Delete",
+      cancelText: "Cancel",
+    });
+    if (!confirmed) return;
+    try {
+      const updt = await deleteStagingRepoPath({
+        path: { repo_id: repo.id },
+        query: { path: itemId },
+      }).then((r) => r.data);
+      if (selectedFile?.repo_id === repo.id && selectedFile.path.startsWith(itemId)) {
+        setSelectedFile(null);
+      }
+      onRepoUpdate(updt);
+    } catch {
+      notifyUser("Failed to delete path", "error");
+    }
+  };
+
   const handleItemLabelChange = async (itemId: string, newLabel: string) => {
     if (!isStagingTree(repo)) return;
 
@@ -419,10 +525,24 @@ export default function ProjectSection({
     onDrop: (targetDirId) => {
       void handleMoveDrop(targetDirId);
     },
+    onContextMenu: dndEnabled
+      ? (itemId, event) => {
+          setSelectedItem(itemId);
+          setContextMenu({ x: event.clientX, y: event.clientY, itemId });
+        }
+      : undefined,
   };
 
   return (
-    <Paper variant="outlined" sx={{ mb: 2, width: "100%" }}>
+    <Paper
+      variant="outlined"
+      sx={{ mb: 2, width: "100%" }}
+      onClick={() => contextMenu && setContextMenu(null)}
+      onContextMenu={(e) => {
+        // Suppress the browser default context menu outside tree items
+        if (contextMenu) e.preventDefault();
+      }}
+    >
       {/* Header */}
       <Box sx={{ px: 2, py: 1.5, display: "flex", alignItems: "center", gap: 1 }}>
         <IconButton size="small" onClick={() => setSectionExpanded((v) => !v)}>
@@ -622,6 +742,30 @@ export default function ProjectSection({
         onClose={() => setGitCommitOpen(false)}
         repoID={repo.id}
       />
+      {contextMenu &&
+        (() => {
+          const item = findItemById(items, contextMenu.itemId);
+          const isDirty = !!(
+            gitStatusByPath?.get(contextMenu.itemId) ??
+            (item?.type === "directory" && item.gitStatus != null)
+          );
+          return (
+            <FileContextMenu
+              visible
+              mousePos={{ x: contextMenu.x, y: contextMenu.y }}
+              onClose={() => setContextMenu(null)}
+              isDirectory={item?.type === "directory"}
+              isDirty={isDirty}
+              onNewFile={() => void handleContextMenuNewFile(contextMenu.itemId)}
+              onNewFolder={() => void handleContextMenuNewFolder(contextMenu.itemId)}
+              onRename={() => {
+                if (contextMenu.itemId) apiRef.current?.setEditedItem(contextMenu.itemId);
+              }}
+              onDelete={() => void handleContextMenuDelete(contextMenu.itemId)}
+              onRevert={() => void handleResetPath(contextMenu.itemId)}
+            />
+          );
+        })()}
     </Paper>
   );
 }
