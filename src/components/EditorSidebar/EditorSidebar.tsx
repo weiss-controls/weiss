@@ -228,13 +228,15 @@ const EditorSidebar: React.FC = () => {
 
         {/* Content */}
         <div style={{ flex: "1 1 auto", overflowY: "auto" }}>
-          {tabIndex === EditorTab.EDIT ? (
+          <div style={{ display: tabIndex === EditorTab.EDIT ? "block" : "none" }}>
             <PropertyNavigator />
-          ) : tabIndex === EditorTab.LAYERS ? (
+          </div>
+          <div style={{ display: tabIndex === EditorTab.LAYERS ? "block" : "none" }}>
             <WidgetTree />
-          ) : (
+          </div>
+          <div style={{ display: tabIndex === EditorTab.NAVIGATE ? "block" : "none" }}>
             <ProjectsTab />
-          )}
+          </div>
         </div>
 
         {/* Tabs */}
