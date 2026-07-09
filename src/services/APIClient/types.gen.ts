@@ -1045,6 +1045,45 @@ export type ResetStagingRepoFileResponses = {
 export type ResetStagingRepoFileResponse =
   ResetStagingRepoFileResponses[keyof ResetStagingRepoFileResponses];
 
+export type ResetStagingRepoPathData = {
+  body?: never;
+  path: {
+    /**
+     * Repo Id
+     */
+    repo_id: string;
+  };
+  query: {
+    /**
+     * Path
+     *
+     * File or directory path inside repository (relative to root)
+     */
+    path: string;
+  };
+  url: "/api/v1/repos/staging/{repo_id}/path/reset";
+};
+
+export type ResetStagingRepoPathErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type ResetStagingRepoPathError =
+  ResetStagingRepoPathErrors[keyof ResetStagingRepoPathErrors];
+
+export type ResetStagingRepoPathResponses = {
+  /**
+   * Successful Response
+   */
+  200: StagingTreeInfo;
+};
+
+export type ResetStagingRepoPathResponse =
+  ResetStagingRepoPathResponses[keyof ResetStagingRepoPathResponses];
+
 export type ResetStagingRepoData = {
   body?: never;
   path: {
