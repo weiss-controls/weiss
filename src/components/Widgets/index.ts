@@ -4,6 +4,7 @@
 export { ActionButton } from "./ActionButton";
 export { ToggleButton } from "./ToggleButton";
 export { BitIndicator } from "./BitIndicator";
+export { MultiStateLED } from "./MultiStateLED";
 export { MultiBitIndicator } from "./MultiBitIndicator";
 export { InputField } from "./InputField";
 export { TextUpdate } from "./TextUpdate";

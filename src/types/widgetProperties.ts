@@ -6,6 +6,7 @@ import {
   type PropertyValue,
   type WidgetProperties,
   type ValueDisplayFormat,
+  type StateEntry,
   valueDisplayFormats,
 } from "./widgets";
 import { COLORS } from "@src/constants/constants";
@@ -111,6 +112,8 @@ export const PROPERTY_SCHEMAS = {
   keepAspectRatio: defineProp({ selType: "boolean", label: "Keep aspect ratio", value: true as boolean, category: "Style" }),
   // EmbeddedDisplay and NavigationButton
   displayPath:      defineProp({ selType: "repoFile", label: "Display path", value: "" as string, category: "General", options: [".opi.json"] }),
+  // MultiStateLED
+  stateList:       defineProp({ selType: "stateList", label: "States", value: [{ value: "0", color: COLORS.offColor, label: "" }, { value: "1", color: COLORS.onColor, label: "" }, { value: "", color: COLORS.midGray, label: "" }] as StateEntry[], category: "EPICS" }),
 };
 
 /**
