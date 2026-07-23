@@ -85,6 +85,9 @@ import type {
   ResetStagingRepoFileData,
   ResetStagingRepoFileErrors,
   ResetStagingRepoFileResponses,
+  ResetStagingRepoPathData,
+  ResetStagingRepoPathErrors,
+  ResetStagingRepoPathResponses,
   ResetStagingRepoResponses,
   RootInfoData,
   RootInfoResponses,
@@ -345,6 +348,11 @@ export const uploadStagingRepoFile = <ThrowOnError extends boolean = true>(
  * Reset Staging Repo File
  *
  * Reset changes of a single file in the staging repository.
+ *
+ * .. deprecated::
+ * Use ``POST /{repo_id}/path/reset`` instead, which handles both files and directories.
+ *
+ * @deprecated
  */
 export const resetStagingRepoFile = <ThrowOnError extends boolean = true>(
   options: Options<ResetStagingRepoFileData, ThrowOnError>,
@@ -354,6 +362,23 @@ export const resetStagingRepoFile = <ThrowOnError extends boolean = true>(
     ResetStagingRepoFileErrors,
     ThrowOnError
   >({ url: "/api/v1/repos/staging/{repo_id}/file/reset", ...options });
+
+/**
+ * Reset Staging Repo Path
+ *
+ * Revert uncommitted changes for a single file or directory in the staging repository.
+ *
+ * For tracked files/directories: restores them to the last committed state.
+ * For newly added (untracked) files/directories: removes them entirely.
+ */
+export const resetStagingRepoPath = <ThrowOnError extends boolean = true>(
+  options: Options<ResetStagingRepoPathData, ThrowOnError>,
+) =>
+  (options.client ?? client).post<
+    ResetStagingRepoPathResponses,
+    ResetStagingRepoPathErrors,
+    ThrowOnError
+  >({ url: "/api/v1/repos/staging/{repo_id}/path/reset", ...options });
 
 /**
  * Reset Staging Repo

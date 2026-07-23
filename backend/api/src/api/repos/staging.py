@@ -706,6 +706,7 @@ def staging_update_repo_file(
     "/{repo_id}/file/reset",
     response_model=StagingTreeInfo,
     operation_id="resetStagingRepoFile",
+    deprecated=True,
 )
 def reset_staging_repo_file(
     repo_id: str,
@@ -714,6 +715,9 @@ def reset_staging_repo_file(
 ):
     """
     Reset changes of a single file in the staging repository.
+
+    .. deprecated::
+        Use ``POST /{repo_id}/path/reset`` instead, which handles both files and directories.
     """
     repo_path = get_user_worktree_path(repo_id, user)
 
@@ -728,6 +732,42 @@ def reset_staging_repo_file(
 
     run_git(["restore", "--staged", rel_path], cwd=repo_path)
     run_git(["restore", rel_path], cwd=repo_path)
+
+    return get_staging_repo_tree(repo_id, user)
+
+
+@router.post(
+    "/{repo_id}/path/reset",
+    response_model=StagingTreeInfo,
+    operation_id="resetStagingRepoPath",
+)
+def reset_staging_repo_path(
+    repo_id: str,
+    path: str = Query(..., description="File or directory path inside repository (relative to root)"),
+    user: User = Depends(require_developer),
+):
+    """
+    Revert uncommitted changes for a single file or directory in the staging repository.
+
+    For tracked files/directories: restores them to the last committed state.
+    For newly added (untracked) files/directories: removes them entirely.
+    """
+    repo_path = get_user_worktree_path(repo_id, user)
+
+    rel_path = os.path.normpath(path).lstrip(os.sep)
+    if rel_path.startswith(".."):
+        raise HTTPException(status_code=400, detail="Invalid path")
+
+    full_path = os.path.join(repo_path, rel_path)
+    if not os.path.exists(full_path):
+        raise HTTPException(status_code=404, detail="Path not found")
+
+    # Unstage any staged changes under this path (no-op if path was never staged)
+    run_git(["restore", "--staged", "--", rel_path], cwd=repo_path, allow_fail=True)
+    # Restore tracked files/dirs to HEAD (no-op for paths that were untracked)
+    run_git(["restore", "--", rel_path], cwd=repo_path, allow_fail=True)
+    # Remove any remaining untracked files/dirs under this path
+    run_git(["clean", "-fd", "--", rel_path], cwd=repo_path)
 
     return get_staging_repo_tree(repo_id, user)
 
