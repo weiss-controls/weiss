@@ -2,10 +2,12 @@
 # Copyright (C) 2026 André Favoto
 
 from __future__ import annotations
-from typing import Optional, List, Union, Any
-from dataclasses import dataclass
-import math
+
 import base64
+import math
+from dataclasses import dataclass
+from typing import Any, List, Optional, Union
+
 import numpy as np
 from p4p.wrapper import Value as p4pValue
 
@@ -118,11 +120,7 @@ class PVParser:
         value_field = pv_obj.get("value")
         if isinstance(value_field, (int, float, str)):
             value = value_field
-        elif (
-            isinstance(value_field, p4pValue)
-            and value_field.has("index")
-            and value_field.has("choices")
-        ):
+        elif isinstance(value_field, p4pValue) and value_field.has("index") and value_field.has("choices"):
             value = value_field.get("index")
             enumChoices = value_field.get("choices")
         elif isinstance(value_field, (list, np.ndarray)):
@@ -199,9 +197,7 @@ class PVParser:
         value = normalize_value(pv_obj.get("value"))
         enumChoices = pv_obj.get("enum_strs")
 
-        b64arr, b64dtype = (
-            encode_array(value) if isinstance(value, list) else (None, None)
-        )
+        b64arr, b64dtype = encode_array(value) if isinstance(value, list) else (None, None)
         if b64arr is not None:
             value = None
 
@@ -246,18 +242,10 @@ class PVParser:
                 "limitHigh": normalize_value(pv_obj.get("upper_ctrl_limit")),
             },
             "valueAlarm": {
-                "lowAlarmLimit": normalize_value(
-                    safe_get_nan(pv_obj, "lower_alarm_limit")
-                ),
-                "highAlarmLimit": normalize_value(
-                    safe_get_nan(pv_obj, "upper_alarm_limit")
-                ),
-                "lowWarningLimit": normalize_value(
-                    safe_get_nan(pv_obj, "lower_warning_limit")
-                ),
-                "highWarningLimit": normalize_value(
-                    safe_get_nan(pv_obj, "upper_warning_limit")
-                ),
+                "lowAlarmLimit": normalize_value(safe_get_nan(pv_obj, "lower_alarm_limit")),
+                "highAlarmLimit": normalize_value(safe_get_nan(pv_obj, "upper_alarm_limit")),
+                "lowWarningLimit": normalize_value(safe_get_nan(pv_obj, "lower_warning_limit")),
+                "highWarningLimit": normalize_value(safe_get_nan(pv_obj, "upper_warning_limit")),
                 "hysteresis": normalize_value(safe_get_nan(pv_obj, "hyst")),
             },
         }
@@ -271,11 +259,7 @@ class PVParser:
 
         if isinstance(value_field, (int, float, str)):
             value = value_field
-        elif (
-            isinstance(value_field, p4pValue)
-            and value_field.has("index")
-            and value_field.has("choices")
-        ):
+        elif isinstance(value_field, p4pValue) and value_field.has("index") and value_field.has("choices"):
             value = value_field.get("index")
             enumChoices = value_field.get("choices")
         elif isinstance(value_field, (list, np.ndarray)):
@@ -355,9 +339,7 @@ class PVParser:
 
         value = normalize_value(pv_obj.get("value"))
 
-        b64arr, b64dtype = (
-            encode_array(value) if isinstance(value, list) else (None, None)
-        )
+        b64arr, b64dtype = encode_array(value) if isinstance(value, list) else (None, None)
         if b64arr is not None:
             value = None
 
@@ -389,12 +371,8 @@ class PVParser:
         value_alarm = ValueAlarm(
             lowAlarmLimit=normalize_value(safe_get_nan(pv_obj, "lower_alarm_limit")),
             highAlarmLimit=normalize_value(safe_get_nan(pv_obj, "upper_alarm_limit")),
-            lowWarningLimit=normalize_value(
-                safe_get_nan(pv_obj, "lower_warning_limit")
-            ),
-            highWarningLimit=normalize_value(
-                safe_get_nan(pv_obj, "upper_warning_limit")
-            ),
+            lowWarningLimit=normalize_value(safe_get_nan(pv_obj, "lower_warning_limit")),
+            highWarningLimit=normalize_value(safe_get_nan(pv_obj, "upper_warning_limit")),
             hysteresis=normalize_value(safe_get_nan(pv_obj, "hyst")),
         )
 

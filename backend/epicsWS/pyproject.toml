@@ -1,0 +1,23 @@
+[tool.ruff]
+src = ["."]
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "C4",
+    "E",
+    "F",
+    "W",
+    "I001",
+]
+
+[tool.mypy]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+addopts = """
+    --tb=native -vv
+    """
+
+[tool.coverage.run]
+data_file = "/tmp/weiss-epicsws.coverage"

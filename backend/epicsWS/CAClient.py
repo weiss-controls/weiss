@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 André Favoto
 
-from typing import Callable, Dict, Set, Any
 from threading import Lock
+from typing import Any, Callable, Dict, Set
+
 import epics
 
 
@@ -71,9 +72,7 @@ class CAClient:
                     try:
                         pv.clear_callbacks()
                     except Exception as e:
-                        print(
-                            f"[CAClient]: Failed to clear callbacks for {pv_name}: {e}"
-                        )
+                        print(f"[CAClient]: Failed to clear callbacks for {pv_name}: {e}")
 
     def unsubscribe_all(self, client_id: str):
         """Remove a client from all subscriptions."""
@@ -92,9 +91,7 @@ class CAClient:
                     try:
                         pv.clear_callbacks()
                     except Exception as e:
-                        print(
-                            f"[CAClient]: Failed to clear callbacks for {pv_name}: {e}"
-                        )
+                        print(f"[CAClient]: Failed to clear callbacks for {pv_name}: {e}")
 
     def write_to_pv(self, pv_name: str, value: Any):
         """Write synchronously to a PV."""

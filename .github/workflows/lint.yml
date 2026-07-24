@@ -39,12 +39,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Lint
+      - name: Lint API
         uses: astral-sh/ruff-action@v3
         with:
-          args: check backend/
+          src: backend/api
 
-      - name: Format
+      - name: Format API
         uses: astral-sh/ruff-action@v3
         with:
-          args: format --check backend/
+          src: backend/api
+          args: format --check
+
+      - name: Lint epicsWS
+        uses: astral-sh/ruff-action@v3
+        with:
+          src: backend/epicsWS
+
+      - name: Format epicsWS
+        uses: astral-sh/ruff-action@v3
+        with:
+          src: backend/epicsWS
+          args: format --check
