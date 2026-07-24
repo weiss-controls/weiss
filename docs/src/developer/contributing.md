@@ -63,8 +63,8 @@ pushing, so you avoid pipeline errors:
 
 ```sh
 pnpm run lint
-pnpm prettier --write .
-pnpm tsc --noEmit
+pnpm run format-check
+pnpm run typecheck
 ```
 
 ### Backend

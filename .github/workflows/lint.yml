@@ -24,14 +24,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Prettier
-        run: pnpm prettier --check .
+      - name: Format check
+        run: pnpm run format-check
 
-      - name: Oxlint
+      - name: Lint check
         run: pnpm run lint
 
       - name: TypeScript type-check
-        run: pnpm tsc --noEmit
+        run: pnpm run typecheck
 
   ruff:
     name: Backend
