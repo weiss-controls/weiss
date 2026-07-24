@@ -46,8 +46,7 @@ export type PropertyValue =
   | boolean
   | string[]
   | Record<string, string>
-  | object
-  | object[];
+  | StateEntry[];
 
 export const valueDisplayFormats = [
   "Default",

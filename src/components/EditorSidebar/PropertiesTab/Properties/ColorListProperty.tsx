@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
-// src/components/PropertyFields/ColorSelListProperty.tsx
 import React, { useState, useEffect } from "react";
 import { Box, Typography, ListItem, Popover, IconButton } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";

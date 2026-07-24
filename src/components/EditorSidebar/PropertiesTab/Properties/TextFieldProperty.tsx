@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
-// src/components/PropertyFields/TextFieldProperty.tsx
 import React from "react";
 import { TextField, ListItem } from "@mui/material";
 import type { PropertyKey, PropertyLimits, PropertyValue } from "@src/types/widgets";
