@@ -12,7 +12,6 @@ class Session(BaseModel):
 
 
 class AuthProvider(str, Enum):
-    MICROSOFT = "microsoft"
     DEMO = "demo"
     OAUTH = "oauth"
 
