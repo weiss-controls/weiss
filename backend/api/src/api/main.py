@@ -2,6 +2,7 @@
 # Copyright (C) 2026 André Favoto
 
 import asyncio
+import logging
 import os
 from contextlib import asynccontextmanager
 
@@ -10,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from . import auth
-from .config import FRONTEND_URL, TITLE, VERSION
+from .config import ENABLE_DEMO_MODE, FRONTEND_URL, TITLE, VERSION
 from .repos import deployed, staging
 from .snapshots import snapshots
 
@@ -29,7 +30,13 @@ async def _session_pruner():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await auth.Provider.set(client_secret=AUTH_CLIENT_SECRET, client_id=AUTH_CLIENT_ID, issuer=auth.ISSUER)
+    if not ENABLE_DEMO_MODE:
+        try:
+            await auth.Provider.set(client_secret=AUTH_CLIENT_SECRET, client_id=AUTH_CLIENT_ID, issuer=auth.ISSUER)
+        except Exception:
+            logging.getLogger(__name__).warning(
+                "Provider setup failed — authentication will not work until the OIDC issuer is reachable"
+            )
     task = asyncio.create_task(_session_pruner())
     yield
     task.cancel()

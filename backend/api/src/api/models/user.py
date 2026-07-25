@@ -41,3 +41,4 @@ class OAuthCallbackRequest(BaseModel):
     provider: AuthProvider
     code: str | None = None
     redirect_uri: str | None = None
+    state: str | None = None

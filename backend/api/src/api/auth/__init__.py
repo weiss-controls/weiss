@@ -6,10 +6,11 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 
-from ..config import ENABLE_HTTPS
+from ..config import ENABLE_DEMO_MODE, ENABLE_HTTPS
 from ..models.user import AuthProvider, AuthURL, OAuthCallbackRequest, Session, User, UserRole
 from . import roles_config
 from .providers.generic import GenericProvider
+from .providers.demo import Provider as DemoProvider
 
 SESSION_COOKIE_NAME = "weiss_session"
 DEMO_ID_COOKIE = "weiss_demo_id"  # allow differ demo sessions
@@ -17,7 +18,7 @@ SESSION_EXPIRE_HOURS = 24
 
 ISSUER = os.getenv("AUTH_ISSUER", "http://127.0.0.1:8089/realms/master")
 
-auth_type = os.getenv("IDENTITY_PROVIDER", "oauth")
+auth_type = os.getenv("AUTH_IDENTITY_PROVIDER", "oauth")
 try:
     _current_auth = importlib.import_module("api.auth.providers." + auth_type)
 
@@ -99,6 +100,10 @@ async def get_current_user(request: Request) -> User:
 
 @router.get("/{provider}/authorize", operation_id="authGetAuthURL", response_model=AuthURL)
 async def authorize(provider: AuthProvider, demo_profile: UserRole | None = None):
+    if provider == AuthProvider.DEMO:
+        if not ENABLE_DEMO_MODE:
+            raise HTTPException(status_code=403, detail="Demo mode is not enabled")
+        return await DemoProvider.create_authorization_url(demo_profile)
     return await Provider.create_authorization_url(demo_profile)
 
 
@@ -115,10 +120,22 @@ async def oauth_callback(
     if not payload.code or not payload.redirect_uri:
         raise HTTPException(status_code=400, detail="Missing OAuth parameters")
 
-    user: User = await Provider.handle_auth_callback(code=payload.code, redirect_uri=payload.redirect_uri)
+    if payload.provider == AuthProvider.DEMO:
+        if not ENABLE_DEMO_MODE:
+            raise HTTPException(status_code=403, detail="Demo mode is not enabled")
+        user: User = await DemoProvider.handle_auth_callback(
+            code=payload.code, redirect_uri=payload.redirect_uri, state=payload.state
+        )
+    else:
+        user: User = await Provider.handle_auth_callback(
+            code=payload.code, redirect_uri=payload.redirect_uri, state=payload.state
+        )
 
     if user.id not in users_db:
-        role = UserRole.DEVELOPER if user.username and roles_config.is_developer(user.username) else UserRole.OPERATOR
+        if payload.provider == AuthProvider.DEMO:
+            role = user.role  # trust the role set by the demo provider
+        else:
+            role = UserRole.DEVELOPER if user.username and roles_config.is_developer(user.username) else UserRole.OPERATOR
         users_db[user.id] = User(
             **user.model_dump(exclude_unset=True),
             role=role,

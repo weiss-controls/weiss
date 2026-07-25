@@ -2,6 +2,8 @@
 # Copyright (C) 2026 Guilherme de Freitas
 
 import logging
+import secrets
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import httpx
@@ -11,6 +13,9 @@ from fastapi import HTTPException
 from ...config import FRONTEND_URL
 from ...models.user import AuthProvider, User
 from .generic import GenericProvider
+
+_pending_states: dict[str, datetime] = {}
+_STATE_TTL_MINUTES = 10
 
 
 class Provider(GenericProvider):
@@ -33,8 +38,10 @@ class Provider(GenericProvider):
             res = await client.get(issuer + "/.well-known/openid-configuration")
 
             if res.status_code != 200:
-                # TODO: improve error message
-                raise
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"OIDC discovery failed: {res.status_code}",
+                )
 
             endpoints = res.json()
 
@@ -66,11 +73,16 @@ class Provider(GenericProvider):
             return res.json()
 
     async def create_authorization_url(demo_profile: str | None = None):
-        # There needs to be a way to check state, it must be stored on the frontend
-        auth_url = Provider._create_authorization_url(state="oauth")
+        state = f"oauth:{secrets.token_urlsafe(16)}"
+        _pending_states[state] = datetime.now(timezone.utc) + timedelta(minutes=_STATE_TTL_MINUTES)
+        auth_url = Provider._create_authorization_url(state=state)
         return {"authorize_url": auth_url[0]}
 
-    async def handle_auth_callback(code: str, redirect_uri: str):
+    async def handle_auth_callback(code: str, redirect_uri: str, state: str | None = None):
+        expiry = _pending_states.pop(state, None) if state else None
+        if expiry is None or expiry < datetime.now(timezone.utc):
+            raise HTTPException(status_code=400, detail="Invalid or expired OAuth state")
+
         result = await Provider.client.fetch_token(url=Provider.token_endpoint, code=code)
 
         if "access_token" not in result:

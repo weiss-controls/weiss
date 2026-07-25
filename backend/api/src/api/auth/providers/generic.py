@@ -20,7 +20,7 @@ class GenericProvider:
             Authorisation URL"""
         return {"authorize_url": ""}
 
-    async def handle_auth_callback(code: str, redirect_uri: str) -> User:
+    async def handle_auth_callback(code: str, redirect_uri: str, state: str | None = None) -> User:
         """Handle token exchange and return user object
 
         Args:
