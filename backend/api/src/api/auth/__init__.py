@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 
-from ..config import ENABLE_DEMO_MODE, ENABLE_HTTPS
+from ..config import DEMO_MODE, ENABLE_HTTPS
 from ..models.user import AuthProvider, AuthURL, OAuthCallbackRequest, Session, User, UserRole
 from . import roles_config
 from .providers.generic import GenericProvider
@@ -101,7 +101,7 @@ async def get_current_user(request: Request) -> User:
 @router.get("/{provider}/authorize", operation_id="authGetAuthURL", response_model=AuthURL)
 async def authorize(provider: AuthProvider, demo_profile: UserRole | None = None):
     if provider == AuthProvider.DEMO:
-        if not ENABLE_DEMO_MODE:
+        if not DEMO_MODE:
             raise HTTPException(status_code=403, detail="Demo mode is not enabled")
         return await DemoProvider.create_authorization_url(demo_profile)
     return await Provider.create_authorization_url(demo_profile)
@@ -121,7 +121,7 @@ async def oauth_callback(
         raise HTTPException(status_code=400, detail="Missing OAuth parameters")
 
     if payload.provider == AuthProvider.DEMO:
-        if not ENABLE_DEMO_MODE:
+        if not DEMO_MODE:
             raise HTTPException(status_code=403, detail="Demo mode is not enabled")
         user: User = await DemoProvider.handle_auth_callback(
             code=payload.code, redirect_uri=payload.redirect_uri, state=payload.state

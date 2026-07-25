@@ -12,7 +12,7 @@ services:
     restart: always
     environment:
       NODE_ENV: development
-      VITE_DEMO_MODE: ${VITE_DEMO_MODE:-false}
+      VITE_DEMO_MODE: ${DEMO_MODE:-false}
     depends_on:
       - weiss-epicsws-dev
       - weiss-api-dev
@@ -47,6 +47,7 @@ services:
     restart: always
     environment:
       DEV_MODE: true # used to derive FRONTEND_URL port for CORS dev setup
+      DEMO_MODE: ${DEMO_MODE:-false}
       AUTH_CLIENT_ID: ${AUTH_CLIENT_ID}
       AUTH_TENANT_ID: ${AUTH_TENANT_ID}
       AUTH_CLIENT_SECRET: ${AUTH_CLIENT_SECRET}

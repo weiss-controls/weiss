@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from . import auth
-from .config import ENABLE_DEMO_MODE, FRONTEND_URL, TITLE, VERSION
+from .config import DEMO_MODE, FRONTEND_URL, TITLE, VERSION
 from .repos import deployed, staging
 from .snapshots import snapshots
 
@@ -30,8 +30,10 @@ async def _session_pruner():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    if not ENABLE_DEMO_MODE:
+    if not DEMO_MODE:
         try:
+            if AUTH_CLIENT_ID is None or AUTH_CLIENT_SECRET is None:
+                raise ValueError("Missing AUTH_CLIENT_ID or AUTH_CLIENT_SECRET environment variables")
             await auth.Provider.set(client_secret=AUTH_CLIENT_SECRET, client_id=AUTH_CLIENT_ID, issuer=auth.ISSUER)
         except Exception:
             logging.getLogger(__name__).warning(
