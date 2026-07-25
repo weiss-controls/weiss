@@ -20,14 +20,24 @@ ISSUER = os.getenv("AUTH_ISSUER", "http://127.0.0.1:8089/realms/master")
 
 auth_type = os.getenv("AUTH_IDENTITY_PROVIDER", "oauth")
 try:
-    _current_auth = importlib.import_module("api.auth.providers." + auth_type)
+    CONFIGURED_PROVIDER = AuthProvider(auth_type)
+except ValueError as exc:
+    raise ValueError(f"Unsupported AUTH_IDENTITY_PROVIDER: {auth_type}") from exc
 
-    _Provider = _current_auth.Provider
-    assert issubclass(_Provider, GenericProvider)
-except (AssertionError, ImportError):
-    raise ValueError("Unsupported provider provided")
+try:
+    _current_auth = importlib.import_module(f"api.auth.providers.{CONFIGURED_PROVIDER.value}")
+except ImportError as exc:
+    raise ValueError(
+        f"Provider module for AUTH_IDENTITY_PROVIDER='{CONFIGURED_PROVIDER.value}' is not available"
+    ) from exc
 
-Provider: GenericProvider = _Provider
+_Provider = getattr(_current_auth, "Provider", None)
+if _Provider is None or not issubclass(_Provider, GenericProvider):
+    raise ValueError(
+        f"Provider class in module 'api.auth.providers.{CONFIGURED_PROVIDER.value}' must subclass GenericProvider"
+    )
+
+Provider: type[GenericProvider] = _Provider
 
 router = APIRouter(
     prefix="/api/v1/auth",
@@ -98,13 +108,30 @@ async def get_current_user(request: Request) -> User:
     return user
 
 
-@router.get("/{provider}/authorize", operation_id="authGetAuthURL", response_model=AuthURL)
-async def authorize(provider: AuthProvider, demo_profile: UserRole | None = None):
-    if provider == AuthProvider.DEMO:
+def _resolve_provider(requested_provider: AuthProvider) -> type[GenericProvider]:
+    if DEMO_MODE and requested_provider != AuthProvider.DEMO:
+        raise HTTPException(status_code=403, detail="Only demo provider is enabled in demo mode")
+
+    if requested_provider == AuthProvider.DEMO:
         if not DEMO_MODE:
             raise HTTPException(status_code=403, detail="Demo mode is not enabled")
-        return await DemoProvider.create_authorization_url(demo_profile)
-    return await Provider.create_authorization_url(demo_profile)
+        return DemoProvider
+
+    if requested_provider != CONFIGURED_PROVIDER:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Provider '{requested_provider.value}' is not enabled on this server",
+        )
+
+    return Provider
+
+
+@router.get("/{provider}/authorize", operation_id="authGetAuthURL", response_model=AuthURL)
+async def authorize(provider: AuthProvider, demo_role: UserRole | None = None):
+    selected_provider = _resolve_provider(provider)
+    if selected_provider is DemoProvider:
+        return await DemoProvider.create_authorization_url(demo_role)
+    return await selected_provider.create_authorization_url()
 
 
 @router.post(
@@ -120,16 +147,12 @@ async def oauth_callback(
     if not payload.code or not payload.redirect_uri:
         raise HTTPException(status_code=400, detail="Missing OAuth parameters")
 
-    if payload.provider == AuthProvider.DEMO:
-        if not DEMO_MODE:
-            raise HTTPException(status_code=403, detail="Demo mode is not enabled")
-        user: User = await DemoProvider.handle_auth_callback(
-            code=payload.code, redirect_uri=payload.redirect_uri, state=payload.state
-        )
-    else:
-        user: User = await Provider.handle_auth_callback(
-            code=payload.code, redirect_uri=payload.redirect_uri, state=payload.state
-        )
+    selected_provider = _resolve_provider(payload.provider)
+    user: User = await selected_provider.handle_auth_callback(
+        code=payload.code,
+        redirect_uri=payload.redirect_uri,
+        state=payload.state,
+    )
 
     if user.id not in users_db:
         if payload.provider == AuthProvider.DEMO:
@@ -137,7 +160,7 @@ async def oauth_callback(
         else:
             role = UserRole.DEVELOPER if user.username and roles_config.is_developer(user.username) else UserRole.OPERATOR
         users_db[user.id] = User(
-            **user.model_dump(exclude_unset=True),
+            **user.model_dump(exclude={"role"}, exclude_unset=True), # exclude role if set by provider (demo)
             role=role,
         )
 
