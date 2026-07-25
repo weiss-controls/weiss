@@ -4,7 +4,7 @@
 import { Box, Typography, Button, Paper, Tooltip } from "@mui/material";
 import PersonIcon from "@mui/icons-material/Person";
 import IntegrationInstructionsIcon from "@mui/icons-material/IntegrationInstructions";
-import MicrosoftIcon from "@mui/icons-material/Microsoft";
+import PermIdentityIcon from "@mui/icons-material/PermIdentity";
 import { OAuthProviders, Roles, type OAuthProvider } from "@src/services/AuthService/AuthService";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -17,14 +17,20 @@ export default function LoginPage() {
   const { login, isAuthenticated, user, isDemo } = useUIContext();
   const navigate = useNavigate();
 
+  const configuredProvider =
+    import.meta.env.VITE_AUTH_IDENTITY_PROVIDER === OAuthProviders.MICROSOFT ||
+    import.meta.env.VITE_AUTH_IDENTITY_PROVIDER === OAuthProviders.OAUTH
+      ? (import.meta.env.VITE_AUTH_IDENTITY_PROVIDER as OAuthProvider)
+      : OAuthProviders.OAUTH;
+
   useEffect(() => {
     if (isAuthenticated && user) {
       void navigate("/", { replace: true });
     }
   }, [isAuthenticated, user, navigate]);
 
-  const handleLogin = async (provider: OAuthProvider, demoProfile?: Roles) => {
-    await login(provider, demoProfile);
+  const handleLogin = async (provider: OAuthProvider, demoRole?: Roles) => {
+    await login(provider, demoRole);
   };
 
   return (
@@ -88,12 +94,12 @@ export default function LoginPage() {
             </>
           )}
 
-          <Tooltip title={isDemo ? "Disabled in Demo Mode" : "Microsoft OAuth provider"}>
+          <Tooltip title={isDemo ? "Disabled in Demo Mode" : "OAuth provider"}>
             <Button
               disabled={isDemo}
               variant="outlined"
-              startIcon={<MicrosoftIcon />}
-              onClick={() => void handleLogin(OAuthProviders.MICROSOFT)}
+              startIcon={<PermIdentityIcon />}
+              onClick={() => void handleLogin(configuredProvider)}
               sx={{
                 borderColor: COLORS.titleBarColor,
                 color: COLORS.midDarkBlue,

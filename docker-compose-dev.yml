@@ -13,6 +13,7 @@ services:
     environment:
       NODE_ENV: development
       VITE_DEMO_MODE: ${DEMO_MODE:-false}
+      VITE_AUTH_IDENTITY_PROVIDER: ${AUTH_IDENTITY_PROVIDER:-oauth}
     depends_on:
       - weiss-epicsws-dev
       - weiss-api-dev
@@ -53,6 +54,7 @@ services:
       PYTHONPATH: /app/api/src
       DEMO_MODE: ${DEMO_MODE:-true}
       AUTH_CLIENT_ID: ${AUTH_CLIENT_ID}
+      AUTH_CLIENT_SECRET: ${AUTH_CLIENT_SECRET}
       AUTH_IDENTITY_PROVIDER: ${AUTH_IDENTITY_PROVIDER:-oauth}
       AUTH_ISSUER: ${AUTH_ISSUER}
       APP_HOSTNAME: ${APP_HOSTNAME:-localhost}
