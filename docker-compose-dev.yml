@@ -47,9 +47,9 @@ services:
     restart: always
     environment:
       DEV_MODE: true # used to derive FRONTEND_URL port for CORS dev setup
-      MS_AUTH_CLIENT_ID: ${MS_AUTH_CLIENT_ID}
-      MS_AUTH_TENANT_ID: ${MS_AUTH_TENANT_ID}
-      MS_AUTH_CLIENT_SECRET: ${MS_AUTH_CLIENT_SECRET}
+      AUTH_CLIENT_ID: ${AUTH_CLIENT_ID}
+      AUTH_TENANT_ID: ${AUTH_TENANT_ID}
+      AUTH_CLIENT_SECRET: ${AUTH_CLIENT_SECRET}
       APP_HOSTNAME: ${APP_HOSTNAME:-localhost}
       ENABLE_HTTPS: ${ENABLE_HTTPS:-false}
       TECHNICAL_ACCOUNT_TOKEN: ${TECHNICAL_ACCOUNT_TOKEN}

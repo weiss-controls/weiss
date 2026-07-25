@@ -67,21 +67,23 @@ Consumed by both `weiss` (nginx) and `weiss-api` (FastAPI CORS and cookie flags)
 
 Consumed by the `weiss-api` service.
 
-### Microsoft Entra ID (SSO authentication)
+### SSO authentication
 
 Required when `VITE_DEMO_MODE=false` or when SSO login is desired alongside demo mode. See
 [Organization credentials](org_credentials.md) for setup instructions.
 
-| Variable                | Default  | Description                                                                                                                                |
-| ----------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `MS_AUTH_CLIENT_ID`     | _(none)_ | Application (client) ID from the Azure app registration.                                                                                   |
-| `MS_AUTH_TENANT_ID`     | `common` | Directory (tenant) ID. Use `common` for multi-tenant or consumer accounts, or the specific tenant ID to restrict to a single organisation. |
-| `MS_AUTH_CLIENT_SECRET` | _(none)_ | Client secret value from the Azure app registration.                                                                                       |
+| Variable                 | Default  | Description                                                                                                                                |
+| ------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `AUTH_CLIENT_ID`         | _(none)_ | Application (client) ID from the client registration.                                                                                      |
+| `AUTH_TENANT_ID`         | `common` | Directory (tenant) ID. Use `common` for multi-tenant or consumer accounts, or the specific tenant ID to restrict to a single organisation. |
+| `AUTH_CLIENT_SECRET`     | _(none)_ | Client secret value from the client registration.                                                                                          |
+| `AUTH_ISSUER`            | _(none)_ | OAuth2 issuer path                                                                                                                         |
+| `AUTH_IDENTITY_PROVIDER` | `oauth`  | Name of the identity provider to use. Must be a file in `api.auth.providers`                                                               |
 
 :::{note}  
-For now, only Microsoft Entra ID authentication method is supported, but the architecture allows for
-multiple providers to be added as needed. If you need a different authentication method, please open
-an issue or, better yet, contribute a provider implementation!  
+For now, only OAuth2-based auth is supported, but the architecture allows for multiple providers to
+be added as needed. If you need a different authentication method, please open an issue or, better
+yet, contribute a provider implementation! All implementations must inherit from `api.auth.generic`
 :::
 
 ### Technical account (git commits)

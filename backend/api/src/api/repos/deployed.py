@@ -6,7 +6,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from ..auth.auth import get_current_user
+from ..auth import get_current_user
 from ..repos.common import (
     CURRENT_SYMLINK,
     DEPLOYMENTS_REL_FOLDER,

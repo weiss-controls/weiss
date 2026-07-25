@@ -3,7 +3,7 @@
 
 from fastapi import Depends, HTTPException, status
 
-from ..auth.auth import User, UserRole, get_current_user
+from . import User, UserRole, get_current_user
 
 
 def require_developer(user: User = Depends(get_current_user)) -> User:

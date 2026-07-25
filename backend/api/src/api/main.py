@@ -2,16 +2,22 @@
 # Copyright (C) 2026 André Favoto
 
 import asyncio
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from .auth import auth
+from . import auth
 from .config import FRONTEND_URL, TITLE, VERSION
 from .repos import deployed, staging
 from .snapshots import snapshots
+
+# Provider config
+AUTH_TENANT_ID = os.getenv("AUTH_TENANT_ID", "common")
+AUTH_CLIENT_ID = os.getenv("AUTH_CLIENT_ID")
+AUTH_CLIENT_SECRET = os.getenv("AUTH_CLIENT_SECRET")
 
 
 async def _session_pruner():
@@ -23,6 +29,7 @@ async def _session_pruner():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    await auth.Provider.set(client_secret=AUTH_CLIENT_SECRET, client_id=AUTH_CLIENT_ID, issuer=auth.ISSUER)
     task = asyncio.create_task(_session_pruner())
     yield
     task.cancel()

@@ -309,16 +309,18 @@ All runtime configuration is provided via the `.env` file at the repository root
 
 **API settings** (consumed by `weiss-api`):
 
-| Variable                     | Required          | Default             | Description                          |
-| ---------------------------- | ----------------- | ------------------- | ------------------------------------ |
-| `MS_AUTH_CLIENT_ID`          | Yes (for MS auth) | —                   | Azure App Registration client ID     |
-| `MS_AUTH_CLIENT_SECRET`      | Yes (for MS auth) | —                   | Client secret                        |
-| `MS_AUTH_TENANT_ID`          | No                | `"common"`          | Azure tenant                         |
-| `DEV_MODE`                   | No                | `false`             | Appends Vite dev port to CORS origin |
-| `TECHNICAL_ACCOUNT_TOKEN`    | No                | —                   | Git HTTP auth token for push         |
-| `TECHNICAL_ACCOUNT_USERNAME` | No                | `"weiss-bot"`       | Git commit author name               |
-| `TECHNICAL_ACCOUNT_EMAIL`    | No                | `"weiss-bot@dummy"` | Git commit author email              |
-| `ROLES_CONFIG_FILE`          | No                | `./roles.toml`      | Host path to the roles TOML file     |
+| Variable                     | Required        | Default             | Description                          |
+| ---------------------------- | --------------- | ------------------- | ------------------------------------ |
+| `AUTH_CLIENT_ID`             | Yes (for OAuth) | —                   | Client registration ID               |
+| `AUTH_CLIENT_SECRET`         | Yes (for OAuth) | —                   | Client secret                        |
+| `AUTH_TENANT_ID`             | No              | `"common"`          | Azure tenant                         |
+| `AUTH_ISSUER`                | Yes (for OAuth) | —                   | OAuth issuer                         |
+| `AUTH_IDENTITY_PROVIDER`     | Yes             | `"oauth"`           | Identity provider to use             |
+| `DEV_MODE`                   | No              | `false`             | Appends Vite dev port to CORS origin |
+| `TECHNICAL_ACCOUNT_TOKEN`    | No              | —                   | Git HTTP auth token for push         |
+| `TECHNICAL_ACCOUNT_USERNAME` | No              | `"weiss-bot"`       | Git commit author name               |
+| `TECHNICAL_ACCOUNT_EMAIL`    | No              | `"weiss-bot@dummy"` | Git commit author email              |
+| `ROLES_CONFIG_FILE`          | No              | `./roles.toml`      | Host path to the roles TOML file     |
 
 ---
 
