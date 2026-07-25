@@ -72,12 +72,14 @@ class Provider(GenericProvider):
             res.raise_for_status()
             return res.json()
 
-    async def create_authorization_url(demo_profile: str | None = None):
+    @staticmethod
+    async def create_authorization_url():
         state = f"oauth:{secrets.token_urlsafe(16)}"
         _pending_states[state] = datetime.now(timezone.utc) + timedelta(minutes=_STATE_TTL_MINUTES)
         auth_url = Provider._create_authorization_url(state=state)
         return {"authorize_url": auth_url[0]}
 
+    @staticmethod
     async def handle_auth_callback(code: str, redirect_uri: str, state: str | None = None):
         expiry = _pending_states.pop(state, None) if state else None
         if expiry is None or expiry < datetime.now(timezone.utc):

@@ -1,38 +1,37 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Guilherme de Freitas
 
-from ...models.user import AuthProvider, User
+from abc import ABC, abstractmethod
+
+from ...models.user import User
 
 
-class GenericProvider:
+class GenericProvider(ABC):
     @staticmethod
+    @abstractmethod
     async def set(client_id: str, client_secret: str, issuer: str):
         """Initialiser for provider singleton. Useful if you require a discovery endpoint or similar"""
-        pass
+        raise NotImplementedError
 
-    async def create_authorization_url(demo_profile: str | None = None):
+    @staticmethod
+    @abstractmethod
+    async def create_authorization_url():
         """Create authorisation URL and return it
-
-        Args:
-            demo_profile: Demo profile to use - unused in real auth
 
         Returns:
             Authorisation URL"""
-        return {"authorize_url": ""}
+        raise NotImplementedError
 
+    @staticmethod
+    @abstractmethod
     async def handle_auth_callback(code: str, redirect_uri: str, state: str | None = None) -> User:
         """Handle token exchange and return user object
 
         Args:
             code: OAuth2 code (optional)
             redirect_uri: Redirect URI (optional)
+            state: OAuth state parameter
 
         Returns:
             User object"""
-        return User(
-            id="foo",
-            provider_id="foo",
-            displayName="User McUserface",
-            provider=AuthProvider.DEMO,
-            email="user@facility.co.uk",
-        )
+        raise NotImplementedError
