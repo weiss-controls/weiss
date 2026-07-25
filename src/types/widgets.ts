@@ -16,6 +16,7 @@ import type { MultiPvData, PVData } from "./epicsWS";
  * - "select": dropdown selection
  * - "strList": list of string entries
  * - "strRecord": string-string record (key-value pairs)
+ * - "stateList": list of (value, color, label) state entries
  * - "none": no selector (property not displayed)
  */
 export type PropertySelectorType =
@@ -28,10 +29,24 @@ export type PropertySelectorType =
   | "strList"
   | "strRecord"
   | "repoFile"
+  | "stateList"
   | "none";
 
+/** A single state entry for multi-state widgets: trigger value, display color, and label */
+export interface StateEntry {
+  value: string;
+  color: string;
+  label: string;
+}
+
 /** Allowed values for a widget property */
-export type PropertyValue = string | number | boolean | string[] | Record<string, string>;
+export type PropertyValue =
+  | string
+  | number
+  | boolean
+  | string[]
+  | Record<string, string>
+  | StateEntry[];
 
 export const valueDisplayFormats = [
   "Default",

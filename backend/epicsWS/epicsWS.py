@@ -4,13 +4,14 @@
 import asyncio
 import json
 import os
+from typing import Dict, Optional, Set, Tuple, Union
+
 import websockets
 from websockets.asyncio.server import ServerConnection
-from typing import Dict, Set, Tuple, Optional, Union
 
-from pvParser import PVParser
-from PVAClient import PVAClient
 from CAClient import CAClient
+from PVAClient import PVAClient
+from pvParser import PVParser
 
 CA_PROVIDER_KEY = "ca"
 PVA_PROVIDER_KEY = "pva"
@@ -47,16 +48,12 @@ _loop: Optional[asyncio.AbstractEventLoop] = None
 
 def ca_callback(pv_name, pv_obj):
     if _loop:
-        asyncio.run_coroutine_threadsafe(
-            send_update(pv_name, pv_obj, CA_PROVIDER_KEY), _loop
-        )
+        asyncio.run_coroutine_threadsafe(send_update(pv_name, pv_obj, CA_PROVIDER_KEY), _loop)
 
 
 def pva_callback(pv_name, pv_obj):
     if _loop:
-        asyncio.run_coroutine_threadsafe(
-            send_update(pv_name, pv_obj, PVA_PROVIDER_KEY), _loop
-        )
+        asyncio.run_coroutine_threadsafe(send_update(pv_name, pv_obj, PVA_PROVIDER_KEY), _loop)
 
 
 # EPICS clients initialized in main() once the event loop is running
@@ -116,9 +113,7 @@ async def send_update(pv_name: str, pv_obj, provider: str):
         if sent_metadata.get(key):
             # Fast path: reuse pre-serialized common payload
             if common_data is None:
-                common_data = json.dumps(
-                    {k: v for k, v in base_msg.items() if v is not None}
-                )
+                common_data = json.dumps({k: v for k, v in base_msg.items() if v is not None})
             try:
                 await ws.send(common_data)
             except Exception:
@@ -220,17 +215,11 @@ async def message_handler(ws: ServerConnection):
                     try:
                         protocol, clean_name = parse_protocol(pv_name)
                         client = get_client(protocol)
-                        value = (
-                            pv_data
-                            if not isinstance(pv_data, dict)
-                            else pv_data.get("value")
-                        )
+                        value = pv_data if not isinstance(pv_data, dict) else pv_data.get("value")
                         client.write_to_pv(clean_name, value)
                         results.append({"pv": pv_name, "success": True})
                     except Exception as e:
-                        results.append(
-                            {"pv": pv_name, "success": False, "error": str(e)}
-                        )
+                        results.append({"pv": pv_name, "success": False, "error": str(e)})
 
                 await ws.send(
                     json.dumps(
@@ -244,9 +233,7 @@ async def message_handler(ws: ServerConnection):
                 )
 
             else:
-                await ws.send(
-                    json.dumps({"type": "error", "message": "Unknown message type"})
-                )
+                await ws.send(json.dumps({"type": "error", "message": "Unknown message type"}))
 
     except Exception as e:
         print(f"[epicsWS]: Error handling message from {client_id}: {e}")

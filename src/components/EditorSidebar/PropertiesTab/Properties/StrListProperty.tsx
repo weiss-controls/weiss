@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
-// src/components/PropertyFields/StrListProperty.tsx
 import React from "react";
 import ListItem from "@mui/material/ListItem";
 import TextField from "@mui/material/TextField";
@@ -24,7 +23,8 @@ const StrListProperty: React.FC<StrListPropertyProps> = ({ propName, label, valu
     return null;
   }
 
-  const items = value.length > 0 ? value : [""];
+  const strValue = value as string[];
+  const items = strValue.length > 0 ? strValue : [""];
 
   const handleChange = (index: number, newVal: string) => {
     const newArr = [...items];

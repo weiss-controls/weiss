@@ -16,6 +16,7 @@ import StrListProperty from "./Properties/StrListProperty";
 import StrRecordProperty from "./Properties/StrRecordProperty";
 import ColorListProperty from "./Properties/ColorListProperty";
 import RepoFileProperty from "./Properties/RepoFileProperty";
+import StateListProperty from "./Properties/StateListProperty";
 import { FRONT_UI_ZIDX } from "@src/constants/constants";
 import { Box } from "@mui/material";
 
@@ -113,6 +114,9 @@ const PropertyGroups: React.FC<PropertyGroupsProps> = ({
 
                     case "repoFile":
                       return <RepoFileProperty key={propName} {...commonProps} accept={options} />;
+
+                    case "stateList":
+                      return <StateListProperty key={propName} {...commonProps} />;
 
                     default:
                       return null;

@@ -70,7 +70,7 @@ export function substituteTextProps(
         resultRecord[key] = prop;
       }
     } else if (prop.selType === "strList" && Array.isArray(prop.value)) {
-      const original = prop.value;
+      const original = prop.value as string[];
       const substituted = original.map((s) => substituteMacroInStr(s, macros));
       if (substituted.some((s, i) => s !== original[i])) {
         resultRecord[key] = { ...prop, value: substituted };

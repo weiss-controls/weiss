@@ -63,23 +63,28 @@ pushing, so you avoid pipeline errors:
 
 ```sh
 pnpm run lint
-pnpm prettier --write .
-pnpm tsc --noEmit
+pnpm run format-check
+pnpm run typecheck
 ```
 
 ### Backend
 
-The backend uses [Ruff](https://docs.astral.sh/ruff/) for both linting and formatting.
+The backend uses [Ruff](https://docs.astral.sh/ruff/) for both linting and formatting. Since each
+system is independently managed, check and format them individually:
 
 ```sh
-ruff check backend/
-ruff format backend/
+ruff check backend/api
+ruff format backend/api
+
+ruff check backend/epicsWS
+ruff format backend/epicsWS
 ```
 
 To fix auto-correctable lint issues in one step:
 
 ```sh
-ruff check --fix backend/
+ruff check --fix backend/api
+ruff check --fix backend/epicsWS
 ```
 
 ---

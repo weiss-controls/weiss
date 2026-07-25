@@ -63,7 +63,7 @@ addopts = """
 # filterwarnings = "error"
 
 [tool.coverage.run]
-data_file = "/tmp/weiss.coverage"
+data_file = "/tmp/weiss-api.coverage"
 
 [tool.coverage.paths]
 # Tests are run from installed location, map back to the src directory

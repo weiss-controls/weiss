@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 André Favoto
 
-from typing import Callable, Dict, Set, Any
-from p4p.client.thread import Context
-from p4p.client.thread import Subscription
 import threading
+from typing import Any, Callable, Dict, Set
+
+from p4p.client.thread import Context, Subscription
 
 
 class PVAClient:
