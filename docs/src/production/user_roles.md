@@ -42,15 +42,13 @@ developers = [
 
 Keep `roles.toml` out of version control - it is already listed in `.gitignore`.
 
-:::{note} The username format depends on the authentication provider in use:
+:::{note} The username format depends on the active authentication provider.
 
-- **Microsoft Entra ID** - use the user's `userPrincipalName` (UPN), typically their organisational
-  email address (e.g. `username@example.com`).
-- **Other providers** (e.g. LDAP, to be supported) - use the login name as it appears in the user's
-  session (e.g. `username` or `DOMAIN\username`).
+Use the exact username string returned by `/api/v1/auth/me` (field `username`). This is typically
+the provider's login identifier (for example an email-like `preferred_username` in many OIDC
+providers).
 
-Usernames are matched case-insensitively.  
-:::
+Usernames are matched case-insensitively. :::
 
 ---
 

@@ -18,7 +18,6 @@ export default function LoginPage() {
   const navigate = useNavigate();
 
   const configuredProvider =
-    import.meta.env.VITE_AUTH_IDENTITY_PROVIDER === OAuthProviders.MICROSOFT ||
     import.meta.env.VITE_AUTH_IDENTITY_PROVIDER === OAuthProviders.OAUTH
       ? (import.meta.env.VITE_AUTH_IDENTITY_PROVIDER as OAuthProvider)
       : OAuthProviders.OAUTH;

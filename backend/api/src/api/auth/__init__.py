@@ -9,8 +9,8 @@ from pydantic import BaseModel
 from ..config import DEMO_MODE, ENABLE_HTTPS
 from ..models.user import AuthProvider, AuthURL, OAuthCallbackRequest, Session, User, UserRole
 from . import roles_config
-from .providers.generic import GenericProvider
 from .providers.demo import Provider as DemoProvider
+from .providers.generic import GenericProvider
 
 SESSION_COOKIE_NAME = "weiss_session"
 DEMO_ID_COOKIE = "weiss_demo_id"  # allow differ demo sessions
@@ -158,9 +158,11 @@ async def oauth_callback(
         if payload.provider == AuthProvider.DEMO:
             role = user.role  # trust the role set by the demo provider
         else:
-            role = UserRole.DEVELOPER if user.username and roles_config.is_developer(user.username) else UserRole.OPERATOR
+            role = (
+                UserRole.DEVELOPER if user.username and roles_config.is_developer(user.username) else UserRole.OPERATOR
+            )
         users_db[user.id] = User(
-            **user.model_dump(exclude={"role"}, exclude_unset=True), # exclude role if set by provider (demo)
+            **user.model_dump(exclude={"role"}, exclude_unset=True),  # exclude role if set by provider (demo)
             role=role,
         )
 

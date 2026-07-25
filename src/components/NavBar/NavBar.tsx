@@ -26,8 +26,6 @@ import HelpOverlay from "./HelpOverlay.tsx";
 import { ListItemIcon, ListItemText, Menu, MenuItem, Avatar, Divider } from "@mui/material";
 import LogoutIcon from "@mui/icons-material/Logout";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-import { Roles, type OAuthProvider } from "@src/services/AuthService/AuthService.ts";
-import { OAuthProviders } from "@src/services/AuthService/AuthService.ts";
 import GitImportDialog from "@components/GitImportDialog/GitImportDialog.tsx";
 import SnapshotDialog from "@components/SnapshotDialog/SnapshotDialog.tsx";
 import AlarmPanel from "@components/AlarmPanel/AlarmPanel.tsx";
@@ -141,10 +139,8 @@ export default function NavBar() {
     updateMode,
     wdgPickerOpen,
     setWdgPickerOpen,
-    isDemo,
     user,
     isAuthenticated,
-    login,
     logout,
     isDeveloper,
     selectedFile,
@@ -202,16 +198,6 @@ export default function NavBar() {
   const handleImportGitRepo = () => {
     handleImportMenuClose();
     setGitImportOpen(true);
-  };
-
-  const handleLogin = async (provider: OAuthProvider, demoProfile?: Roles) => {
-    handleUserMenuClose();
-    if (isAuthenticated) return;
-    if (provider === OAuthProviders.DEMO && !demoProfile) {
-      console.error("Demo profile must be specified for demo login");
-      return;
-    }
-    await login(provider, demoProfile);
   };
 
   const handleLogout = () => {

@@ -152,10 +152,10 @@ The FastAPI back-end exposes three route groups:
 
 #### Authentication
 
-Authentication is based on OAuth 2.0 system, and is available through the `/auth` route group. At
-the moment only authentication via Microsoft Identity Platform is supported
-([MSAL](https://learn.microsoft.com/en-us/entra/identity-platform/msal-overview)), but the
-architecture allows for multiple authentication providers to be added in the future as needed.
+Authentication is based on OAuth 2.0 / OpenID Connect and is available through the `/auth` route
+group. The backend loads the configured non-demo provider from `api.auth.providers` using
+`AUTH_IDENTITY_PROVIDER` (default `oauth`) and also supports a dedicated `demo` provider when
+`DEMO_MODE=true`.
 
 :::{note}  
 Auth workflow details to be provided.  

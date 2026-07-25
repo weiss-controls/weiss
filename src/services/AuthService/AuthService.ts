@@ -8,7 +8,6 @@ import type { User } from "@src/services/APIClient";
 // -----
 // exceptionally, redefine these types from APIClient to allow usage as enum-like
 export const OAuthProviders = {
-  MICROSOFT: "microsoft",
   DEMO: "demo",
   OAUTH: "oauth",
 } as const;
