@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 WEISS Contributors
+// Copyright (C) 2026 André Favoto
 
 /**
  * Phoebus Display Builder XML → PhoebusDisplay parser.
@@ -7,22 +7,23 @@
  * Parses a raw Phoebus .opi XML string into the PhoebusDisplay intermediate
  * representation consumed by the converter (converter.ts).
  *
- * Parsing stages:
- *   1. Raw XML string → DOM (DOMParser)
- *   2. <display> root → PhoebusDisplay (version, width, height)
- *   3. Each <widget> element → PhoebusWidget (recursive for children)
- *   4. Each child element of a widget → properties Map entry:
- *        - scalar elements  → string | number
- *        - <background_color> / <foreground_color> / <border_color>
- *            → PhoebusColor { red, green, blue, name }
- *        - <font>           → PhoebusFont { family, size, bold, italic }
- *        - <states>         → PhoebusState[]
- *        - <items>          → string[]
- *        - <actions>        → stored as raw Element for future handling
  */
 
 import { PhoebusAttribute, PhoebusElement, PhoebusProperty, PhoebusWidgetType } from "./constants";
-import type { PhoebusDisplay, PhoebusWidget } from "./types";
+import type {
+  ColorWrapperProperty,
+  PhoebusColor,
+  PhoebusDisplay,
+  PhoebusFont,
+  PhoebusState,
+  PhoebusWidget,
+} from "./types";
+
+/* -------------------------------------------------------------------------- */
+/* Public exports re-used by the rest of the module                           */
+/* -------------------------------------------------------------------------- */
+
+export type { PhoebusColor, PhoebusFont, PhoebusState } from "./types";
 
 /* -------------------------------------------------------------------------- */
 /* Parse error                                                                 */
@@ -36,30 +37,6 @@ export class PhoebusParseError extends Error {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Structured property value types                                             */
-/* -------------------------------------------------------------------------- */
-
-export interface PhoebusColor {
-  name?: string;
-  red: number;
-  green: number;
-  blue: number;
-}
-
-export interface PhoebusFont {
-  family?: string;
-  size?: number;
-  bold?: boolean;
-  italic?: boolean;
-}
-
-export interface PhoebusState {
-  value: number;
-  label: string;
-  color?: PhoebusColor;
-}
-
-/* -------------------------------------------------------------------------- */
 /* Scalar helpers                                                              */
 /* -------------------------------------------------------------------------- */
 
@@ -69,12 +46,23 @@ function childText(parent: Element, tag: string): string | undefined {
   return el?.textContent?.trim() ?? undefined;
 }
 
+/** Returns the first direct child element with the given tag name, or undefined. */
+function directChild(parent: Element, tag: string): Element | undefined {
+  return Array.from(parent.children).find((el) => el.tagName === tag);
+}
+
 /** Parses the text content of a child element as a finite number, or returns undefined. */
 function childNumber(parent: Element, tag: string): number | undefined {
   const text = childText(parent, tag);
   if (text === undefined) return undefined;
   const n = Number(text);
   return isFinite(n) ? n : undefined;
+}
+
+/** Parses a text string as a number when possible, otherwise returns it as-is. */
+function parseScalar(text: string): string | number {
+  const n = Number(text);
+  return isFinite(n) && text !== "" ? n : text;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -88,11 +76,15 @@ function childNumber(parent: Element, tag: string): number | undefined {
  * one <color>).
  */
 function parseColorElement(colorEl: Element): PhoebusColor {
+  const alphaAttr = colorEl.getAttribute(PhoebusAttribute.ALPHA);
+  const alpha = alphaAttr !== null ? Number(alphaAttr) : undefined;
+
   return {
     name: colorEl.getAttribute(PhoebusAttribute.NAME) ?? undefined,
     red: Number(colorEl.getAttribute(PhoebusAttribute.RED) ?? 0),
     green: Number(colorEl.getAttribute(PhoebusAttribute.GREEN) ?? 0),
     blue: Number(colorEl.getAttribute(PhoebusAttribute.BLUE) ?? 0),
+    alpha: alpha !== undefined && isFinite(alpha) ? alpha : undefined,
   };
 }
 
@@ -102,7 +94,7 @@ function parseColorElement(colorEl: Element): PhoebusColor {
  * Returns undefined when the inner <color> element is absent.
  */
 function parseColorWrapper(wrapperEl: Element): PhoebusColor | undefined {
-  const inner = wrapperEl.getElementsByTagName(PhoebusElement.COLOR)[0];
+  const inner = directChild(wrapperEl, PhoebusElement.COLOR);
   return inner ? parseColorElement(inner) : undefined;
 }
 
@@ -115,10 +107,10 @@ function parseColorWrapper(wrapperEl: Element): PhoebusColor | undefined {
  * The style attribute is one of: REGULAR | BOLD | ITALIC | BOLD_ITALIC
  */
 function parseFontElement(fontEl: Element): PhoebusFont {
-  const family = fontEl.getAttribute("family") ?? undefined;
-  const sizeAttr = fontEl.getAttribute("size");
+  const family = fontEl.getAttribute(PhoebusAttribute.FAMILY) ?? undefined;
+  const sizeAttr = fontEl.getAttribute(PhoebusAttribute.SIZE);
   const size = sizeAttr !== null ? Number(sizeAttr) : undefined;
-  const style = fontEl.getAttribute("style") ?? "";
+  const style = fontEl.getAttribute(PhoebusAttribute.STYLE) ?? "";
 
   return {
     family,
@@ -134,7 +126,7 @@ function parseFontElement(fontEl: Element): PhoebusFont {
  */
 function parseFontWrapper(wrapperEl: Element): PhoebusFont | undefined {
   // Phoebus stores font as: <font><font family=".." size=".." style=".."/></font>
-  const inner = wrapperEl.getElementsByTagName(PhoebusElement.FONT)[0];
+  const inner = directChild(wrapperEl, PhoebusProperty.FONT);
   return inner ? parseFontElement(inner) : undefined;
 }
 
@@ -175,15 +167,40 @@ function parseItems(itemsEl: Element): string[] {
   );
 }
 
+/**
+ * Parses a <macros> block into a string record.
+ * Each direct child tag name becomes a macro key; text content is the value.
+ */
+function parseMacros(macrosEl: Element): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const child of Array.from(macrosEl.children)) {
+    out[child.tagName] = child.textContent?.trim() ?? "";
+  }
+  return out;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Widget parser                                                               */
 /* -------------------------------------------------------------------------- */
 
-const COLOR_WRAPPER_TAGS = new Set([
+const COLOR_WRAPPER_TAGS: ReadonlySet<ColorWrapperProperty> = new Set([
   PhoebusProperty.BACKGROUND_COLOR,
   PhoebusProperty.FOREGROUND_COLOR,
   PhoebusProperty.BORDER_COLOR,
+  PhoebusProperty.ON_COLOR,
+  PhoebusProperty.OFF_COLOR,
+  PhoebusProperty.LINE_COLOR,
 ]);
+
+const PHOEBUS_PROPERTY_VALUES = new Set<string>(Object.values(PhoebusProperty));
+
+function isPhoebusPropertyTag(tag: string): tag is PhoebusProperty {
+  return PHOEBUS_PROPERTY_VALUES.has(tag);
+}
+
+function isColorWrapperTag(tag: string): tag is ColorWrapperProperty {
+  return COLOR_WRAPPER_TAGS.has(tag as ColorWrapperProperty);
+}
 
 /**
  * Converts a single <widget> DOM element into a PhoebusWidget.
@@ -195,11 +212,11 @@ function parseWidget(widgetEl: Element): PhoebusWidget {
   const children: PhoebusWidget[] = [];
 
   for (const child of Array.from(widgetEl.children)) {
-    const tag = child.tagName as PhoebusProperty;
+    const tag = child.tagName;
 
     /* ── Nested widget children (group, tabs) ─────────────────────────── */
     if (tag === PhoebusElement.WIDGET) {
-      children.push(parseWidget(child as Element));
+      children.push(parseWidget(child));
       continue;
     }
 
@@ -212,7 +229,7 @@ function parseWidget(widgetEl: Element): PhoebusWidget {
         for (const nestedWidget of Array.from(
           childrenEl.getElementsByTagName(PhoebusElement.WIDGET),
         )) {
-          tabWidgets.push(parseWidget(nestedWidget as Element));
+          tabWidgets.push(parseWidget(nestedWidget));
         }
       }
       properties.set(PhoebusProperty.TABS, tabWidgets);
@@ -220,7 +237,7 @@ function parseWidget(widgetEl: Element): PhoebusWidget {
     }
 
     /* ── Color wrappers ───────────────────────────────────────────────── */
-    if (COLOR_WRAPPER_TAGS.has(tag)) {
+    if (isColorWrapperTag(tag)) {
       const color = parseColorWrapper(child);
       if (color) properties.set(tag, color);
       continue;
@@ -256,9 +273,10 @@ function parseWidget(widgetEl: Element): PhoebusWidget {
     }
 
     /* ── Scalar fallback: read text content as string or number ───────── */
+    if (!isPhoebusPropertyTag(tag)) continue;
+
     const text = child.textContent?.trim() ?? "";
-    const asNumber = Number(text);
-    properties.set(tag, isFinite(asNumber) && text !== "" ? asNumber : text);
+    properties.set(tag, parseScalar(text));
   }
 
   return {
@@ -301,15 +319,40 @@ export function parsePhoebus(xml: string): PhoebusDisplay {
   }
 
   const version = root.getAttribute(PhoebusAttribute.VERSION) ?? undefined;
+  const x = childNumber(root, PhoebusProperty.X);
+  const y = childNumber(root, PhoebusProperty.Y);
   const width = childNumber(root, PhoebusProperty.WIDTH);
   const height = childNumber(root, PhoebusProperty.HEIGHT);
+  const macrosEl = directChild(root, PhoebusProperty.MACROS);
+  const macros = macrosEl ? parseMacros(macrosEl) : undefined;
+  const backgroundColorEl = directChild(root, PhoebusProperty.BACKGROUND_COLOR);
+  const backgroundColor = backgroundColorEl ? parseColorWrapper(backgroundColorEl) : undefined;
+  const gridColorEl = directChild(root, PhoebusProperty.GRID_COLOR);
+  const gridColor = gridColorEl ? parseColorWrapper(gridColorEl) : undefined;
+  const gridVisibleText = childText(root, PhoebusProperty.GRID_VISIBLE);
+  const gridVisible = gridVisibleText === undefined ? undefined : parseScalar(gridVisibleText);
+  const gridStepX = childNumber(root, PhoebusProperty.GRID_STEP_X);
+  const gridStepY = childNumber(root, PhoebusProperty.GRID_STEP_Y);
 
   const widgets: PhoebusWidget[] = Array.from(
     // Only direct <widget> children of <display> — not descendants
     root.children,
   )
     .filter((el) => el.tagName === PhoebusElement.WIDGET)
-    .map((el) => parseWidget(el as Element));
+    .map((el) => parseWidget(el));
 
-  return { version, width, height, widgets };
+  return {
+    version,
+    x,
+    y,
+    width,
+    height,
+    macros,
+    backgroundColor,
+    gridColor,
+    gridVisible,
+    gridStepX,
+    gridStepY,
+    widgets,
+  };
 }

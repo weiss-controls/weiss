@@ -2,37 +2,26 @@
 // Copyright (C) 2026 André Favoto
 
 /**
- * Phoebus → WEISS widget and property mapping.
+ * Phoebus -> WEISS widget and property mapping.
  *
- * Each entry in WIDGET_MAP declares:
- *   - weissName:   the WEISS widgetName registry key
- *   - propMap:     Phoebus property key → WEISS editableProperties key
- *
- * Properties not listed in propMap are silently dropped during conversion.
+ * Properties not listed in propMap are dropped during conversion.
  * Properties that require transformation (e.g. color, font) are handled by
- * dedicated transform functions in the parser — the map only covers
- * direct string/number/boolean pass-throughs.
+ * dedicated transform functions in the converter.
  */
 
 import { PhoebusProperty, PhoebusWidgetType } from "./constants";
+import type { PropertyMap, WidgetMapEntry } from "./types";
 
 /* -------------------------------------------------------------------------- */
-/* Property key mapping                                                        */
+/* Property map building blocks                                               */
 /* -------------------------------------------------------------------------- */
 
 /**
- * Maps a Phoebus property name to the corresponding WEISS editableProperties key.
- * Only covers properties that transfer directly as scalar values.
- */
-export type WeissPropertyKey = string;
-
-export type PropertyMap = Partial<Record<PhoebusProperty, WeissPropertyKey>>;
-
-/**
- * Properties shared by virtually every widget on both sides.
- * Spread this into every entry's propMap and override where needed.
+ * Properties shared by most widgets on both sides.
+ * Spread this into each entry's propMap and override where needed.
  */
 const COMMON_PROP_MAP: PropertyMap = {
+  [PhoebusProperty.NAME]: "alias",
   [PhoebusProperty.X]: "x",
   [PhoebusProperty.Y]: "y",
   [PhoebusProperty.WIDTH]: "width",
@@ -40,55 +29,48 @@ const COMMON_PROP_MAP: PropertyMap = {
   [PhoebusProperty.TOOLTIP]: "tooltip",
   [PhoebusProperty.VISIBLE]: "visible",
   [PhoebusProperty.BORDER_WIDTH]: "borderWidth",
-  [PhoebusProperty.BORDER_COLOR]: "borderColor", // value is a PhoebusColor — parser must transform
-  [PhoebusProperty.BACKGROUND_COLOR]: "backgroundColor", // same
+  [PhoebusProperty.BORDER_COLOR]: "borderColor",
+  [PhoebusProperty.BACKGROUND_COLOR]: "backgroundColor",
 };
 
 /**
- * Text/font-related properties shared by label, text_update, text_entry, buttons …
- * WEISS splits the Phoebus <font> element into individual scalar properties,
- * so FONT itself is NOT in this map — the parser handles it via a font transform.
+ * Text/font-related properties shared by label, text_update, text_entry, buttons.
+ * FONT itself is not in this map; the converter handles font decomposition.
  */
 const TEXT_PROP_MAP: PropertyMap = {
-  [PhoebusProperty.FOREGROUND_COLOR]: "textColor", // parser must transform color
-  [PhoebusProperty.HORIZONTAL_ALIGNMENT]: "textHAlign", // parser must remap enum value
-  [PhoebusProperty.VERTICAL_ALIGNMENT]: "textVAlign", // parser must remap enum value
+  [PhoebusProperty.FOREGROUND_COLOR]: "textColor",
+  [PhoebusProperty.HORIZONTAL_ALIGNMENT]: "textHAlign",
+  [PhoebusProperty.VERTICAL_ALIGNMENT]: "textVAlign",
+};
+
+/** Single-state LEDs often carry explicit on/off colors and labels in Phoebus. */
+const SINGLE_LED_PROP_MAP: PropertyMap = {
+  [PhoebusProperty.ON_COLOR]: "onColor",
+  [PhoebusProperty.OFF_COLOR]: "offColor",
+  [PhoebusProperty.ON_LABEL]: "onLabel",
+  [PhoebusProperty.OFF_LABEL]: "offLabel",
 };
 
 /* -------------------------------------------------------------------------- */
-/* Widget map entry                                                            */
-/* -------------------------------------------------------------------------- */
-
-export interface WidgetMapEntry {
-  /** WEISS widgetName registry key (must match a registered WidgetDefinition). */
-  weissName: string;
-  /**
-   * Phoebus property → WEISS editableProperties key.
-   * Color and font properties listed here signal to the parser that a transform
-   * is needed; the map value is still the target WEISS key.
-   */
-  propMap: PropertyMap;
-}
-
-/* -------------------------------------------------------------------------- */
-/* Widget map                                                                  */
+/* Widget map                                                                 */
 /* -------------------------------------------------------------------------- */
 
 export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
-  /* ── Display / Text ──────────────────────────────────────────────────── */
+  /* Display / Text */
 
   [PhoebusWidgetType.LABEL]: {
-    weissName: "Label",
+    weissName: "TextLabel",
+    hasFont: true,
     propMap: {
       ...COMMON_PROP_MAP,
       ...TEXT_PROP_MAP,
-      [PhoebusProperty.TEXT]: "text",
-      [PhoebusProperty.TRANSPARENT]: "transparent",
+      [PhoebusProperty.TEXT]: "label",
     },
   },
 
   [PhoebusWidgetType.TEXT_UPDATE]: {
     weissName: "TextUpdate",
+    hasFont: true,
     propMap: {
       ...COMMON_PROP_MAP,
       ...TEXT_PROP_MAP,
@@ -97,30 +79,44 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.TEXT_ENTRY]: {
-    weissName: "TextEntry",
+    weissName: "InputField",
+    hasFont: true,
     propMap: {
       ...COMMON_PROP_MAP,
       ...TEXT_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
-      [PhoebusProperty.ENABLED]: "enabled",
+      [PhoebusProperty.ENABLED]: "disabled",
     },
   },
 
-  /* ── Monitors ────────────────────────────────────────────────────────── */
+  /* Monitors */
 
   [PhoebusWidgetType.LED]: {
-    weissName: "LED",
+    weissName: "BitIndicator",
+    hasFont: true,
     propMap: {
       ...COMMON_PROP_MAP,
+      ...SINGLE_LED_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
+      [PhoebusProperty.SQUARE]: "square",
     },
   },
 
   [PhoebusWidgetType.BYTE_MONITOR]: {
-    weissName: "ByteMonitor",
+    weissName: "MultiBitIndicator",
     propMap: {
       ...COMMON_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
+    },
+  },
+
+  [PhoebusWidgetType.MULTI_STATE_LED]: {
+    weissName: "MultiStateLED",
+    hasFont: true,
+    propMap: {
+      ...COMMON_PROP_MAP,
+      [PhoebusProperty.PV_NAME]: "pvName",
+      [PhoebusProperty.STATES]: "stateList",
     },
   },
 
@@ -129,12 +125,12 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     propMap: {
       ...COMMON_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
-      [PhoebusProperty.FOREGROUND_COLOR]: "barColor", // parser must transform color
+      [PhoebusProperty.FOREGROUND_COLOR]: "barColor",
     },
   },
 
   [PhoebusWidgetType.METER]: {
-    weissName: "Meter",
+    weissName: "NotImplemented",
     propMap: {
       ...COMMON_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
@@ -142,7 +138,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.LINEAR_METER]: {
-    weissName: "LinearMeter",
+    weissName: "NotImplemented",
     propMap: {
       ...COMMON_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
@@ -150,7 +146,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.TANK]: {
-    weissName: "Tank",
+    weissName: "NotImplemented",
     propMap: {
       ...COMMON_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
@@ -158,7 +154,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.THERMOMETER]: {
-    weissName: "Thermometer",
+    weissName: "NotImplemented",
     propMap: {
       ...COMMON_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
@@ -166,61 +162,71 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.SYMBOL]: {
-    weissName: "Symbol",
+    weissName: "NotImplemented",
     propMap: {
       ...COMMON_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
     },
   },
 
-  /* ── Controls ────────────────────────────────────────────────────────── */
+  [PhoebusWidgetType.ARRAY]: {
+    weissName: "NotImplemented",
+    propMap: {
+      ...COMMON_PROP_MAP,
+      [PhoebusProperty.PV_NAME]: "pvName",
+    },
+  },
+
+  /* Controls */
 
   [PhoebusWidgetType.ACTION_BUTTON]: {
     weissName: "ActionButton",
+    hasFont: true,
     propMap: {
       ...COMMON_PROP_MAP,
       ...TEXT_PROP_MAP,
-      [PhoebusProperty.TEXT]: "text",
-      [PhoebusProperty.ENABLED]: "enabled",
-      // ACTIONS is a structured element — handled separately by the parser
+      [PhoebusProperty.TEXT]: "label",
+      [PhoebusProperty.ENABLED]: "disabled",
     },
   },
 
   [PhoebusWidgetType.BOOLEAN_BUTTON]: {
-    weissName: "BoolButton",
+    weissName: "ToggleButton",
+    hasFont: true,
     propMap: {
       ...COMMON_PROP_MAP,
       ...TEXT_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
-      [PhoebusProperty.ENABLED]: "enabled",
+      [PhoebusProperty.ENABLED]: "disabled",
     },
   },
 
   [PhoebusWidgetType.CHECK_BOX]: {
-    weissName: "CheckBox",
+    weissName: "NotImplemented",
     propMap: {
       ...COMMON_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
       [PhoebusProperty.TEXT]: "text",
-      [PhoebusProperty.ENABLED]: "enabled",
+      [PhoebusProperty.ENABLED]: "disabled",
     },
   },
 
   [PhoebusWidgetType.COMBO_BOX]: {
-    weissName: "ComboBox",
+    weissName: "SelectionBox",
+    hasFont: true,
     propMap: {
       ...COMMON_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
-      [PhoebusProperty.ENABLED]: "enabled",
+      [PhoebusProperty.ENABLED]: "disabled",
     },
   },
 
   [PhoebusWidgetType.CHOICE_BUTTON]: {
-    weissName: "ChoiceButton",
+    weissName: "NotImplemented",
     propMap: {
       ...COMMON_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
-      [PhoebusProperty.ENABLED]: "enabled",
+      [PhoebusProperty.ENABLED]: "disabled",
     },
   },
 
@@ -229,27 +235,81 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     propMap: {
       ...COMMON_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
-      [PhoebusProperty.ENABLED]: "enabled",
+      [PhoebusProperty.ENABLED]: "disabled",
+    },
+  },
+
+  [PhoebusWidgetType.SPINNER]: {
+    weissName: "Spinner",
+    hasFont: true,
+    propMap: {
+      ...COMMON_PROP_MAP,
+      ...TEXT_PROP_MAP,
+      [PhoebusProperty.PV_NAME]: "pvName",
+      [PhoebusProperty.ENABLED]: "disabled",
     },
   },
 
   [PhoebusWidgetType.SCROLL_BAR]: {
-    weissName: "ScrollBar",
+    weissName: "NotImplemented",
     propMap: {
       ...COMMON_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
-      [PhoebusProperty.ENABLED]: "enabled",
+      [PhoebusProperty.ENABLED]: "disabled",
     },
   },
 
-  /* ── Graphics ────────────────────────────────────────────────────────── */
+  [PhoebusWidgetType.SLIDE_BUTTON]: {
+    weissName: "NotImplemented",
+    propMap: {
+      ...COMMON_PROP_MAP,
+      [PhoebusProperty.PV_NAME]: "pvName",
+      [PhoebusProperty.ENABLED]: "disabled",
+    },
+  },
+
+  [PhoebusWidgetType.THUMBWHEEL]: {
+    weissName: "NotImplemented",
+    propMap: {
+      ...COMMON_PROP_MAP,
+      [PhoebusProperty.PV_NAME]: "pvName",
+      [PhoebusProperty.ENABLED]: "disabled",
+    },
+  },
+
+  [PhoebusWidgetType.RADIO_BUTTON]: {
+    weissName: "NotImplemented",
+    propMap: {
+      ...COMMON_PROP_MAP,
+      [PhoebusProperty.PV_NAME]: "pvName",
+      [PhoebusProperty.ENABLED]: "disabled",
+    },
+  },
+
+  [PhoebusWidgetType.TABLE]: {
+    weissName: "NotImplemented",
+    propMap: {
+      ...COMMON_PROP_MAP,
+      [PhoebusProperty.PV_NAME]: "pvName",
+    },
+  },
+
+  [PhoebusWidgetType.FILE_SELECTOR]: {
+    weissName: "NotImplemented",
+    propMap: {
+      ...COMMON_PROP_MAP,
+      [PhoebusProperty.PV_NAME]: "pvName",
+      [PhoebusProperty.ENABLED]: "disabled",
+    },
+  },
+
+  /* Graphics */
 
   [PhoebusWidgetType.RECTANGLE]: {
     weissName: "Rectangle",
     propMap: {
       ...COMMON_PROP_MAP,
-      [PhoebusProperty.FOREGROUND_COLOR]: "borderColor", // parser must transform color
-      [PhoebusProperty.TRANSPARENT]: "transparent",
+      [PhoebusProperty.FOREGROUND_COLOR]: "borderColor",
     },
   },
 
@@ -258,79 +318,139 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     propMap: {
       ...COMMON_PROP_MAP,
       [PhoebusProperty.FOREGROUND_COLOR]: "borderColor",
-      [PhoebusProperty.TRANSPARENT]: "transparent",
+    },
+  },
+
+  [PhoebusWidgetType.POLYGON]: {
+    weissName: "NotImplemented",
+    propMap: {
+      ...COMMON_PROP_MAP,
+    },
+  },
+
+  [PhoebusWidgetType.POLYLINE]: {
+    weissName: "NotImplemented",
+    propMap: {
+      ...COMMON_PROP_MAP,
     },
   },
 
   [PhoebusWidgetType.ARC]: {
-    weissName: "Arc",
+    weissName: "NotImplemented",
     propMap: {
       ...COMMON_PROP_MAP,
       [PhoebusProperty.FOREGROUND_COLOR]: "borderColor",
-      [PhoebusProperty.TRANSPARENT]: "transparent",
     },
   },
 
   [PhoebusWidgetType.PICTURE]: {
-    weissName: "Picture",
+    weissName: "Image",
+    propMap: {
+      ...COMMON_PROP_MAP,
+      [PhoebusProperty.FILE]: "imagePath",
+    },
+  },
+
+  [PhoebusWidgetType.IMAGE]: {
+    weissName: "NotImplemented",
     propMap: {
       ...COMMON_PROP_MAP,
     },
   },
 
-  /* ── Plots ───────────────────────────────────────────────────────────── */
-
-  [PhoebusWidgetType.XY_PLOT]: {
-    weissName: "XYPlot",
+  [PhoebusWidgetType.TEXT_SYMBOL]: {
+    weissName: "NotImplemented",
     propMap: {
       ...COMMON_PROP_MAP,
-      // pvNames, lineColors — structured, handled by parser
+      [PhoebusProperty.PV_NAME]: "pvName",
+    },
+  },
+
+  /* Plots */
+
+  [PhoebusWidgetType.XY_PLOT]: {
+    weissName: "GraphXY",
+    propMap: {
+      ...COMMON_PROP_MAP,
+      // pvNames, lineColors are deferred for now.
     },
   },
 
   [PhoebusWidgetType.STRIP_CHART]: {
-    weissName: "StripChart",
+    weissName: "GraphY",
     propMap: {
       ...COMMON_PROP_MAP,
-      // pvNames, lineColors — structured, handled by parser
+      // pvNames, lineColors are deferred for now.
     },
   },
 
   [PhoebusWidgetType.DATA_BROWSER]: {
-    weissName: "DataBrowser",
+    weissName: "NotImplemented",
     propMap: {
       ...COMMON_PROP_MAP,
     },
   },
 
-  /* ── Containers ──────────────────────────────────────────────────────── */
+  [PhoebusWidgetType.WATERFALL_PLOT]: {
+    weissName: "NotImplemented",
+    propMap: {
+      ...COMMON_PROP_MAP,
+    },
+  },
+
+  /* Containers */
 
   [PhoebusWidgetType.GROUP]: {
     weissName: "Group",
     propMap: {
-      ...COMMON_PROP_MAP,
-      [PhoebusProperty.STYLE]: "groupStyle",
+      [PhoebusProperty.X]: "x",
+      [PhoebusProperty.Y]: "y",
+      [PhoebusProperty.WIDTH]: "width",
+      [PhoebusProperty.HEIGHT]: "height",
       // children are recursively converted by the parser, not via propMap
     },
   },
 
   [PhoebusWidgetType.TABS]: {
-    weissName: "Tabs",
+    weissName: "NotImplemented",
     propMap: {
       ...COMMON_PROP_MAP,
-      // tab children are recursively converted by the parser
     },
   },
 
   [PhoebusWidgetType.NAVIGATION_TABS]: {
-    weissName: "NavigationTabs",
+    weissName: "NotImplemented",
     propMap: {
       ...COMMON_PROP_MAP,
     },
   },
 
   [PhoebusWidgetType.TEMPLATE]: {
+    weissName: "NotImplemented",
+    propMap: {
+      ...COMMON_PROP_MAP,
+    },
+  },
+
+  [PhoebusWidgetType.EMBEDDED]: {
     weissName: "EmbeddedDisplay",
+    propMap: {
+      ...COMMON_PROP_MAP,
+      [PhoebusProperty.FILE]: "displayPath",
+    },
+  },
+
+  /* Misc */
+
+  [PhoebusWidgetType.WEB_BROWSER]: {
+    weissName: "NotImplemented",
+    propMap: {
+      ...COMMON_PROP_MAP,
+    },
+  },
+
+  [PhoebusWidgetType.VIEWER_3D]: {
+    weissName: "NotImplemented",
     propMap: {
       ...COMMON_PROP_MAP,
     },
