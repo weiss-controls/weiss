@@ -36,6 +36,7 @@ import { usePVStore } from "@src/services/pvStore";
 import { notifyUser } from "@src/services/Notifications/Notification.ts";
 import { useWidgetContext } from "@src/context/useWidgetContext.tsx";
 import { useUIContext } from "@src/context/useUIContext.tsx";
+import { parsePhoebus, convertDisplay } from "@src/utils/bob2json";
 interface StyledAppBarProps extends MuiAppBarProps {
   open?: boolean;
   drawerWidth: number;
@@ -200,6 +201,39 @@ export default function NavBar() {
     setGitImportOpen(true);
   };
 
+  const handleImportPhoebusFile = () => {
+    handleImportMenuClose();
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".bob,.opi,.xml,text/xml,application/xml";
+    input.onchange = async (event) => {
+      const file = (event.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      try {
+        const xml = await file.text();
+        const display = parsePhoebus(xml);
+        const { widgets, warnings } = convertDisplay(display);
+
+        importWidgets(widgets);
+
+        if (warnings.length > 0) {
+          notifyUser(
+            `Phoebus import completed with ${warnings.length} warning(s):\n ${warnings.join("\n ")}`,
+            "warning",
+          );
+        }
+      } catch (err) {
+        console.error("Phoebus import failed:", err);
+        notifyUser(
+          `Phoebus import failed: ${err instanceof Error ? err.message : String(err)}`,
+          "error",
+        );
+      }
+    };
+    input.click();
+  };
+
   const handleLogout = () => {
     handleUserMenuClose();
     logout();
@@ -288,6 +322,13 @@ export default function NavBar() {
                       <ComputerIcon fontSize="small" />
                     </ListItemIcon>
                     <ListItemText primary="From disk" />
+                  </MenuItem>
+
+                  <MenuItem onClick={handleImportPhoebusFile}>
+                    <ListItemIcon>
+                      <FileUploadIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText primary="From CSS/Phoebus" />
                   </MenuItem>
 
                   {isAuthenticated && (

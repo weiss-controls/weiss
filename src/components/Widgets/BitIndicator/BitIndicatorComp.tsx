@@ -45,6 +45,8 @@ const BitIndicatorComp: React.FC<WidgetUpdate> = ({ data }) => {
   const containerWidth = p.width!.value;
   const containerHeight = p.height!.value;
   const circleSize = Math.min(containerWidth, containerHeight);
+  const isSquare = p.square?.value ?? false;
+  const fixedProportion = p.fixedProportion?.value ?? true;
 
   const containerStyle: React.CSSProperties = {
     width: containerWidth,
@@ -57,9 +59,9 @@ const BitIndicatorComp: React.FC<WidgetUpdate> = ({ data }) => {
   };
 
   const circleStyle: React.CSSProperties = {
-    width: p.square?.value ? containerWidth : circleSize,
-    height: p.square?.value ? containerHeight : circleSize,
-    borderRadius: p.square?.value ? 0 : "50%",
+    width: isSquare ? containerWidth : fixedProportion ? circleSize : containerWidth,
+    height: isSquare ? containerHeight : fixedProportion ? circleSize : containerHeight,
+    borderRadius: isSquare ? 0 : "50%",
     background,
     borderStyle: p.borderStyle?.value,
     borderWidth: p.borderWidth?.value,

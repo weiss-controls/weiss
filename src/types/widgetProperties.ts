@@ -81,6 +81,7 @@ export const PROPERTY_SCHEMAS = {
   offColor:        defineProp({ selType: "colorSel", label: "Off Color", value: COLORS.offColor, category: "Style" }),
   spacing:         defineProp({ selType: "number", label: "Spacing", value: 1 as number, limits: { min: 0 }, category: "Style" }),
   square:          defineProp({ selType: "boolean", label: "Square", value: false as boolean, category: "Style" }),
+  fixedProportion: defineProp({ selType: "boolean", label: "Fixed proportion", value: true as boolean, category: "Style" }),
   useStringVal:    defineProp({ selType: "boolean", label: "Use string value", value: true as boolean, category: "EPICS" }),
   offLabel:        defineProp({ selType: "text", label: "Off label", value: "" as string, category: "Text" }),
   onLabel:         defineProp({ selType: "text", label: "On label", value: "" as string, category: "Text" }),

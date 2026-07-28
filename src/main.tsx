@@ -12,7 +12,6 @@ import LoginPage from "@src/routes/Login.tsx";
 import ProtectedRoute from "@src/routes/ProtectedRoute.tsx";
 import NotificationService from "./services/Notifications/NotificationService";
 import DialogService from "./services/Dialog/DialogService";
-import DryRunPage from "./routes/dryRun";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -22,8 +21,6 @@ createRoot(document.getElementById("root")!).render(
       <ContextProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          {/* to be removed */}
-          <Route path="/dry-run" element={<DryRunPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route
             path="/"

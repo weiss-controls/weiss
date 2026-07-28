@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 André Favoto
+
 /**
  * Phoebus Display Builder XML definitions.
  */
@@ -52,6 +55,7 @@ export const PhoebusAttribute = {
   RED: "red",
   GREEN: "green",
   BLUE: "blue",
+  ALPHA: "alpha",
 
   // point attrs (note: point x/y are attributes, unlike widget x/y which are elements)
   X: "x",
@@ -60,6 +64,11 @@ export const PhoebusAttribute = {
   // column attrs
   EDITABLE: "editable",
   WIDTH: "width",
+
+  // font attrs
+  FAMILY: "family",
+  SIZE: "size",
+  STYLE: "style",
 } as const;
 
 /* -------------------------------------------------------------------------- */
@@ -93,11 +102,25 @@ export const PhoebusProperty = {
   BORDER_WIDTH: "border_width",
   BORDER_COLOR: "border_color",
 
+  ON_COLOR: "on_color",
+  OFF_COLOR: "off_color",
+  LINE_COLOR: "line_color",
+  LINE_WIDTH: "line_width",
+  ON_LABEL: "on_label",
+  OFF_LABEL: "off_label",
+
   TRANSPARENT: "transparent",
+  SQUARE: "square",
 
   TEXT: "text",
+  FILE: "file",
 
   PV_NAME: "pv_name",
+  MACROS: "macros",
+  GRID_COLOR: "grid_color",
+  GRID_VISIBLE: "grid_visible",
+  GRID_STEP_X: "grid_step_x",
+  GRID_STEP_Y: "grid_step_y",
 
   TOOLTIP: "tooltip",
 
@@ -149,6 +172,7 @@ export const PhoebusWidgetType = {
   POLYLINE: "polyline",
   GROUP: "group",
   TABS: "tabs",
+  EMBEDDED: "embedded",
   TEMPLATE: "template",
   NAVIGATION_TABS: "navtabs",
   PICTURE: "picture",
@@ -166,6 +190,27 @@ export const PhoebusWidgetType = {
   VIEWER_3D: "3dviewer",
 } as const;
 
+export interface PhoebusSize {
+  width: number;
+  height: number;
+}
+
+/**
+ * Default Phoebus widget dimensions when width/height are omitted from XML.
+ * Add new widget defaults here as their source values are discovered.
+ */
+export const PHOEBUS_DEFAULT_SIZES: Partial<Record<PhoebusWidgetType, PhoebusSize>> = {
+  [PhoebusWidgetType.LED]: { width: 20, height: 20 },
+  [PhoebusWidgetType.MULTI_STATE_LED]: { width: 20, height: 20 },
+  [PhoebusWidgetType.ACTION_BUTTON]: { width: 100, height: 30 },
+  [PhoebusWidgetType.BOOLEAN_BUTTON]: { width: 100, height: 30 },
+  [PhoebusWidgetType.COMBO_BOX]: { width: 100, height: 30 },
+  [PhoebusWidgetType.TEXT_ENTRY]: { width: 100, height: 20 },
+  [PhoebusWidgetType.TEXT_UPDATE]: { width: 100, height: 20 },
+  [PhoebusWidgetType.LABEL]: { width: 100, height: 20 },
+  [PhoebusWidgetType.PROGRESS_BAR]: { width: 100, height: 20 },
+};
+
 /* -------------------------------------------------------------------------- */
 /* Enumerations                                                               */
 /* -------------------------------------------------------------------------- */
@@ -175,6 +220,7 @@ export const PhoebusAlignment = {
   CENTRE: "CENTER",
   RIGHT: "RIGHT",
   TOP: "TOP",
+  MIDDLE: "MIDDLE",
   BOTTOM: "BOTTOM",
 } as const;
 
