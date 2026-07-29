@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
-import React, { useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
 import type { ExportedWidget, Widget, WidgetProperties, WidgetUpdate } from "@src/types/widgets";
 import { useUIContext } from "@src/context/useUIContext";
@@ -88,31 +88,42 @@ function computeNatBounds(exported: ExportedWidget[]): {
   }
 
   if (!isFinite(minX)) return { natW: 100, natH: 70, minX: 0, minY: 0 };
-  return { natW: Math.max(maxX - minX, 100), natH: Math.max(maxY - minY, 70), minX, minY };
+  return { natW: maxX - minX, natH: maxY - minY, minX, minY };
 }
 
 /**
- * Translate widget coordinates from the source OPI's coordinate space to the
- * editor's absolute canvas space.
- * Note: the EmbeddedDisplay widget is resized to fit the content of imported OPI.
+ * Translate + uniformly scale widget coordinates from the source OPI's
+ * coordinate space into the editor's absolute canvas space, fitting the
+ * content inside a target box (contain-style: preserves aspect ratio,
+ * never overflows the box).
  */
-function offsetWidgets(
+function scaleWidgets(
   widgets: Widget[],
+  scale: number,
   edX: number,
   edY: number,
   originX = 0,
   originY = 0,
 ): Widget[] {
   return widgets.map((w) => {
-    const { x, y } = w.editableProperties;
+    const { x, y, width, height, borderRadius, borderWidth, fontSize } = w.editableProperties;
     return {
       ...w,
       editableProperties: {
         ...w.editableProperties,
-        ...(x && { x: { ...x, value: edX + (x.value - originX) } }),
-        ...(y && { y: { ...y, value: edY + (y.value - originY) } }),
+        ...(x && { x: { ...x, value: edX + (x.value - originX) * scale } }),
+        ...(y && { y: { ...y, value: edY + (y.value - originY) * scale } }),
+        ...(width && { width: { ...width, value: width.value * scale } }),
+        ...(height && { height: { ...height, value: height.value * scale } }),
+        ...(borderRadius && {
+          borderRadius: { ...borderRadius, value: borderRadius.value * scale },
+        }),
+        ...(borderWidth && { borderWidth: { ...borderWidth, value: borderWidth.value * scale } }),
+        ...(fontSize && { fontSize: { ...fontSize, value: fontSize.value * scale } }),
       },
-      children: w.children ? offsetWidgets(w.children, edX, edY, originX, originY) : undefined,
+      children: w.children
+        ? scaleWidgets(w.children, scale, edX, edY, originX, originY)
+        : undefined,
     };
   });
 }
@@ -191,7 +202,7 @@ const Placeholder: React.FC<{ label: string }> = ({ label }) => (
 
 const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
   const { isDeveloper, selectedFile, inEditMode } = useUIContext();
-  const { updateWidgetChildren, updateWidgetProperties, fileLoadedTrig } = useWidgetContext();
+  const { updateWidgetChildren, fileLoadedTrig } = useWidgetContext();
   const p = data.editableProperties;
 
   const repoId = selectedFile?.repo_id ?? "";
@@ -200,29 +211,68 @@ const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
   const resolvedPath = displayPath ? resolveRepoPath(displayPath, opiPath) : undefined;
   const displayMacros = p.macros?.value;
 
-  // Stable refs so the effect never needs to add these to its dependency array.
-  // `updateWidgetProperties` changes identity on every widget-state update
-  // (because it's transitively dependent on `editorWidgets` through `getWidget`),
-  // so including it directly would cause infinite re-fetch loops.
-  const updateChildrenRef = useRef(updateWidgetChildren);
-  const updatePropertiesRef = useRef(updateWidgetProperties);
-  updateChildrenRef.current = updateWidgetChildren;
-  updatePropertiesRef.current = updateWidgetProperties;
+  const x = p.x?.value ?? 0;
+  const y = p.y?.value ?? 0;
+  const targetW = p.width?.value ?? 100;
+  const targetH = p.height?.value ?? 70;
 
-  // Snapshot of the widget's position, kept in a ref so the effect doesn't need
-  // x/y in its dependency array (position changes must not re-trigger the fetch).
-  const layoutRef = useRef({ x: 0, y: 0 });
-  layoutRef.current = {
-    x: p.x?.value ?? 0,
-    y: p.y?.value ?? 0,
-  };
+  // Stable ref so effects never need to add this directly to their dependency
+  // array. `updateWidgetChildren` changes identity on every widget-state
+  // update (transitively dependent on `editorWidgets` through `getWidget`),
+  // so including it directly would cause infinite re-fetch/re-layout loops.
+  const updateChildrenRef = useRef(updateWidgetChildren);
+  updateChildrenRef.current = updateWidgetChildren;
+
+  // Per-instance cache of the last successfully parsed & bounds-computed
+  // content. Allocated fresh per component instance (per useRef semantics),
+  // so two EmbeddedDisplay widgets pointing at the same displayPath each get
+  // their own copy here — only the unscaled network fetch is shared via
+  // _contentCache below, never the scale/layout output.
+  const rawContentRef = useRef<{
+    exported: ExportedWidget[];
+    natW: number;
+    natH: number;
+    minX: number;
+    minY: number;
+  } | null>(null);
 
   const macrosRef = useRef<Record<string, string>>({});
-
   if (displayMacros !== undefined) macrosRef.current = displayMacros;
 
+  /**
+   * Re-derive scaled child widgets from `rawContentRef` and push them via
+   * `updateWidgetChildren`. Pure re-layout — no network I/O — so it's cheap
+   * to call whenever this instance's own box (x/y/width/height) changes.
+   */
+  const layoutAndApply = useCallback(() => {
+    const cached = rawContentRef.current;
+    if (!cached) return;
+    const { exported, natW, natH, minX, minY } = cached;
+
+    const scale = natW > 0 && natH > 0 ? Math.min(targetW / natW, targetH / natH) : 1;
+
+    // Center the scaled content within the widget's box.
+    const offsetX = x + (targetW - natW * scale) / 2;
+    const offsetY = y + (targetH - natH * scale) / 2;
+
+    const raw = exported
+      .map(exportedToWidget)
+      .filter((widget): widget is Widget => widget !== null);
+
+    const fresh = scaleWidgets(raw, scale, offsetX, offsetY, minX, minY).map(assignNewIds);
+    const withMacros = applyMacros(fresh, macrosRef.current);
+
+    updateChildrenRef.current(data.id, withMacros, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.id, x, y, targetW, targetH]);
+
+  // Fetch effect: only re-runs on path/macro/mode change. The network
+  // request (and JSON parse) is shared across instances via _contentCache;
+  // this effect just stores the parsed result + natural bounds locally and
+  // triggers an initial layout.
   useEffect(() => {
     if (!repoId || !resolvedPath) {
+      rawContentRef.current = null;
       updateChildrenRef.current(data.id, [], false);
       return;
     }
@@ -246,23 +296,13 @@ const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
         const exported = await pending;
         if (cancelled) return;
 
-        const { natW, natH, minX, minY } = computeNatBounds(exported);
-
-        const { x, y } = layoutRef.current;
-
-        const raw = exported
-          .map(exportedToWidget)
-          .filter((widget): widget is Widget => widget !== null);
-
-        const fresh = offsetWidgets(raw, x, y, minX, minY).map(assignNewIds);
-        const withMacros = applyMacros(fresh, macrosRef.current);
-
-        updateChildrenRef.current(data.id, withMacros, false);
-        // Resize the EmbeddedDisplay to fit the imported content naturally.
-        // Also persist natural dimensions for the aspect-ratio lock in WidgetRenderer.
-        updatePropertiesRef.current(data.id, { width: natW, height: natH }, false);
+        rawContentRef.current = { exported, ...computeNatBounds(exported) };
+        layoutAndApply();
       } catch {
-        if (!cancelled) updateChildrenRef.current(data.id, [], false);
+        if (!cancelled) {
+          rawContentRef.current = null;
+          updateChildrenRef.current(data.id, [], false);
+        }
       }
     };
 
@@ -270,9 +310,18 @@ const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
     return () => {
       cancelled = true;
     };
-    // layoutRef / macrosRef / updateChildrenRef / updatePropertiesRef are intentionally
-    // excluded: they are always up to date via the ref pattern above.
+    // layoutAndApply is intentionally omitted: it's re-created when x/y/width/height
+    // change, which would otherwise re-trigger a full re-fetch on every resize tick.
+    // The dedicated layout effect below handles those changes instead.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [repoId, resolvedPath, isDeveloper, data.id, displayMacros, fileLoadedTrig]);
+
+  // Layout effect: re-runs per-instance whenever THIS widget's own box
+  // changes (x/y/width/height, via layoutAndApply's deps). No network call —
+  // just re-scales the already-fetched content in rawContentRef.
+  useEffect(() => {
+    layoutAndApply();
+  }, [layoutAndApply]);
 
   const hasChildren = (data.children?.length ?? 0) > 0;
   if (hasChildren) return null;
