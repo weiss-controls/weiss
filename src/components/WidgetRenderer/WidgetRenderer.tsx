@@ -40,6 +40,23 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale }) => {
     return <LiveWidget w={w} globalMacros={globalMacros} />;
   };
 
+  const getResizeHandlesSize = (width: number, height: number) => {
+    // Resize handle size is 10% of the widget size, but clamped between 6px and 24px.
+    const handleWidth = Math.min(Math.max(width * 0.1, 6), 24);
+    const handleHeight = Math.min(Math.max(height * 0.1, 6), 24);
+
+    return {
+      left: { width: `${handleWidth}px` },
+      right: { width: `${handleWidth}px` },
+      top: { height: `${handleHeight}px` },
+      bottom: { height: `${handleHeight}px` },
+      topLeft: { width: `${2 * handleWidth}px`, height: `${2 * handleHeight}px` },
+      topRight: { width: `${2 * handleWidth}px`, height: `${2 * handleHeight}px` },
+      bottomLeft: { width: `${2 * handleWidth}px`, height: `${2 * handleHeight}px` },
+      bottomRight: { width: `${2 * handleWidth}px`, height: `${2 * handleHeight}px` },
+    };
+  };
+
   const renderRecursive = (
     w: Widget,
     parentX = 0,
@@ -80,6 +97,7 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale }) => {
         scale={scale}
         disableDragging={!canDrag}
         enableResizing={canResize}
+        resizeHandleStyles={getResizeHandlesSize(width, height)}
         size={{ width, height }}
         position={{ x, y }}
         className={editModeClass}
@@ -109,6 +127,10 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale }) => {
 
     const canDrag = inEditMode && !isPanning;
     const canResize = inEditMode && !isPanning;
+    const selectionWidth = selectionBounds.width;
+    const selectionHeight = selectionBounds.height;
+    const selectionX = selectionBounds.x;
+    const selectionY = selectionBounds.y;
 
     const renderRecursiveForSelection = (w: Widget, parentX = 0, parentY = 0): ReactNode => {
       const x = w.editableProperties.x!.value - parentX;
@@ -142,14 +164,15 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale }) => {
         className="selectionGroup selectable"
         id="selectionGroup"
         scale={scale}
-        size={{ width: selectionBounds.width, height: selectionBounds.height }}
-        position={{ x: selectionBounds.x, y: selectionBounds.y }}
+        size={{ width: selectionWidth, height: selectionHeight }}
+        position={{ x: selectionX, y: selectionY }}
         enableResizing={canResize}
         disableDragging={!canDrag}
+        resizeHandleStyles={getResizeHandlesSize(selectionWidth, selectionHeight)}
         onDrag={() => setIsDragging(true)}
         onDragStop={(_e, d) => {
-          const dx = d.x - selectionBounds.x;
-          const dy = d.y - selectionBounds.y;
+          const dx = d.x - selectionX;
+          const dy = d.y - selectionY;
           handleSelGroupDragStop(dx, dy);
         }}
         onResizeStart={() => setIsDragging(true)}
