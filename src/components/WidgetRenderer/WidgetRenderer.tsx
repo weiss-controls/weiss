@@ -57,15 +57,14 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale }) => {
     const height = w.editableProperties.height!.value;
 
     const canDrag = inEditMode && !isPanning && !isChild && !isEmbedded && !isTextEditing;
-    const canResize =
-      inEditMode && !isPanning && !isChild && !isEmbedded && w.widgetName !== "EmbeddedDisplay";
+    const canResize = inEditMode && !isPanning && !isChild;
     const isGroup = w.children?.length;
     const childIsEmbedded = isEmbedded || w.widgetName === "EmbeddedDisplay";
     const groupHasSelectedChild =
       isGroup && !isSelected && hasSelectedDescendant(w, selectedWidgetIDs);
 
     let editModeClass = "";
-    if (inEditMode && !isEmbedded) {
+    if (inEditMode) {
       if (isSelected) editModeClass = "selectable selected";
       else if (groupHasSelectedChild) editModeClass = "selectable groupMemberSelected";
       else if (isGroup) editModeClass = "selectable groupBox";
