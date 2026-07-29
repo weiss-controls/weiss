@@ -1140,6 +1140,7 @@ export function useWidgetManager() {
       setIsPlacementMode,
       snapshotEditModeMacros,
       restoreEditModeMacros,
+      macroOverrides,
       setMacroOverrides,
       setIsDragging,
       handleDragStop,
