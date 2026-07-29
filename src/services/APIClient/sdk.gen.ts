@@ -274,6 +274,8 @@ export const listRepoRefs = <ThrowOnError extends boolean = true>(
  * Update Repo
  *
  * Fetch new tags/commits from default branch and rebase current worktree onto it.
+ * This is done so we keep commit history always linear.
+ * If the rebase or fetch fails, the user's changes are restored unchanged and an error is returned.
  */
 export const syncRepo = <ThrowOnError extends boolean = true>(
   options: Options<SyncRepoData, ThrowOnError>,
