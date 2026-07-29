@@ -21,7 +21,7 @@ export const MultiStateLED: WidgetDefinition = {
     height: { ...PROPERTY_SCHEMAS.height, value: 40 },
     pvName: PROPERTY_SCHEMAS.pvName,
     stateList: PROPERTY_SCHEMAS.stateList,
-    labelFromPV: PROPERTY_SCHEMAS.labelFromPV,
+    labelFromPV: { ...PROPERTY_SCHEMAS.labelFromPV, value: false },
     square: PROPERTY_SCHEMAS.square,
     alarmBorder: PROPERTY_SCHEMAS.alarmBorder,
     displayFormat: PROPERTY_SCHEMAS.displayFormat,

@@ -25,7 +25,7 @@ export const BitIndicator: WidgetDefinition = {
     fixedProportion: PROPERTY_SCHEMAS.fixedProportion,
     pvName: PROPERTY_SCHEMAS.pvName,
     alarmBorder: PROPERTY_SCHEMAS.alarmBorder,
-    labelFromPV: PROPERTY_SCHEMAS.labelFromPV,
+    labelFromPV: { ...PROPERTY_SCHEMAS.labelFromPV, value: false },
     useStringVal: PROPERTY_SCHEMAS.useStringVal,
     offLabel: PROPERTY_SCHEMAS.offLabel,
     onLabel: PROPERTY_SCHEMAS.onLabel,
