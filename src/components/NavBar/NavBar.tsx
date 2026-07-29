@@ -42,6 +42,7 @@ import { notifyUser } from "@src/services/Notifications/Notification.ts";
 import { useWidgetContext } from "@src/context/useWidgetContext.tsx";
 import { useUIContext } from "@src/context/useUIContext.tsx";
 import { parsePhoebus, convertDisplay } from "@src/utils/bob2json";
+import { confirmDialog } from "@src/services/Dialog/Dialog";
 interface StyledAppBarProps extends MuiAppBarProps {
   open?: boolean;
   drawerWidth: number;
@@ -212,11 +213,17 @@ export default function NavBar() {
     handleImportMenuClose();
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = ".bob,.opi,.xml,text/xml,application/xml";
+    input.accept = ".bob";
     input.onchange = async (event) => {
       const file = (event.target as HTMLInputElement).files?.[0];
       if (!file) return;
-
+      await confirmDialog({
+        title: "WARNING: Importing Phoebus file",
+        message:
+          "Please note that OPI imports may not work out of the box. Make sure to validate your display before using it in production.",
+        confirmText: "OK",
+        requiresConfirmation: false,
+      });
       try {
         const xml = await file.text();
         const display = parsePhoebus(xml);

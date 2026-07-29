@@ -34,9 +34,11 @@ export default function DialogService() {
         <Typography>{dialog.message}</Typography>
       </DialogContent>
       <DialogActions>
-        <Button onClick={() => handleClose(false)} color="inherit">
-          {dialog.cancelText ?? "Cancel"}
-        </Button>
+        {dialog.requiresConfirmation && (
+          <Button onClick={() => handleClose(false)} color="inherit">
+            {dialog.cancelText ?? "Cancel"}
+          </Button>
+        )}
         <Button onClick={() => handleClose(true)} variant="contained" color="primary">
           {dialog.confirmText ?? "Confirm"}
         </Button>
