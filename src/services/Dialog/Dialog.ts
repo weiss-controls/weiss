@@ -4,6 +4,7 @@
 export interface DialogOptions {
   title: string;
   message: string;
+  requiresConfirmation?: boolean;
   confirmText?: string;
   cancelText?: string;
 }
@@ -32,6 +33,7 @@ export function confirmDialog(options: DialogOptions): Promise<boolean> {
       resolve(false);
       return;
     }
-    handler({ ...options, resolve });
+    // requires confirmation by default
+    handler({ requiresConfirmation: true, ...options, resolve });
   });
 }
