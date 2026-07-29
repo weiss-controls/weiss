@@ -106,6 +106,7 @@ export const PhoebusProperty = {
   OFF_COLOR: "off_color",
   LINE_COLOR: "line_color",
   LINE_WIDTH: "line_width",
+  LINE_STYLE: "line_style",
   ON_LABEL: "on_label",
   OFF_LABEL: "off_label",
 
@@ -209,6 +210,7 @@ export const PHOEBUS_DEFAULT_SIZES: Partial<Record<PhoebusWidgetType, PhoebusSiz
   [PhoebusWidgetType.TEXT_UPDATE]: { width: 100, height: 20 },
   [PhoebusWidgetType.LABEL]: { width: 100, height: 20 },
   [PhoebusWidgetType.PROGRESS_BAR]: { width: 100, height: 20 },
+  [PhoebusWidgetType.RECTANGLE]: { width: 100, height: 20 },
 };
 
 /* -------------------------------------------------------------------------- */

@@ -309,7 +309,9 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     weissName: "Rectangle",
     propMap: {
       ...COMMON_PROP_MAP,
-      [PhoebusProperty.FOREGROUND_COLOR]: "borderColor",
+      [PhoebusProperty.LINE_COLOR]: "borderColor",
+      [PhoebusProperty.LINE_WIDTH]: "borderWidth",
+      [PhoebusProperty.LINE_STYLE]: "borderStyle",
     },
   },
 
@@ -317,7 +319,9 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     weissName: "Ellipse",
     propMap: {
       ...COMMON_PROP_MAP,
-      [PhoebusProperty.FOREGROUND_COLOR]: "borderColor",
+      [PhoebusProperty.LINE_COLOR]: "borderColor",
+      [PhoebusProperty.LINE_WIDTH]: "borderWidth",
+      [PhoebusProperty.LINE_STYLE]: "borderStyle",
     },
   },
 
@@ -332,6 +336,9 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     weissName: "NotImplemented",
     propMap: {
       ...COMMON_PROP_MAP,
+      [PhoebusProperty.LINE_COLOR]: "borderColor",
+      [PhoebusProperty.LINE_WIDTH]: "borderWidth",
+      [PhoebusProperty.LINE_STYLE]: "borderStyle",
     },
   },
 
@@ -339,7 +346,9 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     weissName: "NotImplemented",
     propMap: {
       ...COMMON_PROP_MAP,
-      [PhoebusProperty.FOREGROUND_COLOR]: "borderColor",
+      [PhoebusProperty.LINE_COLOR]: "borderColor",
+      [PhoebusProperty.LINE_WIDTH]: "borderWidth",
+      [PhoebusProperty.LINE_STYLE]: "borderStyle",
     },
   },
 
@@ -437,6 +446,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     propMap: {
       ...COMMON_PROP_MAP,
       [PhoebusProperty.FILE]: "displayPath",
+      [PhoebusProperty.MACROS]: "macros",
     },
   },
 

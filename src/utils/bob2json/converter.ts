@@ -148,6 +148,44 @@ function mapVAlign(raw: unknown): string | undefined {
   }
 }
 
+function mapLineStyle(raw: unknown): string | undefined {
+  console.log("mapLineStyle called with raw:", raw);
+  if (typeof raw === "string") {
+    const normalized = raw.trim().toUpperCase();
+    switch (normalized) {
+      case "SOLID":
+        return "solid";
+      case "DASH":
+        return "dashed";
+      case "DOT":
+        return "dotted";
+      case "DASHDOT":
+        return "dashed"; // fallback
+      case "DASHDOTDOT":
+        return "dashed"; // fallback
+      default:
+        return undefined;
+    }
+  }
+  if (typeof raw === "number") {
+    switch (raw) {
+      case 0:
+        return "solid";
+      case 1:
+        return "dashed";
+      case 2:
+        return "dotted";
+      case 3:
+        return "dashed"; // fallback
+      case 4:
+        return "dashed"; // fallback
+      default:
+        return undefined;
+    }
+  }
+  return undefined;
+}
+
 /**
  * Extracts scalar TEXT_PROPS from a Phoebus <font> property value.
  * Phoebus font is a structured object; WEISS stores each aspect separately.
@@ -236,30 +274,6 @@ function getNumericProperty(
     if (isFinite(parsed)) return parsed;
   }
   return fallback;
-}
-
-/**
- * Returns a Phoebus property value with cross-property fallbacks.
- * This keeps mapping simple when Phoebus alternates between border_* and line_* keys.
- */
-function getRawPropertyWithFallback(phWidget: PhoebusWidget, key: PhoebusProperty): unknown {
-  const direct = phWidget.properties.get(key);
-  if (direct !== undefined && direct !== null) return direct;
-
-  if (key === PhoebusProperty.BORDER_COLOR) {
-    return phWidget.properties.get(PhoebusProperty.LINE_COLOR);
-  }
-  if (key === PhoebusProperty.BORDER_WIDTH) {
-    return phWidget.properties.get(PhoebusProperty.LINE_WIDTH);
-  }
-  if (key === PhoebusProperty.LINE_COLOR) {
-    return phWidget.properties.get(PhoebusProperty.BORDER_COLOR);
-  }
-  if (key === PhoebusProperty.LINE_WIDTH) {
-    return phWidget.properties.get(PhoebusProperty.BORDER_WIDTH);
-  }
-
-  return undefined;
 }
 
 /** Builds a visible square placeholder for unsupported Phoebus widgets. */
@@ -359,13 +373,19 @@ function convertWidget(
   const absoluteY = rawY + yOffset;
   const defaultSize = PHOEBUS_DEFAULT_SIZES[phWidget.type];
   const supportsBackgroundColor = Object.values(entry.propMap).includes("backgroundColor");
+  // Line style and width handling: if a line width is specified but no style, default to solid (Phoebus default).
+  const lineWidth = getNumericProperty(phWidget, PhoebusProperty.LINE_WIDTH, 0);
+  const hasLineStyle = phWidget.properties.has(PhoebusProperty.LINE_STYLE);
+  if (lineWidth > 0 && !hasLineStyle) {
+    phWidget.properties.set(PhoebusProperty.LINE_STYLE, "SOLID");
+  }
 
   for (const [phKey, weissKeyRaw] of Object.entries(entry.propMap)) {
     if (typeof weissKeyRaw !== "string") continue;
 
     const weissKey = weissKeyRaw;
     const phoebusKey = phKey as PhoebusProperty;
-    const raw = getRawPropertyWithFallback(phWidget, phoebusKey);
+    const raw = phWidget.properties.get(phoebusKey);
 
     if (phoebusKey === PhoebusProperty.X) {
       if (!hasRawX && !forcePositionFromOffset) continue;
@@ -404,6 +424,19 @@ function convertWidget(
         warnings.push(
           `Widget "${phWidget.name ?? phWidget.type}": ` +
             `unknown vertical alignment "${JSON.stringify(raw)}" — skipped.`,
+        );
+      }
+      continue;
+    }
+
+    if (phoebusKey === PhoebusProperty.LINE_STYLE) {
+      const mapped = mapLineStyle(raw);
+      if (mapped !== undefined) {
+        properties[weissKey] = mapped;
+      } else {
+        warnings.push(
+          `Widget "${phWidget.name ?? phWidget.type}": ` +
+            `unknown line style "${JSON.stringify(raw)}" — skipped.`,
         );
       }
       continue;
@@ -450,6 +483,12 @@ function convertWidget(
       if (mappedPath !== undefined) {
         properties[weissKey] = mappedPath;
       }
+      continue;
+    }
+
+    /* ── Embedded display macros ──────────────────────────────────────── */
+    if (phoebusKey === PhoebusProperty.MACROS && weissKey === "macros") {
+      properties[weissKey] = raw as Record<string, string>;
       continue;
     }
 
