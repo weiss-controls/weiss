@@ -13,6 +13,7 @@ import {
   Typography,
   InputAdornment,
   Stack,
+  CircularProgress,
 } from "@mui/material";
 import CustomGitIcon from "@src/components/CustomIcons/GitIcon";
 import type { RepoCreateRequest } from "@src/services/APIClient/types.gen";
@@ -142,7 +143,20 @@ export default function GitImportDialog({ open, onClose }: GitImportDialogProps)
           disabled={!alias.trim() || !gitUrlValid || loading}
           sx={{ "&:not(.Mui-disabled)": { backgroundColor: COLORS.midDarkBlue } }}
         >
-          Import
+          {loading && (
+            <CircularProgress
+              size={30}
+              sx={{
+                position: "absolute",
+                left: "50%",
+                top: "50%",
+                marginLeft: "-15px",
+                marginTop: "-15px",
+                zIndex: 1,
+              }}
+            />
+          )}
+          <span style={{ opacity: loading ? 0 : 1 }}>Import</span>
         </Button>
       </DialogActions>
     </Dialog>

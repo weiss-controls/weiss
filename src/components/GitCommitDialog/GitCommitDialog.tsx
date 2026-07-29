@@ -20,6 +20,7 @@ import { notifyUser } from "@src/services/Notifications/Notification";
 import { useUIContext } from "@src/context/useUIContext";
 import { commitStagingRepo, syncRepo } from "@src/services/APIClient";
 import { COLORS } from "@src/constants/constants";
+import CircularProgress from "@mui/material/CircularProgress";
 
 interface GitCommitDialogProps {
   open: boolean;
@@ -124,9 +125,26 @@ export default function GitCommitDialog({ open, onClose, repoID }: GitCommitDial
           variant="contained"
           onClick={() => void handleConfirm()}
           disabled={!message.trim() || loading}
-          sx={{ "&:not(.Mui-disabled)": { backgroundColor: COLORS.midDarkBlue } }}
+          sx={{
+            position: "relative",
+            "&:not(.Mui-disabled)": { backgroundColor: COLORS.midDarkBlue },
+          }}
         >
-          Commit
+          {loading && (
+            <CircularProgress
+              size={30}
+              sx={{
+                position: "absolute",
+                left: "50%",
+                top: "50%",
+                marginLeft: "-15px",
+                marginTop: "-15px",
+                zIndex: 1,
+              }}
+            />
+          )}
+
+          <span style={{ opacity: loading ? 0 : 1 }}>Commit</span>
         </Button>
       </DialogActions>
     </Dialog>
