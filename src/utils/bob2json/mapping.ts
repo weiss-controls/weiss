@@ -28,11 +28,14 @@ const COMMON_PROP_MAP: PropertyMap = {
   [PhoebusProperty.HEIGHT]: "height",
   [PhoebusProperty.TOOLTIP]: "tooltip",
   [PhoebusProperty.VISIBLE]: "visible",
-  [PhoebusProperty.BORDER_WIDTH]: "borderWidth",
-  [PhoebusProperty.BORDER_COLOR]: "borderColor",
-  [PhoebusProperty.BACKGROUND_COLOR]: "backgroundColor",
 };
 
+const STYLE_PROP_MAP: PropertyMap = {
+  [PhoebusProperty.LINE_COLOR]: "borderColor",
+  [PhoebusProperty.LINE_WIDTH]: "borderWidth",
+  [PhoebusProperty.LINE_STYLE]: "borderStyle",
+  [PhoebusProperty.BACKGROUND_COLOR]: "backgroundColor",
+};
 /**
  * Text/font-related properties shared by label, text_update, text_entry, buttons.
  * FONT itself is not in this map; the converter handles font decomposition.
@@ -63,6 +66,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     hasFont: true,
     propMap: {
       ...COMMON_PROP_MAP,
+      ...STYLE_PROP_MAP,
       ...TEXT_PROP_MAP,
       [PhoebusProperty.TEXT]: "label",
     },
@@ -73,6 +77,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     hasFont: true,
     propMap: {
       ...COMMON_PROP_MAP,
+      ...STYLE_PROP_MAP,
       ...TEXT_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
     },
@@ -83,6 +88,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     hasFont: true,
     propMap: {
       ...COMMON_PROP_MAP,
+      ...STYLE_PROP_MAP,
       ...TEXT_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
       [PhoebusProperty.ENABLED]: "disabled",
@@ -96,6 +102,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     hasFont: true,
     propMap: {
       ...COMMON_PROP_MAP,
+      ...STYLE_PROP_MAP,
       ...SINGLE_LED_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
       [PhoebusProperty.SQUARE]: "square",
@@ -106,6 +113,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     weissName: "MultiBitIndicator",
     propMap: {
       ...COMMON_PROP_MAP,
+      ...STYLE_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
     },
   },
@@ -115,6 +123,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     hasFont: true,
     propMap: {
       ...COMMON_PROP_MAP,
+      ...STYLE_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
       [PhoebusProperty.STATES]: "stateList",
     },
@@ -124,6 +133,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     weissName: "ProgressBar",
     propMap: {
       ...COMMON_PROP_MAP,
+      ...STYLE_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
       [PhoebusProperty.FOREGROUND_COLOR]: "barColor",
     },
@@ -184,6 +194,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     hasFont: true,
     propMap: {
       ...COMMON_PROP_MAP,
+      ...STYLE_PROP_MAP,
       ...TEXT_PROP_MAP,
       [PhoebusProperty.TEXT]: "label",
       [PhoebusProperty.ENABLED]: "disabled",
@@ -195,6 +206,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     hasFont: true,
     propMap: {
       ...COMMON_PROP_MAP,
+      ...STYLE_PROP_MAP,
       ...TEXT_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
       [PhoebusProperty.ENABLED]: "disabled",
@@ -205,6 +217,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     weissName: "NotImplemented",
     propMap: {
       ...COMMON_PROP_MAP,
+      ...STYLE_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
       [PhoebusProperty.TEXT]: "text",
       [PhoebusProperty.ENABLED]: "disabled",
@@ -216,6 +229,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     hasFont: true,
     propMap: {
       ...COMMON_PROP_MAP,
+      ...STYLE_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
       [PhoebusProperty.ENABLED]: "disabled",
     },
@@ -225,6 +239,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     weissName: "NotImplemented",
     propMap: {
       ...COMMON_PROP_MAP,
+      ...STYLE_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
       [PhoebusProperty.ENABLED]: "disabled",
     },
@@ -234,6 +249,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     weissName: "Slider",
     propMap: {
       ...COMMON_PROP_MAP,
+      ...STYLE_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
       [PhoebusProperty.ENABLED]: "disabled",
     },
@@ -244,6 +260,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     hasFont: true,
     propMap: {
       ...COMMON_PROP_MAP,
+      ...STYLE_PROP_MAP,
       ...TEXT_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
       [PhoebusProperty.ENABLED]: "disabled",
@@ -309,9 +326,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     weissName: "Rectangle",
     propMap: {
       ...COMMON_PROP_MAP,
-      [PhoebusProperty.LINE_COLOR]: "borderColor",
-      [PhoebusProperty.LINE_WIDTH]: "borderWidth",
-      [PhoebusProperty.LINE_STYLE]: "borderStyle",
+      ...STYLE_PROP_MAP,
     },
   },
 
@@ -319,9 +334,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     weissName: "Ellipse",
     propMap: {
       ...COMMON_PROP_MAP,
-      [PhoebusProperty.LINE_COLOR]: "borderColor",
-      [PhoebusProperty.LINE_WIDTH]: "borderWidth",
-      [PhoebusProperty.LINE_STYLE]: "borderStyle",
+      ...STYLE_PROP_MAP,
     },
   },
 
@@ -336,9 +349,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     weissName: "NotImplemented",
     propMap: {
       ...COMMON_PROP_MAP,
-      [PhoebusProperty.LINE_COLOR]: "borderColor",
-      [PhoebusProperty.LINE_WIDTH]: "borderWidth",
-      [PhoebusProperty.LINE_STYLE]: "borderStyle",
+      ...STYLE_PROP_MAP,
     },
   },
 
@@ -346,9 +357,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     weissName: "NotImplemented",
     propMap: {
       ...COMMON_PROP_MAP,
-      [PhoebusProperty.LINE_COLOR]: "borderColor",
-      [PhoebusProperty.LINE_WIDTH]: "borderWidth",
-      [PhoebusProperty.LINE_STYLE]: "borderStyle",
+      ...STYLE_PROP_MAP,
     },
   },
 
@@ -381,6 +390,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     weissName: "GraphXY",
     propMap: {
       ...COMMON_PROP_MAP,
+      ...STYLE_PROP_MAP,
       // pvNames, lineColors are deferred for now.
     },
   },
@@ -389,6 +399,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     weissName: "GraphY",
     propMap: {
       ...COMMON_PROP_MAP,
+      ...STYLE_PROP_MAP,
       // pvNames, lineColors are deferred for now.
     },
   },
