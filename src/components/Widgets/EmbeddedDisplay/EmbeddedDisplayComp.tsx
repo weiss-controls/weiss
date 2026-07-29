@@ -53,11 +53,18 @@ function exportedToWidget(raw: ExportedWidget): Widget | null {
     ]),
   );
 
+  const rules = raw.rules?.map((r) => ({
+    ...r,
+    id: uuidv4(),
+    pvNames: r.conditions.map((c) => c.pvName),
+  }));
+
   return {
     id: `${raw.widgetName}-${uuidv4()}`,
     widgetName: raw.widgetName,
     editableProperties,
     children,
+    rules,
   };
 }
 
@@ -129,13 +136,15 @@ function scaleWidgets(
 }
 
 /**
- * Walk the widget tree and replace macros in pvName, pvNames, and all text
+ * Walk the widget tree and replace macros in pvName, pvNames, rules and all text
  * selType properties (labels, tooltips, titles, etc.).
+ * All Embedded Display macros should be applied immediately after load.
  */
 function applyMacros(widgets: Widget[], macros: Record<string, string>): Widget[] {
   if (Object.keys(macros).length === 0) return widgets;
   return widgets.map((w) => {
     let props = substituteTextProps(w.editableProperties, macros);
+    let rules = w.rules;
     if (props.pvName?.value) {
       props = {
         ...props,
@@ -151,10 +160,29 @@ function applyMacros(widgets: Widget[], macros: Record<string, string>): Widget[
         },
       };
     }
+    // apply in rules
+    if (w.rules?.length) {
+      rules = w.rules.map((r) => ({
+        ...r,
+        conditions: r.conditions.map((c) => ({
+          ...c,
+          pvName: substituteMacroInStr(c.pvName, macros),
+        })),
+        pvNames: r.pvNames.map((pv) => substituteMacroInStr(pv, macros)),
+        actions: {
+          ...r.actions,
+          pvName:
+            typeof r.actions?.pvName === "string"
+              ? substituteMacroInStr(r.actions.pvName, macros)
+              : r.actions?.pvName,
+        },
+      }));
+    }
     return {
       ...w,
       editableProperties: props,
       children: w.children ? applyMacros(w.children, macros) : undefined,
+      rules,
     };
   });
 }
@@ -261,7 +289,7 @@ const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
 
     const fresh = scaleWidgets(raw, scale, offsetX, offsetY, minX, minY).map(assignNewIds);
     const withMacros = applyMacros(fresh, macrosRef.current);
-
+    console.log(withMacros);
     updateChildrenRef.current(data.id, withMacros, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.id, x, y, targetW, targetH]);
