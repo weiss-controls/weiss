@@ -55,6 +55,20 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale }) => {
     const y = w.editableProperties.y!.value - parentY;
     const width = w.editableProperties.width!.value;
     const height = w.editableProperties.height!.value;
+    // Resize handle size is 10% of the widget size, but clamped between 6px and 24px.
+    const handleWidth = Math.min(Math.max(width * 0.1, 6), 24);
+    const handleHeight = Math.min(Math.max(height * 0.1, 6), 24);
+
+    const resizeHandleStyles = {
+      left: { width: `${handleWidth}px` },
+      right: { width: `${handleWidth}px` },
+      top: { height: `${handleHeight}px` },
+      bottom: { height: `${handleHeight}px` },
+      topLeft: { width: `${2 * handleWidth}px`, height: `${2 * handleHeight}px` },
+      topRight: { width: `${2 * handleWidth}px`, height: `${2 * handleHeight}px` },
+      bottomLeft: { width: `${2 * handleWidth}px`, height: `${2 * handleHeight}px` },
+      bottomRight: { width: `${2 * handleWidth}px`, height: `${2 * handleHeight}px` },
+    };
 
     const canDrag = inEditMode && !isPanning && !isChild && !isEmbedded && !isTextEditing;
     const canResize =
@@ -80,6 +94,7 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale }) => {
         scale={scale}
         disableDragging={!canDrag}
         enableResizing={canResize}
+        resizeHandleStyles={resizeHandleStyles}
         size={{ width, height }}
         position={{ x, y }}
         className={editModeClass}
@@ -109,6 +124,20 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale }) => {
 
     const canDrag = inEditMode && !isPanning;
     const canResize = inEditMode && !isPanning;
+    // Resize handle size is 10% of the widget size, but clamped between 6px and 24px.
+    const handleWidth = Math.min(Math.max(selectionBounds.width * 0.1, 6), 24);
+    const handleHeight = Math.min(Math.max(selectionBounds.height * 0.1, 6), 24);
+
+    const resizeHandleStyles = {
+      left: { width: `${handleWidth}px` },
+      right: { width: `${handleWidth}px` },
+      top: { height: `${handleHeight}px` },
+      bottom: { height: `${handleHeight}px` },
+      topLeft: { width: `${2 * handleWidth}px`, height: `${2 * handleHeight}px` },
+      topRight: { width: `${2 * handleWidth}px`, height: `${2 * handleHeight}px` },
+      bottomLeft: { width: `${2 * handleWidth}px`, height: `${2 * handleHeight}px` },
+      bottomRight: { width: `${2 * handleWidth}px`, height: `${2 * handleHeight}px` },
+    };
 
     const renderRecursiveForSelection = (w: Widget, parentX = 0, parentY = 0): ReactNode => {
       const x = w.editableProperties.x!.value - parentX;
@@ -146,6 +175,7 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale }) => {
         position={{ x: selectionBounds.x, y: selectionBounds.y }}
         enableResizing={canResize}
         disableDragging={!canDrag}
+        resizeHandleStyles={resizeHandleStyles}
         onDrag={() => setIsDragging(true)}
         onDragStop={(_e, d) => {
           const dx = d.x - selectionBounds.x;
