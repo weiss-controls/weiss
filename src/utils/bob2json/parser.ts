@@ -174,7 +174,7 @@ function parseItems(itemsEl: Element): string[] {
 function parseMacros(macrosEl: Element): Record<string, string> {
   const out: Record<string, string> = {};
   for (const child of Array.from(macrosEl.children)) {
-    out[child.tagName] = child.textContent?.trim() ?? "";
+    out[`$(${child.tagName})`] = child.textContent?.trim() ?? "";
   }
   return out;
 }
