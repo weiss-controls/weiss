@@ -148,7 +148,12 @@ def get_file_ext(filename: str) -> str:
     return ext.lower()
 
 
-def run_git(cmd: list[str], cwd: str | None = None, allow_fail: bool = False) -> str:
+def run_git(
+    cmd: list[str],
+    cwd: str | None = None,
+    allow_fail: bool = False,
+    timeout: int = 30,
+) -> str:
     """Run git command and raise exception if allow_fail==False (default)"""
     try:
         base_cmd = [
@@ -170,8 +175,16 @@ def run_git(cmd: list[str], cwd: str | None = None, allow_fail: bool = False) ->
             check=True,
             capture_output=True,
             text=True,
+            timeout=timeout,
         )
         return result.stdout.strip()
+    except subprocess.TimeoutExpired:
+        if allow_fail:
+            return ""
+        raise HTTPException(
+            status_code=504,
+            detail=f"Git command timed out after {timeout}s: {' '.join(cmd)}",
+        )
     except subprocess.CalledProcessError as e:
         if allow_fail:
             return ""
@@ -525,53 +538,51 @@ def list_repository_refs(repo_id: str, user: User = Depends(require_developer)) 
 
 @router.post("/{repo_id}/sync", response_model=StagingTreeInfo, operation_id="syncRepo")
 def update_repo(repo_id: str, user: User = Depends(require_developer)):
-    """Fetch new tags/commits from default branch and rebase current worktree onto it."""
+    """Fetch new tags/commits from default branch and rebase current worktree onto it.
+    This is done so we keep commit history always linear.
+    If the rebase or fetch fails, the user's changes are restored unchanged and an error is returned.
+    """
     repo_path = get_user_worktree_path(repo_id, user)
     bare_repo = os.path.join(REPOS_BASE_PATH, repo_id, BARE_CLONE_NAME)
     default_branch = get_default_branch(bare_repo)
     is_dirty = bool(run_git(["status", "--porcelain"], cwd=repo_path).strip())
+    # save wherever we are right now before touching anything
+    original_head = run_git(["rev-parse", "HEAD"], cwd=repo_path)
 
     if is_dirty:
         run_git(["stash", "push", "--include-untracked"], cwd=repo_path)
-    # update default branch
-    run_git(["fetch", "origin", f"{default_branch}:{default_branch}"], cwd=repo_path)
+
+    def restore_and_raise(detail: str, status_code: int = 409):
+        """Unconditionally put the user back where they started, changes intact, then raise."""
+        run_git(["rebase", "--abort"], cwd=repo_path, allow_fail=True)
+        run_git(["reset", "--hard", original_head], cwd=repo_path, allow_fail=True)
+        if is_dirty:
+            run_git(["stash", "pop"], cwd=repo_path, allow_fail=True)
+        raise HTTPException(status_code=status_code, detail=detail)
+
+    try:
+        # Wait at most 60 seconds for fetch to complete, considering large repos in a slow network.
+        run_git(["fetch", "origin", f"{default_branch}:{default_branch}"], cwd=repo_path, timeout=60)
+    except HTTPException:
+        restore_and_raise(f"Failed to fetch {default_branch} branch updates. Aborted.", status_code=502)
 
     try:
         run_git(["rebase", default_branch], cwd=repo_path)
     except HTTPException:
-        run_git(["rebase", "--abort"], cwd=repo_path)
-        if is_dirty:
-            # Restore original workspace state
-            run_git(["stash", "apply"], cwd=repo_path)
-            run_git(["stash", "drop"], cwd=repo_path)
-        raise HTTPException(
-            status_code=409,
-            detail="Failed to rebase. Aborting commit. Please checkout to latest ref to apply your changes.",
+        restore_and_raise(
+            f"Your changes conflict with the latest updates on {default_branch} branch."
+            "Please pull the latest ref and reapply them manually."
         )
 
-    # Only reached if rebase succeeded
+    # Rebase succeeded onto new commits — try to bring the user's changes back onto it.
     if is_dirty:
         try:
-            run_git(["stash", "apply"], cwd=repo_path)
+            run_git(["stash", "pop"], cwd=repo_path)
         except HTTPException:
-            raise HTTPException(
-                status_code=409,
-                detail="Local changes conflict with latest updates. Please start from latest ref or resolve conflicts"
-                " manually. Aborting.",
+            restore_and_raise(
+                "Your changes conflict with the latest updates on the default branch. "
+                "No update was applied. Please pull the latest ref and reapply changes manually."
             )
-
-        conflicts = run_git(
-            ["diff", "--name-only", "--diff-filter=U"],
-            cwd=repo_path,
-        )
-        if conflicts.strip():
-            raise HTTPException(
-                status_code=409,
-                detail="Local changes conflict with latest updates. Please start from latest ref or resolve"
-                " conflicts manually. Aborting.",
-            )
-
-        run_git(["stash", "drop"], cwd=repo_path)
         run_git(["add", "."], cwd=repo_path)
 
     return get_staging_repo_tree(repo_id, user)
