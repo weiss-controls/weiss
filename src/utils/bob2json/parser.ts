@@ -262,6 +262,12 @@ function parseWidget(widgetEl: Element): PhoebusWidget {
       continue;
     }
 
+    /* ── Macros (embedded display) ─────────────────────────────────────── */
+    if (tag === PhoebusProperty.MACROS) {
+      properties.set(PhoebusProperty.MACROS, parseMacros(child));
+      continue;
+    }
+
     /* ── Actions / scripts / rules — store raw for future handling ────── */
     if (
       tag === PhoebusProperty.ACTIONS ||
