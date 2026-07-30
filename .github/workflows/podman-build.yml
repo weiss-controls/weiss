@@ -13,7 +13,7 @@ jobs:
       matrix:
         include:
           - os: linux-amd64
-            runner: ubuntu-latest
+            runner: ubuntu-24.04
           - os: linux-aarch64
             runner: ubuntu-24.04-arm
 
@@ -26,6 +26,11 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
 
+      - name: Work around actions/runner-images#14473 (podman uses stale crun)
+        run:
+          (echo '[engine.runtimes]'; echo 'crun = [ "/usr/local/bin/crun" ]') | sudo tee
+          /etc/containers/containers.conf
+
       - name: Install podman-compose
         run: pip install podman-compose
 
@@ -33,17 +38,7 @@ jobs:
         run: cp .env.example .env
 
       - name: Podman Build (Default)
-        run: |
-          if [ "${{ matrix.os }}" = "linux-aarch64" ]; then
-            podman --runtime "$(command -v crun)" compose build
-          else
-            podman compose build
-          fi
+        run: podman compose build
 
       - name: Podman Build (Dev)
-        run: |
-          if [ "${{ matrix.os }}" = "linux-aarch64" ]; then
-            podman --runtime "$(command -v crun)" compose -f docker-compose-dev.yml build
-          else
-            podman compose -f docker-compose-dev.yml build
-          fi
+        run: podman compose -f docker-compose-dev.yml build
