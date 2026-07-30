@@ -217,6 +217,17 @@ function isTrue(raw: unknown): boolean {
   return raw === true || raw === PhoebusBoolean.TRUE || raw === 1;
 }
 
+function isHorizontal(phWidget: PhoebusWidget): boolean {
+  const raw = phWidget.properties.get(PhoebusProperty.HORIZONTAL);
+  if (raw === undefined || raw === null) {
+    // if omitted, default to true for these widgets
+    return (
+      phWidget.type === PhoebusWidgetType.PROGRESS_BAR ||
+      phWidget.type === PhoebusWidgetType.BYTE_MONITOR
+    );
+  }
+  return isTrue(raw);
+}
 /**
  * Phoebus labels are transparent by default even when the tag is omitted.
  * For other widgets, omission means false unless explicitly set.
@@ -391,6 +402,7 @@ function convertWidget(
   for (const [phKey, weissKeyRaw] of Object.entries(entry.propMap)) {
     if (typeof weissKeyRaw !== "string") continue;
 
+    // Handle default values - they are ommitted from XML, so we need to provide them if missing.
     const weissKey = weissKeyRaw;
     const phoebusKey = phKey as PhoebusProperty;
     const raw = phWidget.properties.get(phoebusKey);
@@ -415,6 +427,17 @@ function convertWidget(
         continue;
       }
     }
+
+    if (weissKey === "horizontal") {
+      if (
+        phWidget.type === PhoebusWidgetType.BYTE_MONITOR ||
+        phWidget.type === PhoebusWidgetType.PROGRESS_BAR
+      ) {
+        properties[weissKey] = isHorizontal(phWidget);
+        continue;
+      }
+    }
+    // end of default value handling, skip all undefined/null from now on.
 
     if (raw === undefined || raw === null) continue;
 

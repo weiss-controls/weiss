@@ -115,6 +115,8 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
       ...COMMON_PROP_MAP,
       ...STYLE_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
+      [PhoebusProperty.HORIZONTAL]: "horizontal",
+      [PhoebusProperty.NBITS]: "nBits",
     },
   },
 

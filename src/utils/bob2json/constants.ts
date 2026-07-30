@@ -85,6 +85,8 @@ export const PhoebusProperty = {
   HEIGHT: "height",
 
   ROTATION: "rotation",
+  HORIZONTAL: "horizontal",
+  NBITS: "numBits",
 
   VISIBLE: "visible",
   ENABLED: "enabled",
