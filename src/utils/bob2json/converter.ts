@@ -99,7 +99,7 @@ function mapHAlign(raw: unknown): string | undefined {
     case PhoebusAlignment.RIGHT:
       return "right";
     default:
-      return undefined;
+      return "left";
   }
 }
 
@@ -117,7 +117,7 @@ function mapVAlign(raw: unknown): string | undefined {
       case 2:
         return "bottom";
       default:
-        return undefined;
+        return "middle";
     }
   }
 
@@ -144,7 +144,7 @@ function mapVAlign(raw: unknown): string | undefined {
     case PhoebusAlignment.BOTTOM:
       return "bottom";
     default:
-      return undefined;
+      return "middle";
   }
 }
 
@@ -164,7 +164,7 @@ function mapLineStyle(raw: unknown): string | undefined {
       case "DASHDOTDOT":
         return "dashed"; // fallback
       default:
-        return undefined;
+        return "none";
     }
   }
   if (typeof raw === "number") {
@@ -180,10 +180,10 @@ function mapLineStyle(raw: unknown): string | undefined {
       case 4:
         return "dashed"; // fallback
       default:
-        return undefined;
+        return "none";
     }
   }
-  return undefined;
+  return "none";
 }
 
 /**
@@ -197,7 +197,15 @@ function extractFontProps(raw: unknown): Record<string, PropertyValue> {
   if (!raw || typeof raw !== "object") return {};
   const f = raw as PhoebusFont;
   const out: Record<string, PropertyValue> = {};
-  if (f.family) out.fontFamily = f.family;
+  if (f.family) {
+    const familyStr = String(f.family).trim().toLowerCase();
+    if (familyStr.includes("monospace")) out.fontFamily = "monospace";
+    else if (familyStr.includes("sans")) out.fontFamily = "sans-serif";
+    else if (familyStr.includes("serif")) out.fontFamily = "serif";
+    else if (familyStr.includes("fantasy")) out.fontFamily = "fantasy";
+    else if (familyStr.includes("cursive")) out.fontFamily = "cursive";
+    else out.fontFamily = "serif";
+  }
   if (f.size !== undefined) out.fontSize = f.size;
   if (f.bold !== undefined) out.fontBold = f.bold;
   if (f.italic !== undefined) out.fontItalic = f.italic;
@@ -309,9 +317,9 @@ function buildUnsupportedPlaceholderWidget(
       label: "Unsupported Phoebus Widget",
       textHAlign: "center",
       textVAlign: "middle",
-      backgroundColor: COLORS.lightGray,
-      borderStyle: "none",
-      borderWidth: 0,
+      backgroundColor: "transparent",
+      borderStyle: "dashed",
+      borderWidth: 1,
       fontSize: 12,
       textColor: COLORS.textColor,
       tooltip,
