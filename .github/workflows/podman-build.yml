@@ -33,7 +33,17 @@ jobs:
         run: cp .env.example .env
 
       - name: Podman Build (Default)
-        run: podman compose build
+        run: |
+          if [ "${{ matrix.os }}" = "linux-aarch64" ]; then
+            podman --runtime "$(command -v crun)" compose build
+          else
+            podman compose build
+          fi
 
       - name: Podman Build (Dev)
-        run: podman compose -f docker-compose-dev.yml build
+        run: |
+          if [ "${{ matrix.os }}" = "linux-aarch64" ]; then
+            podman --runtime "$(command -v crun)" compose -f docker-compose-dev.yml build
+          else
+            podman compose -f docker-compose-dev.yml build
+          fi
