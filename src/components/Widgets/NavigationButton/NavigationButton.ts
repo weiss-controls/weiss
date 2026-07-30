@@ -22,5 +22,6 @@ export const NavigationButton: WidgetDefinition = {
     displayPath: PROPERTY_SCHEMAS.displayPath,
     disabled: PROPERTY_SCHEMAS.disabled,
     tooltip: { ...PROPERTY_SCHEMAS.tooltip, value: "" },
+    macros: { ...PROPERTY_SCHEMAS.macros },
   },
 };

@@ -61,7 +61,22 @@ export function substituteTextProps(
     if (!prop) {
       continue;
     }
-    if (prop.selType === "text" && typeof prop.value === "string") {
+    if (key === "macros") {
+      // Substitute possible macros in the macros values (e.g. embedded screens)
+      const original = prop.value as Record<string, string>;
+      const substituted: Record<string, string> = {};
+      let macrosChanged = false;
+      for (const macroKey of Object.keys(original)) {
+        const macroValue = original[macroKey];
+        const substitutedValue = substituteMacroInStr(macroValue, macros);
+        substituted[macroKey] = substitutedValue;
+        if (substitutedValue !== macroValue) {
+          macrosChanged = true;
+        }
+        resultRecord[key] = macrosChanged ? { ...prop, value: substituted } : prop;
+        changed ||= macrosChanged;
+      }
+    } else if (prop.selType === "text" && typeof prop.value === "string") {
       const substituted = substituteMacroInStr(prop.value, macros);
       if (substituted !== prop.value) {
         resultRecord[key] = { ...prop, value: substituted };
