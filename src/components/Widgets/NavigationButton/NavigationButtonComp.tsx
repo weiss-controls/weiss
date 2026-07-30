@@ -11,7 +11,7 @@ import { useWidgetContext } from "@src/context/useWidgetContext";
 
 const NavigationButtonComp: React.FC<WidgetUpdate> = ({ data }) => {
   const { inEditMode, selectedFile, setSelectedFile } = useUIContext();
-  const { macroOverrides, setMacroOverrides } = useWidgetContext();
+  const { setMacroOverrides } = useWidgetContext();
   const p = data.editableProperties;
   const clicked = React.useRef(false);
 
@@ -33,8 +33,10 @@ const NavigationButtonComp: React.FC<WidgetUpdate> = ({ data }) => {
     if (!clicked.current) return;
     clicked.current = false;
     if (p.macros?.value) {
-      setMacroOverrides({ ...macroOverrides, ...p.macros.value });
+      setMacroOverrides((prev) => ({ ...prev, ...p.macros?.value }));
     }
+    // We intentionally want this effect to run only when the selected file changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFile]);
 
   if (!p.visible?.value) return null;
