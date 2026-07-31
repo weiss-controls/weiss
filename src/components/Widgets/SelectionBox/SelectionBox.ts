@@ -23,6 +23,6 @@ export const SelectionBox: WidgetDefinition = {
     disabled: PROPERTY_SCHEMAS.disabled,
     alarmBorder: PROPERTY_SCHEMAS.alarmBorder,
     enumChoices: PROPERTY_SCHEMAS.enumChoices,
-    labelFromPV: PROPERTY_SCHEMAS.labelFromPV,
+    labelFromPV: { ...PROPERTY_SCHEMAS.labelFromPV, value: true },
   },
 };

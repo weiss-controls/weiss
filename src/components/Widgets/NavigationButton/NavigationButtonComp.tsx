@@ -64,7 +64,7 @@ const NavigationButtonComp: React.FC<WidgetUpdate> = ({ data }) => {
         textTransform: "none",
         minWidth: 0,
         minHeight: 0,
-        padding: 0,
+        padding: 0.5,
         pointerEvents: inEditMode ? "none" : "auto",
         overflow: "hidden",
       }}

@@ -70,7 +70,7 @@ export const PROPERTY_SCHEMAS = {
   unitsFromPV:     defineProp({ selType: "boolean", label: "Units from PV", value: true as boolean, category: "EPICS" }),
   units:           defineProp({ selType: "text", label: "Units", value: "" as string, category: "EPICS" }),
   alarmBorder:     defineProp({ selType: "boolean", label: "Alarm border", value: true as boolean, category: "EPICS" }),
-  labelFromPV:     defineProp({ selType: "boolean", label: "Label(s) from PV", value: true as boolean, category: "EPICS" }),
+  labelFromPV:     defineProp({ selType: "boolean", label: "Label(s) from PV", value: false as boolean, category: "EPICS" }),
   actionValue:     defineProp({ selType: "text", label: "Action Value", value: 1 as number | string, category: "EPICS" }),
   // BitIndicators
   horizontal:      defineProp({ selType: "boolean", label: "Horizontal", value: false, category: "Layout" }),
