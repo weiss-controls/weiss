@@ -26,11 +26,6 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
 
-      - name: Work around actions/runner-images#14473 (podman uses stale crun)
-        run:
-          (echo '[engine.runtimes]'; echo 'crun = [ "/usr/local/bin/crun" ]') | sudo tee
-          /etc/containers/containers.conf
-
       - name: Install podman-compose
         run: pip install podman-compose
 
