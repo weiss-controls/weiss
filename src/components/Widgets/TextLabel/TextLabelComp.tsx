@@ -35,6 +35,13 @@ const TextLabelComp: React.FC<WidgetUpdate> = ({ data }) => {
         width: "100%",
         height: "100%",
         boxSizing: "border-box",
+        display: "flex",
+        alignItems:
+          p.textVAlign?.value === "top"
+            ? "flex-start"
+            : p.textVAlign?.value === "bottom"
+              ? "flex-end"
+              : "center",
         backgroundColor: p.backgroundColor?.value,
         borderRadius: p.borderRadius?.value,
         borderStyle: p.borderStyle?.value,
@@ -60,6 +67,7 @@ const TextLabelComp: React.FC<WidgetUpdate> = ({ data }) => {
         style={{
           width: "100%",
           height: "100%",
+          lineHeight: "normal",
           textAlign: (p.textHAlign?.value ?? "left") as CSSProperties["textAlign"],
           pointerEvents: inEditMode ? "auto" : "none",
           fontSize: p.fontSize?.value,

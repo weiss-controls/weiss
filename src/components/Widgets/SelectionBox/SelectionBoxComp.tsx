@@ -7,6 +7,7 @@ import type { WidgetUpdate } from "@src/types/widgets";
 import AlarmBorder from "@components/AlarmBorder/AlarmBorder";
 import { useWSActionsContext } from "@src/context/useEpicsWSContext";
 import { useUIContext } from "@src/context/useUIContext";
+import { FLEX_ALIGN_MAP } from "@src/constants/constants";
 
 const SelectionBoxComp: React.FC<WidgetUpdate> = ({ data }) => {
   const { writePVValue } = useWSActionsContext();
@@ -57,7 +58,29 @@ const SelectionBoxComp: React.FC<WidgetUpdate> = ({ data }) => {
           borderColor: p.borderColor?.value,
         }}
       >
-        <InputLabel sx={commonConfig}>{p.label?.value}</InputLabel>
+        <InputLabel
+          sx={{
+            ...commonConfig,
+            padding: 0.6,
+            transformOrigin: "top left",
+            transform: "translateY(-50%) scale(1)",
+            justifyContent: p.textHAlign?.value ?? "left",
+            display: "flex",
+            alignItems: FLEX_ALIGN_MAP[p.textVAlign?.value ?? "middle"],
+            top: "50%",
+            transition: (theme) =>
+              theme.transitions.create(["transform", "top"], {
+                duration: theme.transitions.duration.shorter,
+              }),
+            "&.MuiInputLabel-shrink": {
+              padding: 0.6,
+              top: p.height?.value ? `-${p.height.value / 2}px` : "-50%",
+              transform: "translateY(0) scale(0.75)",
+            },
+          }}
+        >
+          {p.label?.value}
+        </InputLabel>
         <Select
           value={String(currentIndex)}
           disabled={p.disabled?.value}
