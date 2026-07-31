@@ -19,7 +19,7 @@ import {
 } from "./constants";
 import { WIDGET_MAP } from "@src/utils/bob2json/mapping";
 import type { PhoebusDisplay, PhoebusFont, PhoebusState, PhoebusWidget } from "./types";
-import type { ExportedWidget, PropertyValue, StateEntry } from "@src/types/widgets";
+import type { DOMRectLike, ExportedWidget, PropertyValue, StateEntry } from "@src/types/widgets";
 import { COLORS } from "@src/constants/constants";
 
 /* -------------------------------------------------------------------------- */
@@ -618,6 +618,60 @@ function makeGridWidget(display: PhoebusDisplay): ExportedWidget {
   };
 }
 
+/**
+ * Gets the bounding rectangle of a set of widgets, or null if no widgets are provided.
+ * The bounding rectangle is the smallest rectangle that contains all widgets.
+ * It is represented as an object with x, y, width, and height properties.
+ */
+const computeScreenBounds = (widgets: ExportedWidget[]): DOMRectLike | null => {
+  if (!widgets.length) return null;
+
+  const xs = widgets.map((w) => w.properties.x as number);
+  const ys = widgets.map((w) => w.properties.y as number);
+  const ws = widgets.map((w) => w.properties.width as number);
+  const hs = widgets.map((w) => w.properties.height as number);
+  if (!xs.length || !ys.length || !ws.length || !hs.length) return null;
+  const minX = Math.min(...xs);
+  const minY = Math.min(...ys);
+  const maxX = Math.max(...xs.map((x, i) => x + ws[i]));
+  const maxY = Math.max(...ys.map((y, i) => y + hs[i]));
+  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+};
+
+/**
+ * Recursively shifts a widget (and any nested children) by (dx, dy).
+ */
+const shiftWidgetPosition = (widget: ExportedWidget, dx: number, dy: number): void => {
+  if (typeof widget.properties.x === "number") {
+    widget.properties.x += dx;
+  }
+  if (typeof widget.properties.y === "number") {
+    widget.properties.y += dy;
+  }
+
+  const children = widget.children;
+  if (Array.isArray(children)) {
+    for (const child of children) shiftWidgetPosition(child, dx, dy);
+  }
+};
+
+/**
+ * Centers all widgets on (0,0), using only `contentWidgets` to determine the
+ * bounding box, but shifting every widget in `allWidgets` (including the grid).
+ */
+const centerWidgetsToOrigin = (
+  allWidgets: ExportedWidget[],
+  contentWidgets: ExportedWidget[],
+): void => {
+  const bounds = computeScreenBounds(contentWidgets);
+  if (!bounds) return;
+
+  const dx = -(bounds.x + bounds.width / 2);
+  const dy = -(bounds.y + bounds.height / 2);
+
+  for (const w of allWidgets) shiftWidgetPosition(w, dx, dy);
+};
+
 /* -------------------------------------------------------------------------- */
 /* Public API                                                                  */
 /* -------------------------------------------------------------------------- */
@@ -632,14 +686,19 @@ function makeGridWidget(display: PhoebusDisplay): ExportedWidget {
  */
 export function convertDisplay(display: PhoebusDisplay): ConversionResult {
   const warnings: string[] = [];
-  const widgets: ExportedWidget[] = [makeGridWidget(display)];
+  const gridWidget = makeGridWidget(display);
+  const contentWidgets: ExportedWidget[] = [];
   const rootXOffset = display.x ?? 0;
   const rootYOffset = display.y ?? 0;
 
   for (const phWidget of display.widgets) {
     const converted = convertWidget(phWidget, warnings, rootXOffset, rootYOffset, true);
-    if (converted !== null) widgets.push(converted);
+    if (converted !== null) contentWidgets.push(converted);
   }
+
+  const widgets: ExportedWidget[] = [gridWidget, ...contentWidgets];
+
+  centerWidgetsToOrigin(widgets, contentWidgets);
 
   return { widgets, warnings };
 }
