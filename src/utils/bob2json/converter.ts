@@ -2,417 +2,38 @@
 // Copyright (C) 2026 André Favoto
 
 /**
- * Phoebus XML → WEISS .opi.json parser.
+ * Converts Phoebus widgets to WEISS .opi.json widgets.
  *
  * Converts a parsed PhoebusDisplay into an array of ConvertedWidget objects
  * ready to be JSON-serialised and saved as a .opi.json file.
  * Anything that cannot be mapped is dropped and recorded in ConversionResult.warnings.
  */
 
-import {
-  PhoebusAttribute,
-  PhoebusAlignment,
-  PhoebusBoolean,
-  PhoebusProperty,
-  PhoebusWidgetType,
-} from "./constants";
+import { PhoebusBoolean, PhoebusProperty, PhoebusWidgetType, COLOR_PROP_KEYS } from "./constants";
 import { PHOEBUS_WIDGET_DEFAULTS, applyWidgetDefaults } from "./defaults";
 import { WIDGET_MAP } from "@src/utils/bob2json/mapping";
-import type { PhoebusDisplay, PhoebusFont, PhoebusState, PhoebusWidget } from "./types";
-import type { DOMRectLike, ExportedWidget, PropertyValue, StateEntry } from "@src/types/widgets";
-import { COLORS } from "@src/constants/constants";
-
-/* -------------------------------------------------------------------------- */
-/* Output types                                                                */
-/* -------------------------------------------------------------------------- */
+import type { PhoebusDisplay, PhoebusWidget } from "./types";
+import type { ExportedWidget, PropertyValue } from "@src/types/widgets";
+import { parseActionButton } from "./converter/actionButton";
+import { centerWidgetsToOrigin } from "./converter/layout";
+import { buildUnsupportedPlaceholderWidget } from "./converter/placeholders";
+import {
+  colorToRgba,
+  extractFontProps,
+  getNumericProperty,
+  isTrue,
+  mapEmbeddedDisplayPath,
+  mapHAlign,
+  mapLineStyle,
+  mapStates,
+  mapVAlign,
+  normalizeTooltipMacros,
+} from "./converter/valueMappers";
 
 export interface ConversionResult {
   widgets: ExportedWidget[];
   warnings: string[];
 }
-
-/* -------------------------------------------------------------------------- */
-/* Helpers                                                                     */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Converts a PhoebusColor to CSS rgba(r, g, b, a).
- * Alpha defaults to 1 when omitted by Phoebus.
- * Returns undefined when the input is not a valid color object.
- */
-function colorToRgba(raw: unknown): string | undefined {
-  if (!raw || typeof raw !== "object") return undefined;
-  const c = raw as Record<string, unknown>;
-  const r = Number(c[PhoebusAttribute.RED]);
-  const g = Number(c[PhoebusAttribute.GREEN]);
-  const b = Number(c[PhoebusAttribute.BLUE]);
-  if ([r, g, b].some(isNaN)) return undefined;
-
-  const rawAlpha = c[PhoebusAttribute.ALPHA];
-  const alphaNumber = rawAlpha === undefined ? 1 : Number(rawAlpha);
-  if (isNaN(alphaNumber)) return undefined;
-
-  // Phoebus alpha can be encoded either as [0,1] or [0,255].
-  const normalizedAlpha = alphaNumber > 1 ? alphaNumber / 255 : alphaNumber;
-  const clampedAlpha = Math.max(0, Math.min(1, normalizedAlpha));
-  const clampedR = Math.max(0, Math.min(255, r));
-  const clampedG = Math.max(0, Math.min(255, g));
-  const clampedB = Math.max(0, Math.min(255, b));
-
-  return `rgba(${clampedR}, ${clampedG}, ${clampedB}, ${clampedAlpha})`;
-}
-
-/**
- * Converts a Phoebus horizontal alignment value to the WEISS equivalent.
- * WEISS uses lowercase "left" | "center" | "right".
- */
-function mapHAlign(raw: unknown): string | undefined {
-  if (typeof raw === "number") {
-    switch (raw) {
-      case 0:
-        return "left";
-      case 1:
-        return "center";
-      case 2:
-        return "right";
-      default:
-        return undefined;
-    }
-  }
-
-  if (typeof raw === "string") {
-    const trimmed = raw.trim();
-    const asNumber = Number(trimmed);
-    if (!isNaN(asNumber)) return mapHAlign(asNumber);
-
-    const normalized = trimmed.toUpperCase();
-    if (normalized === "LEFT") return "left";
-    if (normalized === "CENTER" || normalized === "CENTRE") return "center";
-    if (normalized === "RIGHT") return "right";
-  }
-
-  switch (raw) {
-    case PhoebusAlignment.LEFT:
-      return "left";
-    case PhoebusAlignment.CENTRE:
-      return "center";
-    case PhoebusAlignment.RIGHT:
-      return "right";
-    default:
-      return "left";
-  }
-}
-
-/**
- * Converts a Phoebus vertical alignment value to the WEISS equivalent.
- * WEISS uses lowercase "top" | "middle" | "bottom".
- */
-function mapVAlign(raw: unknown): string | undefined {
-  if (typeof raw === "number") {
-    switch (raw) {
-      case 0:
-        return "top";
-      case 1:
-        return "middle";
-      case 2:
-        return "bottom";
-      default:
-        return "middle";
-    }
-  }
-
-  if (typeof raw === "string") {
-    const trimmed = raw.trim();
-    const asNumber = Number(trimmed);
-    if (!isNaN(asNumber)) return mapVAlign(asNumber);
-
-    const normalized = trimmed.toUpperCase();
-    if (normalized === "TOP") return "top";
-    if (normalized === "MIDDLE" || normalized === "CENTER" || normalized === "CENTRE") {
-      return "middle";
-    }
-    if (normalized === "BOTTOM") return "bottom";
-  }
-
-  switch (raw) {
-    case PhoebusAlignment.TOP:
-      return "top";
-    case PhoebusAlignment.MIDDLE:
-      return "middle";
-    case PhoebusAlignment.CENTRE:
-      return "middle";
-    case PhoebusAlignment.BOTTOM:
-      return "bottom";
-    default:
-      return "middle";
-  }
-}
-
-function mapLineStyle(raw: unknown): string | undefined {
-  console.log("mapLineStyle called with raw:", raw);
-  if (typeof raw === "string") {
-    const normalized = raw.trim().toUpperCase();
-    switch (normalized) {
-      case "SOLID":
-        return "solid";
-      case "DASH":
-        return "dashed";
-      case "DOT":
-        return "dotted";
-      case "DASHDOT":
-        return "dashed"; // fallback
-      case "DASHDOTDOT":
-        return "dashed"; // fallback
-      default:
-        return "none";
-    }
-  }
-  if (typeof raw === "number") {
-    switch (raw) {
-      case 0:
-        return "solid";
-      case 1:
-        return "dashed";
-      case 2:
-        return "dotted";
-      case 3:
-        return "dashed"; // fallback
-      case 4:
-        return "dashed"; // fallback
-      default:
-        return "none";
-    }
-  }
-  return "none";
-}
-
-/**
- * Extracts scalar TEXT_PROPS from a Phoebus <font> property value.
- * Phoebus font is a structured object; WEISS stores each aspect separately.
- *
- * Expected raw shape (after XML parse):
- *   { family?: string, size?: number, style?: "BOLD" | "ITALIC" | "BOLD_ITALIC" | "REGULAR" }
- */
-function extractFontProps(raw: unknown): Record<string, PropertyValue> {
-  if (!raw || typeof raw !== "object") return {};
-  const f = raw as PhoebusFont;
-  const out: Record<string, PropertyValue> = {};
-  if (f.family) {
-    const familyStr = String(f.family).trim().toLowerCase();
-    if (familyStr.includes("monospace")) out.fontFamily = "monospace";
-    else if (familyStr.includes("sans")) out.fontFamily = "sans-serif";
-    else if (familyStr.includes("serif")) out.fontFamily = "serif";
-    else if (familyStr.includes("fantasy")) out.fontFamily = "fantasy";
-    else if (familyStr.includes("cursive")) out.fontFamily = "cursive";
-    else out.fontFamily = "serif";
-  }
-  if (f.size !== undefined) out.fontSize = f.size;
-  if (f.bold !== undefined) out.fontBold = f.bold;
-  if (f.italic !== undefined) out.fontItalic = f.italic;
-  return out;
-}
-
-/** Returns true when the Phoebus property value represents a boolean true. */
-function isTrue(raw: unknown): boolean {
-  return raw === true || raw === PhoebusBoolean.TRUE || raw === 1;
-}
-
-/** Converts parsed Phoebus states to WEISS stateList entries. */
-function mapStates(raw: unknown): StateEntry[] | undefined {
-  if (!Array.isArray(raw)) return undefined;
-
-  const states = raw as PhoebusState[];
-  const mapped = states
-    .map((state): StateEntry | null => {
-      const color = colorToRgba(state.color);
-      if (color === undefined) return null;
-
-      return {
-        value: String(state.value),
-        color,
-        label: state.label ?? "",
-      };
-    })
-    .filter((state): state is StateEntry => state !== null);
-
-  return mapped.length > 0 ? mapped : undefined;
-}
-
-/** Converts Phoebus embedded display file extension to WEISS display extension. */
-function mapEmbeddedDisplayPath(raw: unknown): string | undefined {
-  if (typeof raw !== "string") return undefined;
-  return raw.replace(/\.bob$/i, ".opi.json");
-}
-
-const ACTION_BUTTON_PV_MACRO = "$(pv_name)";
-
-type ActionButtonMode = "write_pv" | "open_display";
-
-interface ParsedActionButton {
-  mode?: ActionButtonMode;
-  pvName?: string;
-  actionValue?: string | number;
-  displayPath?: string;
-  macros?: Record<string, string>;
-  target?: string;
-}
-
-function directChildText(parent: Element, tagName: string): string | undefined {
-  const child = Array.from(parent.children).find((el) => el.tagName === tagName);
-  return child?.textContent?.trim() ?? undefined;
-}
-
-function parseActionMacros(actionEl: Element): Record<string, string> | undefined {
-  const macrosEl = Array.from(actionEl.children).find(
-    (el) => el.tagName === PhoebusProperty.MACROS,
-  );
-  if (!macrosEl) return undefined;
-
-  const macros: Record<string, string> = {};
-  for (const macroEl of Array.from(macrosEl.children)) {
-    const key = macroEl.tagName.trim();
-    const value = macroEl.textContent?.trim();
-    if (key && value !== undefined) macros[key] = value;
-  }
-
-  return Object.keys(macros).length > 0 ? macros : undefined;
-}
-
-function parseActionButton(phWidget: PhoebusWidget, warnings: string[]): ParsedActionButton {
-  const rawActions = phWidget.properties.get(PhoebusProperty.ACTIONS);
-  if (!(rawActions instanceof Element)) {
-    warnings.push(
-      `Widget "${phWidget.name ?? phWidget.type}": could not read action payload — defaulting to ActionButton.`,
-    );
-    return {};
-  }
-
-  const actionEl = Array.from(rawActions.children).find((el) => el.tagName === "action");
-  if (!actionEl) {
-    warnings.push(
-      `Widget "${phWidget.name ?? phWidget.type}": no action element found — defaulting to ActionButton.`,
-    );
-    return {};
-  }
-
-  const mode = actionEl.getAttribute(PhoebusAttribute.TYPE)?.trim().toLowerCase();
-  if (mode === "write_pv") {
-    const rawPvName = directChildText(actionEl, PhoebusProperty.PV_NAME);
-    const rootPvName = phWidget.properties.get(PhoebusProperty.PV_NAME);
-    const resolvedPvName =
-      rawPvName === ACTION_BUTTON_PV_MACRO
-        ? typeof rootPvName === "string"
-          ? rootPvName.trim()
-          : undefined
-        : (rawPvName ?? (typeof rootPvName === "string" ? rootPvName.trim() : undefined));
-
-    const rawValue = directChildText(actionEl, "value");
-    const parsedValue = rawValue === undefined ? undefined : Number(rawValue);
-
-    return {
-      mode: "write_pv",
-      pvName: resolvedPvName,
-      actionValue:
-        rawValue === undefined || rawValue === ""
-          ? undefined
-          : parsedValue !== undefined && isFinite(parsedValue)
-            ? parsedValue
-            : rawValue,
-    };
-  }
-
-  if (mode === "open_display") {
-    const rawFile = directChildText(actionEl, PhoebusProperty.FILE);
-    const rawTarget = directChildText(actionEl, "target");
-
-    return {
-      mode: "open_display",
-      displayPath: rawFile ? (mapEmbeddedDisplayPath(rawFile) ?? rawFile) : undefined,
-      macros: parseActionMacros(actionEl),
-      target: rawTarget,
-    };
-  }
-
-  warnings.push(
-    `Widget "${phWidget.name ?? phWidget.type}": unsupported action type "${mode ?? "unknown"}" — defaulting to ActionButton.`,
-  );
-  return {};
-}
-
-/* -------------------------------------------------------------------------- */
-/* Color property keys — these need hex transformation instead of a raw copy  */
-/* -------------------------------------------------------------------------- */
-
-const COLOR_PROP_KEYS = new Set<PhoebusProperty>([
-  PhoebusProperty.BACKGROUND_COLOR,
-  PhoebusProperty.FOREGROUND_COLOR,
-  PhoebusProperty.BORDER_COLOR,
-  PhoebusProperty.ON_COLOR,
-  PhoebusProperty.OFF_COLOR,
-  PhoebusProperty.LINE_COLOR,
-]);
-
-/** Reads a numeric property from a Phoebus widget, accepting numeric strings too. */
-function getNumericProperty(
-  phWidget: PhoebusWidget,
-  key: PhoebusProperty,
-  fallback: number,
-): number {
-  const raw = phWidget.properties.get(key);
-  if (typeof raw === "number" && isFinite(raw)) return raw;
-  if (typeof raw === "string") {
-    const parsed = Number(raw);
-    if (isFinite(parsed)) return parsed;
-  }
-  return fallback;
-}
-
-/** Builds a visible square placeholder for unsupported Phoebus widgets. */
-function buildUnsupportedPlaceholderWidget(
-  phWidget: PhoebusWidget,
-  xOffset: number,
-  yOffset: number,
-  forcePositionFromOffset = false,
-): ExportedWidget {
-  const hasRawX = phWidget.properties.has(PhoebusProperty.X);
-  const hasRawY = phWidget.properties.has(PhoebusProperty.Y);
-  const x = hasRawX
-    ? getNumericProperty(phWidget, PhoebusProperty.X, 100) + xOffset
-    : forcePositionFromOffset
-      ? xOffset
-      : 100 + xOffset;
-  const y = hasRawY
-    ? getNumericProperty(phWidget, PhoebusProperty.Y, 100) + yOffset
-    : forcePositionFromOffset
-      ? yOffset
-      : 100 + yOffset;
-  const width = getNumericProperty(phWidget, PhoebusProperty.WIDTH, 100);
-  const height = getNumericProperty(phWidget, PhoebusProperty.HEIGHT, 100);
-  const tooltip = `Unsupported Phoebus widget: ${phWidget.type}`;
-
-  return {
-    widgetName: "TextLabel",
-    properties: {
-      x: x,
-      y: y,
-      width: width,
-      height: height,
-      label: "Unsupported Phoebus Widget",
-      textHAlign: "center",
-      textVAlign: "middle",
-      backgroundColor: "transparent",
-      borderStyle: "dashed",
-      borderWidth: 1,
-      fontSize: 12,
-      textColor: COLORS.textColor,
-      tooltip,
-    } as ExportedWidget["properties"],
-  };
-}
-
-/* -------------------------------------------------------------------------- */
-/* Core conversion                                                             */
-/* -------------------------------------------------------------------------- */
 
 /**
  * Converts a single PhoebusWidget into a ConvertedWidget.
@@ -437,16 +58,16 @@ function convertWidget(
     warnings.push(
       `Unsupported widget type "${phWidget.type}"` +
         (phWidget.name ? ` (name: "${phWidget.name}")` : "") +
-        " — replaced with placeholder.",
+        " - replaced with placeholder.",
     );
     return buildUnsupportedPlaceholderWidget(phWidget, xOffset, yOffset, forcePositionFromOffset);
   }
 
-  if (entry.weissName === "NotImplemented") {
+  if (entry.weissName === undefined) {
     warnings.push(
       `Widget type "${phWidget.type}"` +
         (phWidget.name ? ` (name: "${phWidget.name}")` : "") +
-        " is not implemented in WEISS yet — replaced with placeholder.",
+        " is not implemented in WEISS yet - replaced with placeholder.",
     );
     return buildUnsupportedPlaceholderWidget(phWidget, xOffset, yOffset, forcePositionFromOffset);
   }
@@ -457,7 +78,7 @@ function convertWidget(
   const hasRawX = phWidget.properties.has(PhoebusProperty.X);
   const hasRawY = phWidget.properties.has(PhoebusProperty.Y);
 
-  /* ── Font ───────────────────────────────────────────────────────────────────── */
+  // Font
   if (entry.hasFont) {
     const rawFont = phWidget.properties.get(PhoebusProperty.FONT);
     if (rawFont !== undefined && rawFont !== null) {
@@ -478,7 +99,7 @@ function convertWidget(
   for (const [phKey, weissKeyRaw] of Object.entries(entry.propMap)) {
     if (typeof weissKeyRaw !== "string") continue;
 
-    // Handle default values - they are ommitted from XML, so we need to provide them if missing.
+    // Handle default values. Phoebus omits properties that match built-in defaults.
     const weissKey = weissKeyRaw;
     const phoebusKey = phKey as PhoebusProperty;
     const raw = phWidget.properties.get(phoebusKey);
@@ -498,7 +119,7 @@ function convertWidget(
 
     if (raw === undefined || raw === null) continue;
 
-    /* ── Alignment enums ─────────────────────────────────────────────── */
+    // Alignment
     if (phoebusKey === PhoebusProperty.HORIZONTAL_ALIGNMENT) {
       const mapped = mapHAlign(raw);
       if (mapped !== undefined) properties[weissKey] = mapped;
@@ -511,7 +132,7 @@ function convertWidget(
       } else {
         warnings.push(
           `Widget "${phWidget.name ?? phWidget.type}": ` +
-            `unknown vertical alignment "${JSON.stringify(raw)}" — skipped.`,
+            `unknown vertical alignment "${JSON.stringify(raw)}" - skipped.`,
         );
       }
       continue;
@@ -524,16 +145,14 @@ function convertWidget(
       } else {
         warnings.push(
           `Widget "${phWidget.name ?? phWidget.type}": ` +
-            `unknown line style "${JSON.stringify(raw)}" — skipped.`,
+            `unknown line style "${JSON.stringify(raw)}" - skipped.`,
         );
       }
       continue;
     }
 
-    /* ── Color properties ────────────────────────────────────────────── */
+    // Color properties
     if (COLOR_PROP_KEYS.has(phoebusKey)) {
-      // Phoebus transparent semantics are about widget background transparency,
-      // not text/line colors. Keep non-background colors intact.
       if (isTransparent && weissKey === "backgroundColor") {
         properties[weissKey] = "transparent";
         continue;
@@ -545,13 +164,13 @@ function convertWidget(
       } else {
         warnings.push(
           `Widget "${phWidget.name ?? phWidget.type}": ` +
-            `could not parse color for "${phoebusKey}" — skipped.`,
+            `could not parse color for "${phoebusKey}" - skipped.`,
         );
       }
       continue;
     }
 
-    /* ── Multi-state LED states ─────────────────────────────────────── */
+    // Multi-state LED states
     if (phoebusKey === PhoebusProperty.STATES) {
       const mappedStates = mapStates(raw);
       if (mappedStates !== undefined) {
@@ -559,13 +178,13 @@ function convertWidget(
       } else {
         warnings.push(
           `Widget "${phWidget.name ?? phWidget.type}": ` +
-            `could not parse states for "${phoebusKey}" — skipped.`,
+            `could not parse states for "${phoebusKey}" - skipped.`,
         );
       }
       continue;
     }
 
-    /* ── Embedded display path ──────────────────────────────────────── */
+    // Embedded display path
     if (phoebusKey === PhoebusProperty.FILE && weissKey === "displayPath") {
       const mappedPath = mapEmbeddedDisplayPath(raw);
       if (mappedPath !== undefined) {
@@ -574,13 +193,22 @@ function convertWidget(
       continue;
     }
 
-    /* ── Embedded display macros ──────────────────────────────────────── */
+    // Embedded display macros
     if (phoebusKey === PhoebusProperty.MACROS && weissKey === "macros") {
       properties[weissKey] = raw as Record<string, string>;
       continue;
     }
 
-    /* ── Boolean ─────────────────────────────────────────────────────── */
+    // Tooltip macros
+    if (phoebusKey === PhoebusProperty.TOOLTIP) {
+      const normalized = normalizeTooltipMacros(raw);
+      if (normalized !== undefined) {
+        properties[weissKey] = normalized;
+      }
+      continue;
+    }
+
+    // Boolean
     if (
       phoebusKey === PhoebusProperty.VISIBLE ||
       phoebusKey === PhoebusProperty.ENABLED ||
@@ -592,7 +220,7 @@ function convertWidget(
       continue;
     }
 
-    /* ── Scalar pass-through (string / number) ───────────────────────── */
+    // Scalar pass-through
     if (typeof raw === "string" || typeof raw === "number") {
       properties[weissKey] = raw;
       continue;
@@ -600,11 +228,11 @@ function convertWidget(
 
     warnings.push(
       `Widget "${phWidget.name ?? phWidget.type}": ` +
-        `unhandled value type for property "${phoebusKey}" — skipped.`,
+        `unhandled value type for property "${phoebusKey}" - skipped.`,
     );
   }
 
-  /* ── Children (GROUP, TABS) ──────────────────────────────────────────── */
+  // Nested children widgets
   const children: ExportedWidget[] = [];
   const childXOffset = phWidget.type === PhoebusWidgetType.GROUP ? absoluteX : xOffset;
   const childYOffset = phWidget.type === PhoebusWidgetType.GROUP ? absoluteY : yOffset;
@@ -658,10 +286,6 @@ function convertWidget(
   };
 }
 
-/* -------------------------------------------------------------------------- */
-/* Grid zone                                                                   */
-/* -------------------------------------------------------------------------- */
-
 /**
  * Produces the mandatory __grid__ entry that WEISS expects as editorWidgets[0].
  */
@@ -698,70 +322,7 @@ function makeGridWidget(display: PhoebusDisplay): ExportedWidget {
 }
 
 /**
- * Gets the bounding rectangle of a set of widgets, or null if no widgets are provided.
- * The bounding rectangle is the smallest rectangle that contains all widgets.
- * It is represented as an object with x, y, width, and height properties.
- */
-const computeScreenBounds = (widgets: ExportedWidget[]): DOMRectLike | null => {
-  if (!widgets.length) return null;
-
-  const xs = widgets.map((w) => w.properties.x as number);
-  const ys = widgets.map((w) => w.properties.y as number);
-  const ws = widgets.map((w) => w.properties.width as number);
-  const hs = widgets.map((w) => w.properties.height as number);
-  if (!xs.length || !ys.length || !ws.length || !hs.length) return null;
-  const minX = Math.min(...xs);
-  const minY = Math.min(...ys);
-  const maxX = Math.max(...xs.map((x, i) => x + ws[i]));
-  const maxY = Math.max(...ys.map((y, i) => y + hs[i]));
-  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
-};
-
-/**
- * Recursively shifts a widget (and any nested children) by (dx, dy).
- */
-const shiftWidgetPosition = (widget: ExportedWidget, dx: number, dy: number): void => {
-  if (typeof widget.properties.x === "number") {
-    widget.properties.x += dx;
-  }
-  if (typeof widget.properties.y === "number") {
-    widget.properties.y += dy;
-  }
-
-  const children = widget.children;
-  if (Array.isArray(children)) {
-    for (const child of children) shiftWidgetPosition(child, dx, dy);
-  }
-};
-
-/**
- * Centers all widgets on (0,0), using only `contentWidgets` to determine the
- * bounding box, but shifting every widget in `allWidgets` (including the grid).
- */
-const centerWidgetsToOrigin = (
-  allWidgets: ExportedWidget[],
-  contentWidgets: ExportedWidget[],
-): void => {
-  const bounds = computeScreenBounds(contentWidgets);
-  if (!bounds) return;
-
-  const dx = -(bounds.x + bounds.width / 2);
-  const dy = -(bounds.y + bounds.height / 2);
-
-  for (const w of allWidgets) shiftWidgetPosition(w, dx, dy);
-};
-
-/* -------------------------------------------------------------------------- */
-/* Public API                                                                  */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Converts a fully-parsed PhoebusDisplay into a WEISS .opi.json-compatible
- * ConvertedWidget array, with a ConversionResult wrapper that exposes warnings.
- *
- * Usage:
- *   const { widgets, warnings } = convertDisplay(phoebusDisplay);
- *   const json = JSON.stringify(widgets, null, 2);
+ * Converts a parsed Phoebus display into WEISS widgets and warnings.
  */
 export function convertDisplay(display: PhoebusDisplay): ConversionResult {
   const warnings: string[] = [];
@@ -776,7 +337,6 @@ export function convertDisplay(display: PhoebusDisplay): ConversionResult {
   }
 
   const widgets: ExportedWidget[] = [gridWidget, ...contentWidgets];
-
   centerWidgetsToOrigin(widgets, contentWidgets);
 
   return { widgets, warnings };

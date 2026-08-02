@@ -12,10 +12,6 @@
 import { PhoebusProperty, PhoebusWidgetType } from "./constants";
 import type { PropertyMap, WidgetMapEntry } from "./types";
 
-/* -------------------------------------------------------------------------- */
-/* Property map building blocks                                               */
-/* -------------------------------------------------------------------------- */
-
 /**
  * Properties shared by most widgets on both sides.
  * Spread this into each entry's propMap and override where needed.
@@ -54,12 +50,8 @@ const SINGLE_LED_PROP_MAP: PropertyMap = {
   [PhoebusProperty.OFF_LABEL]: "offLabel",
 };
 
-/* -------------------------------------------------------------------------- */
-/* Widget map                                                                 */
-/* -------------------------------------------------------------------------- */
-
 export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
-  /* Display / Text */
+  // Display / text
 
   [PhoebusWidgetType.LABEL]: {
     weissName: "TextLabel",
@@ -95,7 +87,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     },
   },
 
-  /* Monitors */
+  // Monitors
 
   [PhoebusWidgetType.LED]: {
     weissName: "BitIndicator",
@@ -142,7 +134,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.METER]: {
-    weissName: "NotImplemented",
+    weissName: undefined,
     propMap: {
       ...COMMON_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
@@ -150,7 +142,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.LINEAR_METER]: {
-    weissName: "NotImplemented",
+    weissName: undefined,
     propMap: {
       ...COMMON_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
@@ -158,7 +150,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.TANK]: {
-    weissName: "NotImplemented",
+    weissName: undefined,
     propMap: {
       ...COMMON_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
@@ -166,7 +158,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.THERMOMETER]: {
-    weissName: "NotImplemented",
+    weissName: undefined,
     propMap: {
       ...COMMON_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
@@ -174,7 +166,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.SYMBOL]: {
-    weissName: "NotImplemented",
+    weissName: undefined,
     propMap: {
       ...COMMON_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
@@ -182,14 +174,14 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.ARRAY]: {
-    weissName: "NotImplemented",
+    weissName: undefined,
     propMap: {
       ...COMMON_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
     },
   },
 
-  /* Controls */
+  // Controls
 
   [PhoebusWidgetType.ACTION_BUTTON]: {
     weissName: "ActionButton",
@@ -216,7 +208,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.CHECK_BOX]: {
-    weissName: "NotImplemented",
+    weissName: undefined,
     propMap: {
       ...COMMON_PROP_MAP,
       ...STYLE_PROP_MAP,
@@ -238,7 +230,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.CHOICE_BUTTON]: {
-    weissName: "NotImplemented",
+    weissName: undefined,
     propMap: {
       ...COMMON_PROP_MAP,
       ...STYLE_PROP_MAP,
@@ -270,7 +262,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.SCROLL_BAR]: {
-    weissName: "NotImplemented",
+    weissName: undefined,
     propMap: {
       ...COMMON_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
@@ -279,7 +271,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.SLIDE_BUTTON]: {
-    weissName: "NotImplemented",
+    weissName: undefined,
     propMap: {
       ...COMMON_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
@@ -288,7 +280,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.THUMBWHEEL]: {
-    weissName: "NotImplemented",
+    weissName: undefined,
     propMap: {
       ...COMMON_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
@@ -297,7 +289,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.RADIO_BUTTON]: {
-    weissName: "NotImplemented",
+    weissName: undefined,
     propMap: {
       ...COMMON_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
@@ -306,7 +298,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.TABLE]: {
-    weissName: "NotImplemented",
+    weissName: undefined,
     propMap: {
       ...COMMON_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
@@ -314,7 +306,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.FILE_SELECTOR]: {
-    weissName: "NotImplemented",
+    weissName: undefined,
     propMap: {
       ...COMMON_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
@@ -322,7 +314,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     },
   },
 
-  /* Graphics */
+  // Graphics
 
   [PhoebusWidgetType.RECTANGLE]: {
     weissName: "Rectangle",
@@ -341,14 +333,14 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.POLYGON]: {
-    weissName: "NotImplemented",
+    weissName: undefined,
     propMap: {
       ...COMMON_PROP_MAP,
     },
   },
 
   [PhoebusWidgetType.POLYLINE]: {
-    weissName: "NotImplemented",
+    weissName: undefined,
     propMap: {
       ...COMMON_PROP_MAP,
       ...STYLE_PROP_MAP,
@@ -356,7 +348,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.ARC]: {
-    weissName: "NotImplemented",
+    weissName: undefined,
     propMap: {
       ...COMMON_PROP_MAP,
       ...STYLE_PROP_MAP,
@@ -372,21 +364,21 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.IMAGE]: {
-    weissName: "NotImplemented",
+    weissName: undefined,
     propMap: {
       ...COMMON_PROP_MAP,
     },
   },
 
   [PhoebusWidgetType.TEXT_SYMBOL]: {
-    weissName: "NotImplemented",
+    weissName: undefined,
     propMap: {
       ...COMMON_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
     },
   },
 
-  /* Plots */
+  // Plots
 
   [PhoebusWidgetType.XY_PLOT]: {
     weissName: "GraphXY",
@@ -407,20 +399,20 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.DATA_BROWSER]: {
-    weissName: "NotImplemented",
+    weissName: undefined,
     propMap: {
       ...COMMON_PROP_MAP,
     },
   },
 
   [PhoebusWidgetType.WATERFALL_PLOT]: {
-    weissName: "NotImplemented",
+    weissName: undefined,
     propMap: {
       ...COMMON_PROP_MAP,
     },
   },
 
-  /* Containers */
+  // Containers
 
   [PhoebusWidgetType.GROUP]: {
     weissName: "Group",
@@ -434,21 +426,21 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.TABS]: {
-    weissName: "NotImplemented",
+    weissName: undefined,
     propMap: {
       ...COMMON_PROP_MAP,
     },
   },
 
   [PhoebusWidgetType.NAVIGATION_TABS]: {
-    weissName: "NotImplemented",
+    weissName: undefined,
     propMap: {
       ...COMMON_PROP_MAP,
     },
   },
 
   [PhoebusWidgetType.TEMPLATE]: {
-    weissName: "NotImplemented",
+    weissName: undefined,
     propMap: {
       ...COMMON_PROP_MAP,
     },
@@ -463,17 +455,17 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     },
   },
 
-  /* Misc */
+  // Misc
 
   [PhoebusWidgetType.WEB_BROWSER]: {
-    weissName: "NotImplemented",
+    weissName: undefined,
     propMap: {
       ...COMMON_PROP_MAP,
     },
   },
 
   [PhoebusWidgetType.VIEWER_3D]: {
-    weissName: "NotImplemented",
+    weissName: undefined,
     propMap: {
       ...COMMON_PROP_MAP,
     },

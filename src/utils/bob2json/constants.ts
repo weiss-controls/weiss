@@ -2,12 +2,10 @@
 // Copyright (C) 2026 André Favoto
 
 /**
- * Phoebus Display Builder XML definitions.
+ * Constants used by the Phoebus XML parser and converter.
  */
 
-/* -------------------------------------------------------------------------- */
-/* XML Elements                                                               */
-/* -------------------------------------------------------------------------- */
+// XML elements
 
 export const PhoebusElement = {
   DISPLAY: "display",
@@ -42,9 +40,7 @@ export const PhoebusElement = {
   CHILDREN: "children",
 } as const;
 
-/* -------------------------------------------------------------------------- */
-/* XML Attributes                                                             */
-/* -------------------------------------------------------------------------- */
+// XML attributes
 
 export const PhoebusAttribute = {
   VERSION: "version",
@@ -71,9 +67,7 @@ export const PhoebusAttribute = {
   STYLE: "style",
 } as const;
 
-/* -------------------------------------------------------------------------- */
-/* Common Widget Properties                                                   */
-/* -------------------------------------------------------------------------- */
+// Common widget properties
 
 export const PhoebusProperty = {
   NAME: "name",
@@ -141,9 +135,7 @@ export const PhoebusProperty = {
   TABS: "tabs",
 } as const;
 
-/* -------------------------------------------------------------------------- */
-/* Widget Types                                                               */
-/* -------------------------------------------------------------------------- */
+// Widget types
 
 export const PhoebusWidgetType = {
   LABEL: "label",
@@ -193,13 +185,11 @@ export const PhoebusWidgetType = {
   VIEWER_3D: "3dviewer",
 } as const;
 
-/* -------------------------------------------------------------------------- */
-/* Enumerations                                                               */
-/* -------------------------------------------------------------------------- */
+// Enumerations
 
 export const PhoebusAlignment = {
   LEFT: "LEFT",
-  CENTRE: "CENTER",
+  CENTER: "CENTER",
   RIGHT: "RIGHT",
   TOP: "TOP",
   MIDDLE: "MIDDLE",
@@ -211,9 +201,16 @@ export const PhoebusBoolean = {
   FALSE: "false",
 } as const;
 
-/* -------------------------------------------------------------------------- */
-/* Types                                                                       */
-/* -------------------------------------------------------------------------- */
+export const COLOR_PROP_KEYS = new Set<PhoebusProperty>([
+  PhoebusProperty.BACKGROUND_COLOR,
+  PhoebusProperty.FOREGROUND_COLOR,
+  PhoebusProperty.BORDER_COLOR,
+  PhoebusProperty.ON_COLOR,
+  PhoebusProperty.OFF_COLOR,
+  PhoebusProperty.LINE_COLOR,
+]);
+
+// Type aliases
 
 export type PhoebusWidgetType = (typeof PhoebusWidgetType)[keyof typeof PhoebusWidgetType];
 export type PhoebusProperty = (typeof PhoebusProperty)[keyof typeof PhoebusProperty];

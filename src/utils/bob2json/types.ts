@@ -3,9 +3,7 @@
 
 import type { PhoebusProperty, PhoebusWidgetType } from "./constants";
 
-/* -------------------------------------------------------------------------- */
-/* Phoebus parsed property value types                                        */
-/* -------------------------------------------------------------------------- */
+// Parsed value types
 
 export interface PhoebusColor {
   name?: string;
@@ -36,9 +34,7 @@ export type ColorWrapperProperty =
   | typeof PhoebusProperty.OFF_COLOR
   | typeof PhoebusProperty.LINE_COLOR;
 
-/* -------------------------------------------------------------------------- */
-/* Phoebus IR (intermediate representation)                                   */
-/* -------------------------------------------------------------------------- */
+// Phoebus IR
 
 export interface PhoebusWidget {
   type: PhoebusWidgetType;
@@ -62,17 +58,15 @@ export interface PhoebusDisplay {
   widgets: PhoebusWidget[];
 }
 
-/* -------------------------------------------------------------------------- */
-/* Widget mapping types                                                        */
-/* -------------------------------------------------------------------------- */
+// Widget mapping types
 
 /** Maps a Phoebus property name to the corresponding WEISS editableProperties key. */
 export type PropertyMap = Partial<Record<PhoebusProperty, string>>;
 
 export interface WidgetMapEntry {
-  /** WEISS widgetName registry key (must match a registered WidgetDefinition). */
-  weissName: string;
-  /** Phoebus property → WEISS editableProperties key. */
+  /** WEISS widgetName registry key (undefined if no corresponding widget exists). */
+  weissName: string | undefined;
+  /** Phoebus property -> WEISS editableProperties key. */
   propMap: PropertyMap;
   /**
    * When true, the widget's <font> property is extracted and spread into individual

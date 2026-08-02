@@ -10,9 +10,9 @@
  * the XML is silent.
  *
  * Structure per widget type:
- *   inputDefaults  — written into the Phoebus property map before the propMap
+ *   inputDefaults  - written into the Phoebus property map before the propMap
  *                    loop runs; only applied when the key is absent in the XML.
- *   outputDefaults — WEISS-side properties written directly into the output
+ *   outputDefaults - WEISS-side properties written directly into the output
  *                    after the propMap loop; used for derived or WEISS-only
  *                    defaults that have no Phoebus property counterpart.
  */
@@ -20,10 +20,6 @@
 import { PhoebusProperty, PhoebusWidgetType } from "./constants";
 import type { PhoebusWidget } from "./types";
 import type { PropertyValue } from "@src/types/widgets";
-
-/* -------------------------------------------------------------------------- */
-/* Types                                                                       */
-/* -------------------------------------------------------------------------- */
 
 export interface PhoebusWidgetDefaultsEntry {
   /**
@@ -40,14 +36,12 @@ export interface PhoebusWidgetDefaultsEntry {
   outputDefaults?: Record<string, PropertyValue>;
 }
 
-/* -------------------------------------------------------------------------- */
-/* Per-widget defaults table                                                   */
-/* -------------------------------------------------------------------------- */
+// Per-widget defaults
 
 export const PHOEBUS_WIDGET_DEFAULTS: Partial<
   Record<PhoebusWidgetType, PhoebusWidgetDefaultsEntry>
 > = {
-  /* ── Display / Text ───────────────────────────────────────────────── */
+  // Display / text
 
   [PhoebusWidgetType.LABEL]: {
     inputDefaults: {
@@ -72,7 +66,7 @@ export const PHOEBUS_WIDGET_DEFAULTS: Partial<
     },
   },
 
-  /* ── Controls ─────────────────────────────────────────────────────── */
+  // Controls
 
   [PhoebusWidgetType.ACTION_BUTTON]: {
     inputDefaults: {
@@ -95,7 +89,7 @@ export const PHOEBUS_WIDGET_DEFAULTS: Partial<
     },
   },
 
-  /* ── Monitors ─────────────────────────────────────────────────────── */
+  // Monitors
 
   [PhoebusWidgetType.LED]: {
     inputDefaults: {
@@ -131,7 +125,7 @@ export const PHOEBUS_WIDGET_DEFAULTS: Partial<
     },
   },
 
-  /* ── Graphics ─────────────────────────────────────────────────────── */
+  // Graphics
 
   [PhoebusWidgetType.RECTANGLE]: {
     inputDefaults: {
@@ -140,10 +134,6 @@ export const PHOEBUS_WIDGET_DEFAULTS: Partial<
     },
   },
 };
-
-/* -------------------------------------------------------------------------- */
-/* Applicator                                                                  */
-/* -------------------------------------------------------------------------- */
 
 /**
  * Applies `inputDefaults` from `PHOEBUS_WIDGET_DEFAULTS` for the widget type

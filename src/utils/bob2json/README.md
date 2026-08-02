@@ -1,29 +1,6 @@
-# Phoebus `.bob` → WEISS `.opi.json` converter
+# Phoebus `.bob` -> WEISS `.opi.json` converter
 
-Converts a Phoebus Display Builder XML file (`.bob`) into the WEISS widget array format
-(`.opi.json`).
-
-## Pipeline
-
-```
-.bob XML string
-   └─ parsePhoebus()   →  PhoebusDisplay IR   (parser.ts)
-   └─ convertDisplay() →  ExportedWidget[]    (converter.ts)
-        └─ JSON.stringify → .opi.json
-```
-
-1. **`parsePhoebus(xml)`** — parses raw XML into a `PhoebusDisplay` intermediate representation:
-   typed structs for colors, fonts, states, and a recursive `PhoebusWidget` tree.
-2. **`convertDisplay(display)`** — walks the IR and maps each widget to its WEISS equivalent using
-   `WIDGET_MAP` (mapping.ts). Returns `{ widgets, warnings }`. Unsupported widget types are replaced
-   with a visible placeholder. Warnings are human-readable strings describing anything that could
-   not be mapped.
-
-The public entry point is the barrel (`index.ts`):
-
-```ts
-import { parsePhoebus, convertDisplay } from "@src/utils/bob2json";
-```
+Converts Phoebus Display Builder XML files (`.bob`) into WEISS widget arrays (`.opi.json`).
 
 ---
 
@@ -79,44 +56,32 @@ import { parsePhoebus, convertDisplay } from "@src/utils/bob2json";
 
 ## Feature support
 
-| Feature                                              | Status                           |
-| ---------------------------------------------------- | -------------------------------- |
-| Position & size                                      | ✅                               |
-| Colors (background, foreground, border, on/off/line) | ✅                               |
-| Font (family, size, bold, italic)                    | ✅                               |
-| Text alignment (horizontal & vertical)               | ✅                               |
-| Visibility                                           | ✅                               |
-| Tooltip                                              | ✅                               |
-| Transparent background                               | ✅                               |
-| Display macros                                       | ✅                               |
-| Grid settings (color, visibility, step)              | ✅                               |
-| Embedded display path (`.bob` → `.opi.json`)         | ✅                               |
-| Multi-state LED states (value, color, label)         | ✅                               |
-| Actions                                              | ✅ write PV + open display split |
-| Rules                                                | 🔶 not implemented               |
-| Plot PV names & line colors                          | 🔶 not implemented               |
-| Tab pane content                                     | 🔶 not implemented               |
-| Points (polyline / line drawing)                     | 🔶 not implemented               |
-| Scripts                                              | ❌ won't implement               |
-| Points (polygon geometry)                            | ❌ won't implement               |
+| Feature                                              | Status                              |
+| ---------------------------------------------------- | ----------------------------------- |
+| Position & size                                      | ✅                                  |
+| Colors (background, foreground, border, on/off/line) | ✅                                  |
+| Font (family, size, bold, italic)                    | ✅                                  |
+| Text alignment (horizontal & vertical)               | ✅                                  |
+| Visibility                                           | ✅                                  |
+| Tooltip                                              | ✅                                  |
+| Transparent background                               | ✅                                  |
+| Display macros                                       | ✅                                  |
+| Grid settings (color, visibility, step)              | ✅                                  |
+| Embedded display path (`.bob` → `.opi.json`)         | ✅                                  |
+| Multi-state LED states (value, color, label)         | ✅                                  |
+| Actions                                              | ✅ (write PV and open display only) |
+| Rules                                                | 🔶 not implemented                  |
+| Plot PV names & line colors                          | 🔶 not implemented                  |
+| Tab pane content                                     | 🔶 not implemented                  |
+| Points (polyline / line drawing)                     | 🔶 not implemented                  |
+| Scripts                                              | ❌ won't implement                  |
+| Points (polygon geometry)                            | ❌ won't implement                  |
 
 ---
 
 ## Adding a widget
 
-1. Add the Phoebus type string to `PhoebusWidgetType` in `constants.ts` if missing.
-2. Add a `WidgetMapEntry` to `WIDGET_MAP` in `mapping.ts`, mapping Phoebus property keys to WEISS
-   property keys. For `action_button`, the converter now branches on the nested action type so the
-   same Phoebus widget can emit either `ActionButton` or `NavigationButton`.
-3. Set `hasFont: true` if the widget should inherit font properties.
-4. Add default sizes to `PHOEBUS_DEFAULT_SIZES` in `constants.ts` if the widget can appear without
-   explicit width/height.
-
-### `action_button` mapping rules
-
-- `write_pv` actions map to `ActionButton`.
-- If the action PV name is `$(pv_name)`, the converter uses the widget-level PV name instead.
-- The action value maps to `actionValue`.
-- `open_display` actions map to `NavigationButton`.
-- The display file maps to `displayPath`, the action macros map to `macros`, and the action target
-  is preserved in `target` for the upcoming NavigationButton property.
+1. Add the Phoebus type to `PhoebusWidgetType` in `constants.ts` if missing.
+2. Add a `WidgetMapEntry` to `WIDGET_MAP` in `mapping.ts`.
+3. Set `hasFont: true` when font settings are present.
+4. Add default Phoebus values in `PHOEBUS_WIDGET_DEFAULTS` in `defaults.ts`.

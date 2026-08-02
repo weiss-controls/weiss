@@ -2,10 +2,7 @@
 // Copyright (C) 2026 André Favoto
 
 /**
- * Public API for the Phoebus .bob → WEISS .opi.json converter.
- *
- * Usage:
- *   import { parsePhoebus, convertDisplay } from "@src/utils/bob2json";
+ * Public API for the Phoebus .bob -> WEISS .opi.json converter.
  */
 
 export { parsePhoebus, PhoebusParseError } from "./parser";

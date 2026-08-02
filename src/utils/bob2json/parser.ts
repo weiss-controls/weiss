@@ -2,11 +2,7 @@
 // Copyright (C) 2026 André Favoto
 
 /**
- * Phoebus Display Builder XML → PhoebusDisplay parser.
- *
- * Parses a raw Phoebus .opi XML string into the PhoebusDisplay intermediate
- * representation consumed by the converter (converter.ts).
- *
+ * Parses Phoebus Display Builder XML into a PhoebusDisplay IR.
  */
 
 import { PhoebusAttribute, PhoebusElement, PhoebusProperty, PhoebusWidgetType } from "./constants";
@@ -19,15 +15,11 @@ import type {
   PhoebusWidget,
 } from "./types";
 
-/* -------------------------------------------------------------------------- */
-/* Public exports re-used by the rest of the module                           */
-/* -------------------------------------------------------------------------- */
+// Public exports
 
 export type { PhoebusColor, PhoebusFont, PhoebusState } from "./types";
 
-/* -------------------------------------------------------------------------- */
-/* Parse error                                                                 */
-/* -------------------------------------------------------------------------- */
+// Parse error
 
 export class PhoebusParseError extends Error {
   constructor(message: string) {
@@ -36,9 +28,7 @@ export class PhoebusParseError extends Error {
   }
 }
 
-/* -------------------------------------------------------------------------- */
-/* Scalar helpers                                                              */
-/* -------------------------------------------------------------------------- */
+// Scalar helpers
 
 /** Returns the trimmed text content of the first matching child element, or undefined. */
 function childText(parent: Element, tag: string): string | undefined {
@@ -65,9 +55,7 @@ function parseScalar(text: string): string | number {
   return isFinite(n) && text !== "" ? n : text;
 }
 
-/* -------------------------------------------------------------------------- */
-/* Structured property parsers                                                 */
-/* -------------------------------------------------------------------------- */
+// Structured property parsers
 
 /**
  * Parses a <color name red green blue /> element into a PhoebusColor.
@@ -179,9 +167,7 @@ function parseMacros(macrosEl: Element): Record<string, string> {
   return out;
 }
 
-/* -------------------------------------------------------------------------- */
-/* Widget parser                                                               */
-/* -------------------------------------------------------------------------- */
+// Widget parser
 
 const COLOR_WRAPPER_TAGS: ReadonlySet<ColorWrapperProperty> = new Set([
   PhoebusProperty.BACKGROUND_COLOR,
@@ -214,13 +200,13 @@ function parseWidget(widgetEl: Element): PhoebusWidget {
   for (const child of Array.from(widgetEl.children)) {
     const tag = child.tagName;
 
-    /* ── Nested widget children (group, tabs) ─────────────────────────── */
+    // Nested widget children (group, tabs)
     if (tag === PhoebusElement.WIDGET) {
       children.push(parseWidget(child));
       continue;
     }
 
-    /* ── Tab children — each <tab> contains a <children> block ───────── */
+    // Tab children. Each <tab> contains a <children> block.
     if (tag === PhoebusElement.TABS) {
       const tabWidgets: PhoebusWidget[] = [];
       for (const tabEl of Array.from(child.getElementsByTagName(PhoebusElement.TAB))) {
@@ -236,39 +222,39 @@ function parseWidget(widgetEl: Element): PhoebusWidget {
       continue;
     }
 
-    /* ── Color wrappers ───────────────────────────────────────────────── */
+    // Color wrappers
     if (isColorWrapperTag(tag)) {
       const color = parseColorWrapper(child);
       if (color) properties.set(tag, color);
       continue;
     }
 
-    /* ── Font ─────────────────────────────────────────────────────────── */
+    // Font
     if (tag === PhoebusProperty.FONT) {
       const font = parseFontWrapper(child);
       if (font) properties.set(PhoebusProperty.FONT, font);
       continue;
     }
 
-    /* ── States (multi_state_led) ─────────────────────────────────────── */
+    // States (multi_state_led)
     if (tag === PhoebusElement.STATES) {
       properties.set(PhoebusProperty.STATES, parseStates(child));
       continue;
     }
 
-    /* ── Items (choice, radio) ────────────────────────────────────────── */
+    // Items (choice, radio)
     if (tag === PhoebusElement.ITEMS) {
       properties.set(PhoebusProperty.ITEMS, parseItems(child));
       continue;
     }
 
-    /* ── Macros (embedded display) ─────────────────────────────────────── */
+    // Macros (embedded display)
     if (tag === PhoebusProperty.MACROS) {
       properties.set(PhoebusProperty.MACROS, parseMacros(child));
       continue;
     }
 
-    /* ── Actions / scripts / rules — store raw for future handling ────── */
+    // Actions / scripts / rules. Store raw for future handling.
     if (
       tag === PhoebusProperty.ACTIONS ||
       tag === PhoebusProperty.SCRIPTS ||
@@ -278,7 +264,7 @@ function parseWidget(widgetEl: Element): PhoebusWidget {
       continue;
     }
 
-    /* ── Scalar fallback: read text content as string or number ───────── */
+    // Scalar fallback: read text content as string or number.
     if (!isPhoebusPropertyTag(tag)) continue;
 
     const text = child.textContent?.trim() ?? "";
@@ -293,25 +279,17 @@ function parseWidget(widgetEl: Element): PhoebusWidget {
   };
 }
 
-/* -------------------------------------------------------------------------- */
-/* Display parser                                                              */
-/* -------------------------------------------------------------------------- */
+// Display parser
 
 /**
  * Parses a raw Phoebus .opi XML string into a PhoebusDisplay.
  *
- * Throws PhoebusParseError when:
- *   - the XML is malformed (DOMParser reports a parseerror)
- *   - the root element is not <display>
- *
- * Usage:
- *   const display = parsePhoebus(xmlString);
- *   const { widgets, warnings } = convertDisplay(display);
+ * Throws PhoebusParseError on malformed XML or invalid root element.
  */
 export function parsePhoebus(xml: string): PhoebusDisplay {
   const doc = new DOMParser().parseFromString(xml, "text/xml");
 
-  // DOMParser signals errors via a <parseerror> element rather than throwing
+  // DOMParser signals errors via a <parseerror> element instead of throwing.
   const parseError = doc.querySelector("parseerror");
   if (parseError) {
     throw new PhoebusParseError(
@@ -341,7 +319,7 @@ export function parsePhoebus(xml: string): PhoebusDisplay {
   const gridStepY = childNumber(root, PhoebusProperty.GRID_STEP_Y);
 
   const widgets: PhoebusWidget[] = Array.from(
-    // Only direct <widget> children of <display> — not descendants
+    // Only direct <widget> children of <display>, not descendants.
     root.children,
   )
     .filter((el) => el.tagName === PhoebusElement.WIDGET)
