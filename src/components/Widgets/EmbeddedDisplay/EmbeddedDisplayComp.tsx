@@ -8,7 +8,7 @@ import { useUIContext } from "@src/context/useUIContext";
 import { useWidgetContext } from "@src/context/useWidgetContext";
 import { getDeployedRepoFile, getStagingRepoFile } from "@src/services/APIClient";
 import { resolveRepoPath } from "@src/utils/repoPath";
-import { substituteMacroInStr, substituteTextProps } from "@src/utils/macros";
+import { substituteMacrosInWidgetTree } from "@src/utils/macros";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import { createGroupWidget } from "@src/context/widgetHelpers";
 import type { PropertyKey } from "@src/types/widgets";
@@ -135,56 +135,11 @@ function scaleWidgets(
   });
 }
 
-/**
- * Walk the widget tree and replace macros in pvName, pvNames, rules and all text
- * selType properties (labels, tooltips, titles, etc.).
- * All Embedded Display macros should be applied immediately after load.
- */
-function applyMacros(widgets: Widget[], macros: Record<string, string>): Widget[] {
-  if (Object.keys(macros).length === 0) return widgets;
-  return widgets.map((w) => {
-    let props = substituteTextProps(w.editableProperties, macros);
-    let rules = w.rules;
-    if (props.pvName?.value) {
-      props = {
-        ...props,
-        pvName: { ...props.pvName, value: substituteMacroInStr(props.pvName.value, macros) },
-      };
-    }
-    if (props.pvNames?.value && props.pvNames.value.length > 0) {
-      props = {
-        ...props,
-        pvNames: {
-          ...props.pvNames,
-          value: props.pvNames.value.map((pv) => substituteMacroInStr(pv, macros)),
-        },
-      };
-    }
-    // apply in rules
-    if (w.rules?.length) {
-      rules = w.rules.map((r) => ({
-        ...r,
-        conditions: r.conditions.map((c) => ({
-          ...c,
-          pvName: substituteMacroInStr(c.pvName, macros),
-        })),
-        pvNames: r.pvNames.map((pv) => substituteMacroInStr(pv, macros)),
-        actions: {
-          ...r.actions,
-          pvName:
-            typeof r.actions?.pvName === "string"
-              ? substituteMacroInStr(r.actions.pvName, macros)
-              : r.actions?.pvName,
-        },
-      }));
-    }
-    return {
-      ...w,
-      editableProperties: props,
-      children: w.children ? applyMacros(w.children, macros) : undefined,
-      rules,
-    };
-  });
+function macrosToKey(macros: Record<string, string>): string {
+  const entries = Object.entries(macros);
+  if (entries.length === 0) return "";
+  entries.sort(([a], [b]) => a.localeCompare(b));
+  return JSON.stringify(entries);
 }
 
 /** Assign new UUIDs to avoid ID clashes when multiple instances of the same display exist. */
@@ -257,15 +212,17 @@ const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
   // their own copy here — only the unscaled network fetch is shared via
   // _contentCache below, never the scale/layout output.
   const rawContentRef = useRef<{
-    exported: ExportedWidget[];
+    baseWidgets: Widget[];
     natW: number;
     natH: number;
     minX: number;
     minY: number;
   } | null>(null);
 
+  const lastAppliedLayoutKeyRef = useRef<string>("");
+
   const macrosRef = useRef<Record<string, string>>({});
-  if (displayMacros !== undefined) macrosRef.current = displayMacros;
+  macrosRef.current = displayMacros ?? {};
 
   /**
    * Re-derive scaled child widgets from `rawContentRef` and push them via
@@ -275,7 +232,11 @@ const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
   const layoutAndApply = useCallback(() => {
     const cached = rawContentRef.current;
     if (!cached) return;
-    const { exported, natW, natH, minX, minY } = cached;
+    const { baseWidgets, natW, natH, minX, minY } = cached;
+
+    const macroKey = macrosToKey(macrosRef.current);
+    const layoutKey = `${targetW}|${targetH}|${x}|${y}|${macroKey}`;
+    if (layoutKey === lastAppliedLayoutKeyRef.current) return;
 
     const scale = natW > 0 && natH > 0 ? Math.min(targetW / natW, targetH / natH) : 1;
 
@@ -283,24 +244,21 @@ const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
     const offsetX = x + (targetW - natW * scale) / 2;
     const offsetY = y + (targetH - natH * scale) / 2;
 
-    const raw = exported
-      .map(exportedToWidget)
-      .filter((widget): widget is Widget => widget !== null);
-
-    const fresh = scaleWidgets(raw, scale, offsetX, offsetY, minX, minY).map(assignNewIds);
-    const withMacros = applyMacros(fresh, macrosRef.current);
-    console.log(withMacros);
+    const fresh = scaleWidgets(baseWidgets, scale, offsetX, offsetY, minX, minY);
+    const withMacros = substituteMacrosInWidgetTree(fresh, macrosRef.current);
+    lastAppliedLayoutKeyRef.current = layoutKey;
     updateChildrenRef.current(data.id, withMacros, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.id, x, y, targetW, targetH]);
 
-  // Fetch effect: only re-runs on path/macro/mode change. The network
+  // Fetch effect: only re-runs on source/mode change. The network
   // request (and JSON parse) is shared across instances via _contentCache;
   // this effect just stores the parsed result + natural bounds locally and
   // triggers an initial layout.
   useEffect(() => {
     if (!repoId || !resolvedPath) {
       rawContentRef.current = null;
+      lastAppliedLayoutKeyRef.current = "";
       updateChildrenRef.current(data.id, [], false);
       return;
     }
@@ -324,11 +282,18 @@ const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
         const exported = await pending;
         if (cancelled) return;
 
-        rawContentRef.current = { exported, ...computeNatBounds(exported) };
+        const baseWidgets = exported
+          .map(exportedToWidget)
+          .filter((widget): widget is Widget => widget !== null)
+          .map(assignNewIds);
+
+        rawContentRef.current = { baseWidgets, ...computeNatBounds(exported) };
+        lastAppliedLayoutKeyRef.current = "";
         layoutAndApply();
       } catch {
         if (!cancelled) {
           rawContentRef.current = null;
+          lastAppliedLayoutKeyRef.current = "";
           updateChildrenRef.current(data.id, [], false);
         }
       }
@@ -342,7 +307,14 @@ const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
     // change, which would otherwise re-trigger a full re-fetch on every resize tick.
     // The dedicated layout effect below handles those changes instead.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [repoId, resolvedPath, isDeveloper, data.id, displayMacros, fileLoadedTrig]);
+  }, [repoId, resolvedPath, isDeveloper, data.id, fileLoadedTrig]);
+
+  // Macro edits are instance-local and should not trigger any re-fetch; just
+  // force a fresh layout+macro pass for this instance.
+  useEffect(() => {
+    lastAppliedLayoutKeyRef.current = "";
+    layoutAndApply();
+  }, [displayMacros, layoutAndApply]);
 
   // Layout effect: re-runs per-instance whenever THIS widget's own box
   // changes (x/y/width/height, via layoutAndApply's deps). No network call —

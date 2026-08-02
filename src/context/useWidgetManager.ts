@@ -225,13 +225,28 @@ export function useWidgetManager() {
   const updateWidgetChildren = useCallback(
     (id: string, children: Widget[], keepHistory = false) => {
       updateEditorWidgetList((prev) => {
-        const replace = (widgets: Widget[]): Widget[] =>
-          widgets.map((w) => {
-            if (w.id === id) return { ...w, children };
-            if (w.children) return { ...w, children: replace(w.children) };
-            return w;
+        const replace = (widgets: Widget[]): [Widget[], boolean] => {
+          let changed = false;
+          const next = widgets.map((w) => {
+            if (w.id === id) {
+              if (w.children === children) return w;
+              changed = true;
+              return { ...w, children };
+            }
+
+            if (!w.children?.length) return w;
+
+            const [updatedChildren, childChanged] = replace(w.children);
+            if (!childChanged) return w;
+            changed = true;
+            return { ...w, children: updatedChildren };
           });
-        return replace(prev);
+
+          return changed ? [next, true] : [widgets, false];
+        };
+
+        const [updated, changed] = replace(prev);
+        return changed ? updated : prev;
       }, keepHistory);
     },
     [updateEditorWidgetList],

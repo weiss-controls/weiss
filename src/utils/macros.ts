@@ -101,6 +101,115 @@ export function substituteTextProps(
 }
 
 /**
+ * Recursively substitute macros in widget properties and rule pv targets.
+ * Intended for cases where a whole widget subtree needs macro expansion
+ * (e.g. Embedded Display children) while preserving unchanged references
+ * whenever possible.
+ */
+export function substituteMacrosInWidgetTree(
+  widgets: Widget[],
+  macros: Record<string, string>,
+): Widget[] {
+  if (Object.keys(macros).length === 0) return widgets;
+
+  let anyChanged = false;
+  const updatedWidgets = widgets.map((w) => {
+    let editableProperties = substituteTextProps(w.editableProperties, macros);
+    let rules = w.rules;
+    let changed = editableProperties !== w.editableProperties;
+
+    if (editableProperties.pvName?.value) {
+      const oldPVName = editableProperties.pvName.value;
+      const newPVName = substituteMacroInStr(oldPVName, macros);
+      if (newPVName !== oldPVName) {
+        editableProperties = {
+          ...editableProperties,
+          pvName: { ...editableProperties.pvName, value: newPVName },
+        };
+        changed = true;
+      }
+    }
+
+    if (editableProperties.pvNames?.value && editableProperties.pvNames.value.length > 0) {
+      const original = editableProperties.pvNames.value;
+      const substituted = original.map((pv) => substituteMacroInStr(pv, macros));
+      if (substituted.some((pv, idx) => pv !== original[idx])) {
+        editableProperties = {
+          ...editableProperties,
+          pvNames: { ...editableProperties.pvNames, value: substituted },
+        };
+        changed = true;
+      }
+    }
+
+    if (w.rules?.length) {
+      let rulesChanged = false;
+      const nextRules = w.rules.map((r) => {
+        let ruleChanged = false;
+
+        const nextConditions = r.conditions.map((c) => {
+          const nextPVName = substituteMacroInStr(c.pvName, macros);
+          if (nextPVName !== c.pvName) {
+            ruleChanged = true;
+            return { ...c, pvName: nextPVName };
+          }
+          return c;
+        });
+
+        const nextPVNames = r.pvNames.map((pv) => {
+          const nextPV = substituteMacroInStr(pv, macros);
+          if (nextPV !== pv) {
+            ruleChanged = true;
+          }
+          return nextPV;
+        });
+
+        let nextActions = r.actions;
+        const actionPVName = r.actions?.pvName;
+        if (typeof actionPVName === "string") {
+          const nextActionPVName = substituteMacroInStr(actionPVName, macros);
+          if (nextActionPVName !== actionPVName) {
+            nextActions = { ...r.actions, pvName: nextActionPVName };
+            ruleChanged = true;
+          }
+        }
+
+        if (!ruleChanged) return r;
+        rulesChanged = true;
+        return {
+          ...r,
+          conditions: nextConditions,
+          pvNames: nextPVNames,
+          actions: nextActions,
+        };
+      });
+
+      if (rulesChanged) {
+        rules = nextRules;
+        changed = true;
+      }
+    }
+
+    const children = w.children ? substituteMacrosInWidgetTree(w.children, macros) : undefined;
+    if (children && children !== w.children) {
+      changed = true;
+    }
+
+    if (!changed) return w;
+
+    anyChanged = true;
+    return {
+      ...w,
+      editableProperties,
+      children,
+      rules,
+    };
+  });
+
+  return anyChanged ? updatedWidgets : widgets;
+}
+
+/**
  * Walks every widget in the tree (including nested children), evaluates their
  * rules against the current PV state, and aggregates any `globalMacros` action
  * values into a single map.
