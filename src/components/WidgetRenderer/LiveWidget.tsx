@@ -16,7 +16,7 @@ import { applyWidgetPVData } from "./widgetRenderUtils";
  * that this component re-renders only when:
  *   1. Its own PV data changes, or
  *   2. Its base widget object changes (widget config / grid-macro change), or
- *   3. globalMacros change (macroOverrides update).
+ *   3. globalMacros change (forwarded navigation macros or rule-driven macro updates).
  *
  * All other PV ticks in the system are invisible to this component.
  */

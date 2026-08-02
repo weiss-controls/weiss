@@ -68,8 +68,9 @@ export default function useUIManager(
   loadWidgets: ReturnType<typeof useWidgetManager>["loadWidgets"],
   snapshotEditModeMacros: ReturnType<typeof useWidgetManager>["snapshotEditModeMacros"],
   restoreEditModeMacros: ReturnType<typeof useWidgetManager>["restoreEditModeMacros"],
-  baseGlobalMacros: ReturnType<typeof useWidgetManager>["baseGlobalMacros"],
-  setMacroOverrides: ReturnType<typeof useWidgetManager>["setMacroOverrides"],
+  runtimeBaseMacros: ReturnType<typeof useWidgetManager>["runtimeBaseMacros"],
+  setRuleMacroOverrides: ReturnType<typeof useWidgetManager>["setRuleMacroOverrides"],
+  resetRuntimeMacros: ReturnType<typeof useWidgetManager>["resetRuntimeMacros"],
 ) {
   const hasFileChanged = useRef(true);
   const restoredRef = useRef(false);
@@ -141,9 +142,11 @@ export default function useUIManager(
     (newMode: Mode) => {
       const isEdit = newMode === EDIT_MODE;
       if (isEdit) {
+        resetRuntimeMacros();
         restoreEditModeMacros();
         stopSession();
       } else {
+        resetRuntimeMacros();
         snapshotEditModeMacros();
         setSelectedWidgetIDs([]);
         setWdgPickerOpen(false);
@@ -157,6 +160,7 @@ export default function useUIManager(
       stopSession,
       snapshotEditModeMacros,
       restoreEditModeMacros,
+      resetRuntimeMacros,
     ],
   );
 
@@ -320,22 +324,21 @@ export default function useUIManager(
       }
     };
   }, [editorWidgets, selectedFile, isDeveloper, inEditMode, formatWdgToExport, setReposTreeInfo]);
-  const prevGlobalMacrosJsonRef = useRef<string>("");
+  const prevRuleMacrosJsonRef = useRef<string>("");
 
-  // Keep macroOverrides in sync with live PV data based on rules evaluation.
-  // This is needed because macros can be overriden via rules during runtime
+  // Keep the rule-specific runtime override layer in sync with live PV data.
   useEffect(() => {
     if (inEditMode) return;
     const unsubscribe = usePVStore.subscribe((state) => {
-      const overrides = collectGlobalMacroOverrides(editorWidgets, state.pvs, baseGlobalMacros);
+      const overrides = collectGlobalMacroOverrides(editorWidgets, state.pvs, runtimeBaseMacros);
       const json = JSON.stringify(overrides);
-      if (json !== prevGlobalMacrosJsonRef.current) {
-        prevGlobalMacrosJsonRef.current = json;
-        setMacroOverrides(overrides);
+      if (json !== prevRuleMacrosJsonRef.current) {
+        prevRuleMacrosJsonRef.current = json;
+        setRuleMacroOverrides(overrides);
       }
     });
     return unsubscribe;
-  }, [editorWidgets, baseGlobalMacros, inEditMode, setMacroOverrides]);
+  }, [editorWidgets, runtimeBaseMacros, inEditMode, setRuleMacroOverrides]);
 
   return useMemo(
     () => ({
