@@ -20,6 +20,7 @@ export const NavigationButton: WidgetDefinition = {
     ...TEXT_PROPS,
     backgroundColor: { ...PROPERTY_SCHEMAS.backgroundColor, value: COLORS.buttonColor },
     displayPath: PROPERTY_SCHEMAS.displayPath,
+    target: PROPERTY_SCHEMAS.target,
     disabled: PROPERTY_SCHEMAS.disabled,
     tooltip: { ...PROPERTY_SCHEMAS.tooltip, value: "" },
     macros: { ...PROPERTY_SCHEMAS.macros },
