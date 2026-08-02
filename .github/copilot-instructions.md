@@ -406,40 +406,12 @@ cd backend/api && ruff check .     # ruff
 
 ---
 
-## Known Improvement Points
+## Instructions
 
-### Backend
+- Whenever relevant sections of code are changed, update this file to reflect the new architecture,
+  patterns, and conventions.
 
-- **In-memory session and user stores** — `users_db` and `sessions` in `auth.py` are plain dicts.
-  Restart invalidates all sessions; no horizontal scaling. Marked in code for DB replacement.
-- **`REPOS_BASE_PATH` hardcoded outside config** — defined in `common.py` instead of `config.py`;
-  should be env-configurable.
-- **Git via subprocess** — fragile error handling; path/branch inputs should be validated carefully
-  to prevent injection. Consider `gitpython` or `pygit2`.
-- **`NEW_FILE_CONTENT` mutable module-level list** — any in-place mutation corrupts future new
-  files. Should be a factory function.
-- **`TECHNICAL_ACCOUNT_TOKEN` read at import time** — token rotation requires a full restart.
-- **epicsWS has no auth** — port 8080 accepts any connection. Fine behind NGINX in prod but fully
-  open in dev.
-- **Auth provider health at startup** — when `DEMO_MODE=false`, backend startup may log warnings if
-  OIDC discovery is unreachable. Consider explicit readiness checks and alerting around provider
-  availability.
+- Avoid long docstrings in code with detailed examples or explanations. Keep the code
+  self-documenting and add comments only for non-obvious logic or decisions.
 
-### Frontend
-
-- **`pvData` / `multiPvData` on `Widget` type** — render-time concerns leaking into the data model.
-  These fields are injected by `LiveWidget` at render time and are never serialized, but they could
-  belong in a separate render-only type.
-- **Hybrid flat + nested widget tree** — top-level is a flat array, groups have `children`. A fully
-  normalized structure (map by ID with parent/child ID refs) would simplify traversal helpers.
-- **Generated API client tracked in git** — `src/services/APIClient/` produces noisy diffs on every
-  backend change. Could be generated in CI and gitignored. If this path is chosen, a stable way of
-  always having the latest API client available in development would be needed.
-
-### Cross-cutting
-
-- **Version injection fails without git** — `vite.config.ts` calls `git describe` via `execSync`;
-  hard-fails in environments without a git repo. Needs a try/catch fallback.
-- **No integration tests for git layer** — the staging repo operations (clone, worktree, commit,
-  deploy) are the most complex and side-effectful backend code, and the least likely to be covered
-  by unit tests alone.
+- Always run `pnpm lint` and `ruff check .` before committing code. Fix all errors and warnings.

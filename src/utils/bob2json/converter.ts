@@ -13,10 +13,10 @@ import {
   PhoebusAttribute,
   PhoebusAlignment,
   PhoebusBoolean,
-  PHOEBUS_DEFAULT_SIZES,
   PhoebusProperty,
   PhoebusWidgetType,
 } from "./constants";
+import { PHOEBUS_WIDGET_DEFAULTS, applyWidgetDefaults } from "./defaults";
 import { WIDGET_MAP } from "@src/utils/bob2json/mapping";
 import type { PhoebusDisplay, PhoebusFont, PhoebusState, PhoebusWidget } from "./types";
 import type { DOMRectLike, ExportedWidget, PropertyValue, StateEntry } from "@src/types/widgets";
@@ -215,29 +215,6 @@ function extractFontProps(raw: unknown): Record<string, PropertyValue> {
 /** Returns true when the Phoebus property value represents a boolean true. */
 function isTrue(raw: unknown): boolean {
   return raw === true || raw === PhoebusBoolean.TRUE || raw === 1;
-}
-
-function isHorizontal(phWidget: PhoebusWidget): boolean {
-  const raw = phWidget.properties.get(PhoebusProperty.HORIZONTAL);
-  if (raw === undefined || raw === null) {
-    // if omitted, default to true for these widgets
-    return (
-      phWidget.type === PhoebusWidgetType.PROGRESS_BAR ||
-      phWidget.type === PhoebusWidgetType.BYTE_MONITOR
-    );
-  }
-  return isTrue(raw);
-}
-/**
- * Phoebus labels are transparent by default even when the tag is omitted.
- * For other widgets, omission means false unless explicitly set.
- */
-function isTransparentWidget(phWidget: PhoebusWidget): boolean {
-  const rawTransparent = phWidget.properties.get(PhoebusProperty.TRANSPARENT);
-  if (rawTransparent === undefined || rawTransparent === null) {
-    return phWidget.type === PhoebusWidgetType.LABEL;
-  }
-  return isTrue(rawTransparent);
 }
 
 /** Converts parsed Phoebus states to WEISS stateList entries. */
@@ -474,6 +451,8 @@ function convertWidget(
     return buildUnsupportedPlaceholderWidget(phWidget, xOffset, yOffset, forcePositionFromOffset);
   }
 
+  applyWidgetDefaults(phWidget);
+
   const properties: Record<string, PropertyValue> = {};
   const hasRawX = phWidget.properties.has(PhoebusProperty.X);
   const hasRawY = phWidget.properties.has(PhoebusProperty.Y);
@@ -486,19 +465,15 @@ function convertWidget(
     }
   }
 
-  const isTransparent = isTransparentWidget(phWidget);
+  const transparentProp = phWidget.properties.get(PhoebusProperty.TRANSPARENT);
+  const isExplicitlyOpaque = transparentProp === false || transparentProp === PhoebusBoolean.FALSE;
+  const isTransparent =
+    (phWidget.type === PhoebusWidgetType.LABEL && !isExplicitlyOpaque) || isTrue(transparentProp);
   const rawX = getNumericProperty(phWidget, PhoebusProperty.X, 0);
   const rawY = getNumericProperty(phWidget, PhoebusProperty.Y, 0);
   const absoluteX = rawX + xOffset;
   const absoluteY = rawY + yOffset;
-  const defaultSize = PHOEBUS_DEFAULT_SIZES[phWidget.type];
   const supportsBackgroundColor = Object.values(entry.propMap).includes("backgroundColor");
-  // Line style and width handling: if a line width is specified but no style, default to solid (Phoebus default).
-  const lineWidth = getNumericProperty(phWidget, PhoebusProperty.LINE_WIDTH, 0);
-  const hasLineStyle = phWidget.properties.has(PhoebusProperty.LINE_STYLE);
-  if (lineWidth > 0 && !hasLineStyle) {
-    phWidget.properties.set(PhoebusProperty.LINE_STYLE, "SOLID");
-  }
 
   for (const [phKey, weissKeyRaw] of Object.entries(entry.propMap)) {
     if (typeof weissKeyRaw !== "string") continue;
@@ -518,27 +493,8 @@ function convertWidget(
       properties[weissKey] = absoluteY;
       continue;
     }
-    if (phoebusKey === PhoebusProperty.WIDTH || phoebusKey === PhoebusProperty.HEIGHT) {
-      if (raw === undefined || raw === null) {
-        const fallback =
-          phoebusKey === PhoebusProperty.WIDTH ? defaultSize?.width : defaultSize?.height;
-        if (fallback !== undefined) {
-          properties[weissKey] = fallback;
-        }
-        continue;
-      }
-    }
-
-    if (weissKey === "horizontal") {
-      if (
-        phWidget.type === PhoebusWidgetType.BYTE_MONITOR ||
-        phWidget.type === PhoebusWidgetType.PROGRESS_BAR
-      ) {
-        properties[weissKey] = isHorizontal(phWidget);
-        continue;
-      }
-    }
-    // end of default value handling, skip all undefined/null from now on.
+    // Skip properties still absent after defaults have been applied.
+    // (width/height without defaults, truly optional properties, etc.)
 
     if (raw === undefined || raw === null) continue;
 
@@ -665,8 +621,9 @@ function convertWidget(
     if (converted !== null) children.push(converted);
   }
 
-  if (phWidget.type === PhoebusWidgetType.LED && entry.weissName === "BitIndicator") {
-    properties.fixedProportion = false;
+  const widgetOutputDefaults = PHOEBUS_WIDGET_DEFAULTS[phWidget.type]?.outputDefaults;
+  if (widgetOutputDefaults) {
+    Object.assign(properties, widgetOutputDefaults);
   }
 
   if (phWidget.type === PhoebusWidgetType.ACTION_BUTTON) {

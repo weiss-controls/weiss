@@ -193,28 +193,6 @@ export const PhoebusWidgetType = {
   VIEWER_3D: "3dviewer",
 } as const;
 
-export interface PhoebusSize {
-  width: number;
-  height: number;
-}
-
-/**
- * Default Phoebus widget dimensions when width/height are omitted from XML.
- * Add new widget defaults here as their source values are discovered.
- */
-export const PHOEBUS_DEFAULT_SIZES: Partial<Record<PhoebusWidgetType, PhoebusSize>> = {
-  [PhoebusWidgetType.LED]: { width: 20, height: 20 },
-  [PhoebusWidgetType.MULTI_STATE_LED]: { width: 20, height: 20 },
-  [PhoebusWidgetType.ACTION_BUTTON]: { width: 100, height: 30 },
-  [PhoebusWidgetType.BOOLEAN_BUTTON]: { width: 100, height: 30 },
-  [PhoebusWidgetType.COMBO_BOX]: { width: 100, height: 30 },
-  [PhoebusWidgetType.TEXT_ENTRY]: { width: 100, height: 20 },
-  [PhoebusWidgetType.TEXT_UPDATE]: { width: 100, height: 20 },
-  [PhoebusWidgetType.LABEL]: { width: 100, height: 20 },
-  [PhoebusWidgetType.PROGRESS_BAR]: { width: 100, height: 20 },
-  [PhoebusWidgetType.RECTANGLE]: { width: 100, height: 20 },
-};
-
 /* -------------------------------------------------------------------------- */
 /* Enumerations                                                               */
 /* -------------------------------------------------------------------------- */
