@@ -106,6 +106,8 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     propMap: {
       ...COMMON_PROP_MAP,
       ...STYLE_PROP_MAP,
+      [PhoebusProperty.ON_COLOR]: "onColor",
+      [PhoebusProperty.OFF_COLOR]: "offColor",
       [PhoebusProperty.PV_NAME]: "pvName",
       [PhoebusProperty.HORIZONTAL]: "horizontal",
       [PhoebusProperty.NBITS]: "nBits",

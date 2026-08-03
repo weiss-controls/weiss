@@ -18,7 +18,7 @@
  */
 
 import { PhoebusProperty, PhoebusWidgetType } from "./constants";
-import type { PhoebusWidget } from "./types";
+import type { PhoebusColor, PhoebusState, PhoebusWidget } from "./types";
 import type { PropertyValue } from "@src/types/widgets";
 
 export interface PhoebusWidgetDefaultsEntry {
@@ -26,7 +26,7 @@ export interface PhoebusWidgetDefaultsEntry {
    * Defaults injected into `phWidget.properties` before conversion.
    * Each key is only set when the property is absent from the parsed XML.
    */
-  inputDefaults?: Partial<Record<PhoebusProperty, PropertyValue>>;
+  inputDefaults?: Partial<Record<PhoebusProperty, unknown>>;
 
   /**
    * Defaults written into the WEISS output properties after the propMap loop.
@@ -35,6 +35,30 @@ export interface PhoebusWidgetDefaultsEntry {
    */
   outputDefaults?: Record<string, PropertyValue>;
 }
+
+const PHOEBUS_DEFAULT_OFF_COLOR: PhoebusColor = {
+  red: 60,
+  green: 100,
+  blue: 60,
+};
+
+const PHOEBUS_DEFAULT_ON_COLOR: PhoebusColor = {
+  red: 60,
+  green: 255,
+  blue: 60,
+};
+
+const PHOEBUS_MULTI_STATE_LED_FALLBACK_COLOR: PhoebusColor = {
+  red: 176,
+  green: 118,
+  blue: 255,
+};
+
+const PHOEBUS_MULTI_STATE_LED_DEFAULT_STATES: PhoebusState[] = [
+  { value: 0, label: "", color: PHOEBUS_DEFAULT_OFF_COLOR },
+  { value: 1, label: "", color: PHOEBUS_DEFAULT_ON_COLOR },
+  { value: 2, label: "", color: PHOEBUS_MULTI_STATE_LED_FALLBACK_COLOR },
+];
 
 // Per-widget defaults
 
@@ -95,6 +119,8 @@ export const PHOEBUS_WIDGET_DEFAULTS: Partial<
     inputDefaults: {
       [PhoebusProperty.WIDTH]: 20,
       [PhoebusProperty.HEIGHT]: 20,
+      [PhoebusProperty.OFF_COLOR]: PHOEBUS_DEFAULT_OFF_COLOR,
+      [PhoebusProperty.ON_COLOR]: PHOEBUS_DEFAULT_ON_COLOR,
     },
     // fixedProportion is a WEISS-only concept with no Phoebus counterpart.
     outputDefaults: {
@@ -106,6 +132,7 @@ export const PHOEBUS_WIDGET_DEFAULTS: Partial<
     inputDefaults: {
       [PhoebusProperty.WIDTH]: 20,
       [PhoebusProperty.HEIGHT]: 20,
+      [PhoebusProperty.STATES]: PHOEBUS_MULTI_STATE_LED_DEFAULT_STATES,
     },
   },
 
@@ -122,6 +149,8 @@ export const PHOEBUS_WIDGET_DEFAULTS: Partial<
     inputDefaults: {
       // Phoebus byte monitors are horizontal by default.
       [PhoebusProperty.HORIZONTAL]: true,
+      [PhoebusProperty.OFF_COLOR]: PHOEBUS_DEFAULT_OFF_COLOR,
+      [PhoebusProperty.ON_COLOR]: PHOEBUS_DEFAULT_ON_COLOR,
     },
   },
 
@@ -150,7 +179,7 @@ export function applyWidgetDefaults(phWidget: PhoebusWidget): void {
   if (entry?.inputDefaults) {
     for (const [key, value] of Object.entries(entry.inputDefaults) as [
       PhoebusProperty,
-      PropertyValue,
+      unknown,
     ][]) {
       if (!phWidget.properties.has(key)) {
         phWidget.properties.set(key, value);
