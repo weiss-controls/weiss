@@ -213,7 +213,8 @@ function convertWidget(
       phoebusKey === PhoebusProperty.VISIBLE ||
       phoebusKey === PhoebusProperty.ENABLED ||
       phoebusKey === PhoebusProperty.TRANSPARENT ||
-      phoebusKey === PhoebusProperty.SQUARE
+      phoebusKey === PhoebusProperty.SQUARE ||
+      phoebusKey === PhoebusProperty.HORIZONTAL
     ) {
       const boolValue = isTrue(raw);
       properties[weissKey] = weissKey === "disabled" ? !boolValue : boolValue;
