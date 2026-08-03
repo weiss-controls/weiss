@@ -14,7 +14,7 @@ import WidgetRenderer from "@components/WidgetRenderer/WidgetRenderer.tsx";
 import ToolbarButtons from "@components/Toolbar/Toolbar.tsx";
 import { v4 as uuidv4 } from "uuid";
 import SelectionManager from "./SelectionManager/SelectionManager";
-import { Box, CircularProgress } from "@mui/material";
+import { Box, CircularProgress, Fade } from "@mui/material";
 import { useWidgetContext } from "@src/context/useWidgetContext";
 import { useUIContext } from "@src/context/useUIContext";
 
@@ -37,8 +37,17 @@ import { useUIContext } from "@src/context/useUIContext";
 const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
   const props = data.editableProperties;
 
-  const { mode, isPanning, setIsPanning, inEditMode, selectedFile, isDeveloper, isReposLoading } =
-    useUIContext();
+  const {
+    mode,
+    isPanning,
+    setIsPanning,
+    inEditMode,
+    selectedFile,
+    isDeveloper,
+    isReposLoading,
+    editorSidebarOpen,
+    editorSidebarWidth,
+  } = useUIContext();
 
   const {
     addWidget,
@@ -78,6 +87,7 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
   const [contextMenuVisible, setContextMenuVisible] = useState(false);
   const [contextMenuPVName, setContextMenuPVName] = useState<string | null>(null);
   const [contextMenuPVData, setContextMenuPVData] = useState<PVData | null>(null);
+  const [zoomBadgeVisible, setZoomBadgeVisible] = useState(false);
 
   const [shouldCenterPan, setShouldCenterPan] = useState(true);
   const [dragPreview, setDragPreview] = useState<{
@@ -85,11 +95,13 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
     x: number;
     y: number;
   } | null>(null);
+  const zoomBadgeTimerRef = useRef<number | null>(null);
 
   const gridLineVisible = props.gridLineVisible?.value;
 
   const centerScreen = () => {
     setZoom(1);
+    showZoomBadge();
     setShouldCenterPan(true);
   };
 
@@ -117,6 +129,26 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
     window.addEventListener("wheel", handleCtrlZoom, { passive: false });
     return () => {
       window.removeEventListener("wheel", handleCtrlZoom);
+    };
+  }, []);
+
+  const showZoomBadge = () => {
+    if (zoomBadgeTimerRef.current) {
+      clearTimeout(zoomBadgeTimerRef.current);
+      zoomBadgeTimerRef.current = null;
+    }
+    setZoomBadgeVisible(true);
+    zoomBadgeTimerRef.current = window.setTimeout(() => {
+      setZoomBadgeVisible(false);
+      zoomBadgeTimerRef.current = null;
+    }, 1000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (zoomBadgeTimerRef.current) {
+        clearTimeout(zoomBadgeTimerRef.current);
+      }
     };
   }, []);
 
@@ -186,6 +218,9 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
 
     setZoom(newZoom);
     setPan({ x: newPanX, y: newPanY });
+    if (newZoom !== zoom) {
+      showZoomBadge();
+    }
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -490,7 +525,8 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
           left: inEditMode ? "60px" : 0,
           padding: "4px 12px",
           fontSize: "12px",
-          bgcolor: "rgba(88, 88, 88, 0.5)",
+          bgcolor: "rgba(73, 73, 73, 0.5)",
+          border: "1px solid rgba(255,255,255,0.2)",
           borderRadius: "3px 3px 0 0",
           pointerEvents: "none",
           userSelect: "none",
@@ -502,6 +538,27 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
           ? selectedFile.path
           : `No file selected${inEditMode && isDeveloper ? ". Progress will not be saved!" : ""}`}
       </Box>
+      <Fade in={zoomBadgeVisible} timeout={300}>
+        <Box
+          sx={{
+            position: "absolute",
+            top: 10,
+            right: editorSidebarOpen ? `${editorSidebarWidth + 12}px` : "50px",
+            padding: "4px 12px",
+            fontSize: "20px",
+            bgcolor: "rgba(73, 73, 73, 0.7)",
+            border: "1px solid rgba(255,255,255,0.2)",
+            color: "white",
+            borderRadius: "3px 3px 0 0",
+            pointerEvents: "none",
+            userSelect: "none",
+            boxShadow: 4,
+            zIndex: FRONT_UI_ZIDX,
+          }}
+        >
+          {Math.round(zoom * 100)}%
+        </Box>
+      </Fade>
     </div>
   );
 };
