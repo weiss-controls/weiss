@@ -26,8 +26,8 @@ const NavigationButtonComp: React.FC<WidgetUpdate> = ({ data }) => {
 
   useEffect(() => {
     // whenever the selected file changes, check if this button was the cause.
-    // If so, replace runtime navigation macros so the next screen starts with
-    // the button-provided macro set as its only forwarded navigation macros.
+    // If so, forward the current runtime macro context and append this
+    // button-provided macros on top.
     if (inEditMode) return;
     if (!selectedFile) return;
     if (!clicked.current) return;

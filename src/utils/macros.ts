@@ -6,6 +6,18 @@ import type { PVData } from "@src/types/epicsWS";
 import type { PropertyKey, Widget, WidgetProperties, WidgetProperty } from "@src/types/widgets";
 import { evaluateRules } from "./ruleEngine";
 
+const MACRO_TOKEN_PATTERN = /^\$\([^)]+\)$/;
+
+function normalizeMacroKey(key: string): string {
+  const trimmed = key.trim();
+  if (!trimmed) return trimmed;
+  return MACRO_TOKEN_PATTERN.test(trimmed) ? trimmed : `$(${trimmed})`;
+}
+
+function isConcreteMacroValue(value: string): boolean {
+  return !value.includes("$(");
+}
+
 /**
  * Substitute $(MACRO_NAME) patterns in a single string using a macros map.
  * Unresolved macros (no matching key) are left as-is.
@@ -13,6 +25,41 @@ import { evaluateRules } from "./ruleEngine";
 export function substituteMacroInStr(str: string, macros: Record<string, string>): string {
   if (!str.includes("$(")) return str; // skip regex search if str has no macros at all
   return str.replace(/\$\(([^)]+)\)/g, (match) => macros[match] ?? match);
+}
+
+/**
+ * Build the forwarded navigation macro layer from the current runtime base macros
+ * and a clicked button macro map.
+ *
+ * - Existing runtime macros are forwarded by default.
+ * - New button entries override duplicates when they resolve to concrete values.
+ * - If a new value remains unresolved (e.g. "$(A)"), it does not clobber an
+ *   already concrete value for that key.
+ */
+export function composeForwardNavigationMacros(
+  runtimeBaseMacros: Record<string, string>,
+  buttonMacros: Record<string, string>,
+): Record<string, string> {
+  const forwarded: Record<string, string> = { ...runtimeBaseMacros };
+
+  for (const [rawKey, rawValue] of Object.entries(buttonMacros)) {
+    const normalizedKey = normalizeMacroKey(rawKey);
+    if (!normalizedKey) continue;
+
+    const previousValue = forwarded[normalizedKey];
+    const resolvedValue = substituteMacroInStr(rawValue, forwarded);
+    const unresolvedIncoming = !isConcreteMacroValue(resolvedValue);
+    const hadConcreteValue =
+      typeof previousValue === "string" && isConcreteMacroValue(previousValue);
+
+    if (unresolvedIncoming && hadConcreteValue) {
+      continue;
+    }
+
+    forwarded[normalizedKey] = resolvedValue;
+  }
+
+  return forwarded;
 }
 
 /**

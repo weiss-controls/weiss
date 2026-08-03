@@ -19,7 +19,7 @@ import { GRID_ID, MAX_HISTORY } from "@src/constants/constants";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import { v4 as uuidv4 } from "uuid";
 import { notifyUser } from "@src/services/Notifications/Notification";
-import { substituteMacroInStr } from "@src/utils/macros";
+import { composeForwardNavigationMacros, substituteMacroInStr } from "@src/utils/macros";
 import { derivePVNames } from "@components/RulesDialog/ruleDialogUtils";
 import {
   createGroupWidget,
@@ -1016,15 +1016,6 @@ export function useWidgetManager() {
   }, []);
 
   /**
-   * Forward runtime macros from a navigation action.
-   * Existing runtime layers are replaced so opening the next screen starts clean.
-   */
-  const forwardNavigationMacros = useCallback((macros: Record<string, string>) => {
-    setNavMacroOverrides(macros);
-    setRuleMacroOverrides({});
-  }, []);
-
-  /**
    * Macros to be substituted on pv names (design-time).
    */
   const baseGlobalMacros = useMemo(
@@ -1039,6 +1030,18 @@ export function useWidgetManager() {
         ? { ...baseGlobalMacros, ...navMacroOverrides }
         : baseGlobalMacros,
     [baseGlobalMacros, navMacroOverrides],
+  );
+
+  /**
+   * Forward runtime macros from a navigation action.
+   * Runtime base macros are forwarded and button macros are appended on top.
+   * Duplicate keys from the button win only when they resolve to concrete values.
+   */
+  const forwardNavigationMacros = useCallback(
+    (macros: Record<string, string>) => {
+      setNavMacroOverrides(composeForwardNavigationMacros(runtimeBaseMacros, macros));
+    },
+    [runtimeBaseMacros],
   );
 
   /**
