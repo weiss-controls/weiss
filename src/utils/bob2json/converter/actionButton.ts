@@ -33,7 +33,7 @@ function parseActionMacros(actionEl: Element): Record<string, string> | undefine
 
   const macros: Record<string, string> = {};
   for (const macroEl of Array.from(macrosEl.children)) {
-    const key = macroEl.tagName.trim();
+    const key = `$(${macroEl.tagName.trim()})`;
     const value = macroEl.textContent?.trim();
     if (key && value !== undefined) macros[key] = value;
   }
