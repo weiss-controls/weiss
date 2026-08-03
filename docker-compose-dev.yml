@@ -12,7 +12,8 @@ services:
     restart: always
     environment:
       NODE_ENV: development
-      VITE_DEMO_MODE: ${VITE_DEMO_MODE:-false}
+      VITE_DEMO_MODE: ${DEMO_MODE:-false}
+      VITE_AUTH_IDENTITY_PROVIDER: ${AUTH_IDENTITY_PROVIDER:-oauth}
     depends_on:
       - weiss-epicsws-dev
       - weiss-api-dev
@@ -36,10 +37,13 @@ services:
   weiss-api-dev:
     build:
       context: ./backend/api
+    working_dir: /app/api
+    # override to allow hot-reloading of FastAPI
+    command: api.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
       - ./backend/api:/app/api
       - storage:/app/storage
-      - ${ROLES_CONFIG_FILE:-./backend/roles.example.toml}:/config/roles.toml:ro
+      - ${ROLES_CONFIG_FILE:-./backend/api/roles.example.toml}:/config/roles.toml:ro
     image: weiss-api-dev:${DOCKER_TAG:-latest}
     container_name: weiss-api-dev
     ports:
@@ -47,9 +51,12 @@ services:
     restart: always
     environment:
       DEV_MODE: true # used to derive FRONTEND_URL port for CORS dev setup
-      MS_AUTH_CLIENT_ID: ${MS_AUTH_CLIENT_ID}
-      MS_AUTH_TENANT_ID: ${MS_AUTH_TENANT_ID}
-      MS_AUTH_CLIENT_SECRET: ${MS_AUTH_CLIENT_SECRET}
+      PYTHONPATH: /app/api/src
+      DEMO_MODE: ${DEMO_MODE:-true}
+      AUTH_CLIENT_ID: ${AUTH_CLIENT_ID}
+      AUTH_CLIENT_SECRET: ${AUTH_CLIENT_SECRET}
+      AUTH_IDENTITY_PROVIDER: ${AUTH_IDENTITY_PROVIDER:-oauth}
+      AUTH_ISSUER: ${AUTH_ISSUER}
       APP_HOSTNAME: ${APP_HOSTNAME:-localhost}
       ENABLE_HTTPS: ${ENABLE_HTTPS:-false}
       TECHNICAL_ACCOUNT_TOKEN: ${TECHNICAL_ACCOUNT_TOKEN}

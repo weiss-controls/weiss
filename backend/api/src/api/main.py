@@ -2,16 +2,23 @@
 # Copyright (C) 2026 André Favoto
 
 import asyncio
+import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from .auth import auth
-from .config import FRONTEND_URL, TITLE, VERSION
+from . import auth
+from .config import DEMO_MODE, FRONTEND_URL, TITLE, VERSION
 from .repos import deployed, staging
 from .snapshots import snapshots
+
+# Provider config
+AUTH_TENANT_ID = os.getenv("AUTH_TENANT_ID", "common")
+AUTH_CLIENT_ID = os.getenv("AUTH_CLIENT_ID")
+AUTH_CLIENT_SECRET = os.getenv("AUTH_CLIENT_SECRET")
 
 
 async def _session_pruner():
@@ -23,6 +30,15 @@ async def _session_pruner():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if not DEMO_MODE:
+        try:
+            if AUTH_CLIENT_ID is None or AUTH_CLIENT_SECRET is None:
+                raise ValueError("Missing AUTH_CLIENT_ID or AUTH_CLIENT_SECRET environment variables")
+            await auth.Provider.set(client_secret=AUTH_CLIENT_SECRET, client_id=AUTH_CLIENT_ID, issuer=auth.ISSUER)
+        except Exception:
+            logging.getLogger(__name__).warning(
+                "Provider setup failed — authentication will not work until the OIDC issuer is reachable"
+            )
     task = asyncio.create_task(_session_pruner())
     yield
     task.cancel()

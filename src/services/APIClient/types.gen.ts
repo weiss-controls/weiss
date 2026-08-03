@@ -7,7 +7,7 @@ export type ClientOptions = {
 /**
  * AuthProvider
  */
-export type AuthProvider = "microsoft" | "demo";
+export type AuthProvider = "demo" | "oauth";
 
 /**
  * AuthURL
@@ -220,6 +220,10 @@ export type OAuthCallbackRequest = {
    * Redirect Uri
    */
   redirect_uri?: string | null;
+  /**
+   * State
+   */
+  state?: string | null;
 };
 
 /**
@@ -621,9 +625,9 @@ export type AuthGetAuthUrlData = {
   };
   query?: {
     /**
-     * Demo Profile
+     * Demo Role
      */
-    demo_profile?: UserRole | null;
+    demo_role?: UserRole | null;
   };
   url: "/api/v1/auth/{provider}/authorize";
 };

@@ -26,11 +26,6 @@ import HelpOverlay from "./HelpOverlay.tsx";
 import { ListItemIcon, ListItemText, Menu, MenuItem, Avatar, Divider } from "@mui/material";
 import LogoutIcon from "@mui/icons-material/Logout";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-import PersonIcon from "@mui/icons-material/Person";
-import IntegrationInstructionsIcon from "@mui/icons-material/IntegrationInstructions";
-import MicrosoftIcon from "@mui/icons-material/Microsoft";
-import { Roles, type OAuthProvider } from "@src/services/AuthService/AuthService.ts";
-import { OAuthProviders } from "@src/services/AuthService/AuthService.ts";
 import GitImportDialog from "@components/GitImportDialog/GitImportDialog.tsx";
 import SnapshotDialog from "@components/SnapshotDialog/SnapshotDialog.tsx";
 import AlarmPanel from "@components/AlarmPanel/AlarmPanel.tsx";
@@ -144,10 +139,8 @@ export default function NavBar() {
     updateMode,
     wdgPickerOpen,
     setWdgPickerOpen,
-    isDemo,
     user,
     isAuthenticated,
-    login,
     logout,
     isDeveloper,
     selectedFile,
@@ -205,16 +198,6 @@ export default function NavBar() {
   const handleImportGitRepo = () => {
     handleImportMenuClose();
     setGitImportOpen(true);
-  };
-
-  const handleLogin = async (provider: OAuthProvider, demoProfile?: Roles) => {
-    handleUserMenuClose();
-    if (isAuthenticated) return;
-    if (provider === OAuthProviders.DEMO && !demoProfile) {
-      console.error("Demo profile must be specified for demo login");
-      return;
-    }
-    await login(provider, demoProfile);
   };
 
   const handleLogout = () => {
@@ -351,80 +334,31 @@ export default function NavBar() {
                 </Button>
               </Tooltip>
             )}
-            {isAuthenticated ? (
-              <>
-                <IconButton onClick={handleUserMenuOpen}>
-                  <Avatar alt={user?.displayName} sx={{ width: 32, height: 32 }}>
-                    {user?.displayName?.[0]?.toUpperCase() ?? "U"}
-                  </Avatar>
-                </IconButton>
+            <IconButton onClick={handleUserMenuOpen}>
+              <Avatar alt={user?.displayName} sx={{ width: 32, height: 32 }}>
+                {user?.displayName?.[0]?.toUpperCase() ?? "U"}
+              </Avatar>
+            </IconButton>
 
-                <Menu
-                  anchorEl={userMenuAnchor}
-                  open={Boolean(userMenuAnchor)}
-                  onClose={handleUserMenuClose}
-                >
-                  <MenuItem>
-                    <ListItemIcon>
-                      <AccountCircleIcon fontSize="small" />
-                    </ListItemIcon>
-                    <ListItemText primary={user?.displayName} secondary={user?.role} />
-                  </MenuItem>
-                  <Divider />
-                  <MenuItem onClick={handleLogout}>
-                    <ListItemIcon>
-                      <LogoutIcon fontSize="small" />
-                    </ListItemIcon>
-                    <ListItemText primary="Logout" />
-                  </MenuItem>
-                </Menu>
-              </>
-            ) : (
-              <>
-                <Button onClick={handleUserMenuOpen} sx={{ color: "white" }}>
-                  Sign in
-                </Button>
-                <Menu
-                  anchorEl={userMenuAnchor}
-                  open={Boolean(userMenuAnchor)}
-                  onClose={handleUserMenuClose}
-                >
-                  {[
-                    ...(isDemo
-                      ? [
-                          <MenuItem
-                            key="demo-operator"
-                            onClick={() => void handleLogin(OAuthProviders.DEMO, Roles.OPERATOR)}
-                          >
-                            <ListItemIcon>
-                              <PersonIcon fontSize="small" />
-                            </ListItemIcon>
-                            <ListItemText primary="Demo Operator" />
-                          </MenuItem>,
-                          <MenuItem
-                            key="demo-developer"
-                            onClick={() => void handleLogin(OAuthProviders.DEMO, Roles.DEVELOPER)}
-                          >
-                            <ListItemIcon>
-                              <IntegrationInstructionsIcon fontSize="small" />
-                            </ListItemIcon>
-                            <ListItemText primary="Demo Developer" />
-                          </MenuItem>,
-                        ]
-                      : []),
-                    <MenuItem
-                      key="microsoft"
-                      onClick={() => void handleLogin(OAuthProviders.MICROSOFT)}
-                    >
-                      <ListItemIcon>
-                        <MicrosoftIcon fontSize="small" />
-                      </ListItemIcon>
-                      <ListItemText primary="Microsoft account" />
-                    </MenuItem>,
-                  ]}
-                </Menu>
-              </>
-            )}
+            <Menu
+              anchorEl={userMenuAnchor}
+              open={Boolean(userMenuAnchor)}
+              onClose={handleUserMenuClose}
+            >
+              <MenuItem>
+                <ListItemIcon>
+                  <AccountCircleIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText primary={user?.displayName} secondary={user?.role} />
+              </MenuItem>
+              <Divider />
+              <MenuItem onClick={handleLogout}>
+                <ListItemIcon>
+                  <LogoutIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText primary="Logout" />
+              </MenuItem>
+            </Menu>
             {!inEditMode && (
               <SnapshotDialog
                 open={snapshotOpen}

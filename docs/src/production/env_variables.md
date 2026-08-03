@@ -14,9 +14,12 @@ cp .env.example .env
 These are injected at **build time** by Vite and baked into the static bundle. Changing them
 requires a rebuild.
 
-| Variable         | Default | Description                                                                                                     |
-| ---------------- | ------- | --------------------------------------------------------------------------------------------------------------- |
-| `VITE_DEMO_MODE` | `true`  | When `true`, a demo (unauthenticated) login option is shown on the login page. Disable for private deployments. |
+In this repository, Compose derives these from server-side variables:
+
+| Build arg                     | Derived from             | Description                                                 |
+| ----------------------------- | ------------------------ | ----------------------------------------------------------- |
+| `VITE_DEMO_MODE`              | `DEMO_MODE`              | Enables demo login buttons in the frontend login page.      |
+| `VITE_AUTH_IDENTITY_PROVIDER` | `AUTH_IDENTITY_PROVIDER` | Enables the non-demo login provider button in the frontend. |
 
 ---
 
@@ -67,22 +70,23 @@ Consumed by both `weiss` (nginx) and `weiss-api` (FastAPI CORS and cookie flags)
 
 Consumed by the `weiss-api` service.
 
-### Microsoft Entra ID (SSO authentication)
+### SSO authentication
 
-Required when `VITE_DEMO_MODE=false` or when SSO login is desired alongside demo mode. See
+Required when `DEMO_MODE=false` or when OAuth login is desired alongside demo mode. See
 [Organization credentials](org_credentials.md) for setup instructions.
 
-| Variable                | Default  | Description                                                                                                                                |
-| ----------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `MS_AUTH_CLIENT_ID`     | _(none)_ | Application (client) ID from the Azure app registration.                                                                                   |
-| `MS_AUTH_TENANT_ID`     | `common` | Directory (tenant) ID. Use `common` for multi-tenant or consumer accounts, or the specific tenant ID to restrict to a single organisation. |
-| `MS_AUTH_CLIENT_SECRET` | _(none)_ | Client secret value from the Azure app registration.                                                                                       |
+| Variable                 | Default  | Description                                                                                                        |
+| ------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------ |
+| `DEMO_MODE`              | `true`   | When `true`, only the demo provider is enabled in the backend.                                                     |
+| `AUTH_CLIENT_ID`         | _(none)_ | Application (client) ID from the client registration.                                                              |
+| `AUTH_CLIENT_SECRET`     | _(none)_ | Client secret value from the client registration.                                                                  |
+| `AUTH_ISSUER`            | _(none)_ | OAuth2/OpenID Connect issuer URL.                                                                                  |
+| `AUTH_IDENTITY_PROVIDER` | `oauth`  | Auth provider module to use for non-demo logins. Must map to a file in `api.auth.providers` (for example `oauth`). |
 
 :::{note}  
-For now, only Microsoft Entra ID authentication method is supported, but the architecture allows for
-multiple providers to be added as needed. If you need a different authentication method, please open
-an issue or, better yet, contribute a provider implementation!  
-:::
+For now, the default implementation is generic OAuth2/OIDC (`oauth`), but the architecture supports
+additional providers via `api.auth.providers`. Any provider implementation must inherit from
+`api.auth.providers.generic.GenericProvider`. :::
 
 ### Technical account (git commits)
 

@@ -210,7 +210,7 @@ Config: `openapi-ts.config.ts`. Custom fetch with credentials and error handling
 
 1. `AuthCallback` route exchanges the OAuth code via `POST /api/v1/auth/callback`.
 2. Session cookie (`weiss_session`) is set by the backend (HTTP-only).
-3. `authService.checkAuth()` fetches `/api/v1/auth/me` on load.
+3. `authService.restoreSession()` fetches `/api/v1/auth/me` on load.
 4. `ProtectedRoute` redirects to `/login` if unauthenticated.
 
 Roles: `"developer"` (full CRUD on staging repos) | `"operator"` (read-only, deployed repos).
@@ -219,7 +219,8 @@ Roles: `"developer"` (full CRUD on staging repos) | `"operator"` (read-only, dep
 
 ## Backend API
 
-**Stack:** Python ≥ 3.12, FastAPI, Uvicorn, MSAL (Microsoft OAuth), Pydantic v2.
+**Stack:** Python ≥ 3.12, FastAPI, Uvicorn, Authlib + generic OAuth/OIDC provider loading, Pydantic
+v2.
 
 **Entry:** `backend/api/src/api/main.py`.
 
@@ -238,7 +239,9 @@ Roles: `"developer"` (full CRUD on staging repos) | `"operator"` (read-only, dep
 - Sessions and users stored in-memory (marked for DB replacement).
 - Roles defined in `roles.toml` (env var `ROLES_CONFIG_FILE`). Hot-reload:
   `POST /api/v1/auth/admin/reload-roles`.
-- Demo mode (`VITE_DEMO_MODE=true`): a `"demo"` provider creates a session without MSAL.
+- Demo mode (`DEMO_MODE=true`): only the `demo` provider is enabled.
+- Non-demo auth provider is selected by `AUTH_IDENTITY_PROVIDER` (default `oauth`) and loaded from
+  `api.auth.providers`.
 
 ### Repo Management
 
@@ -281,10 +284,11 @@ All runtime configuration is provided via the `.env` file at the repository root
 
 **Frontend build-time** (baked into the static bundle at build; changing requires a rebuild):
 
-| Variable         | Default  | Description                                                                |
-| ---------------- | -------- | -------------------------------------------------------------------------- |
-| `VITE_DEMO_MODE` | `true`   | Show demo (unauthenticated) login option. Disable for private deployments. |
-| `DOCKER_TAG`     | `latest` | Tag applied to all Docker images built by Compose.                         |
+| Variable                      | Default  | Description                                                                         |
+| ----------------------------- | -------- | ----------------------------------------------------------------------------------- |
+| `VITE_DEMO_MODE`              | `true`   | Derived from `DEMO_MODE`; shows demo login option in the frontend.                  |
+| `VITE_AUTH_IDENTITY_PROVIDER` | `oauth`  | Derived from `AUTH_IDENTITY_PROVIDER`; selects non-demo login provider in frontend. |
+| `DOCKER_TAG`                  | `latest` | Tag applied to all Docker images built by Compose.                                  |
 
 **EPICS settings** (consumed by `weiss-epicsws`):
 
@@ -309,16 +313,18 @@ All runtime configuration is provided via the `.env` file at the repository root
 
 **API settings** (consumed by `weiss-api`):
 
-| Variable                     | Required          | Default             | Description                          |
-| ---------------------------- | ----------------- | ------------------- | ------------------------------------ |
-| `MS_AUTH_CLIENT_ID`          | Yes (for MS auth) | —                   | Azure App Registration client ID     |
-| `MS_AUTH_CLIENT_SECRET`      | Yes (for MS auth) | —                   | Client secret                        |
-| `MS_AUTH_TENANT_ID`          | No                | `"common"`          | Azure tenant                         |
-| `DEV_MODE`                   | No                | `false`             | Appends Vite dev port to CORS origin |
-| `TECHNICAL_ACCOUNT_TOKEN`    | No                | —                   | Git HTTP auth token for push         |
-| `TECHNICAL_ACCOUNT_USERNAME` | No                | `"weiss-bot"`       | Git commit author name               |
-| `TECHNICAL_ACCOUNT_EMAIL`    | No                | `"weiss-bot@dummy"` | Git commit author email              |
-| `ROLES_CONFIG_FILE`          | No                | `./roles.toml`      | Host path to the roles TOML file     |
+| Variable                     | Required        | Default             | Description                                                               |
+| ---------------------------- | --------------- | ------------------- | ------------------------------------------------------------------------- |
+| `DEMO_MODE`                  | No              | `false`             | Enables demo provider mode in backend; only demo logins allowed when true |
+| `AUTH_CLIENT_ID`             | Yes (for OAuth) | —                   | Client registration ID                                                    |
+| `AUTH_CLIENT_SECRET`         | Yes (for OAuth) | —                   | Client secret                                                             |
+| `AUTH_ISSUER`                | Yes (for OAuth) | —                   | OAuth issuer                                                              |
+| `AUTH_IDENTITY_PROVIDER`     | Yes             | `"oauth"`           | Identity provider to use                                                  |
+| `DEV_MODE`                   | No              | `false`             | Appends Vite dev port to CORS origin                                      |
+| `TECHNICAL_ACCOUNT_TOKEN`    | No              | —                   | Git HTTP auth token for push                                              |
+| `TECHNICAL_ACCOUNT_USERNAME` | No              | `"weiss-bot"`       | Git commit author name                                                    |
+| `TECHNICAL_ACCOUNT_EMAIL`    | No              | `"weiss-bot@dummy"` | Git commit author email                                                   |
+| `ROLES_CONFIG_FILE`          | No              | `./roles.toml`      | Host path to the roles TOML file                                          |
 
 ---
 
@@ -415,9 +421,9 @@ cd backend/api && ruff check .     # ruff
 - **`TECHNICAL_ACCOUNT_TOKEN` read at import time** — token rotation requires a full restart.
 - **epicsWS has no auth** — port 8080 accepts any connection. Fine behind NGINX in prod but fully
   open in dev.
-- **Demo mode backend bypass** — `VITE_DEMO_MODE` only hides the UI button; the
-  `/api/v1/auth/demo/authorize` endpoint is always reachable. A backend `ENABLE_DEMO_MODE` env var
-  (default `false`) should guard the demo auth routes.
+- **Auth provider health at startup** — when `DEMO_MODE=false`, backend startup may log warnings if
+  OIDC discovery is unreachable. Consider explicit readiness checks and alerting around provider
+  availability.
 
 ### Frontend
 

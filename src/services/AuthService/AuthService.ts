@@ -8,8 +8,8 @@ import type { User } from "@src/services/APIClient";
 // -----
 // exceptionally, redefine these types from APIClient to allow usage as enum-like
 export const OAuthProviders = {
-  MICROSOFT: "microsoft",
   DEMO: "demo",
+  OAUTH: "oauth",
 } as const;
 
 export type OAuthProvider = (typeof OAuthProviders)[keyof typeof OAuthProviders];
@@ -26,6 +26,7 @@ interface OAuthCallbackPayload {
   provider: OAuthProvider;
   code: string;
   redirect_uri: string;
+  state?: string;
 }
 
 export const AuthStatuses = {
@@ -73,9 +74,9 @@ class AuthService {
     this.notifyError(err);
   }
 
-  async getAuthorizeUrl(provider: OAuthProvider, demoProfile?: Roles): Promise<string | null> {
+  async getAuthorizeUrl(provider: OAuthProvider, demoRole?: Roles): Promise<string | null> {
     try {
-      const params = demoProfile ? { demo_profile: demoProfile } : undefined;
+      const params = demoRole ? { demo_role: demoRole } : undefined;
       const response = await authGetAuthUrl({ path: { provider }, query: params }).then(
         (r) => r.data,
       );
@@ -86,9 +87,9 @@ class AuthService {
     }
   }
 
-  async login(provider: OAuthProvider, demoProfile?: Roles) {
+  async login(provider: OAuthProvider, demoRole?: Roles) {
     try {
-      const authorizeUrl = await this.getAuthorizeUrl(provider, demoProfile);
+      const authorizeUrl = await this.getAuthorizeUrl(provider, demoRole);
       if (!authorizeUrl) throw new Error("No authorize URL returned");
       window.location.href = authorizeUrl;
     } catch (err) {
@@ -101,12 +102,13 @@ class AuthService {
     provider: OAuthProvider,
     code: string,
     redirectUri: string,
+    state?: string,
   ): Promise<User | null> {
     if (this.callbackPromise) return this.callbackPromise;
 
     this.callbackPromise = (async () => {
       try {
-        const payload: OAuthCallbackPayload = { provider, code, redirect_uri: redirectUri };
+        const payload: OAuthCallbackPayload = { provider, code, redirect_uri: redirectUri, state };
         const user = await authCallback({ body: payload }).then((r) => r.data);
         this.currentUser = user;
         this.notifyLogin(user);
