@@ -73,7 +73,8 @@ type EditorTab = (typeof EditorTab)[keyof typeof EditorTab];
 
 const EditorSidebar: React.FC = () => {
   const { selectedWidgetIDs, editingWidgets } = useWidgetContext();
-  const { inEditMode, isAuthenticated } = useUIContext();
+  const { inEditMode, isAuthenticated, setEditorSidebarOpen, setEditorSidebarWidth } =
+    useUIContext();
   const DEFAULT_WIDTH = 360;
   const MIN_WIDTH = 300;
   const MAX_WIDTH = 700;
@@ -91,6 +92,11 @@ const EditorSidebar: React.FC = () => {
   useEffect(() => {
     widthRef.current = drawerWidth;
   }, [drawerWidth]);
+
+  useEffect(() => {
+    setEditorSidebarOpen(open);
+    setEditorSidebarWidth(drawerWidth);
+  }, [open, drawerWidth, setEditorSidebarOpen, setEditorSidebarWidth]);
 
   useEffect(() => {
     if (isAuthenticated && !inEditMode) {

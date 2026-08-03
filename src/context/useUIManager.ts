@@ -80,6 +80,8 @@ export default function useUIManager(
   const [wdgPickerOpen, setWdgPickerOpen] = useState(false);
   const [mode, setMode] = useState<Mode>(EDIT_MODE);
   const [isPanning, setIsPanning] = useState(false);
+  const [editorSidebarOpen, setEditorSidebarOpen] = useState(window.innerWidth >= 1024);
+  const [editorSidebarWidth, setEditorSidebarWidth] = useState(360);
   const [user, setUser] = useState<User | null>(() => authService.getUser());
   const [authChecked, setAuthChecked] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -351,6 +353,10 @@ export default function useUIManager(
       inEditMode,
       isPanning,
       setIsPanning,
+      editorSidebarOpen,
+      setEditorSidebarOpen,
+      editorSidebarWidth,
+      setEditorSidebarWidth,
       isDemo,
       user,
       isDeveloper,
@@ -379,6 +385,8 @@ export default function useUIManager(
       mode,
       inEditMode,
       isPanning,
+      editorSidebarOpen,
+      editorSidebarWidth,
       user,
       isDeveloper,
       authChecked,
