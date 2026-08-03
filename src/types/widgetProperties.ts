@@ -62,6 +62,7 @@ export const PROPERTY_SCHEMAS = {
   gridSize:        defineProp({ selType: "number", label: "Grid Size", value: 10 as number, limits: { min: 1 }, category: "Grid" }),
   snapToGrid:      defineProp({ selType: "boolean", label: "Snap items", value: true as boolean, category: "Grid" }),
   centerVisible:   defineProp({ selType: "boolean", label: "Center mark visible", value: true as boolean, category: "Grid" }),
+  guidesVisible:   defineProp({ selType: "boolean", label: "Drag guides visible", value: true as boolean, category: "Grid" }),
   // EPICS
   pvName:          defineProp({ selType: "text", label: "PV Name", value: "" as string, category: "EPICS" }),
   pvNames:         defineProp({ selType: "strList", label: "PV Name", value: [] as string[], category: "EPICS" }),

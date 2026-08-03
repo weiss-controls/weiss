@@ -27,6 +27,7 @@ import {
   deepCloneWidget,
   deepCloneWidgetList,
   ensureGridCoordinate,
+  getTopLevelId,
   getNestedMoveUpdates,
   getSelectedWidgets,
   getWidgetNested,
@@ -607,6 +608,36 @@ export function useWidgetManager() {
     [selectedWidgets, batchWidgetUpdate],
   );
 
+  /**
+   * Select a single widget immediately on pointer-down to avoid drag-before-highlight races.
+   * Normalizes nested/group child ids to top-level ids so selection is consistent.
+   */
+  const selectSingleWidgetImmediate = useCallback(
+    (widgetId: string) => {
+      const effectiveId = getTopLevelId(editorWidgets, widgetId);
+      setSelectedWidgetIDs((prev) => {
+        const normalized = prev.map((id) => getTopLevelId(editorWidgets, id));
+        if (normalized.length === 1 && normalized[0] === effectiveId) return prev;
+        return [effectiveId];
+      });
+    },
+    [editorWidgets],
+  );
+
+  /** Toggle widget selection immediately (ctrl-click behavior). */
+  const toggleWidgetSelectionImmediate = useCallback(
+    (widgetId: string) => {
+      const effectiveId = getTopLevelId(editorWidgets, widgetId);
+      setSelectedWidgetIDs((prev) => {
+        const normalized = prev.map((id) => getTopLevelId(editorWidgets, id));
+        return normalized.includes(effectiveId)
+          ? normalized.filter((id) => id !== effectiveId)
+          : [...normalized, effectiveId];
+      });
+    },
+    [editorWidgets],
+  );
+
   const handleDragStop = (_e: RndDragEvent, d: DraggableData, w: Widget) => {
     setIsDragging(false);
     if (w.editableProperties.x?.value == d.x && w.editableProperties.y?.value == d.y) return;
@@ -1163,6 +1194,8 @@ export function useWidgetManager() {
       matchWidth,
       matchHeight,
       moveSelected,
+      selectSingleWidgetImmediate,
+      toggleWidgetSelectionImmediate,
       downloadWidgets,
       loadWidgets,
       importWidgets,
@@ -1213,6 +1246,8 @@ export function useWidgetManager() {
       undoStack,
       redoStack,
       selectedWidgets,
+      selectSingleWidgetImmediate,
+      toggleWidgetSelectionImmediate,
       resolvedPVList,
       baseGlobalMacros,
       globalMacros,
