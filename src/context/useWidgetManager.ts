@@ -58,7 +58,8 @@ export function useWidgetManager() {
   const [selectedWidgetIDs, setSelectedWidgetIDs] = useState<string[]>([]);
   const [fileLoadedTrig, setFileLoadedTrig] = useState(0);
   const [fileImportedTrig, setFileImportedTrig] = useState(0);
-  const [macroOverrides, setMacroOverrides] = useState<Record<string, string>>({});
+  const [navMacroOverrides, setNavMacroOverrides] = useState<Record<string, string>>({});
+  const [ruleMacroOverrides, setRuleMacroOverrides] = useState<Record<string, string>>({});
   const [gridSize, setGridSize] = useState<number>(1);
   const [snapToGrid, setSnapToGrid] = useState<boolean>(true);
   const DRAG_END_DELAY = 80; //ms
@@ -225,13 +226,28 @@ export function useWidgetManager() {
   const updateWidgetChildren = useCallback(
     (id: string, children: Widget[], keepHistory = false) => {
       updateEditorWidgetList((prev) => {
-        const replace = (widgets: Widget[]): Widget[] =>
-          widgets.map((w) => {
-            if (w.id === id) return { ...w, children };
-            if (w.children) return { ...w, children: replace(w.children) };
-            return w;
+        const replace = (widgets: Widget[]): [Widget[], boolean] => {
+          let changed = false;
+          const next = widgets.map((w) => {
+            if (w.id === id) {
+              if (w.children === children) return w;
+              changed = true;
+              return { ...w, children };
+            }
+
+            if (!w.children?.length) return w;
+
+            const [updatedChildren, childChanged] = replace(w.children);
+            if (!childChanged) return w;
+            changed = true;
+            return { ...w, children: updatedChildren };
           });
-        return replace(prev);
+
+          return changed ? [next, true] : [widgets, false];
+        };
+
+        const [updated, changed] = replace(prev);
+        return changed ? updated : prev;
       }, keepHistory);
     },
     [updateEditorWidgetList],
@@ -993,6 +1009,21 @@ export function useWidgetManager() {
     updateWidgetProperties(GRID_ID, { macros: editModeMacrosRef.current }, false);
   }, [updateWidgetProperties]);
 
+  /** Reset all runtime-only macro layers. */
+  const resetRuntimeMacros = useCallback(() => {
+    setNavMacroOverrides({});
+    setRuleMacroOverrides({});
+  }, []);
+
+  /**
+   * Forward runtime macros from a navigation action.
+   * Existing runtime layers are replaced so opening the next screen starts clean.
+   */
+  const forwardNavigationMacros = useCallback((macros: Record<string, string>) => {
+    setNavMacroOverrides(macros);
+    setRuleMacroOverrides({});
+  }, []);
+
   /**
    * Macros to be substituted on pv names (design-time).
    */
@@ -1001,17 +1032,25 @@ export function useWidgetManager() {
     [getWidget],
   );
 
+  /** Runtime base macros = Grid macros plus navigation-provided overrides. */
+  const runtimeBaseMacros = useMemo(
+    () =>
+      Object.keys(navMacroOverrides).length > 0
+        ? { ...baseGlobalMacros, ...navMacroOverrides }
+        : baseGlobalMacros,
+    [baseGlobalMacros, navMacroOverrides],
+  );
+
   /**
-   * In runtime mode, macroOverrides (computed by WidgetRenderer from fired rules)
-   * are merged on top of the GridZone's design-time macros so that
-   * annotatedEditorWidgets stays in sync.
+   * Full runtime macros used by widgets and subscription resolution.
+   * Rule overrides are layered last so they take precedence over navigation macros.
    */
   const globalMacros = useMemo(
     () =>
-      Object.keys(macroOverrides).length > 0
-        ? { ...baseGlobalMacros, ...macroOverrides }
-        : baseGlobalMacros,
-    [baseGlobalMacros, macroOverrides],
+      Object.keys(ruleMacroOverrides).length > 0
+        ? { ...runtimeBaseMacros, ...ruleMacroOverrides }
+        : runtimeBaseMacros,
+    [runtimeBaseMacros, ruleMacroOverrides],
   );
 
   /**
@@ -1140,8 +1179,12 @@ export function useWidgetManager() {
       setIsPlacementMode,
       snapshotEditModeMacros,
       restoreEditModeMacros,
-      macroOverrides,
-      setMacroOverrides,
+      runtimeBaseMacros,
+      navMacroOverrides,
+      ruleMacroOverrides,
+      setRuleMacroOverrides,
+      forwardNavigationMacros,
+      resetRuntimeMacros,
       setIsDragging,
       handleDragStop,
       handleResizeStop,
@@ -1176,7 +1219,9 @@ export function useWidgetManager() {
       fileImportedTrig,
       pickedWidget,
       isPlacementMode,
-      macroOverrides,
+      runtimeBaseMacros,
+      navMacroOverrides,
+      ruleMacroOverrides,
     ],
   );
 }

@@ -39,8 +39,9 @@ const UIProvider = memo(function UIProvider({
     loadWidgets,
     snapshotEditModeMacros,
     restoreEditModeMacros,
-    baseGlobalMacros,
-    setMacroOverrides,
+    runtimeBaseMacros,
+    setRuleMacroOverrides,
+    resetRuntimeMacros,
   } = useWidgetContext();
 
   const ui = useUIManager(
@@ -56,8 +57,9 @@ const UIProvider = memo(function UIProvider({
     loadWidgets,
     snapshotEditModeMacros,
     restoreEditModeMacros,
-    baseGlobalMacros,
-    setMacroOverrides,
+    runtimeBaseMacros,
+    setRuleMacroOverrides,
+    resetRuntimeMacros,
   );
 
   return <UIContext.Provider value={ui}>{children}</UIContext.Provider>;

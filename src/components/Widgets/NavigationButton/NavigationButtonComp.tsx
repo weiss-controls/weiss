@@ -11,7 +11,7 @@ import { useWidgetContext } from "@src/context/useWidgetContext";
 
 const NavigationButtonComp: React.FC<WidgetUpdate> = ({ data }) => {
   const { inEditMode, selectedFile, setSelectedFile } = useUIContext();
-  const { setMacroOverrides } = useWidgetContext();
+  const { forwardNavigationMacros } = useWidgetContext();
   const p = data.editableProperties;
   const clicked = React.useRef(false);
 
@@ -26,15 +26,13 @@ const NavigationButtonComp: React.FC<WidgetUpdate> = ({ data }) => {
 
   useEffect(() => {
     // whenever the selected file changes, check if this button was the cause.
-    // If so, add its macros to the global macroOverrides.  This allows the next screen to
-    // use the macros from the button that navigated to it.
+    // If so, replace runtime navigation macros so the next screen starts with
+    // the button-provided macro set as its only forwarded navigation macros.
     if (inEditMode) return;
     if (!selectedFile) return;
     if (!clicked.current) return;
     clicked.current = false;
-    if (p.macros?.value) {
-      setMacroOverrides((prev) => ({ ...prev, ...p.macros?.value }));
-    }
+    forwardNavigationMacros(p.macros?.value ?? {});
     // We intentionally want this effect to run only when the selected file changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFile]);
