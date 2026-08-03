@@ -23,12 +23,21 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale }) => {
     selectionBounds,
     selectedWidgets,
     setIsDragging,
+    selectSingleWidgetImmediate,
+    toggleWidgetSelectionImmediate,
+    gridSize,
+    snapToGrid,
     globalMacros,
     handleDragStop,
     handleResizeStop,
     handleSelGroupDragStop,
     handleSelGroupResizeStop,
   } = useWidgetContext();
+
+  const resizeGrid = snapToGrid ? ([gridSize, gridSize] as [number, number]) : undefined;
+  // dragGrid does not follow the scale - scale it manually
+  const scaledGridSize = gridSize * scale;
+  const dragGrid = snapToGrid ? ([scaledGridSize, scaledGridSize] as [number, number]) : undefined;
 
   /** Core widget content renderer, delegates PV data to LiveWidget */
   const renderWidgetContent = (w: Widget): ReactNode => {
@@ -80,6 +89,16 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale }) => {
     const groupHasSelectedChild =
       isGroup && !isSelected && hasSelectedDescendant(w, selectedWidgetIDs);
 
+    const handleWidgetMouseDownCapture = (e: React.MouseEvent) => {
+      if (!inEditMode || isPanning || isTextEditing) return;
+      if (e.button !== 0 || e.altKey) return;
+      if (e.ctrlKey) {
+        toggleWidgetSelectionImmediate(w.id);
+        return;
+      }
+      selectSingleWidgetImmediate(w.id);
+    };
+
     let editModeClass = "";
     if (inEditMode) {
       if (isSelected) editModeClass = "selectable selected";
@@ -94,6 +113,8 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale }) => {
         id={w.id}
         bounds="window"
         scale={scale}
+        dragGrid={dragGrid}
+        resizeGrid={resizeGrid}
         disableDragging={!canDrag}
         enableResizing={canResize}
         resizeHandleStyles={getResizeHandlesSize(width, height)}
@@ -101,6 +122,7 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale }) => {
         position={{ x, y }}
         className={editModeClass}
         style={isEmbedded && inEditMode ? { pointerEvents: "none" } : undefined}
+        onMouseDownCapture={handleWidgetMouseDownCapture}
         onDrag={() => setIsDragging(true)}
         onDragStop={(e, d) => handleDragStop(e, d, w)}
         onResizeStart={() => setIsDragging(true)}
@@ -163,6 +185,8 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale }) => {
         className="selectionGroup selectable"
         id="selectionGroup"
         scale={scale}
+        dragGrid={dragGrid}
+        resizeGrid={resizeGrid}
         size={{ width: selectionWidth, height: selectionHeight }}
         position={{ x: selectionX, y: selectionY }}
         enableResizing={canResize}

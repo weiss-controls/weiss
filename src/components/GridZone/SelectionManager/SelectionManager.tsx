@@ -3,7 +3,6 @@
 
 import { FRONT_UI_ZIDX, GRID_ID } from "@src/constants/constants";
 import { useWidgetContext } from "@src/context/useWidgetContext";
-import { getTopLevelId } from "@src/context/widgetHelpers";
 import React, { useRef, useState, useEffect } from "react";
 
 interface SelectionManagerProps {
@@ -11,12 +10,19 @@ interface SelectionManagerProps {
   zoom: number;
   pan: { x: number; y: number };
   enabled?: boolean;
+  guidesVisible?: boolean;
 }
 
 const CLICK_THRESHOLD = 3;
 
-const SelectionManager: React.FC<SelectionManagerProps> = ({ gridRef, zoom, pan }) => {
-  const { editorWidgets, setSelectedWidgetIDs, selectedWidgetIDs, isDragging } = useWidgetContext();
+const SelectionManager: React.FC<SelectionManagerProps> = ({
+  gridRef,
+  zoom,
+  pan,
+  guidesVisible,
+}) => {
+  const { editorWidgets, setSelectedWidgetIDs, selectedWidgetIDs, isDragging, selectionBounds } =
+    useWidgetContext();
   const [selectionArea, setSelectionArea] = useState<{
     start?: { x: number; y: number };
     end?: { x: number; y: number };
@@ -25,6 +31,68 @@ const SelectionManager: React.FC<SelectionManagerProps> = ({ gridRef, zoom, pan 
 
   const areaRef = useRef<HTMLDivElement>(null);
   const downTargetRef = useRef<EventTarget | null>(null);
+  const [dragGuideBounds, setDragGuideBounds] = useState<{
+    left: number;
+    right: number;
+    top: number;
+    bottom: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!guidesVisible || !isDragging) {
+      setDragGuideBounds(null);
+      return;
+    }
+
+    const updateGuidesFromDragTarget = () => {
+      const grid = gridRef.current;
+      if (!grid) return;
+
+      const dragTarget =
+        document.getElementById("selectionGroup") ??
+        (selectedWidgetIDs.length === 1 ? document.getElementById(selectedWidgetIDs[0]) : null);
+      if (!dragTarget) return;
+
+      const gridRect = grid.getBoundingClientRect();
+      const selRect = dragTarget.getBoundingClientRect();
+
+      const next = {
+        left: selRect.left - gridRect.left,
+        right: selRect.right - gridRect.left,
+        top: selRect.top - gridRect.top,
+        bottom: selRect.bottom - gridRect.top,
+      };
+
+      setDragGuideBounds((prev) => {
+        if (
+          prev &&
+          prev.left === next.left &&
+          prev.right === next.right &&
+          prev.top === next.top &&
+          prev.bottom === next.bottom
+        ) {
+          return prev;
+        }
+        return next;
+      });
+    };
+
+    updateGuidesFromDragTarget();
+
+    let active = true;
+    let rafId = 0;
+    const tick = () => {
+      if (!active) return;
+      updateGuidesFromDragTarget();
+      rafId = window.requestAnimationFrame(tick);
+    };
+    rafId = window.requestAnimationFrame(tick);
+
+    return () => {
+      active = false;
+      window.cancelAnimationFrame(rafId);
+    };
+  }, [gridRef, guidesVisible, isDragging, selectedWidgetIDs]);
 
   useEffect(() => {
     const grid = gridRef.current;
@@ -64,8 +132,7 @@ const SelectionManager: React.FC<SelectionManagerProps> = ({ gridRef, zoom, pan 
       enableTxtSelection();
       const target = e.target as HTMLElement;
       const id = target.getAttribute("id");
-      const widgetEl = target.closest(".selectable");
-      if ((id !== GRID_ID && !widgetEl) || id === "selectionGroup") {
+      if (id === "selectionGroup") {
         setSelectionArea({});
         return;
       }
@@ -83,21 +150,8 @@ const SelectionManager: React.FC<SelectionManagerProps> = ({ gridRef, zoom, pan 
       if (!selectionArea.start) {
         // ignore if click started elsewhere
         if (target !== downTargetRef.current) return;
-        const wId = widgetEl?.getAttribute("id");
-        if (!wId) {
+        if (id === GRID_ID) {
           setSelectedWidgetIDs([]);
-          return;
-        }
-        if (e.ctrlKey) {
-          const effectiveId = getTopLevelId(editorWidgets, wId);
-          setSelectedWidgetIDs((prev) => {
-            const sanitized = prev.map((id) => getTopLevelId(editorWidgets, id));
-            return sanitized.includes(effectiveId)
-              ? sanitized.filter((pid) => pid !== effectiveId)
-              : [...sanitized, effectiveId];
-          });
-        } else if (!selectedWidgetIDs.includes(wId)) {
-          setSelectedWidgetIDs([wId]);
         }
         return;
       }
@@ -155,28 +209,107 @@ const SelectionManager: React.FC<SelectionManagerProps> = ({ gridRef, zoom, pan 
     selectedWidgetIDs,
   ]);
 
-  if (!isSelecting || !selectionArea.end) return null;
-  const x = Math.min(selectionArea.start!.x, selectionArea.end.x) * zoom + pan.x;
-  const y = Math.min(selectionArea.start!.y, selectionArea.end.y) * zoom + pan.y;
-  const w = Math.abs(selectionArea.end.x - selectionArea.start!.x) * zoom;
-  const h = Math.abs(selectionArea.end.y - selectionArea.start!.y) * zoom;
+  const hasSelectionArea = isSelecting && !!selectionArea.end;
+  const showDragGuides = Boolean(guidesVisible && isDragging && selectionBounds);
+
+  if (!hasSelectionArea && !showDragGuides) return null;
+
+  const x = hasSelectionArea
+    ? Math.min(selectionArea.start!.x, selectionArea.end!.x) * zoom + pan.x
+    : 0;
+  const y = hasSelectionArea
+    ? Math.min(selectionArea.start!.y, selectionArea.end!.y) * zoom + pan.y
+    : 0;
+  const w = hasSelectionArea ? Math.abs(selectionArea.end!.x - selectionArea.start!.x) * zoom : 0;
+  const h = hasSelectionArea ? Math.abs(selectionArea.end!.y - selectionArea.start!.y) * zoom : 0;
+
+  const guideLeft = showDragGuides
+    ? (dragGuideBounds?.left ?? selectionBounds!.x * zoom + pan.x)
+    : 0;
+  const guideRight = showDragGuides
+    ? (dragGuideBounds?.right ?? (selectionBounds!.x + selectionBounds!.width) * zoom + pan.x)
+    : 0;
+  const guideTop = showDragGuides ? (dragGuideBounds?.top ?? selectionBounds!.y * zoom + pan.y) : 0;
+  const guideBottom = showDragGuides
+    ? (dragGuideBounds?.bottom ?? (selectionBounds!.y + selectionBounds!.height) * zoom + pan.y)
+    : 0;
 
   return (
-    <div
-      ref={areaRef}
-      style={{
-        position: "absolute",
-        left: x,
-        top: y,
-        width: w,
-        height: h,
-        border: "1px solid rgba(0, 128, 255, 0.8)",
-        backgroundColor: "rgba(0, 128, 255, 0.2)",
-        pointerEvents: "none",
-        zIndex: FRONT_UI_ZIDX - 1,
-        boxSizing: "border-box",
-      }}
-    />
+    <>
+      {showDragGuides && (
+        <>
+          <div
+            style={{
+              position: "absolute",
+              left: guideLeft,
+              top: 0,
+              width: 0,
+              height: "100%",
+              borderLeft: "1px dashed rgba(0, 128, 255, 0.8)",
+              pointerEvents: "none",
+              zIndex: FRONT_UI_ZIDX - 1,
+              boxSizing: "border-box",
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              left: guideRight,
+              top: 0,
+              width: 0,
+              height: "100%",
+              borderLeft: "1px dashed rgba(0, 128, 255, 0.8)",
+              pointerEvents: "none",
+              zIndex: FRONT_UI_ZIDX - 1,
+              boxSizing: "border-box",
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              left: 0,
+              top: guideTop,
+              width: "100%",
+              height: 0,
+              borderTop: "1px dashed rgba(0, 128, 255, 0.8)",
+              pointerEvents: "none",
+              zIndex: FRONT_UI_ZIDX - 1,
+              boxSizing: "border-box",
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              left: 0,
+              top: guideBottom,
+              width: "100%",
+              height: 0,
+              borderTop: "1px dashed rgba(0, 128, 255, 0.8)",
+              pointerEvents: "none",
+              zIndex: FRONT_UI_ZIDX - 1,
+              boxSizing: "border-box",
+            }}
+          />
+        </>
+      )}
+      {hasSelectionArea && (
+        <div
+          ref={areaRef}
+          style={{
+            position: "absolute",
+            left: x,
+            top: y,
+            width: w,
+            height: h,
+            border: "1px solid rgba(0, 128, 255, 0.8)",
+            backgroundColor: "rgba(0, 128, 255, 0.2)",
+            pointerEvents: "none",
+            zIndex: FRONT_UI_ZIDX - 1,
+            boxSizing: "border-box",
+          }}
+        />
+      )}
+    </>
   );
 };
 

@@ -491,7 +491,14 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
         )}
         <WidgetRenderer scale={zoom} />
       </div>
-      {inEditMode && <SelectionManager gridRef={gridRef} zoom={zoom} pan={pan} />}
+      {inEditMode && (
+        <SelectionManager
+          gridRef={gridRef}
+          zoom={zoom}
+          pan={pan}
+          guidesVisible={props.guidesVisible?.value}
+        />
+      )}
       <ToolbarButtons />
       <ContextMenu
         pos={contextMenuPos}
