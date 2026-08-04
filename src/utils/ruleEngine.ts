@@ -5,8 +5,8 @@ import type {
   Rule,
   RuleCondition,
   RuleOperator,
-  PropertyKey,
   PropertyValue,
+  RuleOutcome,
   Widget,
   RuleOverrides,
 } from "@src/types/widgets";
@@ -75,22 +75,40 @@ function evaluateCondition(
 }
 
 /**
- * Evaluate a rule against the current pvState.
- * Returns true if the rule's conditions are satisfied according to its conditionLogic.
- * A rule with no conditions never matches.
+ * Evaluate one rule outcome branch.
+ * Returns true if branch conditions are satisfied according to its conditionLogic.
+ * A branch with no conditions never matches.
+ */
+function evaluateOutcome(
+  outcome: RuleOutcome,
+  pvState: Record<string, PVData>,
+  macros: Record<string, string>,
+): boolean {
+  if (outcome.conditions.length === 0) return false;
+
+  if ((outcome.conditionLogic ?? "AND") === "AND") {
+    return outcome.conditions.every((c) => evaluateCondition(c, pvState, macros));
+  } else {
+    return outcome.conditions.some((c) => evaluateCondition(c, pvState, macros));
+  }
+}
+
+/**
+ * Evaluate a property-oriented rule and return the selected value for its target
+ * property. If multiple branches match, the last one wins.
  */
 function evaluateRule(
   rule: Rule,
   pvState: Record<string, PVData>,
   macros: Record<string, string>,
-): boolean {
-  if (rule.conditions.length === 0) return false;
-
-  if ((rule.conditionLogic ?? "AND") === "AND") {
-    return rule.conditions.every((c) => evaluateCondition(c, pvState, macros));
-  } else {
-    return rule.conditions.some((c) => evaluateCondition(c, pvState, macros));
+): PropertyValue | undefined {
+  let matched: PropertyValue | undefined;
+  for (const outcome of rule.outcomes) {
+    if (evaluateOutcome(outcome, pvState, macros)) {
+      matched = outcome.value;
+    }
   }
+  return matched;
 }
 
 /**
@@ -109,19 +127,17 @@ export function evaluateRules(
   const overrides: RuleOverrides = {};
 
   for (const rule of rules) {
-    if (evaluateRule(rule, pvState, macros)) {
-      for (const [key, value] of Object.entries(rule.actions)) {
-        if (typeof value === "string") {
-          overrides[key as PropertyKey] = substituteMacroStr(value, macros);
-        } else if (value !== null && typeof value === "object" && !Array.isArray(value)) {
-          // Record<string,string> delta (e.g. globalMacros partial override)
-          overrides[key as PropertyKey] = Object.fromEntries(
-            Object.entries(value).map(([k, v]) => [k, substituteMacroStr(v, macros)]),
-          ) as PropertyValue;
-        } else {
-          overrides[key as PropertyKey] = value;
-        }
-      }
+    const value = evaluateRule(rule, pvState, macros);
+    if (value === undefined) continue;
+
+    if (typeof value === "string") {
+      overrides[rule.targetProperty] = substituteMacroStr(value, macros);
+    } else if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+      overrides[rule.targetProperty] = Object.fromEntries(
+        Object.entries(value).map(([k, v]) => [k, substituteMacroStr(v, macros)]),
+      ) as PropertyValue;
+    } else {
+      overrides[rule.targetProperty] = value;
     }
   }
 

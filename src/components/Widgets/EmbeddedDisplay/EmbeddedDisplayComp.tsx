@@ -9,6 +9,7 @@ import { useWidgetContext } from "@src/context/useWidgetContext";
 import { getDeployedRepoFile, getStagingRepoFile } from "@src/services/APIClient";
 import { resolveRepoPath } from "@src/utils/repoPath";
 import { substituteMacroInStr, substituteMacrosInWidgetTree } from "@src/utils/macros";
+import { parseSerializedRules } from "@src/utils/ruleCompatibility";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import { createGroupWidget } from "@src/context/widgetHelpers";
 import type { PropertyKey } from "@src/types/widgets";
@@ -53,11 +54,7 @@ function exportedToWidget(raw: ExportedWidget): Widget | null {
     ]),
   );
 
-  const rules = raw.rules?.map((r) => ({
-    ...r,
-    id: uuidv4(),
-    pvNames: r.conditions.map((c) => c.pvName),
-  }));
+  const rules = parseSerializedRules(raw.rules);
 
   return {
     id: `${raw.widgetName}-${uuidv4()}`,

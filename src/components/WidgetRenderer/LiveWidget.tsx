@@ -34,14 +34,25 @@ const LiveWidget = memo(function WidgetRenderItem({
     if (w.runtimePVName) names.add(w.runtimePVName);
     w.runtimePVNames?.forEach((pv) => names.add(pv));
     w.rules?.forEach((rule) => {
-      rule.pvNames.forEach((pv) => {
-        const resolved = substituteMacroInStr(pv, globalMacros);
-        if (resolved) names.add(resolved);
+      rule.outcomes.forEach((outcome) => {
+        outcome.pvNames.forEach((pv) => {
+          const resolved = substituteMacroInStr(pv, globalMacros);
+          if (resolved) names.add(resolved);
+        });
+        if (rule.targetProperty === "pvName" && typeof outcome.value === "string") {
+          const resolved = substituteMacroInStr(outcome.value, globalMacros);
+          if (resolved) names.add(resolved);
+        }
       });
-      // Rule action may reference a separate write PV.
-      if (typeof rule.actions?.pvName === "string" && rule.actions.pvName) {
-        const resolved = substituteMacroInStr(rule.actions.pvName, globalMacros);
-        if (resolved) names.add(resolved);
+      if (rule.targetProperty === "pvNames" && Array.isArray(rule.outcomes)) {
+        for (const outcome of rule.outcomes) {
+          if (!Array.isArray(outcome.value)) continue;
+          for (const pv of outcome.value) {
+            if (typeof pv !== "string") continue;
+            const resolved = substituteMacroInStr(pv, globalMacros);
+            if (resolved) names.add(resolved);
+          }
+        }
       }
     });
     return [...names];

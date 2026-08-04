@@ -194,40 +194,65 @@ export function substituteMacrosInWidgetTree(
       const nextRules = w.rules.map((r) => {
         let ruleChanged = false;
 
-        const nextConditions = r.conditions.map((c) => {
-          const nextPVName = substituteMacroInStr(c.pvName, macros);
-          if (nextPVName !== c.pvName) {
-            ruleChanged = true;
-            return { ...c, pvName: nextPVName };
-          }
-          return c;
-        });
+        const nextOutcomes = r.outcomes.map((outcome) => {
+          let outcomeChanged = false;
 
-        const nextPVNames = r.pvNames.map((pv) => {
-          const nextPV = substituteMacroInStr(pv, macros);
-          if (nextPV !== pv) {
-            ruleChanged = true;
-          }
-          return nextPV;
-        });
+          const nextConditions = outcome.conditions.map((c) => {
+            const nextPVName = substituteMacroInStr(c.pvName, macros);
+            if (nextPVName !== c.pvName) {
+              outcomeChanged = true;
+              return { ...c, pvName: nextPVName };
+            }
+            return c;
+          });
 
-        let nextActions = r.actions;
-        const actionPVName = r.actions?.pvName;
-        if (typeof actionPVName === "string") {
-          const nextActionPVName = substituteMacroInStr(actionPVName, macros);
-          if (nextActionPVName !== actionPVName) {
-            nextActions = { ...r.actions, pvName: nextActionPVName };
-            ruleChanged = true;
+          const nextPVNames = outcome.pvNames.map((pv) => {
+            const nextPV = substituteMacroInStr(pv, macros);
+            if (nextPV !== pv) {
+              outcomeChanged = true;
+            }
+            return nextPV;
+          });
+
+          let nextValue = outcome.value;
+          if (typeof outcome.value === "string") {
+            const substituted = substituteMacroInStr(outcome.value, macros);
+            if (substituted !== outcome.value) {
+              nextValue = substituted;
+              outcomeChanged = true;
+            }
+          } else if (
+            outcome.value !== null &&
+            typeof outcome.value === "object" &&
+            !Array.isArray(outcome.value)
+          ) {
+            const substitutedRecord = Object.fromEntries(
+              Object.entries(outcome.value).map(([k, v]) => [k, substituteMacroInStr(v, macros)]),
+            );
+            const changed = Object.entries(substitutedRecord).some(
+              ([k, v]) => v !== (outcome.value as Record<string, string>)[k],
+            );
+            if (changed) {
+              nextValue = substitutedRecord;
+              outcomeChanged = true;
+            }
           }
-        }
+
+          if (!outcomeChanged) return outcome;
+          ruleChanged = true;
+          return {
+            ...outcome,
+            conditions: nextConditions,
+            pvNames: nextPVNames,
+            value: nextValue,
+          };
+        });
 
         if (!ruleChanged) return r;
         rulesChanged = true;
         return {
           ...r,
-          conditions: nextConditions,
-          pvNames: nextPVNames,
-          actions: nextActions,
+          outcomes: nextOutcomes,
         };
       });
 
@@ -269,7 +294,7 @@ export function collectGlobalMacroOverrides(
   let overrides: Record<string, string> = {};
   for (const w of flattenWidgetTree(widgets)) {
     if (!w.rules?.length) continue;
-    const hasGlobMacroRule = w.rules.some((r) => r.actions.globalMacros !== undefined);
+    const hasGlobMacroRule = w.rules.some((r) => r.targetProperty === "globalMacros");
     if (!hasGlobMacroRule) continue;
     const wPvName = w.runtimePVName;
     const wPvData = wPvName ? pvState[wPvName] : undefined;

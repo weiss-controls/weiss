@@ -34,6 +34,7 @@ import type {
   RuleOperator,
   PropertyKey,
   PropertyValue,
+  RuleOutcome,
   WidgetProperties,
 } from "@src/types/widgets";
 import { PROPERTY_SCHEMAS, CATEGORY_DISPLAY_ORDER } from "@src/types/widgetProperties";
@@ -42,6 +43,7 @@ import {
   OPERATORS,
   ACTIONABLE_SEL_TYPES,
   makeEmptyCondition,
+  makeEmptyOutcome,
   makeEmptyRule,
   derivePVNames,
 } from "./ruleDialogUtils";
@@ -69,6 +71,30 @@ const RulesDialog: React.FC<RulesDialogProps> = ({
   const [rules, setRules] = useState<Rule[]>(() => initialRules);
   const [selectedIdx, setSelectedIdx] = useState<number>(0);
 
+  // Actionable properties that can be targeted by rules, sorted by schema order.
+  const schemaKeyOrder = Object.keys(PROPERTY_SCHEMAS) as PropertyKey[];
+  const actionableKeys: PropertyKey[] = [
+    ...schemaKeyOrder.filter((key) => {
+      const prop = widgetProperties[key];
+      return prop && ACTIONABLE_SEL_TYPES.has(prop.selType) && key !== "rules";
+    }),
+    // globalMacros is always available on every widget as a rule target
+    ...(!widgetProperties.globalMacros ? (["globalMacros"] as PropertyKey[]) : []),
+  ];
+
+  // Group actionable keys by category for the target-property selector.
+  const groupedActionableKeys = (() => {
+    const groups: Record<string, PropertyKey[]> = {};
+    for (const key of actionableKeys) {
+      const cat = PROPERTY_SCHEMAS[key]?.category ?? "Other";
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(key);
+    }
+    return [...CATEGORY_DISPLAY_ORDER, "Other"]
+      .filter((cat) => groups[cat]?.length > 0)
+      .map((cat) => ({ category: cat, keys: groups[cat] }));
+  })();
+
   // Sync from props whenever the target widget changes
   // Do this only while the dialog is closed (avoids resetting mid-edit)
   useEffect(() => {
@@ -80,9 +106,26 @@ const RulesDialog: React.FC<RulesDialogProps> = ({
 
   const selected = rules[selectedIdx] ?? null;
 
+  const updateSelected = useCallback(
+    (patch: Partial<Rule>) => {
+      if (selected === null) return;
+      setRules((prev) => prev.map((r, i) => (i === selectedIdx ? { ...r, ...patch } : r)));
+    },
+    [selected, selectedIdx],
+  );
+
+  const updateSelectedOutcomes = useCallback(
+    (mutator: (outcomes: RuleOutcome[]) => RuleOutcome[]) => {
+      if (!selected) return;
+      updateSelected({ outcomes: mutator(selected.outcomes) });
+    },
+    [selected, updateSelected],
+  );
+
   // Rule list mutations
   const addRule = () => {
-    const next = [...rules, makeEmptyRule()];
+    if (actionableKeys.length === 0) return;
+    const next = [...rules, makeEmptyRule(actionableKeys[0])];
     setRules(next);
     setSelectedIdx(next.length - 1);
   };
@@ -102,89 +145,66 @@ const RulesDialog: React.FC<RulesDialogProps> = ({
     setSelectedIdx(target);
   };
 
-  const updateSelected = useCallback(
-    (patch: Partial<Rule>) => {
-      if (selected === null) return;
-      setRules((prev) => prev.map((r, i) => (i === selectedIdx ? { ...r, ...patch } : r)));
-    },
-    [selected, selectedIdx],
-  );
+  const changeRuleTargetProperty = (newKey: PropertyKey) => {
+    if (!selected || selected.targetProperty === newKey) return;
+    updateSelected({
+      targetProperty: newKey,
+      outcomes: selected.outcomes.map((outcome) => ({
+        ...outcome,
+        value: PROPERTY_SCHEMAS[newKey]?.value ?? "",
+      })),
+    });
+  };
 
-  // Condition mutations
-  const addCondition = () => {
+  // Outcome-level mutations
+  const addOutcome = () => {
     if (!selected) return;
-    const conds = [...selected.conditions, makeEmptyCondition()];
-    const pvNames = derivePVNames(conds);
-    updateSelected({ conditions: conds, pvNames });
+    updateSelectedOutcomes((prev) => [...prev, makeEmptyOutcome(selected.targetProperty)]);
   };
 
-  const removeCondition = (ci: number) => {
+  const removeOutcome = (outcomeIdx: number) => {
+    updateSelectedOutcomes((prev) => prev.filter((_, idx) => idx !== outcomeIdx));
+  };
+
+  const updateOutcome = (outcomeIdx: number, patch: Partial<RuleOutcome>) => {
+    updateSelectedOutcomes((prev) =>
+      prev.map((outcome, idx) => (idx === outcomeIdx ? { ...outcome, ...patch } : outcome)),
+    );
+  };
+
+  // Condition mutations (within a specific outcome)
+  const addCondition = (outcomeIdx: number) => {
     if (!selected) return;
-    const conds = selected.conditions.filter((_, i) => i !== ci);
-    const pvNames = derivePVNames(conds);
-    updateSelected({ conditions: conds, pvNames });
+    const outcome = selected.outcomes[outcomeIdx];
+    if (!outcome) return;
+    const conditions = [...outcome.conditions, makeEmptyCondition()];
+    updateOutcome(outcomeIdx, { conditions, pvNames: derivePVNames(conditions) });
   };
 
-  const updateCondition = (ci: number, patch: Partial<RuleCondition>) => {
+  const removeCondition = (outcomeIdx: number, conditionIdx: number) => {
     if (!selected) return;
-    const conds = selected.conditions.map((c, i) => (i === ci ? { ...c, ...patch } : c));
-    const pvNames = derivePVNames(conds);
-    updateSelected({ conditions: conds, pvNames });
+    const outcome = selected.outcomes[outcomeIdx];
+    if (!outcome) return;
+    const conditions = outcome.conditions.filter((_, idx) => idx !== conditionIdx);
+    updateOutcome(outcomeIdx, { conditions, pvNames: derivePVNames(conditions) });
   };
 
-  // Action mutations — sorted by PROPERTY_SCHEMAS definition order
-  const schemaKeyOrder = Object.keys(PROPERTY_SCHEMAS) as PropertyKey[];
-  const actionableKeys: PropertyKey[] = [
-    ...schemaKeyOrder.filter((key) => {
-      const prop = widgetProperties[key];
-      return prop && ACTIONABLE_SEL_TYPES.has(prop.selType) && key !== "rules";
-    }),
-    // globalMacros is always available on every widget as a rule action
-    ...(!widgetProperties.globalMacros ? (["globalMacros"] as PropertyKey[]) : []),
-  ];
-
-  // Group actionable keys by category for the property selector
-  const groupedActionableKeys = (() => {
-    const groups: Record<string, PropertyKey[]> = {};
-    for (const key of actionableKeys) {
-      const cat = PROPERTY_SCHEMAS[key]?.category ?? "Other";
-      if (!groups[cat]) groups[cat] = [];
-      groups[cat].push(key);
-    }
-    return [...CATEGORY_DISPLAY_ORDER, "Other"]
-      .filter((cat) => groups[cat]?.length > 0)
-      .map((cat) => ({ category: cat, keys: groups[cat] }));
-  })();
-
-  const addAction = () => {
-    if (!selected || actionableKeys.length === 0) return;
-    const usedKeys = new Set(Object.keys(selected.actions));
-    const nextKey = actionableKeys.find((k) => !usedKeys.has(k)) ?? actionableKeys[0];
-    const defaultValue = PROPERTY_SCHEMAS[nextKey]?.value ?? "";
-    updateSelected({ actions: { ...selected.actions, [nextKey]: defaultValue } });
-  };
-
-  const removeAction = (key: PropertyKey) => {
+  const updateCondition = (
+    outcomeIdx: number,
+    conditionIdx: number,
+    patch: Partial<RuleCondition>,
+  ) => {
     if (!selected) return;
-    const actions = { ...selected.actions };
-    delete actions[key];
-    updateSelected({ actions });
+    const outcome = selected.outcomes[outcomeIdx];
+    if (!outcome) return;
+    const conditions = outcome.conditions.map((condition, idx) =>
+      idx === conditionIdx ? { ...condition, ...patch } : condition,
+    );
+    updateOutcome(outcomeIdx, { conditions, pvNames: derivePVNames(conditions) });
   };
 
-  const changeActionKey = (oldKey: PropertyKey, newKey: PropertyKey) => {
-    if (!selected || oldKey === newKey) return;
-    const actions: Rule["actions"] = {};
-    // Preserve order while replacing the key
-    for (const [k, v] of Object.entries(selected.actions)) {
-      actions[k === oldKey ? newKey : (k as PropertyKey)] =
-        k === oldKey ? (PROPERTY_SCHEMAS[newKey]?.value ?? "") : v;
-    }
-    updateSelected({ actions });
-  };
-
-  const changeActionValue = (key: PropertyKey, value: PropertyValue) => {
-    if (!selected) return;
-    updateSelected({ actions: { ...selected.actions, [key]: value } });
+  const changeOutcomeValue = (outcomeIdx: number, value: PropertyValue) => {
+    updateOutcome(outcomeIdx, { value });
   };
 
   const handleSave = () => {
@@ -223,7 +243,7 @@ const RulesDialog: React.FC<RulesDialogProps> = ({
                 Rules
               </Typography>
               <Tooltip title="Add rule">
-                <IconButton size="small" onClick={addRule}>
+                <IconButton size="small" onClick={addRule} disabled={actionableKeys.length === 0}>
                   <AddIcon fontSize="small" />
                 </IconButton>
               </Tooltip>
@@ -314,8 +334,38 @@ const RulesDialog: React.FC<RulesDialogProps> = ({
                   onChange={(e) => updateSelected({ name: e.target.value })}
                   fullWidth
                 />
+
+                {/* Target property */}
+                <Select<PropertyKey>
+                  size="small"
+                  value={selected.targetProperty}
+                  onChange={(e) => changeRuleTargetProperty(e.target.value)}
+                  displayEmpty
+                  fullWidth
+                >
+                  {groupedActionableKeys.map(({ category, keys: catKeys }) => [
+                    <ListSubheader
+                      key={`cat-${category}`}
+                      sx={{
+                        lineHeight: "28px",
+                        fontSize: "0.7rem",
+                        letterSpacing: "0.08em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      {category}
+                    </ListSubheader>,
+                    ...catKeys.map((k) => (
+                      <MenuItem key={k} value={k}>
+                        {PROPERTY_SCHEMAS[k]?.label ?? k}
+                      </MenuItem>
+                    )),
+                  ])}
+                </Select>
+
                 <Divider />
-                {/* Conditions */}
+
+                {/* Outcomes */}
                 <Box>
                   <Box
                     sx={{
@@ -326,169 +376,147 @@ const RulesDialog: React.FC<RulesDialogProps> = ({
                     }}
                   >
                     <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
-                      Conditions
+                      Outcomes
                     </Typography>
-                    <Tooltip title="Add condition">
-                      <IconButton size="small" onClick={addCondition}>
+                    <Tooltip title="Add outcome">
+                      <IconButton size="small" onClick={addOutcome}>
                         <AddIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
                   </Box>
-                  {/* Condition logic toggle */}
-                  {selected.conditions.length > 1 && (
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
-                      <Typography variant="body2">Associative logic:</Typography>
-                      <ToggleButtonGroup
-                        exclusive
-                        size="small"
-                        value={selected.conditionLogic}
-                        onChange={(_e, v: "AND" | "OR" | null) =>
-                          v && updateSelected({ conditionLogic: v })
-                        }
-                        sx={{ height: 25 }}
+
+                  <Stack spacing={1}>
+                    {selected.outcomes.map((outcome, outcomeIdx) => (
+                      <Box
+                        key={outcome.id}
+                        sx={{
+                          border: "1px solid",
+                          borderColor: "divider",
+                          borderRadius: 1,
+                          p: 1.25,
+                        }}
                       >
-                        <ToggleButton value="AND">AND</ToggleButton>
-                        <ToggleButton value="OR">OR</ToggleButton>
-                      </ToggleButtonGroup>
-                    </Box>
-                  )}
-                  <Stack spacing={1}>
-                    {selected.conditions.map((cond, ci) => (
-                      <Box key={ci} sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-                        <TextField
-                          size="small"
-                          label="PV name"
-                          value={cond.pvName}
-                          onChange={(e) => updateCondition(ci, { pvName: e.target.value })}
-                          sx={{ flex: 1 }}
-                        />
-                        <Select
-                          size="small"
-                          value={cond.operator}
-                          onChange={(e) =>
-                            updateCondition(ci, { operator: e.target.value as RuleOperator })
-                          }
-                          sx={{ width: 80 }}
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            mb: 1,
+                          }}
                         >
-                          {OPERATORS.map((op) => (
-                            <MenuItem key={op} value={op}>
-                              {op}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                        <TextField
-                          size="small"
-                          label="Value"
-                          value={cond.value}
-                          onChange={(e) => updateCondition(ci, { value: e.target.value })}
-                          sx={{ flex: 1 }}
-                        />
-                        <Tooltip title="Remove condition">
-                          <IconButton size="small" onClick={() => removeCondition(ci)}>
-                            <DeleteIcon fontSize="small" color="error" />
-                          </IconButton>
-                        </Tooltip>
-                      </Box>
-                    ))}
-                    {selected.conditions.length === 0 && (
-                      <Typography variant="caption" color="text.secondary">
-                        No conditions — rule will never match.
-                      </Typography>
-                    )}
-                  </Stack>
-                </Box>
-
-                <Divider />
-
-                {/* Actions */}
-                <Box>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      mb: 1,
-                    }}
-                  >
-                    <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
-                      Actions
-                    </Typography>
-                    <Tooltip title="Add action">
-                      <span>
-                        <IconButton
-                          size="small"
-                          onClick={addAction}
-                          disabled={actionableKeys.length === 0}
-                        >
-                          <AddIcon fontSize="small" />
-                        </IconButton>
-                      </span>
-                    </Tooltip>
-                  </Box>
-                  <Stack spacing={1}>
-                    {Object.entries(selected.actions).map(([key, value]) => {
-                      const propKey = key as PropertyKey;
-                      const schema = PROPERTY_SCHEMAS[propKey];
-                      return (
-                        <Box key={key} sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-                          Set
-                          <Select
-                            size="small"
-                            value={key}
-                            onChange={(e) =>
-                              changeActionKey(propKey, e.target.value as PropertyKey)
-                            }
-                            sx={{ width: "40%" }}
-                          >
-                            {groupedActionableKeys.map(({ category, keys: catKeys }) => [
-                              <ListSubheader
-                                key={`cat-${category}`}
-                                sx={{
-                                  lineHeight: "28px",
-                                  fontSize: "0.7rem",
-                                  letterSpacing: "0.08em",
-                                  textTransform: "uppercase",
-                                }}
-                              >
-                                {category}
-                              </ListSubheader>,
-                              ...catKeys.map((k) => (
-                                <MenuItem key={k} value={k}>
-                                  {PROPERTY_SCHEMAS[k]?.label ?? k}
-                                </MenuItem>
-                              )),
-                            ])}
-                          </Select>
-                          To
-                          {schema ? (
-                            <ActionValueInput
-                              propKey={propKey}
-                              value={value}
-                              baseValue={
-                                propKey === "globalMacros"
-                                  ? (globalMacros ?? {})
-                                  : propKey === "macros"
-                                    ? (widgetProperties.macros?.value ?? {})
-                                    : undefined
-                              }
-                              onChange={(v) => changeActionValue(propKey, v)}
-                            />
-                          ) : (
-                            <Typography variant="caption" color="error">
-                              Unknown property
-                            </Typography>
-                          )}
-                          <Tooltip title="Remove action">
-                            <IconButton size="small" onClick={() => removeAction(propKey)}>
+                          <Typography variant="caption" color="text.secondary">
+                            Outcome {outcomeIdx + 1}
+                          </Typography>
+                          <Tooltip title="Remove outcome">
+                            <IconButton size="small" onClick={() => removeOutcome(outcomeIdx)}>
                               <DeleteIcon fontSize="small" color="error" />
                             </IconButton>
                           </Tooltip>
                         </Box>
-                      );
-                    })}
-                    {Object.keys(selected.actions).length === 0 && (
+
+                        {outcome.conditions.length > 1 && (
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                            <Typography variant="body2">Associative logic:</Typography>
+                            <ToggleButtonGroup
+                              exclusive
+                              size="small"
+                              value={outcome.conditionLogic}
+                              onChange={(_e, v: "AND" | "OR" | null) =>
+                                v && updateOutcome(outcomeIdx, { conditionLogic: v })
+                              }
+                              sx={{ height: 25 }}
+                            >
+                              <ToggleButton value="AND">AND</ToggleButton>
+                              <ToggleButton value="OR">OR</ToggleButton>
+                            </ToggleButtonGroup>
+                          </Box>
+                        )}
+
+                        <Stack spacing={1}>
+                          {outcome.conditions.map((cond, conditionIdx) => (
+                            <Box
+                              key={conditionIdx}
+                              sx={{ display: "flex", gap: 1, alignItems: "center" }}
+                            >
+                              <TextField
+                                size="small"
+                                label="PV name"
+                                value={cond.pvName}
+                                onChange={(e) =>
+                                  updateCondition(outcomeIdx, conditionIdx, {
+                                    pvName: e.target.value,
+                                  })
+                                }
+                                sx={{ flex: 1 }}
+                              />
+                              <Select
+                                size="small"
+                                value={cond.operator}
+                                onChange={(e) =>
+                                  updateCondition(outcomeIdx, conditionIdx, {
+                                    operator: e.target.value as RuleOperator,
+                                  })
+                                }
+                                sx={{ width: 80 }}
+                              >
+                                {OPERATORS.map((op) => (
+                                  <MenuItem key={op} value={op}>
+                                    {op}
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                              <TextField
+                                size="small"
+                                label="Value"
+                                value={cond.value}
+                                onChange={(e) =>
+                                  updateCondition(outcomeIdx, conditionIdx, {
+                                    value: e.target.value,
+                                  })
+                                }
+                                sx={{ flex: 1 }}
+                              />
+                              <Tooltip title="Remove condition">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => removeCondition(outcomeIdx, conditionIdx)}
+                                >
+                                  <DeleteIcon fontSize="small" color="error" />
+                                </IconButton>
+                              </Tooltip>
+                            </Box>
+                          ))}
+
+                          <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
+                            <Button size="small" onClick={() => addCondition(outcomeIdx)}>
+                              Add condition
+                            </Button>
+
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1, flex: 1 }}>
+                              <Typography variant="body2" sx={{ whiteSpace: "nowrap" }}>
+                                Set to
+                              </Typography>
+                              <ActionValueInput
+                                propKey={selected.targetProperty}
+                                value={outcome.value}
+                                baseValue={
+                                  selected.targetProperty === "globalMacros"
+                                    ? (globalMacros ?? {})
+                                    : selected.targetProperty === "macros"
+                                      ? (widgetProperties.macros?.value ?? {})
+                                      : undefined
+                                }
+                                onChange={(v) => changeOutcomeValue(outcomeIdx, v)}
+                              />
+                            </Box>
+                          </Box>
+                        </Stack>
+                      </Box>
+                    ))}
+
+                    {selected.outcomes.length === 0 && (
                       <Typography variant="caption" color="text.secondary">
-                        No actions — rule will match but do nothing.
+                        No outcomes — rule will never apply.
                       </Typography>
                     )}
                   </Stack>
