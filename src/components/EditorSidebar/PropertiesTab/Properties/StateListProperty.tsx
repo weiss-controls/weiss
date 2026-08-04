@@ -96,7 +96,7 @@ const StateListProperty: React.FC<StateListPropertyProps> = ({
             disablePadding
             sx={{ px: 2, py: 0.5, display: "flex", alignItems: "center", gap: 0.5 }}
           >
-            {/* Left index label + value field (normal) OR "Fallback:" spanning both (fallback).
+            {/* Left section: index label + value field (normal) OR "Fallback:" spanning both (fallback).
                 Fixed flex-basis keeps the color swatches aligned across all rows. */}
             <Box
               sx={{ flex: "0 0 25%", display: "flex", alignItems: "center", gap: 0.5, minWidth: 0 }}
