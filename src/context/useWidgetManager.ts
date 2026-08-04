@@ -818,11 +818,11 @@ export function useWidgetManager() {
       ...(widget.rules?.length
         ? {
             rules: widget.rules.map(
-              ({ id: _id, outcomes, ...rest }): ExportedRule => ({
+              ({ id: _id, rulesets, ...rest }): ExportedRule => ({
                 ...rest,
-                outcomes: outcomes.map(
-                  ({ id: _outcomeId, pvNames: _pvNames, conditionLogic, ...outcome }) =>
-                    conditionLogic === "OR" ? { conditionLogic, ...outcome } : outcome,
+                rulesets: rulesets.map(
+                  ({ id: _rulesetId, pvNames: _pvNames, conditionLogic, ...ruleset }) =>
+                    conditionLogic === "OR" ? { conditionLogic, ...ruleset } : ruleset,
                 ),
               }),
             ),
@@ -1141,17 +1141,17 @@ export function useWidgetManager() {
 
           // Pre-subscribe PV targets when rule can switch pvName/pvNames.
           if (rule.targetProperty === "pvName") {
-            for (const outcome of rule.outcomes) {
-              if (typeof outcome.value !== "string" || !outcome.value) continue;
-              const substituted = substituteMacroInStr(outcome.value, globalMacros);
+            for (const ruleset of rule.rulesets) {
+              if (typeof ruleset.value !== "string" || !ruleset.value) continue;
+              const substituted = substituteMacroInStr(ruleset.value, globalMacros);
               if (substituted) pvSet.add(substituted);
             }
           }
 
           if (rule.targetProperty === "pvNames") {
-            for (const outcome of rule.outcomes) {
-              if (!Array.isArray(outcome.value)) continue;
-              for (const pv of outcome.value) {
+            for (const ruleset of rule.rulesets) {
+              if (!Array.isArray(ruleset.value)) continue;
+              for (const pv of ruleset.value) {
                 if (typeof pv !== "string" || !pv) continue;
                 const substituted = substituteMacroInStr(pv, globalMacros);
                 if (substituted) pvSet.add(substituted);

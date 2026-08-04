@@ -76,12 +76,12 @@ export interface RuleCondition {
 }
 
 /**
- * One branch inside a property-oriented rule.
- * If branch conditions match, `value` is a candidate override for the rule's target property.
+ * One ruleset branch inside a property-oriented rule.
+ * If ruleset conditions match, `value` is a candidate override for the rule's target property.
  */
-export interface RuleOutcome {
+export interface RuleSet {
   id: string;
-  pvNames: string[]; // runtime helper: PVs referenced by this branch conditions
+  pvNames: string[]; // runtime helper: PVs referenced by this ruleset conditions
   conditionLogic?: "AND" | "OR";
   conditions: RuleCondition[];
   value: PropertyValue;
@@ -100,11 +100,11 @@ export interface Rule {
   id: string;
   name: string;
   targetProperty: PropertyKey;
-  outcomes: RuleOutcome[];
+  rulesets: RuleSet[];
 }
 
 /** Persisted branch representation in `.opi.json` (runtime-only fields omitted). */
-export interface ExportedRuleOutcome {
+export interface ExportedRuleSet {
   conditionLogic?: "OR";
   conditions: RuleCondition[];
   value: PropertyValue;
@@ -117,7 +117,7 @@ export interface ExportedRuleOutcome {
 export interface ExportedRule {
   name: string;
   targetProperty: PropertyKey;
-  outcomes: ExportedRuleOutcome[];
+  rulesets: ExportedRuleSet[];
 }
 
 /**

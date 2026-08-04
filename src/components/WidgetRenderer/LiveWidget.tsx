@@ -34,20 +34,20 @@ const LiveWidget = memo(function WidgetRenderItem({
     if (w.runtimePVName) names.add(w.runtimePVName);
     w.runtimePVNames?.forEach((pv) => names.add(pv));
     w.rules?.forEach((rule) => {
-      rule.outcomes.forEach((outcome) => {
-        outcome.pvNames.forEach((pv) => {
+      rule.rulesets.forEach((ruleset) => {
+        ruleset.pvNames.forEach((pv) => {
           const resolved = substituteMacroInStr(pv, globalMacros);
           if (resolved) names.add(resolved);
         });
-        if (rule.targetProperty === "pvName" && typeof outcome.value === "string") {
-          const resolved = substituteMacroInStr(outcome.value, globalMacros);
+        if (rule.targetProperty === "pvName" && typeof ruleset.value === "string") {
+          const resolved = substituteMacroInStr(ruleset.value, globalMacros);
           if (resolved) names.add(resolved);
         }
       });
-      if (rule.targetProperty === "pvNames" && Array.isArray(rule.outcomes)) {
-        for (const outcome of rule.outcomes) {
-          if (!Array.isArray(outcome.value)) continue;
-          for (const pv of outcome.value) {
+      if (rule.targetProperty === "pvNames" && Array.isArray(rule.rulesets)) {
+        for (const ruleset of rule.rulesets) {
+          if (!Array.isArray(ruleset.value)) continue;
+          for (const pv of ruleset.value) {
             if (typeof pv !== "string") continue;
             const resolved = substituteMacroInStr(pv, globalMacros);
             if (resolved) names.add(resolved);

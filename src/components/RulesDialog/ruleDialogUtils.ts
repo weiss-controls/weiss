@@ -3,13 +3,7 @@
 
 import { v4 as uuidv4 } from "uuid";
 import { PROPERTY_SCHEMAS } from "@src/types/widgetProperties";
-import type {
-  PropertyKey,
-  Rule,
-  RuleCondition,
-  RuleOperator,
-  RuleOutcome,
-} from "@src/types/widgets";
+import type { PropertyKey, Rule, RuleCondition, RuleOperator, RuleSet } from "@src/types/widgets";
 
 export const OPERATORS: RuleOperator[] = ["==", "!=", ">", "<", ">=", "<="];
 
@@ -27,7 +21,7 @@ export function makeEmptyCondition(): RuleCondition {
   return { pvName: "$(pvname)", operator: "==", value: "" };
 }
 
-export function makeEmptyOutcome(targetProperty: PropertyKey): RuleOutcome {
+export function makeEmptyRuleset(targetProperty: PropertyKey): RuleSet {
   return {
     id: uuidv4(),
     pvNames: ["$(pvname)"],
@@ -42,7 +36,7 @@ export function makeEmptyRule(targetProperty: PropertyKey): Rule {
     id: uuidv4(),
     name: "New rule",
     targetProperty,
-    outcomes: [makeEmptyOutcome(targetProperty)],
+    rulesets: [makeEmptyRuleset(targetProperty)],
   };
 }
 

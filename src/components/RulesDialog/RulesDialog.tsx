@@ -20,10 +20,8 @@ import {
   Divider,
   Stack,
   Tooltip,
-  List,
-  ListItemButton,
-  ListItemText,
 } from "@mui/material";
+import { RichTreeView } from "@mui/x-tree-view/RichTreeView";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
@@ -34,7 +32,7 @@ import type {
   RuleOperator,
   PropertyKey,
   PropertyValue,
-  RuleOutcome,
+  RuleSet,
   WidgetProperties,
 } from "@src/types/widgets";
 import { PROPERTY_SCHEMAS, CATEGORY_DISPLAY_ORDER } from "@src/types/widgetProperties";
@@ -43,7 +41,7 @@ import {
   OPERATORS,
   ACTIONABLE_SEL_TYPES,
   makeEmptyCondition,
-  makeEmptyOutcome,
+  makeEmptyRuleset,
   makeEmptyRule,
   derivePVNames,
 } from "./ruleDialogUtils";
@@ -105,6 +103,12 @@ const RulesDialog: React.FC<RulesDialogProps> = ({
   }, [initialRules, open]);
 
   const selected = rules[selectedIdx] ?? null;
+  const selectedRuleId = selected?.id ?? null;
+
+  const ruleTreeItems = rules.map((rule, idx) => ({
+    id: rule.id,
+    label: rule.name || `Rule ${idx + 1}`,
+  }));
 
   const updateSelected = useCallback(
     (patch: Partial<Rule>) => {
@@ -114,10 +118,10 @@ const RulesDialog: React.FC<RulesDialogProps> = ({
     [selected, selectedIdx],
   );
 
-  const updateSelectedOutcomes = useCallback(
-    (mutator: (outcomes: RuleOutcome[]) => RuleOutcome[]) => {
+  const updateSelectedRulesets = useCallback(
+    (mutator: (rulesets: RuleSet[]) => RuleSet[]) => {
       if (!selected) return;
-      updateSelected({ outcomes: mutator(selected.outcomes) });
+      updateSelected({ rulesets: mutator(selected.rulesets) });
     },
     [selected, updateSelected],
   );
@@ -145,66 +149,76 @@ const RulesDialog: React.FC<RulesDialogProps> = ({
     setSelectedIdx(target);
   };
 
+  const updateRuleName = (idx: number, name: string) => {
+    setRules((prev) => prev.map((rule, i) => (i === idx ? { ...rule, name } : rule)));
+  };
+
+  const selectRuleById = (itemId: string | null) => {
+    if (!itemId) return;
+    const idx = rules.findIndex((rule) => rule.id === itemId);
+    if (idx >= 0) setSelectedIdx(idx);
+  };
+
   const changeRuleTargetProperty = (newKey: PropertyKey) => {
     if (!selected || selected.targetProperty === newKey) return;
     updateSelected({
       targetProperty: newKey,
-      outcomes: selected.outcomes.map((outcome) => ({
-        ...outcome,
+      rulesets: selected.rulesets.map((ruleset) => ({
+        ...ruleset,
         value: PROPERTY_SCHEMAS[newKey]?.value ?? "",
       })),
     });
   };
 
-  // Outcome-level mutations
-  const addOutcome = () => {
+  // Ruleset-level mutations
+  const addRuleset = () => {
     if (!selected) return;
-    updateSelectedOutcomes((prev) => [...prev, makeEmptyOutcome(selected.targetProperty)]);
+    updateSelectedRulesets((prev) => [...prev, makeEmptyRuleset(selected.targetProperty)]);
   };
 
-  const removeOutcome = (outcomeIdx: number) => {
-    updateSelectedOutcomes((prev) => prev.filter((_, idx) => idx !== outcomeIdx));
+  const removeRuleset = (rulesetIdx: number) => {
+    updateSelectedRulesets((prev) => prev.filter((_, idx) => idx !== rulesetIdx));
   };
 
-  const updateOutcome = (outcomeIdx: number, patch: Partial<RuleOutcome>) => {
-    updateSelectedOutcomes((prev) =>
-      prev.map((outcome, idx) => (idx === outcomeIdx ? { ...outcome, ...patch } : outcome)),
+  const updateRuleset = (rulesetIdx: number, patch: Partial<RuleSet>) => {
+    updateSelectedRulesets((prev) =>
+      prev.map((ruleset, idx) => (idx === rulesetIdx ? { ...ruleset, ...patch } : ruleset)),
     );
   };
 
-  // Condition mutations (within a specific outcome)
-  const addCondition = (outcomeIdx: number) => {
+  // Condition mutations (within a specific ruleset)
+  const addCondition = (rulesetIdx: number) => {
     if (!selected) return;
-    const outcome = selected.outcomes[outcomeIdx];
-    if (!outcome) return;
-    const conditions = [...outcome.conditions, makeEmptyCondition()];
-    updateOutcome(outcomeIdx, { conditions, pvNames: derivePVNames(conditions) });
+    const ruleset = selected.rulesets[rulesetIdx];
+    if (!ruleset) return;
+    const conditions = [...ruleset.conditions, makeEmptyCondition()];
+    updateRuleset(rulesetIdx, { conditions, pvNames: derivePVNames(conditions) });
   };
 
-  const removeCondition = (outcomeIdx: number, conditionIdx: number) => {
+  const removeCondition = (rulesetIdx: number, conditionIdx: number) => {
     if (!selected) return;
-    const outcome = selected.outcomes[outcomeIdx];
-    if (!outcome) return;
-    const conditions = outcome.conditions.filter((_, idx) => idx !== conditionIdx);
-    updateOutcome(outcomeIdx, { conditions, pvNames: derivePVNames(conditions) });
+    const ruleset = selected.rulesets[rulesetIdx];
+    if (!ruleset) return;
+    const conditions = ruleset.conditions.filter((_, idx) => idx !== conditionIdx);
+    updateRuleset(rulesetIdx, { conditions, pvNames: derivePVNames(conditions) });
   };
 
   const updateCondition = (
-    outcomeIdx: number,
+    rulesetIdx: number,
     conditionIdx: number,
     patch: Partial<RuleCondition>,
   ) => {
     if (!selected) return;
-    const outcome = selected.outcomes[outcomeIdx];
-    if (!outcome) return;
-    const conditions = outcome.conditions.map((condition, idx) =>
+    const ruleset = selected.rulesets[rulesetIdx];
+    if (!ruleset) return;
+    const conditions = ruleset.conditions.map((condition, idx) =>
       idx === conditionIdx ? { ...condition, ...patch } : condition,
     );
-    updateOutcome(outcomeIdx, { conditions, pvNames: derivePVNames(conditions) });
+    updateRuleset(rulesetIdx, { conditions, pvNames: derivePVNames(conditions) });
   };
 
-  const changeOutcomeValue = (outcomeIdx: number, value: PropertyValue) => {
-    updateOutcome(outcomeIdx, { value });
+  const changeRulesetValue = (rulesetIdx: number, value: PropertyValue) => {
+    updateRuleset(rulesetIdx, { value });
   };
 
   const handleSave = () => {
@@ -213,11 +227,11 @@ const RulesDialog: React.FC<RulesDialogProps> = ({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="lg">
       <DialogTitle>Widget Rules</DialogTitle>
 
       <DialogContent dividers sx={{ p: 0 }}>
-        <Box sx={{ display: "flex", height: 480 }}>
+        <Box sx={{ display: "flex", height: 560 }}>
           {/* Left panel: rule list */}
           <Box
             sx={{
@@ -242,80 +256,70 @@ const RulesDialog: React.FC<RulesDialogProps> = ({
               <Typography variant="caption" color="text.secondary">
                 Rules
               </Typography>
-              <Tooltip title="Add rule">
-                <IconButton size="small" onClick={addRule} disabled={actionableKeys.length === 0}>
-                  <AddIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
+              <Box sx={{ display: "flex" }}>
+                <Tooltip title="Move up">
+                  <span>
+                    <IconButton
+                      size="small"
+                      disabled={selectedIdx <= 0 || rules.length <= 1}
+                      onClick={() => moveRule(selectedIdx, -1)}
+                    >
+                      <ArrowUpwardIcon sx={{ fontSize: 14 }} />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+                <Tooltip title="Move down">
+                  <span>
+                    <IconButton
+                      size="small"
+                      disabled={selectedIdx < 0 || selectedIdx >= rules.length - 1}
+                      onClick={() => moveRule(selectedIdx, 1)}
+                    >
+                      <ArrowDownwardIcon sx={{ fontSize: 14 }} />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+                <Tooltip title="Delete rule">
+                  <span>
+                    <IconButton
+                      size="small"
+                      disabled={selectedIdx < 0 || rules.length === 0}
+                      onClick={() => deleteRule(selectedIdx)}
+                    >
+                      <DeleteIcon sx={{ fontSize: 14 }} color="error" />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+                <Tooltip title="Add rule">
+                  <IconButton size="small" onClick={addRule} disabled={actionableKeys.length === 0}>
+                    <AddIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              </Box>
             </Box>
 
-            <List dense disablePadding sx={{ flex: 1, overflowY: "auto" }}>
-              {rules.map((rule, idx) => (
-                <ListItemButton
-                  key={rule.id}
-                  selected={idx === selectedIdx}
-                  onClick={() => setSelectedIdx(idx)}
-                  sx={{ pr: 0.5 }}
-                >
-                  <ListItemText
-                    primary={rule.name || "(unnamed)"}
-                    slotProps={{
-                      primary: { noWrap: true, variant: "body2" },
-                    }}
-                  />
-                  <Box sx={{ display: "flex", flexShrink: 0 }}>
-                    <Tooltip title="Move up">
-                      <span>
-                        <IconButton
-                          size="small"
-                          disabled={idx === 0}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            moveRule(idx, -1);
-                          }}
-                        >
-                          <ArrowUpwardIcon sx={{ fontSize: 14 }} />
-                        </IconButton>
-                      </span>
-                    </Tooltip>
-                    <Tooltip title="Move down">
-                      <span>
-                        <IconButton
-                          size="small"
-                          disabled={idx === rules.length - 1}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            moveRule(idx, 1);
-                          }}
-                        >
-                          <ArrowDownwardIcon sx={{ fontSize: 14 }} />
-                        </IconButton>
-                      </span>
-                    </Tooltip>
-                    <Tooltip title="Delete rule">
-                      <IconButton
-                        size="small"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteRule(idx);
-                        }}
-                      >
-                        <DeleteIcon sx={{ fontSize: 14 }} color="error" />
-                      </IconButton>
-                    </Tooltip>
-                  </Box>
-                </ListItemButton>
-              ))}
-              {rules.length === 0 && (
+            <Box sx={{ flex: 1, overflowY: "auto", px: 0.5, py: 0.5 }}>
+              {rules.length > 0 ? (
+                <RichTreeView
+                  items={ruleTreeItems}
+                  selectedItems={selectedRuleId}
+                  onSelectedItemsChange={(_e, itemId) => selectRuleById(itemId)}
+                  isItemEditable
+                  onItemLabelChange={(itemId, newLabel) => {
+                    const idx = rules.findIndex((rule) => rule.id === itemId);
+                    if (idx >= 0) updateRuleName(idx, newLabel);
+                  }}
+                />
+              ) : (
                 <Typography
                   variant="caption"
                   color="text.secondary"
-                  sx={{ px: 2, py: 1, display: "block" }}
+                  sx={{ px: 1.5, py: 1, display: "block" }}
                 >
                   No rules. Click + to add one.
                 </Typography>
               )}
-            </List>
+            </Box>
           </Box>
 
           {/* Right panel: rule editor */}
@@ -326,16 +330,8 @@ const RulesDialog: React.FC<RulesDialogProps> = ({
               </Typography>
             ) : (
               <Stack spacing={2}>
-                {/* Name */}
-                <TextField
-                  label="Rule name"
-                  size="small"
-                  value={selected.name}
-                  onChange={(e) => updateSelected({ name: e.target.value })}
-                  fullWidth
-                />
-
                 {/* Target property */}
+                Affected property:
                 <Select<PropertyKey>
                   size="small"
                   value={selected.targetProperty}
@@ -362,10 +358,8 @@ const RulesDialog: React.FC<RulesDialogProps> = ({
                     )),
                   ])}
                 </Select>
-
                 <Divider />
-
-                {/* Outcomes */}
+                {/* Rulesets */}
                 <Box>
                   <Box
                     sx={{
@@ -376,19 +370,19 @@ const RulesDialog: React.FC<RulesDialogProps> = ({
                     }}
                   >
                     <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
-                      Outcomes
+                      Rulesets
                     </Typography>
-                    <Tooltip title="Add outcome">
-                      <IconButton size="small" onClick={addOutcome}>
+                    <Tooltip title="Add ruleset">
+                      <IconButton size="small" onClick={addRuleset}>
                         <AddIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
                   </Box>
 
                   <Stack spacing={1}>
-                    {selected.outcomes.map((outcome, outcomeIdx) => (
+                    {selected.rulesets.map((ruleset, rulesetIdx) => (
                       <Box
-                        key={outcome.id}
+                        key={ruleset.id}
                         sx={{
                           border: "1px solid",
                           borderColor: "divider",
@@ -405,118 +399,157 @@ const RulesDialog: React.FC<RulesDialogProps> = ({
                           }}
                         >
                           <Typography variant="caption" color="text.secondary">
-                            Outcome {outcomeIdx + 1}
+                            Ruleset {rulesetIdx + 1}
                           </Typography>
-                          <Tooltip title="Remove outcome">
-                            <IconButton size="small" onClick={() => removeOutcome(outcomeIdx)}>
+                          <Tooltip title="Remove ruleset">
+                            <IconButton size="small" onClick={() => removeRuleset(rulesetIdx)}>
                               <DeleteIcon fontSize="small" color="error" />
                             </IconButton>
                           </Tooltip>
                         </Box>
 
-                        {outcome.conditions.length > 1 && (
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-                            <Typography variant="body2">Associative logic:</Typography>
-                            <ToggleButtonGroup
-                              exclusive
-                              size="small"
-                              value={outcome.conditionLogic}
-                              onChange={(_e, v: "AND" | "OR" | null) =>
-                                v && updateOutcome(outcomeIdx, { conditionLogic: v })
-                              }
-                              sx={{ height: 25 }}
-                            >
-                              <ToggleButton value="AND">AND</ToggleButton>
-                              <ToggleButton value="OR">OR</ToggleButton>
-                            </ToggleButtonGroup>
-                          </Box>
-                        )}
-
-                        <Stack spacing={1}>
-                          {outcome.conditions.map((cond, conditionIdx) => (
-                            <Box
-                              key={conditionIdx}
-                              sx={{ display: "flex", gap: 1, alignItems: "center" }}
-                            >
-                              <TextField
-                                size="small"
-                                label="PV name"
-                                value={cond.pvName}
-                                onChange={(e) =>
-                                  updateCondition(outcomeIdx, conditionIdx, {
-                                    pvName: e.target.value,
-                                  })
-                                }
-                                sx={{ flex: 1 }}
-                              />
-                              <Select
-                                size="small"
-                                value={cond.operator}
-                                onChange={(e) =>
-                                  updateCondition(outcomeIdx, conditionIdx, {
-                                    operator: e.target.value as RuleOperator,
-                                  })
-                                }
-                                sx={{ width: 80 }}
-                              >
-                                {OPERATORS.map((op) => (
-                                  <MenuItem key={op} value={op}>
-                                    {op}
-                                  </MenuItem>
-                                ))}
-                              </Select>
-                              <TextField
-                                size="small"
-                                label="Value"
-                                value={cond.value}
-                                onChange={(e) =>
-                                  updateCondition(outcomeIdx, conditionIdx, {
-                                    value: e.target.value,
-                                  })
-                                }
-                                sx={{ flex: 1 }}
-                              />
-                              <Tooltip title="Remove condition">
-                                <IconButton
+                        <Box
+                          sx={{
+                            display: "grid",
+                            gridTemplateColumns: "minmax(0, 1fr) minmax(220px, 260px)",
+                            gap: 1.5,
+                            alignItems: "stretch",
+                          }}
+                        >
+                          <Box>
+                            {ruleset.conditions.length > 1 && (
+                              <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                                <Typography variant="body2">Associative logic:</Typography>
+                                <ToggleButtonGroup
+                                  exclusive
                                   size="small"
-                                  onClick={() => removeCondition(outcomeIdx, conditionIdx)}
+                                  value={ruleset.conditionLogic}
+                                  onChange={(_e, v: "AND" | "OR" | null) =>
+                                    v && updateRuleset(rulesetIdx, { conditionLogic: v })
+                                  }
+                                  sx={{ height: 25 }}
                                 >
-                                  <DeleteIcon fontSize="small" color="error" />
-                                </IconButton>
-                              </Tooltip>
-                            </Box>
-                          ))}
+                                  <ToggleButton value="AND">AND</ToggleButton>
+                                  <ToggleButton value="OR">OR</ToggleButton>
+                                </ToggleButtonGroup>
+                              </Box>
+                            )}
 
-                          <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
-                            <Button size="small" onClick={() => addCondition(outcomeIdx)}>
-                              Add condition
-                            </Button>
+                            <Stack spacing={1}>
+                              {ruleset.conditions.map((cond, conditionIdx) => (
+                                <Box
+                                  key={conditionIdx}
+                                  sx={{ display: "flex", gap: 1, alignItems: "center" }}
+                                >
+                                  <TextField
+                                    size="small"
+                                    label="PV name"
+                                    value={cond.pvName}
+                                    onChange={(e) =>
+                                      updateCondition(rulesetIdx, conditionIdx, {
+                                        pvName: e.target.value,
+                                      })
+                                    }
+                                    sx={{ flex: 1, minWidth: 140 }}
+                                  />
+                                  <Select
+                                    size="small"
+                                    value={cond.operator}
+                                    onChange={(e) =>
+                                      updateCondition(rulesetIdx, conditionIdx, {
+                                        operator: e.target.value as RuleOperator,
+                                      })
+                                    }
+                                    sx={{ width: 72 }}
+                                  >
+                                    {OPERATORS.map((op) => (
+                                      <MenuItem key={op} value={op}>
+                                        {op}
+                                      </MenuItem>
+                                    ))}
+                                  </Select>
+                                  <TextField
+                                    size="small"
+                                    label="Value"
+                                    value={cond.value}
+                                    onChange={(e) =>
+                                      updateCondition(rulesetIdx, conditionIdx, {
+                                        value: e.target.value,
+                                      })
+                                    }
+                                    sx={{ width: 130 }}
+                                  />
+                                  <Tooltip title="Remove condition">
+                                    <IconButton
+                                      size="small"
+                                      onClick={() => removeCondition(rulesetIdx, conditionIdx)}
+                                    >
+                                      <DeleteIcon fontSize="small" color="error" />
+                                    </IconButton>
+                                  </Tooltip>
+                                </Box>
+                              ))}
 
-                            <Box sx={{ display: "flex", alignItems: "center", gap: 1, flex: 1 }}>
-                              <Typography variant="body2" sx={{ whiteSpace: "nowrap" }}>
-                                Set to
-                              </Typography>
-                              <ActionValueInput
-                                propKey={selected.targetProperty}
-                                value={outcome.value}
-                                baseValue={
-                                  selected.targetProperty === "globalMacros"
-                                    ? (globalMacros ?? {})
-                                    : selected.targetProperty === "macros"
-                                      ? (widgetProperties.macros?.value ?? {})
-                                      : undefined
-                                }
-                                onChange={(v) => changeOutcomeValue(outcomeIdx, v)}
-                              />
-                            </Box>
+                              <Box>
+                                <Button size="small" onClick={() => addCondition(rulesetIdx)}>
+                                  Add condition
+                                </Button>
+                              </Box>
+                            </Stack>
                           </Box>
-                        </Stack>
+
+                          <Box
+                            sx={{
+                              borderLeft: "1px solid",
+                              borderColor: "divider",
+                              pl: 1.5,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            <Stack
+                              spacing={1}
+                              sx={{
+                                width: "100%",
+                                maxWidth: 230,
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
+                            >
+                              <Typography variant="body2" sx={{ textAlign: "center" }}>
+                                Resulting value
+                              </Typography>
+                              <Box
+                                sx={{
+                                  width: "100%",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                }}
+                              >
+                                <ActionValueInput
+                                  propKey={selected.targetProperty}
+                                  value={ruleset.value}
+                                  baseValue={
+                                    selected.targetProperty === "globalMacros"
+                                      ? (globalMacros ?? {})
+                                      : selected.targetProperty === "macros"
+                                        ? (widgetProperties.macros?.value ?? {})
+                                        : undefined
+                                  }
+                                  onChange={(v) => changeRulesetValue(rulesetIdx, v)}
+                                />
+                              </Box>
+                            </Stack>
+                          </Box>
+                        </Box>
                       </Box>
                     ))}
 
-                    {selected.outcomes.length === 0 && (
+                    {selected.rulesets.length === 0 && (
                       <Typography variant="caption" color="text.secondary">
-                        No outcomes — rule will never apply.
+                        No rulesets — rule will never apply.
                       </Typography>
                     )}
                   </Stack>

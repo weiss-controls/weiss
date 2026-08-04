@@ -154,12 +154,12 @@ Pre-built reusable sets (import from `widgetProperties.ts`):
 #### Rule System (Property-Oriented)
 
 - Rules are property-oriented: one rule targets exactly one `targetProperty`.
-- Each rule contains ordered `outcomes` (condition branches). Each outcome has:
+- Each rule contains ordered `rulesets` (condition branches). Each ruleset has:
   - `conditionLogic` (`AND`/`OR`),
   - a list of `conditions` (`pvName`, operator, value),
   - a resulting `value` for the target property.
 - Evaluation precedence:
-  - inside one rule, the **last matching outcome wins**,
+  - inside one rule, the **last matching ruleset wins**,
   - across rules, **later rules win** for the same target property.
 - Runtime-only fields (`id`, branch `id`, branch `pvNames`) are reconstructed at load time.
 - `.opi.json` exports use the new rule schema. Import remains backward-compatible with the legacy

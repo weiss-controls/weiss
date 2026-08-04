@@ -5,13 +5,13 @@ import { v4 as uuidv4 } from "uuid";
 import { PROPERTY_SCHEMAS } from "@src/types/widgetProperties";
 import type {
   ExportedRule,
-  ExportedRuleOutcome,
+  ExportedRuleSet,
   LegacyExportedRule,
   PropertyKey,
   Rule,
   RuleCondition,
   RuleOperator,
-  RuleOutcome,
+  RuleSet,
 } from "@src/types/widgets";
 
 function isRuleOperator(value: string): value is RuleOperator {
@@ -51,7 +51,7 @@ function derivePVNames(conditions: RuleCondition[]): string[] {
   return ordered;
 }
 
-function normalizeOutcome(raw: Partial<ExportedRuleOutcome>): RuleOutcome {
+function normalizeRuleset(raw: Partial<ExportedRuleSet>): RuleSet {
   const conditions = (raw.conditions ?? [])
     .map(normalizeCondition)
     .filter((c): c is RuleCondition => c !== null);
@@ -69,13 +69,14 @@ function parseNewRule(raw: Partial<ExportedRule>): Rule[] {
   if (!(raw.targetProperty in PROPERTY_SCHEMAS)) return [];
   const targetProperty = raw.targetProperty;
 
-  const outcomes = (raw.outcomes ?? []).map(normalizeOutcome);
+  const rawRulesets: Partial<ExportedRuleSet>[] = Array.isArray(raw.rulesets) ? raw.rulesets : [];
+  const rulesets = rawRulesets.map(normalizeRuleset);
   return [
     {
       id: uuidv4(),
       name: typeof raw.name === "string" && raw.name.length > 0 ? raw.name : "Imported rule",
       targetProperty,
-      outcomes,
+      rulesets,
     },
   ];
 }
@@ -96,7 +97,7 @@ function parseLegacyRule(raw: Partial<LegacyExportedRule>): Rule[] {
       id: uuidv4(),
       name: typeof raw.name === "string" && raw.name.length > 0 ? raw.name : "Imported rule",
       targetProperty,
-      outcomes: [
+      rulesets: [
         {
           id: uuidv4(),
           pvNames: derivePVNames(conditions),
@@ -123,7 +124,7 @@ export function parseSerializedRules(rawRules: unknown[] | undefined): Rule[] {
     if (!raw || typeof raw !== "object") continue;
     const candidate = raw as Partial<ExportedRule & LegacyExportedRule>;
 
-    if (candidate.targetProperty !== undefined || candidate.outcomes !== undefined) {
+    if (candidate.targetProperty !== undefined || candidate.rulesets !== undefined) {
       parsed.push(...parseNewRule(candidate));
       continue;
     }
@@ -137,14 +138,14 @@ export function parseSerializedRules(rawRules: unknown[] | undefined): Rule[] {
 }
 
 /**
- * Returns all PV references used by a rule outcomes, preserving first-seen order.
+ * Returns all PV references used by a rule rulesets, preserving first-seen order.
  */
 export function collectRulePVNames(rule: Rule): string[] {
   const seen = new Set<string>();
   const ordered: string[] = [];
 
-  for (const outcome of rule.outcomes) {
-    for (const pv of outcome.pvNames) {
+  for (const ruleset of rule.rulesets) {
+    for (const pv of ruleset.pvNames) {
       if (!pv || seen.has(pv)) continue;
       seen.add(pv);
       ordered.push(pv);

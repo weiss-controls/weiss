@@ -6,7 +6,7 @@ import type {
   RuleCondition,
   RuleOperator,
   PropertyValue,
-  RuleOutcome,
+  RuleSet,
   Widget,
   RuleOverrides,
 } from "@src/types/widgets";
@@ -75,27 +75,27 @@ function evaluateCondition(
 }
 
 /**
- * Evaluate one rule outcome branch.
- * Returns true if branch conditions are satisfied according to its conditionLogic.
- * A branch with no conditions never matches.
+ * Evaluate one rule ruleset branch.
+ * Returns true if ruleset conditions are satisfied according to its conditionLogic.
+ * A ruleset with no conditions never matches.
  */
-function evaluateOutcome(
-  outcome: RuleOutcome,
+function evaluateRuleset(
+  ruleset: RuleSet,
   pvState: Record<string, PVData>,
   macros: Record<string, string>,
 ): boolean {
-  if (outcome.conditions.length === 0) return false;
+  if (ruleset.conditions.length === 0) return false;
 
-  if ((outcome.conditionLogic ?? "AND") === "AND") {
-    return outcome.conditions.every((c) => evaluateCondition(c, pvState, macros));
+  if ((ruleset.conditionLogic ?? "AND") === "AND") {
+    return ruleset.conditions.every((c) => evaluateCondition(c, pvState, macros));
   } else {
-    return outcome.conditions.some((c) => evaluateCondition(c, pvState, macros));
+    return ruleset.conditions.some((c) => evaluateCondition(c, pvState, macros));
   }
 }
 
 /**
  * Evaluate a property-oriented rule and return the selected value for its target
- * property. If multiple branches match, the last one wins.
+ * property. If multiple rulesets match, the last one wins.
  */
 function evaluateRule(
   rule: Rule,
@@ -103,9 +103,9 @@ function evaluateRule(
   macros: Record<string, string>,
 ): PropertyValue | undefined {
   let matched: PropertyValue | undefined;
-  for (const outcome of rule.outcomes) {
-    if (evaluateOutcome(outcome, pvState, macros)) {
-      matched = outcome.value;
+  for (const ruleset of rule.rulesets) {
+    if (evaluateRuleset(ruleset, pvState, macros)) {
+      matched = ruleset.value;
     }
   }
   return matched;

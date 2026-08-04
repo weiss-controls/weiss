@@ -194,54 +194,54 @@ export function substituteMacrosInWidgetTree(
       const nextRules = w.rules.map((r) => {
         let ruleChanged = false;
 
-        const nextOutcomes = r.outcomes.map((outcome) => {
-          let outcomeChanged = false;
+        const nextRulesets = r.rulesets.map((ruleset) => {
+          let rulesetChanged = false;
 
-          const nextConditions = outcome.conditions.map((c) => {
+          const nextConditions = ruleset.conditions.map((c) => {
             const nextPVName = substituteMacroInStr(c.pvName, macros);
             if (nextPVName !== c.pvName) {
-              outcomeChanged = true;
+              rulesetChanged = true;
               return { ...c, pvName: nextPVName };
             }
             return c;
           });
 
-          const nextPVNames = outcome.pvNames.map((pv) => {
+          const nextPVNames = ruleset.pvNames.map((pv) => {
             const nextPV = substituteMacroInStr(pv, macros);
             if (nextPV !== pv) {
-              outcomeChanged = true;
+              rulesetChanged = true;
             }
             return nextPV;
           });
 
-          let nextValue = outcome.value;
-          if (typeof outcome.value === "string") {
-            const substituted = substituteMacroInStr(outcome.value, macros);
-            if (substituted !== outcome.value) {
+          let nextValue = ruleset.value;
+          if (typeof ruleset.value === "string") {
+            const substituted = substituteMacroInStr(ruleset.value, macros);
+            if (substituted !== ruleset.value) {
               nextValue = substituted;
-              outcomeChanged = true;
+              rulesetChanged = true;
             }
           } else if (
-            outcome.value !== null &&
-            typeof outcome.value === "object" &&
-            !Array.isArray(outcome.value)
+            ruleset.value !== null &&
+            typeof ruleset.value === "object" &&
+            !Array.isArray(ruleset.value)
           ) {
             const substitutedRecord = Object.fromEntries(
-              Object.entries(outcome.value).map(([k, v]) => [k, substituteMacroInStr(v, macros)]),
+              Object.entries(ruleset.value).map(([k, v]) => [k, substituteMacroInStr(v, macros)]),
             );
             const changed = Object.entries(substitutedRecord).some(
-              ([k, v]) => v !== (outcome.value as Record<string, string>)[k],
+              ([k, v]) => v !== (ruleset.value as Record<string, string>)[k],
             );
             if (changed) {
               nextValue = substitutedRecord;
-              outcomeChanged = true;
+              rulesetChanged = true;
             }
           }
 
-          if (!outcomeChanged) return outcome;
+          if (!rulesetChanged) return ruleset;
           ruleChanged = true;
           return {
-            ...outcome,
+            ...ruleset,
             conditions: nextConditions,
             pvNames: nextPVNames,
             value: nextValue,
@@ -252,7 +252,7 @@ export function substituteMacrosInWidgetTree(
         rulesChanged = true;
         return {
           ...r,
-          outcomes: nextOutcomes,
+          rulesets: nextRulesets,
         };
       });
 

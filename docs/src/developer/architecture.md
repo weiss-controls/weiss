@@ -95,7 +95,7 @@ through one of the above.
   rendering the widget component.
 
   Runtime rule semantics are property-oriented: each rule targets one property and contains ordered
-  condition outcomes. If multiple outcomes match in the same rule, the last match wins; if multiple
+  condition rulesets. If multiple rulesets match in the same rule, the last match wins; if multiple
   rules target the same property, later rules in the list win. Legacy action-map rule payloads from
   older `.opi.json` files are still accepted on import and converted during load.
 
