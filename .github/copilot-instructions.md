@@ -151,6 +151,20 @@ Pre-built reusable sets (import from `widgetProperties.ts`):
 | `TEXT_PROPS`   | `textColor`, `fontSize`, `fontFamily`, `fontBold`, `fontItalic`, `fontUnderlined`, `textHAlign`, `textVAlign`                     |
 | `PLOT_PROPS`   | `pvNames`, `plotTitle`, `xAxisTitle`, `yAxisTitle`, `lineColors`, `logscaleY`                                                     |
 
+#### Rule System (Property-Oriented)
+
+- Rules are property-oriented: one rule targets exactly one `targetProperty`.
+- Each rule contains ordered `outcomes` (condition branches). Each outcome has:
+  - `conditionLogic` (`AND`/`OR`),
+  - a list of `conditions` (`pvName`, operator, value),
+  - a resulting `value` for the target property.
+- Evaluation precedence:
+  - inside one rule, the **last matching outcome wins**,
+  - across rules, **later rules win** for the same target property.
+- Runtime-only fields (`id`, branch `id`, branch `pvNames`) are reconstructed at load time.
+- `.opi.json` exports use the new rule schema. Import remains backward-compatible with the legacy
+  action-map format and converts legacy rules into one-property rules at load time.
+
 #### Creating a New Widget
 
 1. Create `src/components/Widgets/<Name>/` folder.
