@@ -22,6 +22,7 @@ export const BitIndicator: WidgetDefinition = {
     onColor: PROPERTY_SCHEMAS.onColor,
     offColor: PROPERTY_SCHEMAS.offColor,
     square: PROPERTY_SCHEMAS.square,
+    fixedProportion: PROPERTY_SCHEMAS.fixedProportion,
     pvName: PROPERTY_SCHEMAS.pvName,
     alarmBorder: PROPERTY_SCHEMAS.alarmBorder,
     labelFromPV: PROPERTY_SCHEMAS.labelFromPV,

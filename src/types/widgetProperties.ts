@@ -81,6 +81,7 @@ export const PROPERTY_SCHEMAS = {
   offColor:        defineProp({ selType: "colorSel", label: "Off Color", value: COLORS.offColor, category: "Style" }),
   spacing:         defineProp({ selType: "number", label: "Spacing", value: 1 as number, limits: { min: 0 }, category: "Style" }),
   square:          defineProp({ selType: "boolean", label: "Square", value: false as boolean, category: "Style" }),
+  fixedProportion: defineProp({ selType: "boolean", label: "Fixed proportion", value: true as boolean, category: "Style" }),
   useStringVal:    defineProp({ selType: "boolean", label: "Use string value", value: true as boolean, category: "EPICS" }),
   offLabel:        defineProp({ selType: "text", label: "Off label", value: "" as string, category: "Text" }),
   onLabel:         defineProp({ selType: "text", label: "On label", value: "" as string, category: "Text" }),
@@ -113,6 +114,7 @@ export const PROPERTY_SCHEMAS = {
   keepAspectRatio: defineProp({ selType: "boolean", label: "Keep aspect ratio", value: true as boolean, category: "Style" }),
   // EmbeddedDisplay and NavigationButton
   displayPath:      defineProp({ selType: "repoFile", label: "Display path", value: "" as string, category: "General", options: [".opi.json"] }),
+  target:           defineProp({ selType: "text", label: "Target", value: "" as string, category: "General" }),
   // MultiStateLED
   stateList:       defineProp({ selType: "stateList", label: "States", value: [{ value: "0", color: COLORS.offColor, label: "" }, { value: "1", color: COLORS.onColor, label: "" }, { value: "", color: COLORS.midGray, label: "" }] as StateEntry[], category: "EPICS" }),
 };
