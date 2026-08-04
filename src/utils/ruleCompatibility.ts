@@ -31,9 +31,7 @@ function normalizeCondition(raw: unknown): RuleCondition | null {
   if (typeof c.pvName !== "string") return null;
   if (typeof c.value !== "string") return null;
   const operator: RuleOperator =
-    typeof c.operator === "string" && isRuleOperator(c.operator)
-      ? c.operator
-      : "==";
+    typeof c.operator === "string" && isRuleOperator(c.operator) ? c.operator : "==";
   return {
     pvName: c.pvName,
     operator,
