@@ -2,7 +2,8 @@
 // Copyright (C) 2026 André Favoto
 
 import { v4 as uuidv4 } from "uuid";
-import type { Rule, RuleCondition, RuleOperator } from "@src/types/widgets";
+import { PROPERTY_SCHEMAS } from "@src/types/widgetProperties";
+import type { PropertyKey, Rule, RuleCondition, RuleOperator, RuleSet } from "@src/types/widgets";
 
 export const OPERATORS: RuleOperator[] = ["==", "!=", ">", "<", ">=", "<="];
 
@@ -20,14 +21,22 @@ export function makeEmptyCondition(): RuleCondition {
   return { pvName: "$(pvname)", operator: "==", value: "" };
 }
 
-export function makeEmptyRule(): Rule {
+export function makeEmptyRuleset(targetProperty: PropertyKey): RuleSet {
+  return {
+    id: uuidv4(),
+    pvNames: ["$(pvname)"],
+    conditionLogic: "AND",
+    conditions: [makeEmptyCondition()],
+    value: PROPERTY_SCHEMAS[targetProperty]?.value ?? "",
+  };
+}
+
+export function makeEmptyRule(targetProperty: PropertyKey): Rule {
   return {
     id: uuidv4(),
     name: "New rule",
-    pvNames: [],
-    conditionLogic: "AND",
-    conditions: [makeEmptyCondition()],
-    actions: {},
+    targetProperty,
+    rulesets: [makeEmptyRuleset(targetProperty)],
   };
 }
 

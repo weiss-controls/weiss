@@ -75,28 +75,56 @@ export interface RuleCondition {
   value: string; // always string; engine coerces to number when both sides are numeric
 }
 
+/**
+ * One ruleset branch inside a property-oriented rule.
+ * If ruleset conditions match, `value` is a candidate override for the rule's target property.
+ */
+export interface RuleSet {
+  id: string;
+  pvNames: string[]; // runtime helper: PVs referenced by this ruleset conditions
+  conditionLogic?: "AND" | "OR";
+  conditions: RuleCondition[];
+  value: PropertyValue;
+}
+
 //** Map with PropertyKeys affected and the new Values */
 export type RuleOverrides = Partial<Record<PropertyKey, PropertyValue>>;
 
 /**
- * A rule that overrides widget properties at runtime when its conditions are met.
- * Rules are evaluated in order; later rules win on same-property conflicts.
+ * A property-oriented rule.
+ * A rule targets a single property and contains multiple condition branches.
+ * If multiple branches match, the last matching branch wins inside this rule.
+ * Across rules, evaluation order still applies and later rules win.
  */
 export interface Rule {
   id: string;
   name: string;
-  pvNames: string[]; // PVs this rule subscribes to (for WS subscription)
-  conditionLogic?: "AND" | "OR";
+  targetProperty: PropertyKey;
+  rulesets: RuleSet[];
+}
+
+/** Persisted branch representation in `.opi.json` (runtime-only fields omitted). */
+export interface ExportedRuleSet {
+  conditionLogic?: "OR";
   conditions: RuleCondition[];
-  actions: RuleOverrides;
+  value: PropertyValue;
 }
 
 /**
  * Serialised representation of a Rule stored in `.opi.json`.
- * Runtime-only fields (`id`, `pvNames`) are omitted — they are reconstructed on load.
- * `conditionLogic` is omitted when "AND" (the default).
+ * Runtime-only fields (`id`, branch `id`, branch `pvNames`) are omitted.
  */
 export interface ExportedRule {
+  name: string;
+  targetProperty: PropertyKey;
+  rulesets: ExportedRuleSet[];
+}
+
+/**
+ * Legacy serialised rule format used by older WEISS versions (< 2.0.0).
+ * Kept only for backward-compatible imports.
+ */
+export interface LegacyExportedRule {
   name: string;
   conditionLogic?: "OR";
   conditions: RuleCondition[];
@@ -215,7 +243,7 @@ export interface ExportedWidget {
   children?: ExportedWidget[];
   widgetName: string;
   properties: Partial<Record<PropertyKey, PropertyValue>>;
-  rules?: ExportedRule[];
+  rules?: (ExportedRule | LegacyExportedRule)[];
 }
 
 /**

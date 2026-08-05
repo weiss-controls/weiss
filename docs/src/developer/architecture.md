@@ -94,6 +94,11 @@ through one of the above.
   (`widgetRenderUtils.ts`) to merge PV data, evaluate configured rules, and resolve macros before
   rendering the widget component.
 
+  Runtime rule semantics are property-oriented: each rule targets one property and contains ordered
+  condition rulesets. If multiple rulesets match in the same rule, the last match wins; if multiple
+  rules target the same property, later rules in the list win. Legacy action-map rule payloads from
+  older `.opi.json` files (WEISS < 2.0.0) are still accepted on import and converted during load.
+
 #### Services
 
 - **`APIClient`** - auto-generated TypeScript client produced by `@hey-api/openapi-ts` from the

@@ -20,7 +20,7 @@ import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import { v4 as uuidv4 } from "uuid";
 import { notifyUser } from "@src/services/Notifications/Notification";
 import { composeForwardNavigationMacros, substituteMacroInStr } from "@src/utils/macros";
-import { derivePVNames } from "@components/RulesDialog/ruleDialogUtils";
+import { collectRulePVNames, parseSerializedRules } from "@src/utils/ruleCompatibility";
 import {
   createGroupWidget,
   createWidgetInstance,
@@ -818,8 +818,13 @@ export function useWidgetManager() {
       ...(widget.rules?.length
         ? {
             rules: widget.rules.map(
-              ({ id: _id, pvNames: _pv, conditionLogic, ...rest }): ExportedRule =>
-                conditionLogic === "OR" ? { conditionLogic, ...rest } : rest,
+              ({ id: _id, rulesets, ...rest }): ExportedRule => ({
+                ...rest,
+                rulesets: rulesets.map(
+                  ({ id: _rulesetId, pvNames: _pvNames, conditionLogic, ...ruleset }) =>
+                    conditionLogic === "OR" ? { conditionLogic, ...ruleset } : ruleset,
+                ),
+              }),
             ),
           }
         : {}),
@@ -933,13 +938,7 @@ export function useWidgetManager() {
 
           // Restore rules: reconstruct runtime-only fields stripped from the export
           if (raw.rules?.length) {
-            instance.rules = raw.rules.map(
-              (r): Rule => ({
-                ...r,
-                id: uuidv4(),
-                pvNames: derivePVNames(r.conditions),
-              }),
-            );
+            instance.rules = parseSerializedRules(raw.rules);
           }
 
           return instance;
@@ -1135,15 +1134,29 @@ export function useWidgetManager() {
         if (w.runtimePVName) pvSet.add(w.runtimePVName);
         if (w.runtimePVNames) for (const pv of w.runtimePVNames) pvSet.add(pv);
         for (const rule of w.rules ?? []) {
-          for (const pv of rule.pvNames) {
+          for (const pv of collectRulePVNames(rule)) {
             const substituted = substituteMacroInStr(pv, globalMacros);
             if (substituted) pvSet.add(substituted);
           }
-          // Pre-subscribe pvName action targets so EpicsWS is ready before the rule fires
-          const pvNameAction = rule.actions?.pvName;
-          if (typeof pvNameAction === "string" && pvNameAction) {
-            const substituted = substituteMacroInStr(pvNameAction, globalMacros);
-            if (substituted) pvSet.add(substituted);
+
+          // Pre-subscribe PV targets when rule can switch pvName/pvNames.
+          if (rule.targetProperty === "pvName") {
+            for (const ruleset of rule.rulesets) {
+              if (typeof ruleset.value !== "string" || !ruleset.value) continue;
+              const substituted = substituteMacroInStr(ruleset.value, globalMacros);
+              if (substituted) pvSet.add(substituted);
+            }
+          }
+
+          if (rule.targetProperty === "pvNames") {
+            for (const ruleset of rule.rulesets) {
+              if (!Array.isArray(ruleset.value)) continue;
+              for (const pv of ruleset.value) {
+                if (typeof pv !== "string" || !pv) continue;
+                const substituted = substituteMacroInStr(pv, globalMacros);
+                if (substituted) pvSet.add(substituted);
+              }
+            }
           }
         }
         if (w.children?.length) collect(w.children);
