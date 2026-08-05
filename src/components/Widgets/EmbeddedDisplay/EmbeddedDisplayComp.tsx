@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
 import type { ExportedWidget, Widget, WidgetProperties, WidgetUpdate } from "@src/types/widgets";
 import { useUIContext } from "@src/context/useUIContext";
 import { useWidgetContext } from "@src/context/useWidgetContext";
 import { getDeployedRepoFile, getStagingRepoFile } from "@src/services/APIClient";
 import { resolveRepoPath } from "@src/utils/repoPath";
-import { substituteMacrosInWidgetTree } from "@src/utils/macros";
+import { substituteMacroInStr, substituteMacrosInWidgetTree } from "@src/utils/macros";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import { createGroupWidget } from "@src/context/widgetHelpers";
 import type { PropertyKey } from "@src/types/widgets";
@@ -142,6 +142,23 @@ function macrosToKey(macros: Record<string, string>): string {
   return JSON.stringify(entries);
 }
 
+/**
+ * Resolve EmbeddedDisplay local macro values against app-level global macros.
+ * This keeps support for values like "$(A)" inside the embedded macro table.
+ */
+function resolveDisplayMacros(
+  displayMacros: Record<string, string> | undefined,
+  globalMacros: Record<string, string>,
+): Record<string, string> {
+  if (!displayMacros) return {};
+
+  const resolved: Record<string, string> = {};
+  for (const [key, value] of Object.entries(displayMacros)) {
+    resolved[key] = substituteMacroInStr(value, globalMacros);
+  }
+  return resolved;
+}
+
 /** Assign new UUIDs to avoid ID clashes when multiple instances of the same display exist. */
 function assignNewIds(w: Widget): Widget {
   return {
@@ -185,7 +202,7 @@ const Placeholder: React.FC<{ label: string }> = ({ label }) => (
 
 const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
   const { isDeveloper, selectedFile, inEditMode } = useUIContext();
-  const { updateWidgetChildren, fileLoadedTrig } = useWidgetContext();
+  const { updateWidgetChildren, fileLoadedTrig, globalMacros } = useWidgetContext();
   const p = data.editableProperties;
 
   const repoId = selectedFile?.repo_id ?? "";
@@ -221,8 +238,17 @@ const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
 
   const lastAppliedLayoutKeyRef = useRef<string>("");
 
+  const resolvedDisplayMacros = useMemo(
+    () => resolveDisplayMacros(displayMacros, globalMacros),
+    [displayMacros, globalMacros],
+  );
+  const resolvedMacroKey = useMemo(
+    () => macrosToKey(resolvedDisplayMacros),
+    [resolvedDisplayMacros],
+  );
+
   const macrosRef = useRef<Record<string, string>>({});
-  macrosRef.current = displayMacros ?? {};
+  macrosRef.current = resolvedDisplayMacros;
 
   /**
    * Re-derive scaled child widgets from `rawContentRef` and push them via
@@ -314,7 +340,7 @@ const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
   useEffect(() => {
     lastAppliedLayoutKeyRef.current = "";
     layoutAndApply();
-  }, [displayMacros, layoutAndApply]);
+  }, [resolvedMacroKey, layoutAndApply]);
 
   // Layout effect: re-runs per-instance whenever THIS widget's own box
   // changes (x/y/width/height, via layoutAndApply's deps). No network call —
