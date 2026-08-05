@@ -20,6 +20,8 @@ import {
   Divider,
   Stack,
   Tooltip,
+  InputLabel,
+  FormControl,
 } from "@mui/material";
 import { RichTreeView } from "@mui/x-tree-view/RichTreeView";
 import AddIcon from "@mui/icons-material/Add";
@@ -46,6 +48,7 @@ import {
   derivePVNames,
 } from "./ruleDialogUtils";
 import ActionValueInput from "./ActionValueInput";
+import { BsFileEarmarkRuled } from "react-icons/bs";
 
 interface RulesDialogProps {
   open: boolean;
@@ -305,6 +308,9 @@ const RulesDialog: React.FC<RulesDialogProps> = ({
                   selectedItems={selectedRuleId}
                   onSelectedItemsChange={(_e, itemId) => selectRuleById(itemId)}
                   isItemEditable
+                  slots={{
+                    endIcon: BsFileEarmarkRuled,
+                  }}
                   onItemLabelChange={(itemId, newLabel) => {
                     const idx = rules.findIndex((rule) => rule.id === itemId);
                     if (idx >= 0) updateRuleName(idx, newLabel);
@@ -330,34 +336,45 @@ const RulesDialog: React.FC<RulesDialogProps> = ({
               </Typography>
             ) : (
               <Stack spacing={2}>
-                {/* Target property */}
-                Affected property:
-                <Select<PropertyKey>
+                {/* Rule name */}
+                <TextField
                   size="small"
-                  value={selected.targetProperty}
-                  onChange={(e) => changeRuleTargetProperty(e.target.value)}
-                  displayEmpty
+                  label="Rule name"
+                  value={selected.name}
+                  onChange={(e) => updateRuleName(selectedIdx, e.target.value)}
                   fullWidth
-                >
-                  {groupedActionableKeys.map(({ category, keys: catKeys }) => [
-                    <ListSubheader
-                      key={`cat-${category}`}
-                      sx={{
-                        lineHeight: "28px",
-                        fontSize: "0.7rem",
-                        letterSpacing: "0.08em",
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      {category}
-                    </ListSubheader>,
-                    ...catKeys.map((k) => (
-                      <MenuItem key={k} value={k}>
-                        {PROPERTY_SCHEMAS[k]?.label ?? k}
-                      </MenuItem>
-                    )),
-                  ])}
-                </Select>
+                />
+                {/* Target property */}
+                <FormControl>
+                  <InputLabel>Affected property</InputLabel>
+                  <Select<PropertyKey>
+                    size="small"
+                    label="Affected property"
+                    value={selected.targetProperty}
+                    onChange={(e) => changeRuleTargetProperty(e.target.value)}
+                    displayEmpty
+                    fullWidth
+                  >
+                    {groupedActionableKeys.map(({ category, keys: catKeys }) => [
+                      <ListSubheader
+                        key={`cat-${category}`}
+                        sx={{
+                          lineHeight: "28px",
+                          fontSize: "0.7rem",
+                          letterSpacing: "0.08em",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        {category}
+                      </ListSubheader>,
+                      ...catKeys.map((k) => (
+                        <MenuItem key={k} value={k}>
+                          {PROPERTY_SCHEMAS[k]?.label ?? k}
+                        </MenuItem>
+                      )),
+                    ])}
+                  </Select>
+                </FormControl>
                 <Divider />
                 {/* Rulesets */}
                 <Box>
