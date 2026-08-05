@@ -48,7 +48,7 @@ import {
   derivePVNames,
 } from "./ruleDialogUtils";
 import ActionValueInput from "./ActionValueInput";
-import { BsFileEarmarkRuled } from "react-icons/bs";
+import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 
 interface RulesDialogProps {
   open: boolean;
@@ -309,7 +309,7 @@ const RulesDialog: React.FC<RulesDialogProps> = ({
                   onSelectedItemsChange={(_e, itemId) => selectRuleById(itemId)}
                   isItemEditable
                   slots={{
-                    endIcon: BsFileEarmarkRuled,
+                    endIcon: DescriptionOutlinedIcon,
                   }}
                   onItemLabelChange={(itemId, newLabel) => {
                     const idx = rules.findIndex((rule) => rule.id === itemId);
