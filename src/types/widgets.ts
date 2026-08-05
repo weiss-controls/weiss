@@ -121,7 +121,7 @@ export interface ExportedRule {
 }
 
 /**
- * Legacy serialised rule format used by older WEISS versions.
+ * Legacy serialised rule format used by older WEISS versions (< 2.0.0).
  * Kept only for backward-compatible imports.
  */
 export interface LegacyExportedRule {
