@@ -87,8 +87,10 @@ WEISS. Some useful links:
 - **GitLab**: [Personal Access Tokens](https://docs.gitlab.com/user/profile/personal_access_tokens/)
   or [Project Access Tokens](https://docs.gitlab.com/user/project/settings/project_access_tokens/)
 
-:::{note}  
-Fine-grained tokens expire. It's recommended to rotate the token and redeploy when applicable.  
+:::{hint}  
+If you are experimenting WEISS by yourself, you can also create and use a personal token from your
+own account. Remind, however, that any commit pushed to the repository will be attributed to your
+account, so it is not recommended for production or shared environments.  
 :::
 
 For these settings, only the following variables in your `.env` file are relevant:
@@ -101,5 +103,6 @@ TECHNICAL_ACCOUNT_EMAIL="<technical-account-email>"         # used for git ident
 
 :::{warning}  
 Treat the token like a password. Store it only in the `.env` file on the server, never commit it to
-a repository.  
+a repository. Fine-grained tokens expire. It's recommended to rotate the token and redeploy when
+applicable.  
 :::

@@ -1,14 +1,16 @@
 # Enabling HTTPS
 
-HTTPS is handled entirely by the nginx container (`weiss`). No changes are needed to the API or
-epicsWS services - they communicate on the internal Docker network over plain HTTP.
+HTTPS is handled entirely by the nginx layer inside `weiss` main container. No changes are needed to
+the API or epicsWS services - they communicate on the internal Docker network over plain HTTP behind
+NGINX's reverse proxy.
 
 ---
 
 ## Prerequisites
 
 You need a valid TLS certificate and private key in PEM format. Obtain them from your certificate
-authority, or generate self-signed certificates for testing:
+authority (your IT department likely can help with that), or generate self-signed certificates for
+testing:
 
 ```sh
 openssl req -x509 -newkey rsa:4096 -keyout privkey.pem -out fullchain.pem \
@@ -22,7 +24,7 @@ read the private key file (101 is the `nginx` UID in the container):
 sudo chown root:101 /path/to/privkey.pem && sudo chmod 640 /path/to/privkey.pem
 ```
 
-Place the files anywhere on the host that the `weiss` container can read (they are mounted
+Place the files anywhere on the host that the `weiss` container can read (they are always mounted
 read-only).
 
 ---
