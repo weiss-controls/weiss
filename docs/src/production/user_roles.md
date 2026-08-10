@@ -12,10 +12,11 @@ username is listed in that file is granted the developer role; everyone else is 
 operator.
 
 :::{note} A simple config file is a deliberate choice for the current scale of the system, where the
-number of users and roles changes infrequently and a full database service would be disproportionate
-overhead. If your deployment grows to the point where dynamic role management, audit trails, or
-per-repository permissions become necessary, this mechanism can be replaced with a database-backed
-solution without changing the rest of the application.  
+number of users and roles changes infrequently and a full database service would be a
+disproportionate maintenance overhead. As usage scale increases, a database-backed role management
+system shall be added. Please open a
+[GitHub issue](https://github.com/weiss-controls/weiss/issues/new) if you want to discuss or
+contribute to that feature.  
 :::
 
 ---
@@ -42,13 +43,14 @@ developers = [
 
 Keep `roles.toml` out of version control - it is already listed in `.gitignore`.
 
-:::{note} The username format depends on the active authentication provider.
-
+:::{note}  
+The username format depends on the active authentication provider.  
 Use the exact username string returned by `/api/v1/auth/me` (field `username`). This is typically
 the provider's login identifier (for example an email-like `preferred_username` in many OIDC
 providers).
 
-Usernames are matched case-insensitively. :::
+Usernames are matched case-insensitively.  
+:::
 
 ---
 

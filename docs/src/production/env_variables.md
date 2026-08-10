@@ -84,9 +84,10 @@ Required when `DEMO_MODE=false` or when OAuth login is desired alongside demo mo
 | `AUTH_IDENTITY_PROVIDER` | `oauth`  | Auth provider module to use for non-demo logins. Must map to a file in `api.auth.providers` (for example `oauth`). |
 
 :::{note}  
-For now, the default implementation is generic OAuth2/OIDC (`oauth`), but the architecture supports
-additional providers via `api.auth.providers`. Any provider implementation must inherit from
-`api.auth.providers.generic.GenericProvider`. :::
+For now, the default implementation is generic OAuth2/OIDC (`oauth`), which should cover most common
+cases. The architecture supports additional providers via `api.auth.providers`. Any provider
+implementation must inherit from `api.auth.providers.generic.GenericProvider`.  
+:::
 
 ### Technical account (git commits)
 
