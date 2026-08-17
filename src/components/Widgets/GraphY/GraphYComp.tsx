@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
-import React, { useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import type { WidgetUpdate } from "@src/types/widgets";
 import Plot from "react-plotly.js";
 import { COLORS } from "@src/constants/constants";
@@ -34,6 +34,31 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
   const prevPvTimestamps = useRef<Record<string, TimeStamp>>({});
   const plotData = useRef<Plotly.Data[]>([{}]);
   const previewPvs = pvNames ?? ["<pvname>"];
+  const awaitingFreshDataRef = useRef(false);
+
+  useEffect(() => {
+    // Since browser may keep page inactive when losing focus, reset the runtime buffers
+    // for scalar PVs to avoid showing a false "gap" in the data when the page is re-focused.
+    const resetRuntimeBuffers = () => {
+      valueBuffers.current = {};
+      prevPvTimestamps.current = {};
+      awaitingFreshDataRef.current = true;
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== "visible") {
+        resetRuntimeBuffers();
+      }
+    };
+
+    window.addEventListener("focus", resetRuntimeBuffers);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("focus", resetRuntimeBuffers);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
 
   const buildPreviewTraces = () => {
     plotData.current = [{}];
