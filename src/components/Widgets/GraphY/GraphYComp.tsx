@@ -9,6 +9,11 @@ import type { TimeStamp } from "@src/types/epicsWS";
 import AlarmBorder from "@src/components/AlarmBorder/AlarmBorder";
 import { useUIContext } from "@src/context/useUIContext";
 
+type ScalarPoint = [number, number];
+
+const toEpochMillis = (ts: TimeStamp): number =>
+  ts.secondsPastEpoch * 1000 + Math.trunc(ts.nanoseconds / 1_000_000);
+
 const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
   const { inEditMode } = useUIContext();
   const p = data.editableProperties;
@@ -25,8 +30,7 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
   const textVAlign = p.textVAlign?.value;
   const titleXpos = textHAlign == "left" ? 0.05 : textHAlign == "right" ? 0.95 : 0.5;
   const titleYpos = textVAlign == "bottom" ? 0.05 : textVAlign == "middle" ? 0.5 : 0.95;
-
-  const valueBuffers = useRef<Record<string, number[]>>({});
+  const valueBuffers = useRef<Record<string, ScalarPoint[]>>({});
   const prevPvTimestamps = useRef<Record<string, TimeStamp>>({});
   const plotData = useRef<Plotly.Data[]>([{}]);
   const previewPvs = pvNames ?? ["<pvname>"];
@@ -46,19 +50,29 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
     });
   };
 
+  const isScalarOnlyRuntimeData =
+    !inEditMode &&
+    multiPvData &&
+    Object.keys(multiPvData).length > 0 &&
+    Object.values(multiPvData).every((pv) => typeof pv.value === "number");
+
   const buildRuntimeTraces = () => {
     plotData.current = [{}];
     if (multiPvData) {
       for (const [pvName, pv] of Object.entries(multiPvData)) {
         const newValTs = pv.timeStamp;
         const oldValTs = prevPvTimestamps.current[pvName];
-        if (newValTs === oldValTs) continue;
+        const sameTs =
+          oldValTs &&
+          oldValTs.secondsPastEpoch === newValTs.secondsPastEpoch &&
+          oldValTs.nanoseconds === newValTs.nanoseconds;
+        if (sameTs) continue;
         prevPvTimestamps.current[pvName] = newValTs;
         const newVal = pv.value;
         if (typeof newVal === "number") {
           if (!valueBuffers.current[pvName]) valueBuffers.current[pvName] = [];
           const buf = valueBuffers.current[pvName];
-          buf.push(newVal);
+          buf.push([toEpochMillis(newValTs), newVal]);
           if (buf.length > bufferSize) buf.shift();
         }
       }
@@ -68,22 +82,30 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
           if (pvIdx === -1) return null;
 
           const v = pv.value;
-          const y =
-            typeof v === "number"
-              ? [...(valueBuffers.current[pvName] ?? [])]
-              : Array.isArray(v)
-                ? [...v]
-                : null;
 
-          if (!y) return null;
+          if (typeof v === "number") {
+            const buf = valueBuffers.current[pvName] ?? [];
+            return {
+              x: buf.map(([t]) => t),
+              y: buf.map(([, val]) => val),
+              type: "scatter",
+              mode: plotLineStyle,
+              line: { color: lineColors?.[pvIdx] },
+              name: pvName,
+            } as Plotly.Data;
+          }
 
-          return {
-            y,
-            type: "scatter",
-            mode: plotLineStyle,
-            line: { color: lineColors?.[pvIdx] },
-            name: pvName,
-          } as Plotly.Data;
+          if (Array.isArray(v)) {
+            return {
+              y: [...v],
+              type: "scatter",
+              mode: plotLineStyle,
+              line: { color: lineColors?.[pvIdx] },
+              name: pvName,
+            } as Plotly.Data;
+          }
+
+          return null;
         })
         .filter((t): t is Plotly.Data => t !== null);
     }
@@ -110,6 +132,7 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
       y: titleYpos,
     },
     xaxis: {
+      type: isScalarOnlyRuntimeData ? "date" : undefined,
       title: {
         text: p.xAxisTitle?.value,
         font: {
