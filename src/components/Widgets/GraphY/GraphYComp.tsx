@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
-import React, { useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import type { WidgetUpdate } from "@src/types/widgets";
 import Plot from "react-plotly.js";
 import { COLORS } from "@src/constants/constants";
@@ -9,27 +9,53 @@ import type { TimeStamp } from "@src/types/epicsWS";
 import AlarmBorder from "@src/components/AlarmBorder/AlarmBorder";
 import { useUIContext } from "@src/context/useUIContext";
 
+type ScalarPoint = [number, number];
+
+const toEpochMillis = (ts: TimeStamp): number =>
+  ts.secondsPastEpoch * 1000 + Math.trunc(ts.nanoseconds / 1_000_000);
+
 const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
   const { inEditMode } = useUIContext();
   const p = data.editableProperties;
   const pvData = data.multiPvData ?? {};
   const alarmData = Object.values(pvData)
-    .map((p) => p.alarm)
+    .map((d) => d.alarm)
     .filter((a) => a !== undefined);
   const lineColors = p.lineColors?.value;
   const pvNames = p.pvNames?.value;
   const bufferSize = p.plotBufferSize?.value ?? 50;
-  const multiPvData = data.multiPvData;
   const plotLineStyle = p.plotLineStyle?.value ?? "lines";
   const textHAlign = p.textHAlign?.value;
   const textVAlign = p.textVAlign?.value;
   const titleXpos = textHAlign == "left" ? 0.05 : textHAlign == "right" ? 0.95 : 0.5;
   const titleYpos = textVAlign == "bottom" ? 0.05 : textVAlign == "middle" ? 0.5 : 0.95;
-
-  const valueBuffers = useRef<Record<string, number[]>>({});
+  const valueBuffers = useRef<Record<string, ScalarPoint[]>>({});
   const prevPvTimestamps = useRef<Record<string, TimeStamp>>({});
   const plotData = useRef<Plotly.Data[]>([{}]);
   const previewPvs = pvNames ?? ["<pvname>"];
+
+  useEffect(() => {
+    // Since browser may keep page inactive when losing focus, reset the runtime buffers
+    // for scalar PVs to avoid showing a false "gap" in the data when the page is re-focused.
+    const resetRuntimeBuffers = () => {
+      valueBuffers.current = {};
+      prevPvTimestamps.current = {};
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== "visible") {
+        resetRuntimeBuffers();
+      }
+    };
+
+    window.addEventListener("focus", resetRuntimeBuffers);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("focus", resetRuntimeBuffers);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
 
   const buildPreviewTraces = () => {
     plotData.current = [{}];
@@ -46,47 +72,66 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
     });
   };
 
+  const isScalarOnlyRuntimeData =
+    !inEditMode &&
+    pvData &&
+    Object.keys(pvData).length > 0 &&
+    Object.values(pvData).every((pv) => typeof pv.value === "number");
+
   const buildRuntimeTraces = () => {
-    plotData.current = [{}];
-    if (multiPvData) {
-      for (const [pvName, pv] of Object.entries(multiPvData)) {
-        const newValTs = pv.timeStamp;
-        const oldValTs = prevPvTimestamps.current[pvName];
-        if (newValTs === oldValTs) continue;
+    if (!pvData) return;
+
+    const traces: (Plotly.Data & { __pvIdx: number })[] = [];
+
+    for (const [pvName, pv] of Object.entries(pvData)) {
+      const newValTs = pv.timeStamp;
+      const oldValTs = prevPvTimestamps.current[pvName];
+      const sameTs =
+        oldValTs &&
+        oldValTs.secondsPastEpoch === newValTs.secondsPastEpoch &&
+        oldValTs.nanoseconds === newValTs.nanoseconds;
+      if (!sameTs) {
         prevPvTimestamps.current[pvName] = newValTs;
         const newVal = pv.value;
         if (typeof newVal === "number") {
           if (!valueBuffers.current[pvName]) valueBuffers.current[pvName] = [];
           const buf = valueBuffers.current[pvName];
-          buf.push(newVal);
+          buf.push([toEpochMillis(newValTs), newVal]);
           if (buf.length > bufferSize) buf.shift();
         }
       }
-      plotData.current = Object.entries(multiPvData)
-        .map(([pvName, pv]) => {
-          const pvIdx = pvNames?.indexOf(pvName) ?? -1;
-          if (pvIdx === -1) return null;
 
-          const v = pv.value;
-          const y =
-            typeof v === "number"
-              ? [...(valueBuffers.current[pvName] ?? [])]
-              : Array.isArray(v)
-                ? [...v]
-                : null;
+      const pvIdx = pvNames?.indexOf(pvName) ?? -1;
+      if (pvIdx === -1) continue;
 
-          if (!y) return null;
+      const v = pv.value;
 
-          return {
-            y,
-            type: "scatter",
-            mode: plotLineStyle,
-            line: { color: lineColors?.[pvIdx] },
-            name: pvName,
-          } as Plotly.Data;
-        })
-        .filter((t): t is Plotly.Data => t !== null);
+      if (typeof v === "number") {
+        const buf = valueBuffers.current[pvName] ?? [];
+        traces.push({
+          x: buf.map(([t]) => t),
+          y: buf.map(([, val]) => val),
+          type: "scatter",
+          mode: plotLineStyle as Plotly.PlotData["mode"],
+          line: { color: lineColors?.[pvIdx] },
+          name: pvName,
+          __pvIdx: pvIdx,
+        });
+      } else if (Array.isArray(v)) {
+        traces.push({
+          y: [...v],
+          type: "scatter",
+          mode: plotLineStyle as Plotly.PlotData["mode"],
+          line: { color: lineColors?.[pvIdx] },
+          name: pvName,
+          __pvIdx: pvIdx,
+        });
+      }
     }
+
+    plotData.current = traces
+      .sort((a, b) => a.__pvIdx - b.__pvIdx)
+      .map(({ __pvIdx, ...trace }) => trace);
   };
 
   if (inEditMode) {
@@ -110,6 +155,7 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
       y: titleYpos,
     },
     xaxis: {
+      type: isScalarOnlyRuntimeData ? "date" : undefined,
       title: {
         text: p.xAxisTitle?.value,
         font: {

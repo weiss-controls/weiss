@@ -2,13 +2,18 @@
 // GraphXY widget — X vs Y scatter/line plot for WEISS
 // Contributed by Elmaddin Guliyev
 
-import React, { useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import type { WidgetUpdate } from "@src/types/widgets";
 import Plot from "react-plotly.js";
 import { COLORS } from "@src/constants/constants";
-import type { TimeStamp } from "@src/types/epicsWS";
+import type { MultiPvData, TimeStamp } from "@src/types/epicsWS";
 import AlarmBorder from "@src/components/AlarmBorder/AlarmBorder";
 import { useUIContext } from "@src/context/useUIContext";
+
+type ScalarPoint = [number, number];
+
+const toEpochMillis = (ts: TimeStamp): number =>
+  ts.secondsPastEpoch * 1000 + Math.trunc(ts.nanoseconds / 1_000_000);
 
 /**
  * GraphXY — Plots PV values against each other.
@@ -16,7 +21,6 @@ import { useUIContext } from "@src/context/useUIContext";
  * When two PVs are provided, the first is used as X and the second as Y.
  * When more than two are provided, the first PV is the shared X axis
  * and each subsequent PV is a separate Y trace.
- * When a single PV contains an array, it is plotted as Y with index as X.
  */
 const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
   const { inEditMode } = useUIContext();
@@ -36,10 +40,33 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
   const titleYpos = textVAlign === "bottom" ? 0.05 : textVAlign === "middle" ? 0.5 : 0.95;
 
   // Ring buffers: one per PV
-  const valueBuffers = useRef<Record<string, number[]>>({});
+  const valueBuffers = useRef<Record<string, ScalarPoint[]>>({});
   const prevPvTimestamps = useRef<Record<string, TimeStamp>>({});
-  const plotData = useRef<Plotly.Data[]>([{}]);
+  const plotData = useRef<Plotly.Data[]>([]);
   const xLabel = pvNames.length > 0 ? pvNames[0] : "X";
+
+  useEffect(() => {
+    // Since browser may keep page inactive when losing focus, reset the runtime buffers
+    // for scalar PVs to avoid showing a false "gap" in the data when the page is re-focused.
+    const resetRuntimeBuffers = () => {
+      valueBuffers.current = {};
+      prevPvTimestamps.current = {};
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== "visible") {
+        resetRuntimeBuffers();
+      }
+    };
+
+    window.addEventListener("focus", resetRuntimeBuffers);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("focus", resetRuntimeBuffers);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
 
   const buildPreviewTraces = () => {
     plotData.current = [{}];
@@ -64,59 +91,60 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
 
   const buildRuntimeTraces = () => {
     if (!pvData) return;
-    let updated = false;
-    for (const [pvName, pv] of Object.entries(pvData)) {
+
+    const updateBuffer = (pvName: string, pv: MultiPvData[string]) => {
       const newValTs = pv.timeStamp;
       const oldValTs = prevPvTimestamps.current[pvName];
-      if (newValTs === oldValTs) continue;
+      const sameTs =
+        oldValTs &&
+        oldValTs.secondsPastEpoch === newValTs.secondsPastEpoch &&
+        oldValTs.nanoseconds === newValTs.nanoseconds;
+      if (sameTs) return;
       prevPvTimestamps.current[pvName] = newValTs;
-      updated = true;
       const newVal = pv.value;
       if (typeof newVal === "number") {
         if (!valueBuffers.current[pvName]) valueBuffers.current[pvName] = [];
         const buf = valueBuffers.current[pvName];
-        buf.push(newVal);
+        buf.push([toEpochMillis(newValTs), newVal]);
         if (buf.length > bufferSize) buf.shift();
       }
-    }
-
-    if (!updated) return;
+    };
 
     const xPvName = pvNames[0];
     const xPv = pvData[xPvName];
     if (!xPv) return;
+    updateBuffer(xPvName, xPv);
 
-    // X data: either from buffer (scalar) or array
     const xVal = xPv.value;
-    const xData: number[] | null =
+    const xData =
       typeof xVal === "number"
-        ? [...(valueBuffers.current[xPvName] ?? [])]
+        ? (valueBuffers.current[xPvName] ?? []).map(([, v]) => v)
         : Array.isArray(xVal)
           ? [...(xVal as number[])]
           : null;
 
     if (!xData || xData.length === 0) return;
 
-    // Build Y traces
+    const newTraces: Plotly.Data[] = [];
     for (let i = 1; i < pvNames.length; i++) {
       const yPvName = pvNames[i];
       const yPv = pvData[yPvName];
       if (!yPv) continue;
+      updateBuffer(yPvName, yPv);
 
       const yVal = yPv.value;
-      const yData: number[] | null =
+      const yData =
         typeof yVal === "number"
-          ? [...(valueBuffers.current[yPvName] ?? [])]
+          ? (valueBuffers.current[yPvName] ?? []).map(([, v]) => v)
           : Array.isArray(yVal)
             ? [...(yVal as number[])]
             : null;
 
       if (!yData || yData.length === 0) continue;
 
-      // Align lengths
       const len = Math.min(xData.length, yData.length);
 
-      plotData.current.push({
+      newTraces.push({
         x: xData.slice(-len),
         y: yData.slice(-len),
         type: "scatter",
@@ -125,6 +153,10 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
         marker: { size: 5 },
         name: `${yPvName}`,
       });
+    }
+
+    if (newTraces.length > 0) {
+      plotData.current = newTraces;
     }
   };
 
