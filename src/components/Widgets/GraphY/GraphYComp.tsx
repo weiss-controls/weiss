@@ -19,12 +19,11 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
   const p = data.editableProperties;
   const pvData = data.multiPvData ?? {};
   const alarmData = Object.values(pvData)
-    .map((p) => p.alarm)
+    .map((d) => d.alarm)
     .filter((a) => a !== undefined);
   const lineColors = p.lineColors?.value;
   const pvNames = p.pvNames?.value;
   const bufferSize = p.plotBufferSize?.value ?? 50;
-  const multiPvData = data.multiPvData;
   const plotLineStyle = p.plotLineStyle?.value ?? "lines";
   const textHAlign = p.textHAlign?.value;
   const textVAlign = p.textVAlign?.value;
@@ -34,7 +33,6 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
   const prevPvTimestamps = useRef<Record<string, TimeStamp>>({});
   const plotData = useRef<Plotly.Data[]>([{}]);
   const previewPvs = pvNames ?? ["<pvname>"];
-  const awaitingFreshDataRef = useRef(false);
 
   useEffect(() => {
     // Since browser may keep page inactive when losing focus, reset the runtime buffers
@@ -42,7 +40,6 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
     const resetRuntimeBuffers = () => {
       valueBuffers.current = {};
       prevPvTimestamps.current = {};
-      awaitingFreshDataRef.current = true;
     };
 
     const handleVisibilityChange = () => {
@@ -77,14 +74,13 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
 
   const isScalarOnlyRuntimeData =
     !inEditMode &&
-    multiPvData &&
-    Object.keys(multiPvData).length > 0 &&
-    Object.values(multiPvData).every((pv) => typeof pv.value === "number");
+    pvData &&
+    Object.keys(pvData).length > 0 &&
+    Object.values(pvData).every((pv) => typeof pv.value === "number");
 
   const buildRuntimeTraces = () => {
-    plotData.current = [{}];
-    if (multiPvData) {
-      for (const [pvName, pv] of Object.entries(multiPvData)) {
+    if (pvData) {
+      for (const [pvName, pv] of Object.entries(pvData)) {
         const newValTs = pv.timeStamp;
         const oldValTs = prevPvTimestamps.current[pvName];
         const sameTs =
@@ -101,7 +97,7 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
           if (buf.length > bufferSize) buf.shift();
         }
       }
-      plotData.current = Object.entries(multiPvData)
+      plotData.current = Object.entries(pvData)
         .map(([pvName, pv]) => {
           const pvIdx = pvNames?.indexOf(pvName) ?? -1;
           if (pvIdx === -1) return null;

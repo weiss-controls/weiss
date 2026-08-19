@@ -44,7 +44,6 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
   const prevPvTimestamps = useRef<Record<string, TimeStamp>>({});
   const plotData = useRef<Plotly.Data[]>([]);
   const xLabel = pvNames.length > 0 ? pvNames[0] : "X";
-  const awaitingFreshDataRef = useRef(false);
 
   useEffect(() => {
     // Since browser may keep page inactive when losing focus, reset the runtime buffers
@@ -52,7 +51,6 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
     const resetRuntimeBuffers = () => {
       valueBuffers.current = {};
       prevPvTimestamps.current = {};
-      awaitingFreshDataRef.current = true;
     };
 
     const handleVisibilityChange = () => {
@@ -97,7 +95,11 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
     for (const [pvName, pv] of Object.entries(pvData)) {
       const newValTs = pv.timeStamp;
       const oldValTs = prevPvTimestamps.current[pvName];
-      if (newValTs === oldValTs) continue;
+      const sameTs =
+        oldValTs &&
+        oldValTs.secondsPastEpoch === newValTs.secondsPastEpoch &&
+        oldValTs.nanoseconds === newValTs.nanoseconds;
+      if (sameTs) continue;
       prevPvTimestamps.current[pvName] = newValTs;
       updated = true;
       const newVal = pv.value;
