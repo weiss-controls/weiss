@@ -79,15 +79,18 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
     Object.values(pvData).every((pv) => typeof pv.value === "number");
 
   const buildRuntimeTraces = () => {
-    if (pvData) {
-      for (const [pvName, pv] of Object.entries(pvData)) {
-        const newValTs = pv.timeStamp;
-        const oldValTs = prevPvTimestamps.current[pvName];
-        const sameTs =
-          oldValTs &&
-          oldValTs.secondsPastEpoch === newValTs.secondsPastEpoch &&
-          oldValTs.nanoseconds === newValTs.nanoseconds;
-        if (sameTs) continue;
+    if (!pvData) return;
+
+    const traces: (Plotly.Data & { __pvIdx: number })[] = [];
+
+    for (const [pvName, pv] of Object.entries(pvData)) {
+      const newValTs = pv.timeStamp;
+      const oldValTs = prevPvTimestamps.current[pvName];
+      const sameTs =
+        oldValTs &&
+        oldValTs.secondsPastEpoch === newValTs.secondsPastEpoch &&
+        oldValTs.nanoseconds === newValTs.nanoseconds;
+      if (!sameTs) {
         prevPvTimestamps.current[pvName] = newValTs;
         const newVal = pv.value;
         if (typeof newVal === "number") {
@@ -97,39 +100,38 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
           if (buf.length > bufferSize) buf.shift();
         }
       }
-      plotData.current = Object.entries(pvData)
-        .map(([pvName, pv]) => {
-          const pvIdx = pvNames?.indexOf(pvName) ?? -1;
-          if (pvIdx === -1) return null;
 
-          const v = pv.value;
+      const pvIdx = pvNames?.indexOf(pvName) ?? -1;
+      if (pvIdx === -1) continue;
 
-          if (typeof v === "number") {
-            const buf = valueBuffers.current[pvName] ?? [];
-            return {
-              x: buf.map(([t]) => t),
-              y: buf.map(([, val]) => val),
-              type: "scatter",
-              mode: plotLineStyle,
-              line: { color: lineColors?.[pvIdx] },
-              name: pvName,
-            } as Plotly.Data;
-          }
+      const v = pv.value;
 
-          if (Array.isArray(v)) {
-            return {
-              y: [...v],
-              type: "scatter",
-              mode: plotLineStyle,
-              line: { color: lineColors?.[pvIdx] },
-              name: pvName,
-            } as Plotly.Data;
-          }
-
-          return null;
-        })
-        .filter((t): t is Plotly.Data => t !== null);
+      if (typeof v === "number") {
+        const buf = valueBuffers.current[pvName] ?? [];
+        traces.push({
+          x: buf.map(([t]) => t),
+          y: buf.map(([, val]) => val),
+          type: "scatter",
+          mode: plotLineStyle as Plotly.PlotData["mode"],
+          line: { color: lineColors?.[pvIdx] },
+          name: pvName,
+          __pvIdx: pvIdx,
+        });
+      } else if (Array.isArray(v)) {
+        traces.push({
+          y: [...v],
+          type: "scatter",
+          mode: plotLineStyle as Plotly.PlotData["mode"],
+          line: { color: lineColors?.[pvIdx] },
+          name: pvName,
+          __pvIdx: pvIdx,
+        });
+      }
     }
+
+    plotData.current = traces
+      .sort((a, b) => a.__pvIdx - b.__pvIdx)
+      .map(({ __pvIdx, ...trace }) => trace);
   };
 
   if (inEditMode) {

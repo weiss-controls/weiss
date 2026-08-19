@@ -6,7 +6,7 @@ import React, { useEffect, useRef } from "react";
 import type { WidgetUpdate } from "@src/types/widgets";
 import Plot from "react-plotly.js";
 import { COLORS } from "@src/constants/constants";
-import type { TimeStamp } from "@src/types/epicsWS";
+import type { MultiPvData, TimeStamp } from "@src/types/epicsWS";
 import AlarmBorder from "@src/components/AlarmBorder/AlarmBorder";
 import { useUIContext } from "@src/context/useUIContext";
 
@@ -91,17 +91,16 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
 
   const buildRuntimeTraces = () => {
     if (!pvData) return;
-    let updated = false;
-    for (const [pvName, pv] of Object.entries(pvData)) {
+
+    const updateBuffer = (pvName: string, pv: MultiPvData[string]) => {
       const newValTs = pv.timeStamp;
       const oldValTs = prevPvTimestamps.current[pvName];
       const sameTs =
         oldValTs &&
         oldValTs.secondsPastEpoch === newValTs.secondsPastEpoch &&
         oldValTs.nanoseconds === newValTs.nanoseconds;
-      if (sameTs) continue;
+      if (sameTs) return;
       prevPvTimestamps.current[pvName] = newValTs;
-      updated = true;
       const newVal = pv.value;
       if (typeof newVal === "number") {
         if (!valueBuffers.current[pvName]) valueBuffers.current[pvName] = [];
@@ -109,13 +108,12 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
         buf.push([toEpochMillis(newValTs), newVal]);
         if (buf.length > bufferSize) buf.shift();
       }
-    }
-
-    if (!updated) return;
+    };
 
     const xPvName = pvNames[0];
     const xPv = pvData[xPvName];
     if (!xPv) return;
+    updateBuffer(xPvName, xPv);
 
     const xVal = xPv.value;
     const xData =
@@ -132,6 +130,7 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
       const yPvName = pvNames[i];
       const yPv = pvData[yPvName];
       if (!yPv) continue;
+      updateBuffer(yPvName, yPv);
 
       const yVal = yPv.value;
       const yData =
