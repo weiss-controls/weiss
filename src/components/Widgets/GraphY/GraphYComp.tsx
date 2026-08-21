@@ -5,14 +5,9 @@ import React, { useEffect, useRef } from "react";
 import type { WidgetUpdate } from "@src/types/widgets";
 import Plot from "react-plotly.js";
 import { COLORS } from "@src/constants/constants";
-import type { TimeStamp } from "@src/types/epicsWS";
+import { getPVHistory, registerPVHistory } from "@src/utils/historyBuffers";
 import AlarmBorder from "@src/components/AlarmBorder/AlarmBorder";
 import { useUIContext } from "@src/context/useUIContext";
-
-type ScalarPoint = [number, number];
-
-const toEpochMillis = (ts: TimeStamp): number =>
-  ts.secondsPastEpoch * 1000 + Math.trunc(ts.nanoseconds / 1_000_000);
 
 const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
   const { inEditMode } = useUIContext();
@@ -29,33 +24,18 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
   const textVAlign = p.textVAlign?.value;
   const titleXpos = textHAlign == "left" ? 0.05 : textHAlign == "right" ? 0.95 : 0.5;
   const titleYpos = textVAlign == "bottom" ? 0.05 : textVAlign == "middle" ? 0.5 : 0.95;
-  const valueBuffers = useRef<Record<string, ScalarPoint[]>>({});
-  const prevPvTimestamps = useRef<Record<string, TimeStamp>>({});
   const plotData = useRef<Plotly.Data[]>([{}]);
   const previewPvs = pvNames ?? ["<pvname>"];
 
+  // If PV carries only scalar values, request a buffer from PVStore
+  const scalarPvNames = pvNames?.filter((pv) => typeof pvData[pv]?.value === "number") ?? [];
+  const scalarPvNamesKey = scalarPvNames.join(",");
   useEffect(() => {
-    // Since browser may keep page inactive when losing focus, reset the runtime buffers
-    // for scalar PVs to avoid showing a false "gap" in the data when the page is re-focused.
-    const resetRuntimeBuffers = () => {
-      valueBuffers.current = {};
-      prevPvTimestamps.current = {};
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState !== "visible") {
-        resetRuntimeBuffers();
-      }
-    };
-
-    window.addEventListener("focus", resetRuntimeBuffers);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      window.removeEventListener("focus", resetRuntimeBuffers);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, []);
+    if (inEditMode || !scalarPvNames.length) return;
+    const unregisters = scalarPvNames.map((pv) => registerPVHistory(pv, bufferSize));
+    return () => unregisters.forEach((unregister) => unregister());
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- scalarPvNamesKey is the stable identity for scalarPvNames
+  }, [inEditMode, scalarPvNamesKey, bufferSize]);
 
   const buildPreviewTraces = () => {
     plotData.current = [{}];
@@ -84,30 +64,13 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
     const traces: (Plotly.Data & { __pvIdx: number })[] = [];
 
     for (const [pvName, pv] of Object.entries(pvData)) {
-      const newValTs = pv.timeStamp;
-      const oldValTs = prevPvTimestamps.current[pvName];
-      const sameTs =
-        oldValTs &&
-        oldValTs.secondsPastEpoch === newValTs.secondsPastEpoch &&
-        oldValTs.nanoseconds === newValTs.nanoseconds;
-      if (!sameTs) {
-        prevPvTimestamps.current[pvName] = newValTs;
-        const newVal = pv.value;
-        if (typeof newVal === "number") {
-          if (!valueBuffers.current[pvName]) valueBuffers.current[pvName] = [];
-          const buf = valueBuffers.current[pvName];
-          buf.push([toEpochMillis(newValTs), newVal]);
-          if (buf.length > bufferSize) buf.shift();
-        }
-      }
-
       const pvIdx = pvNames?.indexOf(pvName) ?? -1;
       if (pvIdx === -1) continue;
 
       const v = pv.value;
 
       if (typeof v === "number") {
-        const buf = valueBuffers.current[pvName] ?? [];
+        const buf = getPVHistory(pvName).slice(-bufferSize);
         traces.push({
           x: buf.map(([t]) => t),
           y: buf.map(([, val]) => val),
