@@ -296,49 +296,8 @@ Each repo directory layout:
 All runtime configuration is provided via the `.env` file at the repository root (copy
 `.env.example`).
 
-**Frontend build-time** (baked into the static bundle at build; changing requires a rebuild):
-
-| Variable                      | Default  | Description                                                                         |
-| ----------------------------- | -------- | ----------------------------------------------------------------------------------- |
-| `VITE_DEMO_MODE`              | `true`   | Derived from `DEMO_MODE`; shows demo login option in the frontend.                  |
-| `VITE_AUTH_IDENTITY_PROVIDER` | `oauth`  | Derived from `AUTH_IDENTITY_PROVIDER`; selects non-demo login provider in frontend. |
-| `DOCKER_TAG`                  | `latest` | Tag applied to all Docker images built by Compose.                                  |
-
-**EPICS settings** (consumed by `weiss-epicsws`):
-
-| Variable                   | Default     | Description                                              |
-| -------------------------- | ----------- | -------------------------------------------------------- |
-| `EPICS_DEFAULT_PROTOCOL`   | `pva`       | Protocol when PV name has no `ca://` or `pva://` prefix. |
-| `EPICS_CA_ADDR_LIST`       | `localhost` | Channel Access address list.                             |
-| `EPICS_CA_AUTO_ADDR_LIST`  | `YES`       | Enable CA auto address list.                             |
-| `EPICS_CA_MAX_ARRAY_BYTES` | `1000000`   | Max array byte size for CA.                              |
-| `EPICS_PVA_ADDR_LIST`      | `localhost` | PVAccess address list.                                   |
-| `EPICS_PVA_AUTO_ADDR_LIST` | `YES`       | Enable PVA auto address list.                            |
-
-**HTTPS / networking** (consumed by `weiss` nginx and `weiss-api`):
-
-| Variable        | Default                               | Description                                                         |
-| --------------- | ------------------------------------- | ------------------------------------------------------------------- |
-| `ENABLE_HTTPS`  | `false`                               | Enable HTTPS; marks session cookies as `Secure`.                    |
-| `SSL_CERT_FILE` | `./nginx/certs/example-fullchain.pem` | Host path to the full-chain TLS certificate (PEM).                  |
-| `SSL_KEY_FILE`  | `./nginx/certs/example-privkey.pem`   | Host path to the TLS private key (PEM).                             |
-| `APP_HOSTNAME`  | `localhost`                           | Hostname under which the app is served; used for CORS origin.       |
-| `DOCS_HOSTNAME` | _(unset)_                             | When set, nginx proxies this hostname to the docs container (8001). |
-
-**API settings** (consumed by `weiss-api`):
-
-| Variable                     | Required        | Default             | Description                                                               |
-| ---------------------------- | --------------- | ------------------- | ------------------------------------------------------------------------- |
-| `DEMO_MODE`                  | No              | `false`             | Enables demo provider mode in backend; only demo logins allowed when true |
-| `AUTH_CLIENT_ID`             | Yes (for OAuth) | —                   | Client registration ID                                                    |
-| `AUTH_CLIENT_SECRET`         | Yes (for OAuth) | —                   | Client secret                                                             |
-| `AUTH_ISSUER`                | Yes (for OAuth) | —                   | OAuth issuer                                                              |
-| `AUTH_IDENTITY_PROVIDER`     | Yes             | `"oauth"`           | Identity provider to use                                                  |
-| `DEV_MODE`                   | No              | `false`             | Appends Vite dev port to CORS origin                                      |
-| `TECHNICAL_ACCOUNT_TOKEN`    | No              | —                   | Git HTTP auth token for push                                              |
-| `TECHNICAL_ACCOUNT_USERNAME` | No              | `"weiss-bot"`       | Git commit author name                                                    |
-| `TECHNICAL_ACCOUNT_EMAIL`    | No              | `"weiss-bot@dummy"` | Git commit author email                                                   |
-| `ROLES_CONFIG_FILE`          | No              | `./roles.toml`      | Host path to the roles TOML file                                          |
+See docs/src/production/env_variables.md for a full list of environment variables and their
+descriptions.
 
 ---
 
