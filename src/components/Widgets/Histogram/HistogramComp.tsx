@@ -2,11 +2,11 @@
 // Histogram widget for WEISS
 // Contributed by Elmaddin Guliyev
 
-import React, { useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import type { WidgetUpdate } from "@src/types/widgets";
 import Plot from "react-plotly.js";
 import { COLORS } from "@src/constants/constants";
-import type { TimeStamp } from "@src/types/epicsWS";
+import { getPVHistory, registerPVHistory } from "@src/utils/historyBuffers";
 import AlarmBorder from "@src/components/AlarmBorder/AlarmBorder";
 import { useUIContext } from "@src/context/useUIContext";
 
@@ -24,8 +24,15 @@ const HistogramComp: React.FC<WidgetUpdate> = ({ data }) => {
   const titleYpos = textVAlign === "bottom" ? 0.05 : textVAlign === "middle" ? 0.5 : 0.95;
 
   const valueBuffer = useRef<number[]>([]);
-  const prevTimestamp = useRef<TimeStamp | undefined>(undefined);
   const plotData = useRef<Plotly.Data[]>([{}]);
+
+  // Only accumulate scalar history for the PV this histogram actually needs.
+  const pvName = pvData?.pv;
+  const isScalar = typeof pvData?.value === "number";
+  useEffect(() => {
+    if (inEditMode || !pvName || !isScalar) return;
+    return registerPVHistory(pvName, bufferSize);
+  }, [inEditMode, pvName, isScalar, bufferSize]);
 
   // build (once) a normal distribution for preview
   const preview = useMemo(() => {
@@ -59,10 +66,6 @@ const HistogramComp: React.FC<WidgetUpdate> = ({ data }) => {
 
   const buildRuntimeTraces = () => {
     if (!pvData) return;
-    const newTs = pvData.timeStamp;
-    if (newTs === prevTimestamp.current) return;
-    prevTimestamp.current = newTs;
-
     const value = pvData.value;
 
     if (Array.isArray(value)) {
@@ -74,10 +77,10 @@ const HistogramComp: React.FC<WidgetUpdate> = ({ data }) => {
         } as Plotly.Data,
       ];
     } else if (typeof value === "number") {
-      valueBuffer.current.push(value);
-      if (valueBuffer.current.length > bufferSize) {
-        valueBuffer.current = valueBuffer.current.slice(-bufferSize);
-      }
+      // Lossless history buffer: accumulated on every WS message, independent of render throttling.
+      valueBuffer.current = getPVHistory(pvData.pv)
+        .slice(-bufferSize)
+        .map(([, v]) => v);
       plotData.current = [
         {
           x: [...valueBuffer.current],

@@ -6,6 +6,7 @@ import { WSClient } from "@src/services/WSClient/WSClient";
 import type { PVData, PVValue, WSMessage } from "@src/types/epicsWS";
 import { WS_URL } from "@src/constants/constants";
 import { usePVStore } from "@src/services/pvStore";
+import { pushPVHistory, clearPVHistory } from "@src/utils/historyBuffers";
 
 /**
  * Hook that manages a WebSocket session to the PV WebSocket.
@@ -49,15 +50,22 @@ export default function useEpicsWS(resolvedPVList: string[]) {
 
   /**
    * Handles incoming WebSocket messages.
+   *
    * Merges partial/sticky metadata fields into the per-frame accumulator.
    * The actual Zustand store write is deferred to the next animation frame so
    * that multiple messages arriving in the same frame are batched into one
    * React re-render cycle.
+   * In case of scalar PVs that have been registered for buffering (plots), push
+   * the sample into the history buffer independently of rAF batching so that
+   * the history is always up to date even if the widget is not re-rendering.
    */
   const onMessage = useCallback((msg: WSMessage) => {
     if (!subscribedRef.current.has(msg.pv)) {
       console.warn(`received message from unsolicited PV: ${msg.pv}`);
       return;
+    }
+    if (typeof msg.value === "number" && msg.timeStamp) {
+      pushPVHistory(msg.pv, msg.timeStamp, msg.value);
     }
     pendingPVsRef.current[msg.pv] = buildPVData(msg);
     rafHandleRef.current ??= requestAnimationFrame(() => {
@@ -103,6 +111,7 @@ export default function useEpicsWS(resolvedPVList: string[]) {
     if (toRemove.length > 0) {
       ws.current.unsubscribe(toRemove);
       usePVStore.getState().removePVs(toRemove);
+      clearPVHistory(toRemove);
     }
     subscribedRef.current = current;
   }, [resolvedPVList, wsConnected]);
@@ -122,6 +131,7 @@ export default function useEpicsWS(resolvedPVList: string[]) {
     pendingPVsRef.current = {};
     setWSConnected(false);
     usePVStore.getState().clearPVs();
+    clearPVHistory();
   }, [setWSConnected]);
 
   /**

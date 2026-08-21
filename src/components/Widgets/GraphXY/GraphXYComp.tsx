@@ -6,14 +6,11 @@ import React, { useEffect, useRef } from "react";
 import type { WidgetUpdate } from "@src/types/widgets";
 import Plot from "react-plotly.js";
 import { COLORS } from "@src/constants/constants";
-import type { MultiPvData, TimeStamp } from "@src/types/epicsWS";
+import { getPVHistory, registerPVHistory } from "@src/utils/historyBuffers";
 import AlarmBorder from "@src/components/AlarmBorder/AlarmBorder";
 import { useUIContext } from "@src/context/useUIContext";
 
 type ScalarPoint = [number, number];
-
-const toEpochMillis = (ts: TimeStamp): number =>
-  ts.secondsPastEpoch * 1000 + Math.trunc(ts.nanoseconds / 1_000_000);
 
 /**
  * GraphXY — Plots PV values against each other.
@@ -40,37 +37,21 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
   const titleYpos = textVAlign === "bottom" ? 0.05 : textVAlign === "middle" ? 0.5 : 0.95;
 
   // Ring buffers: one per PV
-  const valueBuffers = useRef<Record<string, ScalarPoint[]>>({});
-  const prevPvTimestamps = useRef<Record<string, TimeStamp>>({});
   const plotData = useRef<Plotly.Data[]>([]);
   const xLabel = pvNames.length > 0 ? pvNames[0] : "X";
 
+  // Only accumulate scalar history for PVs that actually carry scalar values.
+  const scalarPvNames = pvNames.filter((pv) => typeof pvData[pv]?.value === "number");
+  const scalarPvNamesKey = scalarPvNames.join(",");
   useEffect(() => {
-    // Since browser may keep page inactive when losing focus, reset the runtime buffers
-    // for scalar PVs to avoid showing a false "gap" in the data when the page is re-focused.
-    const resetRuntimeBuffers = () => {
-      valueBuffers.current = {};
-      prevPvTimestamps.current = {};
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState !== "visible") {
-        resetRuntimeBuffers();
-      }
-    };
-
-    window.addEventListener("focus", resetRuntimeBuffers);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      window.removeEventListener("focus", resetRuntimeBuffers);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, []);
+    if (inEditMode || !scalarPvNames.length) return;
+    const unregisters = scalarPvNames.map((pv) => registerPVHistory(pv, bufferSize));
+    return () => unregisters.forEach((unregister) => unregister());
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- scalarPvNamesKey is the stable identity for scalarPvNames
+  }, [inEditMode, scalarPvNamesKey, bufferSize]);
 
   const buildPreviewTraces = () => {
     plotData.current = [{}];
-    valueBuffers.current = {};
     const previewPvs = pvNames.length > 0 ? pvNames : ["X PV", "Y PV"];
     if (previewPvs.length >= 2) {
       const xPreview = [1, 2, 3, 4, 5, 6, 7, 8];
@@ -92,33 +73,17 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
   const buildRuntimeTraces = () => {
     if (!pvData) return;
 
-    const updateBuffer = (pvName: string, pv: MultiPvData[string]) => {
-      const newValTs = pv.timeStamp;
-      const oldValTs = prevPvTimestamps.current[pvName];
-      const sameTs =
-        oldValTs &&
-        oldValTs.secondsPastEpoch === newValTs.secondsPastEpoch &&
-        oldValTs.nanoseconds === newValTs.nanoseconds;
-      if (sameTs) return;
-      prevPvTimestamps.current[pvName] = newValTs;
-      const newVal = pv.value;
-      if (typeof newVal === "number") {
-        if (!valueBuffers.current[pvName]) valueBuffers.current[pvName] = [];
-        const buf = valueBuffers.current[pvName];
-        buf.push([toEpochMillis(newValTs), newVal]);
-        if (buf.length > bufferSize) buf.shift();
-      }
-    };
+    // Lossless history buffer: accumulated on every WS message, independent of render throttling.
+    const getBuffer = (pvName: string): ScalarPoint[] => getPVHistory(pvName).slice(-bufferSize);
 
     const xPvName = pvNames[0];
     const xPv = pvData[xPvName];
     if (!xPv) return;
-    updateBuffer(xPvName, xPv);
 
     const xVal = xPv.value;
     const xData =
       typeof xVal === "number"
-        ? (valueBuffers.current[xPvName] ?? []).map(([, v]) => v)
+        ? getBuffer(xPvName).map(([, v]) => v)
         : Array.isArray(xVal)
           ? [...(xVal as number[])]
           : null;
@@ -130,12 +95,11 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
       const yPvName = pvNames[i];
       const yPv = pvData[yPvName];
       if (!yPv) continue;
-      updateBuffer(yPvName, yPv);
 
       const yVal = yPv.value;
       const yData =
         typeof yVal === "number"
-          ? (valueBuffers.current[yPvName] ?? []).map(([, v]) => v)
+          ? getBuffer(yPvName).map(([, v]) => v)
           : Array.isArray(yVal)
             ? [...(yVal as number[])]
             : null;
