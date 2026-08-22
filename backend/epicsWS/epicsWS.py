@@ -249,7 +249,7 @@ async def message_handler(ws: ServerConnection):
                 if pv and value is not None:
                     protocol, pv_name = parse_protocol(pv)
                     client = get_client(protocol)
-                    client.write_to_pv(pv_name, value)
+                    asyncio.create_task(asyncio.to_thread(client.write_to_pv, pv_name, value))
 
             elif msg_type == "snapshot":
                 # Capture current values of all subscribed PVs
@@ -287,18 +287,21 @@ async def message_handler(ws: ServerConnection):
                 )
 
             elif msg_type == "restore":
-                # Write saved PV values back to IOC
                 pvs_to_restore = msg.get("pvs", {})
-                results = []
-                for pv_name, pv_data in pvs_to_restore.items():
+
+                async def _restore_one(pv_name: str, pv_data):
                     try:
                         protocol, clean_name = parse_protocol(pv_name)
                         client = get_client(protocol)
                         value = pv_data if not isinstance(pv_data, dict) else pv_data.get("value")
-                        client.write_to_pv(clean_name, value)
-                        results.append({"pv": pv_name, "success": True})
+                        await asyncio.to_thread(client.write_to_pv, clean_name, value)
+                        return {"pv": pv_name, "success": True}
                     except Exception as e:
-                        results.append({"pv": pv_name, "success": False, "error": str(e)})
+                        return {"pv": pv_name, "success": False, "error": str(e)}
+
+                results = await asyncio.gather(
+                    *(_restore_one(pv_name, pv_data) for pv_name, pv_data in pvs_to_restore.items())
+                )
 
                 await ws.send(
                     json.dumps(
