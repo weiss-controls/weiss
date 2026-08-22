@@ -13,11 +13,13 @@ class CAClient:
     Handles per-client subscriptions and forwards raw callback data to the upper layer.
     """
 
-    def __init__(self, handle_update: Callable[[str, Any], None]):
+    def __init__(self, handle_update: Callable[[str, Any], None], handle_disconnect: Callable[[str], None]):
         """
         handle_update: callable(pv_name: str, raw_data: dict)
+        handle_disconnect: callable(pv_name: str), called when the PV disconnects
         """
         self._handle_update = handle_update
+        self._handle_disconnect = handle_disconnect
         self._pvs: Dict[str, Any] = {}
         self._subscribers: Dict[str, Set[str]] = {}
         self._lock = Lock()
@@ -35,6 +37,11 @@ class CAClient:
 
         self._handle_update(pvname, val)
 
+    def _connection_callback(self, pvname=None, conn=True, **kwargs):
+        """Fires on both connect and disconnect; only disconnect needs forwarding."""
+        if not conn and pvname:
+            self._handle_disconnect(pvname)
+
     def subscribe(self, client_id: str, pv_name: str):
         """
         Subscribe a client to a PV.
@@ -48,7 +55,7 @@ class CAClient:
 
         if first_sub:
             try:
-                pv = epics.get_pv(pv_name)
+                pv = epics.get_pv(pv_name, connection_callback=self._connection_callback)
                 pv.get_ctrlvars()
                 cb = pv.add_callback(self._callback, with_ctrlvars=True)
                 pv.run_callback(cb)
@@ -93,18 +100,18 @@ class CAClient:
                     except Exception as e:
                         print(f"[CAClient]: Failed to clear callbacks for {pv_name}: {e}")
 
-    def write_to_pv(self, pv_name: str, value: Any):
+    def write_to_pv(self, pv: str, value: Any):
         """Write synchronously to a PV."""
         with self._lock:
-            pv = self._pvs.get(pv_name)
-        if not pv:
-            print(f"[CAClient]: Cannot write: PV {pv_name} not subscribed.")
+            pv_obj = self._pvs.get(pv)
+        if not pv_obj:
+            print(f"[CAClient]: Cannot write: PV {pv} not subscribed.")
             return
 
         try:
-            pv.put(value)
+            pv_obj.put(value)
         except Exception as e:
-            print(f"[CAClient]: Write to {pv_name} failed: {e}")
+            print(f"[CAClient]: Write to {pv} failed: {e}")
 
     def close(self):
         """Stop all subscriptions and clear resources."""

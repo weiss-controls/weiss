@@ -63,6 +63,7 @@ class ValueAlarm:
 @dataclass
 class PVData:
     pv: Optional[str] = None
+    connected: Optional[bool] = False
     value: Optional[Union[float, int, str, List[float], List[int], List[str]]] = None
     enumChoices: Optional[List[str]] = None
     alarm: Optional[Alarm] = None
