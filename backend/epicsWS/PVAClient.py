@@ -4,7 +4,7 @@
 import threading
 from typing import Any, Callable, Dict, Set
 
-from p4p.client.thread import Context, Subscription
+from p4p.client.thread import Cancelled, Context, Disconnected, RemoteError, Subscription
 
 
 class PVAClient:
@@ -12,13 +12,15 @@ class PVAClient:
     Manages PV subscriptions per client_id using p4p.
     """
 
-    def __init__(self, handle_update: Callable[[str, Any], None]):
+    def __init__(self, handle_update: Callable[[str, Any], None], handle_disconnect: Callable[[str], None]):
         """
         handle_update: callable(pv_name: str, value: object)
+        handle_disconnect: callable(pv_name: str), called when the channel disconnects
         """
         self._channels: Dict[str, Subscription] = {}
         self._subscribers: Dict[str, Set[str]] = {}  # pv_name -> set(client_ids)
         self._handle_update = handle_update
+        self._handle_disconnect = handle_disconnect
         self._ctxt = Context("pva", nt=False)  # nt=False to get unpacked data
         self._lock = threading.Lock()
         self._latest_value: Dict[str, Any] = {}  # pv_name -> last value
@@ -27,6 +29,12 @@ class PVAClient:
         """Return a callback for monitor updates."""
 
         def callback(value: Any):
+            # Cancelled fires on our own unsubscribe/close; not a real disconnect
+            if isinstance(value, Cancelled):
+                return
+            if isinstance(value, (Disconnected, RemoteError)):
+                self._handle_disconnect(pv_name)
+                return
             with self._lock:
                 self._latest_value[pv_name] = value
             self._handle_update(pv_name, value)
@@ -37,7 +45,7 @@ class PVAClient:
         """Subscribe a single client to a PV."""
         with self._lock:
             if pv_name not in self._channels:
-                mon = self._ctxt.monitor(pv_name, self._on_update(pv_name))
+                mon = self._ctxt.monitor(pv_name, self._on_update(pv_name), notify_disconnect=True)
                 self._channels[pv_name] = mon
                 self._subscribers[pv_name] = set()
             # Send last value if monitor already existed (late subscriber)

@@ -22,8 +22,6 @@ const AlarmBorder: React.FC<AlarmBorderProps> = ({ alarmData, children, enable }
   };
 
   const getOutlineColor = (severity: number | undefined): string | undefined => {
-    if (severity === undefined) return COLORS.disconnected;
-
     switch (severity) {
       case 0: // NO_ALARM
         return undefined;
@@ -33,20 +31,32 @@ const AlarmBorder: React.FC<AlarmBorderProps> = ({ alarmData, children, enable }
         return COLORS.major;
       case 3: // INVALID
         return COLORS.invalid;
-      default:
+      default: // disconnected or undefined
         return COLORS.disconnected;
+    }
+  };
+
+  const getOutlineStyle = (severity: number | undefined) => {
+    switch (severity) {
+      case 3: // INVALID
+        return "dashed";
+      case undefined:
+        return "dotted";
+      default:
+        return "solid";
     }
   };
 
   const severity = getWorstSeverity(alarmData);
   const outlineColor = getOutlineColor(severity);
+  const outlineStyle = getOutlineStyle(severity);
 
   const style: CSSProperties = {
     width: "100%",
     height: "100%",
     outlineColor: outlineColor,
     outlineWidth: outlineColor ? "3px" : 0,
-    outlineStyle: outlineColor === COLORS.disconnected ? "dashed" : "solid",
+    outlineStyle: outlineStyle,
     borderRadius: "2px",
     boxSizing: "border-box",
   };

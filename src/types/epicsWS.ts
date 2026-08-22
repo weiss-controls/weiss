@@ -123,11 +123,13 @@ export interface PVData {
  * @property type - Type of the message (update, write, subscribe, unsubscribe)
  * @property b64arr - Optional base64-encoded array data
  * @property b64dtype - Optional data type of the base64-encoded array
+ * @property connected - Sent once on (re)connect together with metadata, or as `false` on disconnect
  */
 export interface WSMessage extends PVData {
   type: WSMessageType;
   b64arr?: string;
   b64dtype?: string;
+  connected?: boolean;
 }
 
 /** Collection of PVData objects, keyed by PV name */

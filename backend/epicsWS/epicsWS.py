@@ -51,6 +51,13 @@ def parse_protocol(pv_name: str) -> Tuple[str, str]:
     return DEFAULT_PROTOCOL, pv_name
 
 
+def format_pv_name(pv_name: str, provider: str) -> str:
+    """Re-prefixes a PV name with its protocol, unless it matches the default protocol."""
+    if provider != DEFAULT_PROTOCOL:
+        return f"{provider}://{pv_name}"
+    return pv_name
+
+
 _loop: Optional[asyncio.AbstractEventLoop] = None
 
 
@@ -62,6 +69,20 @@ def ca_callback(pv_name, pv_obj):
 def pva_callback(pv_name, pv_obj):
     if _loop:
         _loop.call_soon_threadsafe(_send_throttled, pv_name, pv_obj, PVA_PROVIDER_KEY)
+
+
+def ca_disconnect_callback(pv_name):
+    if _loop:
+        _loop.call_soon_threadsafe(_schedule_disconnect, pv_name, CA_PROVIDER_KEY)
+
+
+def pva_disconnect_callback(pv_name):
+    if _loop:
+        _loop.call_soon_threadsafe(_schedule_disconnect, pv_name, PVA_PROVIDER_KEY)
+
+
+def _schedule_disconnect(pv_name: str, provider: str):
+    asyncio.create_task(_send_disconnect(pv_name, provider))
 
 
 def _send_throttled(pv_name: str, pv_obj, provider: str):
@@ -129,10 +150,7 @@ async def send_update(pv_name: str, pv_obj, provider: str):
         else:
             _pv_metadata[pv_name] = PVParser.ca_metadata(pv_obj)
 
-    if provider != DEFAULT_PROTOCOL:
-        pv_name_with_provider = f"{provider}://{pv_name}"
-    else:
-        pv_name_with_provider = pv_name
+    pv_name_with_provider = format_pv_name(pv_name, provider)
 
     base_msg = {
         "type": "update",
@@ -160,15 +178,35 @@ async def send_update(pv_name: str, pv_obj, provider: str):
             except Exception:
                 print(f"[epicsWS]: Error sending update to {ws}")
         else:
-            # First update for this client: include metadata
+            # First update for this client (or after a disconnect): include metadata + connected flag
             full_msg = dict(base_msg)
             full_msg.update(_pv_metadata[pv_name])
+            full_msg["connected"] = True
             sent_metadata[key] = True
             data = json.dumps({k: v for k, v in full_msg.items() if v is not None})
             try:
                 await ws.send(data)
             except Exception:
                 print(f"[epicsWS]: Error sending update to {ws}")
+
+
+async def _send_disconnect(pv_name: str, provider: str):
+    """Notifies subscribed clients that a PV has disconnected and forces metadata resend on reconnect."""
+    ws_set = subscriptions.get(pv_name)
+    if not ws_set:
+        return
+
+    msg = {"type": "update", "pv": format_pv_name(pv_name, provider), "connected": False}
+    data = json.dumps(msg)
+
+    for ws in set(ws_set):
+        try:
+            await ws.send(data)
+        except Exception:
+            print(f"[epicsWS]: Error sending disconnect notice to {ws}")
+        sent_metadata[(ws, pv_name)] = False
+
+    _pv_metadata.pop(pv_name, None)
 
 
 async def message_handler(ws: ServerConnection):
@@ -300,8 +338,8 @@ async def main():
     global _loop
     _loop = asyncio.get_running_loop()
 
-    clients[PVA_PROVIDER_KEY] = PVAClient(pva_callback)
-    clients[CA_PROVIDER_KEY] = CAClient(ca_callback)
+    clients[PVA_PROVIDER_KEY] = PVAClient(pva_callback, pva_disconnect_callback)
+    clients[CA_PROVIDER_KEY] = CAClient(ca_callback, ca_disconnect_callback)
 
     async with websockets.serve(message_handler, "0.0.0.0", 8080):
         print("[epicsWS]: WebSocket server running on ws://localhost:8080")

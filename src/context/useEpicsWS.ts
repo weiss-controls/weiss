@@ -58,10 +58,18 @@ export default function useEpicsWS(resolvedPVList: string[]) {
    * In case of scalar PVs that have been registered for buffering (plots), push
    * the sample into the history buffer independently of rAF batching so that
    * the history is always up to date even if the widget is not re-rendering.
+   * On disconnect, the PV's cached data and history are purged immediately
+   * instead of merged, so widgets fall back to their "no data" state.
    */
   const onMessage = useCallback((msg: WSMessage) => {
     if (!subscribedRef.current.has(msg.pv)) {
       console.warn(`received message from unsolicited PV: ${msg.pv}`);
+      return;
+    }
+    if (msg.connected === false) {
+      delete pendingPVsRef.current[msg.pv];
+      usePVStore.getState().removePVs([msg.pv]);
+      clearPVHistory([msg.pv]);
       return;
     }
     if (typeof msg.value === "number" && msg.timeStamp) {
