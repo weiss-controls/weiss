@@ -43,6 +43,7 @@ Consumed by the `weiss-epicsws` service.
 | `EPICS_CA_MAX_ARRAY_BYTES` | `1000000`   | Standard EPICS_CA_MAX_ARRAY_BYTES env variable. See [EPICS docs](https://epics.anl.gov/base/R3-14/12-docs/CAref.html) for reference.               |
 | `EPICS_PVA_ADDR_LIST`      | `localhost` | Standard EPICS_PVA_ADDR_LIST env variable. See [EPICS docs](https://docs.epics-controls.org/en/latest/specs/pva_protocol.html) for reference.      |
 | `EPICS_PVA_AUTO_ADDR_LIST` | `YES`       | Standard EPICS_PVA_AUTO_ADDR_LIST env variable. See [EPICS docs](https://docs.epics-controls.org/en/latest/specs/pva_protocol.html) for reference. |
+| `EPICS_MAX_UPDATE_RATE_HZ` | `30`        | Max rate at which updates for a single PV are forwarded to clients. `0` disables throttling.                                                       |
 
 :::{note}  
 To receive PV traffic from IOCs outside of `localhost`, add the IOC host or subnet broadcast address

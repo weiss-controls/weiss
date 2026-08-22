@@ -4,7 +4,7 @@
 import asyncio
 import json
 import os
-from typing import Dict, Optional, Set, Tuple, Union
+from typing import Any, Dict, Optional, Set, Tuple, Union
 
 import websockets
 from websockets.asyncio.server import ServerConnection
@@ -31,6 +31,15 @@ _pv_metadata: Dict[str, dict] = {}
 # environment variable fallback
 DEFAULT_PROTOCOL = os.getenv("EPICS_DEFAULT_PROTOCOL", PVA_PROVIDER_KEY).lower()
 
+# Max rate (Hz) at which updates for a single PV are forwarded to clients; 0 disables throttling.
+MAX_UPDATE_RATE_HZ = float(os.getenv("EPICS_MAX_UPDATE_RATE_HZ", "30"))
+MIN_UPDATE_INTERVAL = 1.0 / MAX_UPDATE_RATE_HZ if MAX_UPDATE_RATE_HZ > 0 else 0.0
+
+# Per-PV throttle bookkeeping
+_last_sent_time: Dict[str, float] = {}
+_pending_update: Dict[str, Tuple[Any, str]] = {}
+_trailing_handle: Dict[str, asyncio.TimerHandle] = {}
+
 
 def parse_protocol(pv_name: str) -> Tuple[str, str]:
     """Decide protocol from PV prefix or default env var.
@@ -42,18 +51,50 @@ def parse_protocol(pv_name: str) -> Tuple[str, str]:
     return DEFAULT_PROTOCOL, pv_name
 
 
-# Event loop reference set in main(); used to schedule coroutines from EPICS callbacks
 _loop: Optional[asyncio.AbstractEventLoop] = None
 
 
 def ca_callback(pv_name, pv_obj):
     if _loop:
-        asyncio.run_coroutine_threadsafe(send_update(pv_name, pv_obj, CA_PROVIDER_KEY), _loop)
+        _loop.call_soon_threadsafe(_send_throttled, pv_name, pv_obj, CA_PROVIDER_KEY)
 
 
 def pva_callback(pv_name, pv_obj):
     if _loop:
-        asyncio.run_coroutine_threadsafe(send_update(pv_name, pv_obj, PVA_PROVIDER_KEY), _loop)
+        _loop.call_soon_threadsafe(_send_throttled, pv_name, pv_obj, PVA_PROVIDER_KEY)
+
+
+def _send_throttled(pv_name: str, pv_obj, provider: str):
+    """Forwards immediately if the rate limit allows, otherwise sends the latest
+    value and flushes once the window elapses"""
+    if MIN_UPDATE_INTERVAL <= 0:
+        asyncio.create_task(send_update(pv_name, pv_obj, provider))
+        return
+    if not _loop:
+        return
+    now = _loop.time()
+    elapsed = now - _last_sent_time.get(pv_name, 0.0)
+    if elapsed >= MIN_UPDATE_INTERVAL:
+        _last_sent_time[pv_name] = now
+        _pending_update.pop(pv_name, None)
+        asyncio.create_task(send_update(pv_name, pv_obj, provider))
+        return
+
+    _pending_update[pv_name] = (pv_obj, provider)
+    if pv_name not in _trailing_handle:
+        _trailing_handle[pv_name] = _loop.call_later(MIN_UPDATE_INTERVAL - elapsed, _flush_trailing, pv_name)
+
+
+def _flush_trailing(pv_name: str):
+    _trailing_handle.pop(pv_name, None)
+    pending = _pending_update.pop(pv_name, None)
+    if pending is None:
+        return
+    if not _loop:
+        return
+    pv_obj, provider = pending
+    _last_sent_time[pv_name] = _loop.time()
+    asyncio.create_task(send_update(pv_name, pv_obj, provider))
 
 
 # EPICS clients initialized in main() once the event loop is running
