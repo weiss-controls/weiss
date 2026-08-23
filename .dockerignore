@@ -4,3 +4,7 @@ dist/
 .vscode/
 .idea/
 roles.toml/
+.pnpm-store/
+.ruff_cache/
+.github/
+.venv/

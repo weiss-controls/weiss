@@ -1,42 +1,25 @@
-# This file is for use as a devcontainer and a runtime container
-#
-# The devcontainer should use the build target and run as root with podman
-# or docker with user namespaces.
-#
 FROM docker.io/library/python:3.14.4-slim-trixie AS build
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-# Add any system dependencies for the developer/build environment here
 RUN apt-get update && apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
     build-essential \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-COPY . /project
-WORKDIR /project
+WORKDIR /build
+COPY . .
 
-# make the wheel outside of the venv so 'build' does not dirty requirements.txt
 RUN pip install --upgrade pip build && \
-    # comment the following line if building locally/with a detached head/Git errors pop up during build
-    # export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct) && \
     python -m build
 
-# set up a virtual environment and put it in PATH
+# Create a virtual environment and install the built wheel
 RUN python -m venv /venv
 ENV PATH=/venv/bin:$PATH
-ENV TOX_DIRECT=1
-
-# install the wheel and generate the requirements file
 RUN pip install --upgrade pip && \
-    pip install dist/*.whl && \
-    mkdir -p lockfiles && \
-    pip freeze  > lockfiles/requirements.txt && \
-    # we don't want to include our own wheel in requirements - remove with sed
-    # and replace with a comment to avoid a zero length asset upload later
-    sed -i '/file:/s/^/# Requirements for /' lockfiles/requirements.txt
+    pip install dist/*.whl
 
 FROM docker.io/library/python:3.14.4-slim-trixie AS runtime
 

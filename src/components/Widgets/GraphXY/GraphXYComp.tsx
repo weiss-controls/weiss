@@ -4,7 +4,7 @@
 
 import React, { useEffect, useRef } from "react";
 import type { WidgetUpdate } from "@src/types/widgets";
-import Plot from "react-plotly.js";
+import Plot from "@src/utils/plotlyMinified";
 import { COLORS } from "@src/constants/constants";
 import { getPVHistory, registerPVHistory } from "@src/utils/historyBuffers";
 import AlarmBorder from "@src/components/AlarmBorder/AlarmBorder";
