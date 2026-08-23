@@ -18,38 +18,63 @@ interface StrListPropertyProps {
 }
 
 const StrListProperty: React.FC<StrListPropertyProps> = ({ propName, label, value, onChange }) => {
-  if (!Array.isArray(value)) {
-    console.warn(`StrListProperty expected string[], got`, value);
-    return null;
-  }
+  const normalizeItems = React.useCallback((incoming: PropertyValue): string[] => {
+    if (!Array.isArray(incoming)) {
+      return [""];
+    }
+    const normalized = incoming.map((item) => (typeof item === "string" ? item : ""));
+    return normalized.length > 0 ? normalized : [""];
+  }, []);
 
-  const strValue = value as string[];
-  const items = strValue.length > 0 ? strValue : [""];
+  const [localItems, setLocalItems] = React.useState<string[]>(() => normalizeItems(value));
+
+  React.useEffect(() => {
+    setLocalItems(normalizeItems(value));
+  }, [normalizeItems, value]);
+
+  const commitItems = React.useCallback(
+    (newItems: string[]) => {
+      onChange(propName, newItems);
+    },
+    [onChange, propName],
+  );
 
   const handleChange = (index: number, newVal: string) => {
-    const newArr = [...items];
+    const newArr = [...localItems];
     newArr[index] = newVal;
-    onChange(propName, newArr);
+    setLocalItems(newArr);
+  };
+
+  const handleCommit = () => {
+    commitItems(localItems);
   };
 
   const handleAdd = (index?: number) => {
-    const newArr = [...items];
+    const newArr = [...localItems];
     if (typeof index === "number") {
       newArr.splice(index + 1, 0, "");
     } else {
       newArr.push("");
     }
-    onChange(propName, newArr);
+    setLocalItems(newArr);
+    commitItems(newArr);
   };
 
   const handleRemove = (index: number) => {
-    const newArr = items.filter((_, i) => i !== index);
-    onChange(propName, newArr.length > 0 ? newArr : [""]);
+    const newArr = localItems.filter((_, i) => i !== index);
+    const ensured = newArr.length > 0 ? newArr : [""];
+    setLocalItems(ensured);
+    commitItems(ensured);
   };
+
+  if (!Array.isArray(value)) {
+    console.warn(`StrListProperty expected string[], got`, value);
+    return null;
+  }
 
   return (
     <>
-      {items.map((val, index) => (
+      {localItems.map((val, index) => (
         <ListItem
           key={index}
           disablePadding
@@ -62,6 +87,13 @@ const StrListProperty: React.FC<StrListPropertyProps> = ({ propName, label, valu
             label={`${label} ${index}`}
             value={val}
             onChange={(e) => handleChange(index, e.target.value)}
+            onBlur={handleCommit}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleCommit();
+              }
+            }}
           />
           <IconButton color="primary" onClick={() => handleAdd(index)}>
             <AddIcon />
@@ -69,7 +101,7 @@ const StrListProperty: React.FC<StrListPropertyProps> = ({ propName, label, valu
           <IconButton
             color="error"
             onClick={() => handleRemove(index)}
-            disabled={items.length === 1}
+            disabled={localItems.length === 1}
           >
             <RemoveIcon />
           </IconButton>

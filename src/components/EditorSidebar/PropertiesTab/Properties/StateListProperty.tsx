@@ -18,6 +18,26 @@ interface StateListPropertyProps {
 
 const DEFAULT_NEW_STATE: StateEntry = { value: "", color: COLORS.midGray, label: "" };
 
+// Ensure at least 1 normal state + 1 fallback entry in local editing state
+const normalizeStates = (incoming: PropertyValue): StateEntry[] => {
+  if (!Array.isArray(incoming)) {
+    return [{ value: "0", color: COLORS.offColor, label: "" }, { ...DEFAULT_NEW_STATE }];
+  }
+
+  const safeStates = incoming.map((entry) => {
+    const candidate = entry as Partial<StateEntry>;
+    return {
+      value: String(candidate.value ?? ""),
+      color: String(candidate.color ?? COLORS.midGray),
+      label: String(candidate.label ?? ""),
+    } satisfies StateEntry;
+  });
+
+  return safeStates.length >= 2
+    ? safeStates
+    : [{ value: "0", color: COLORS.offColor, label: "" }, { ...DEFAULT_NEW_STATE }];
+};
+
 const StateListProperty: React.FC<StateListPropertyProps> = ({
   propName,
   label,
@@ -26,17 +46,18 @@ const StateListProperty: React.FC<StateListPropertyProps> = ({
 }) => {
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const [localStates, setLocalStates] = useState<StateEntry[]>(() => normalizeStates(value));
+
+  React.useEffect(() => {
+    setLocalStates(normalizeStates(value));
+  }, [value]);
 
   if (!Array.isArray(value)) {
     console.warn(`StateListProperty expected StateEntry[], got`, value);
     return null;
   }
 
-  // Ensure at least 1 normal state + 1 fallback entry
-  const states =
-    (value as StateEntry[]).length >= 2
-      ? (value as StateEntry[])
-      : [{ value: "0", color: COLORS.offColor, label: "" }, { ...DEFAULT_NEW_STATE }];
+  const states = localStates;
 
   const fallbackIndex = states.length - 1;
 
@@ -46,6 +67,24 @@ const StateListProperty: React.FC<StateListPropertyProps> = ({
 
   const handleValueChange = (index: number, field: keyof StateEntry, newVal: string) => {
     const newStates = states.map((s, i) => (i === index ? { ...s, [field]: newVal } : s));
+    setLocalStates(newStates);
+  };
+
+  const handleValueCommit = () => {
+    commit(states);
+  };
+
+  const handleColorChange = (newColor: string) => {
+    if (activeIndex === null) return;
+    const newStates = states.map((s, i) =>
+      i === activeIndex
+        ? {
+            ...s,
+            color: newColor,
+          }
+        : s,
+    );
+    setLocalStates(newStates);
     commit(newStates);
   };
 
@@ -59,21 +98,18 @@ const StateListProperty: React.FC<StateListPropertyProps> = ({
     setActiveIndex(null);
   };
 
-  const handleColorChange = (newColor: string) => {
-    if (activeIndex === null) return;
-    handleValueChange(activeIndex, "color", newColor);
-  };
-
   const handleAdd = (index: number, isFallback: boolean) => {
     const newStates = [...states];
     // For the fallback row, insert before it; otherwise insert after
     const insertAt = isFallback ? index : index + 1;
     newStates.splice(insertAt, 0, { ...DEFAULT_NEW_STATE });
+    setLocalStates(newStates);
     commit(newStates);
   };
 
   const handleRemove = (index: number) => {
     const newStates = states.filter((_, i) => i !== index);
+    setLocalStates(newStates);
     commit(newStates);
   };
 
@@ -115,6 +151,13 @@ const StateListProperty: React.FC<StateListPropertyProps> = ({
                     label="Value"
                     value={state.value}
                     onChange={(e) => handleValueChange(index, "value", e.target.value)}
+                    onBlur={handleValueCommit}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleValueCommit();
+                      }
+                    }}
                     sx={{ flex: 1, minWidth: 0 }}
                     slotProps={{ htmlInput: { style: { fontSize: 12 } } }}
                   />
@@ -143,6 +186,13 @@ const StateListProperty: React.FC<StateListPropertyProps> = ({
               label="Label"
               value={state.label}
               onChange={(e) => handleValueChange(index, "label", e.target.value)}
+              onBlur={handleValueCommit}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleValueCommit();
+                }
+              }}
               sx={{ flex: 1, minWidth: 0 }}
               slotProps={{ htmlInput: { style: { fontSize: 12 } } }}
             />
