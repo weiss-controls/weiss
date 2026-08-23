@@ -1,10 +1,12 @@
 # Dev environment
 FROM node:22-alpine AS dev
 WORKDIR /app
-COPY . .
+# Copy only package.json and pnpm files - source will be mounted on dev
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 # set /app as safe to allow git interaction on mounted folder
-RUN apk add --no-cache git \
- && git config --global --add safe.directory /app
+RUN apk add --no-cache git && \
+    git config --global --add safe.directory /app
+
 RUN npm install -g pnpm
 RUN pnpm install
 

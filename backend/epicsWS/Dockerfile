@@ -1,11 +1,11 @@
-FROM mambaorg/micromamba:2.5.0
+FROM mambaorg/micromamba:2.9-alpine3.21
 
 WORKDIR /app
 
 COPY --chown=$MAMBA_USER:$MAMBA_USER . .
 
 RUN micromamba install -y -n base -f environment.yml && \
-    micromamba clean --all --yes
+    micromamba clean -afy
 
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
 
