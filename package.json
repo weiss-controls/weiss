@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:stats": "tsc -b && BUILD_STATS=true vite build",
     "lint": "oxlint",
     "preview": "vite preview",
     "format": "prettier --write .",
@@ -42,6 +43,7 @@
     "oxlint": "^1.71.0",
     "oxlint-tsgolint": "^0.23.0",
     "prettier": "^3.8.1",
+    "rollup-plugin-visualizer": "^7.1.1",
     "typescript": "~5.8.3",
     "vite": "^7.3.1"
   }
