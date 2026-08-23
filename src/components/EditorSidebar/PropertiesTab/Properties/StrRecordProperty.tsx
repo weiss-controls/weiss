@@ -17,70 +17,96 @@ interface StrRecordPropertyProps {
   onChange: (propName: PropertyKey, newValue: PropertyValue) => void;
 }
 
+type StrPair = [string, string];
+
 const StrRecordProperty: React.FC<StrRecordPropertyProps> = ({
   propName,
   label,
   value,
   onChange,
 }) => {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    console.warn(`StrRecordProperty expected Record<string,string>, got`, value);
-    return null;
-  }
+  const normalizeItems = React.useCallback((record: PropertyValue): StrPair[] => {
+    if (typeof record !== "object" || record === null || Array.isArray(record)) {
+      return [["", ""]];
+    }
 
-  const entries = Object.entries(value);
-  const items = entries.length > 0 ? entries : [["", ""]];
+    const entries = Object.entries(record).map(([k, v]) => [k, String(v)] as StrPair);
+    return entries.length > 0 ? entries : [["", ""]];
+  }, []);
+
+  const [localItems, setLocalItems] = React.useState<StrPair[]>(() => normalizeItems(value));
+
+  React.useEffect(() => {
+    setLocalItems(normalizeItems(value));
+  }, [normalizeItems, value]);
+
+  const commitItems = React.useCallback(
+    (newItems: StrPair[]) => {
+      onChange(propName, Object.fromEntries(newItems));
+    },
+    [onChange, propName],
+  );
+
+  const normalizeKey = React.useCallback((key: string) => {
+    if (!key.trim()) return key;
+    if (/^\$\(.+\)$/.test(key)) return key;
+    return `$(${key})`;
+  }, []);
 
   const handleKeyChange = (index: number, newKey: string) => {
-    const newEntries = [...items];
+    const newEntries = [...localItems];
     const [, val] = newEntries[index];
     newEntries[index] = [newKey, val];
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    onChange(propName, Object.fromEntries(newEntries));
+    setLocalItems(newEntries);
   };
 
-  const handleKeyBlur = (index: number) => {
-    const entries = Object.entries(value);
-    const [key, val] = entries[index];
-    if (!key.trim()) return;
-
-    // wrap if not already $(KEY)
-    if (!/^\$\(.+\)$/.test(key)) {
-      const wrappedKey = `$(${key})`;
-      const newEntries = [...entries];
-      newEntries[index] = [wrappedKey, val];
-      onChange(propName, Object.fromEntries(newEntries));
-    }
+  const handleKeyCommit = (index: number) => {
+    const newEntries = [...localItems];
+    const [key, val] = newEntries[index];
+    const wrappedKey = normalizeKey(key);
+    newEntries[index] = [wrappedKey, val];
+    setLocalItems(newEntries);
+    commitItems(newEntries);
   };
 
   const handleValueChange = (index: number, newVal: string) => {
-    const newEntries = [...items];
+    const newEntries = [...localItems];
     const [key] = newEntries[index];
     newEntries[index] = [key, newVal];
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    onChange(propName, Object.fromEntries(newEntries));
+    setLocalItems(newEntries);
+  };
+
+  const handleValueCommit = () => {
+    const newEntries = [...localItems];
+    commitItems(newEntries);
   };
 
   const handleAdd = (index?: number) => {
-    const newEntries = [...items];
+    const newEntries = [...localItems];
     if (typeof index === "number") {
       newEntries.splice(index + 1, 0, ["", ""]);
     } else {
       newEntries.push(["", ""]);
     }
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    onChange(propName, Object.fromEntries(newEntries));
+    setLocalItems(newEntries);
+    commitItems(newEntries);
   };
 
   const handleRemove = (index: number) => {
-    const newEntries = items.filter((_, i) => i !== index);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    onChange(propName, Object.fromEntries(newEntries.length > 0 ? newEntries : [["", ""]]));
+    const newEntries = localItems.filter((_, i) => i !== index);
+    const ensuredEntries: StrPair[] = newEntries.length > 0 ? newEntries : [["", ""]];
+    setLocalItems(ensuredEntries);
+    commitItems(ensuredEntries);
   };
+
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    console.warn(`StrRecordProperty expected Record<string,string>, got`, value);
+    return null;
+  }
 
   return (
     <>
-      {items.map(([key, val], index) => (
+      {localItems.map(([key, val], index) => (
         <ListItem
           key={index}
           disablePadding
@@ -92,7 +118,13 @@ const StrRecordProperty: React.FC<StrRecordPropertyProps> = ({
             label={`${label} ${index}`}
             value={key}
             onChange={(e) => handleKeyChange(index, e.target.value)}
-            onBlur={() => handleKeyBlur(index)}
+            onBlur={() => handleKeyCommit(index)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleKeyCommit(index);
+              }
+            }}
             sx={{ flex: 1 }}
           />
           <TextField
@@ -100,6 +132,13 @@ const StrRecordProperty: React.FC<StrRecordPropertyProps> = ({
             label="Value"
             value={val}
             onChange={(e) => handleValueChange(index, e.target.value)}
+            onBlur={handleValueCommit}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleValueCommit();
+              }
+            }}
             sx={{ flex: 1 }}
           />
           <IconButton color="primary" onClick={() => handleAdd(index)}>
@@ -108,7 +147,7 @@ const StrRecordProperty: React.FC<StrRecordPropertyProps> = ({
           <IconButton
             color="error"
             onClick={() => handleRemove(index)}
-            disabled={items.length === 1}
+            disabled={localItems.length === 1}
           >
             <RemoveIcon />
           </IconButton>
