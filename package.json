@@ -22,6 +22,8 @@
     "@mui/x-tree-view": "^8.27.2",
     "@types/react-color": "^3.0.13",
     "@uiw/react-color": "^2.9.6",
+    "echarts": "^6.1.0",
+    "echarts-for-react": "^3.0.6",
     "plotly.js": "^3.4.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",

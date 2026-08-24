@@ -95,6 +95,9 @@ export const PROPERTY_SCHEMAS = {
   useTimestamp:    defineProp({ selType: "boolean", label: "Use timestamp", value: false as boolean, category: "Layout" }),
   plotBufferSize:  defineProp({ selType: "number", label: "Buffer size (non-array PVs)", value: 80 as number, limits: { min: 1 }, category: "Layout" }),
   plotLineStyle:   defineProp({ selType: "select", label: "Line style", value: "lines" as "lines+markers"|"lines"|"markers", options: ["lines+markers", "lines", "markers"], category: "Style" }),
+  legendOrient:    defineProp({ selType: "select", label: "Legend orientation", value: "horizontal" as string, options: ["horizontal", "vertical"], category: "Layout" }),
+  legendVAlign:    defineProp({ selType: "select", label: "Legend vertical align", value: "top" as string, options: ["top", "middle", "bottom"], category: "Layout" }),
+  legendHAlign:    defineProp({ selType: "select", label: "Legend horizontal align", value: "right" as string, options: ["left", "center", "right"], category: "Layout" }),
   // Selector
   enumChoices:     defineProp({ selType: "strList", label: "Option label", value: [""] as string[], category: "EPICS" }),
   // Slider
@@ -179,5 +182,7 @@ export const PLOT_PROPS: WidgetProperties = {
   plotBufferSize: PROPERTY_SCHEMAS.plotBufferSize,
   plotLineStyle: PROPERTY_SCHEMAS.plotLineStyle,
   showLegend: PROPERTY_SCHEMAS.showLegend,
-  // useTimestamp: PROPERTY_SCHEMAS.useTimestamp, // TODO: will be used in GraphXY
+  legendOrient: PROPERTY_SCHEMAS.legendOrient,
+  legendVAlign: PROPERTY_SCHEMAS.legendVAlign,
+  legendHAlign: PROPERTY_SCHEMAS.legendHAlign,
 };
