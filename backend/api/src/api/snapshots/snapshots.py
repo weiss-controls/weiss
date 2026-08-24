@@ -7,8 +7,10 @@ import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Body, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
+
+from ..auth import get_current_user
 
 SNAPSHOTS_BASE_PATH = "/app/storage/snapshots"
 os.makedirs(SNAPSHOTS_BASE_PATH, exist_ok=True)
@@ -16,6 +18,7 @@ os.makedirs(SNAPSHOTS_BASE_PATH, exist_ok=True)
 router = APIRouter(
     prefix="/api/v1/snapshots",
     tags=["PV Snapshots"],
+    dependencies=[Depends(get_current_user)],
 )
 
 
