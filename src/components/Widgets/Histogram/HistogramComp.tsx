@@ -8,8 +8,8 @@ import { COLORS } from "@src/constants/constants";
 import { getPVHistory, registerPVHistory } from "@src/utils/historyBuffers";
 import AlarmBorder from "@src/components/AlarmBorder/AlarmBorder";
 import { useUIContext } from "@src/context/useUIContext";
-import ReactECharts from "echarts-for-react";
-import type { EChartsOption, SeriesOption } from "echarts";
+import ReactEChartsCore from "echarts-for-react/lib/core";
+import { echarts, type ECOption } from "@src/utils/eChartsMinified";
 
 const DEFAULT_BIN_COUNT = 20;
 
@@ -109,8 +109,8 @@ const HistogramComp: React.FC<WidgetUpdate> = ({ data }) => {
 
   const bins = inEditMode ? computeBins(preview, DEFAULT_BIN_COUNT) : buildRuntimeBins();
 
-  const option = useMemo<EChartsOption>(() => {
-    const series: SeriesOption[] = [
+  const option = useMemo<ECOption>(() => {
+    const series: ECOption[] = [
       {
         type: "bar",
         data: bins.map((bin) => bin.count),
@@ -169,7 +169,7 @@ const HistogramComp: React.FC<WidgetUpdate> = ({ data }) => {
       series,
       backgroundColor: p.backgroundColor?.value,
       animation: false,
-    };
+    } as ECOption;
   }, [
     bins,
     barColor,
@@ -203,7 +203,8 @@ const HistogramComp: React.FC<WidgetUpdate> = ({ data }) => {
           overflow: "hidden",
         }}
       >
-        <ReactECharts
+        <ReactEChartsCore
+          echarts={echarts}
           option={option}
           style={{ width: "100%", height: "100%" }}
           notMerge={false}

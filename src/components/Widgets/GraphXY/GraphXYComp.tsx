@@ -8,8 +8,8 @@ import { COLORS } from "@src/constants/constants";
 import { getPVHistory, registerPVHistory } from "@src/utils/historyBuffers";
 import AlarmBorder from "@src/components/AlarmBorder/AlarmBorder";
 import { useUIContext } from "@src/context/useUIContext";
-import ReactECharts from "echarts-for-react";
-import type { EChartsOption, SeriesOption } from "echarts";
+import ReactEChartsCore from "echarts-for-react/lib/core";
+import { echarts, type ECOption } from "@src/utils/eChartsMinified";
 
 type ScalarPoint = [number, number];
 
@@ -75,7 +75,7 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- scalarPvNamesKey is the stable identity for scalarPvNames
   }, [inEditMode, scalarPvNamesKey, bufferSize]);
 
-  const buildPreviewSeries = (): SeriesOption[] => {
+  const buildPreviewSeries = (): ECOption[] => {
     const previewPvs = pvNames.length > 0 ? pvNames : ["X PV", "Y PV"];
     if (previewPvs.length < 2) return [];
 
@@ -91,11 +91,11 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
         lineStyle: { color: lineColors[idx] },
         itemStyle: { color: lineColors[idx] },
         name: `${previewPvs[0]} vs ${pvName}`,
-      } as SeriesOption;
+      } as ECOption;
     });
   };
 
-  const buildRuntimeSeries = (): SeriesOption[] => {
+  const buildRuntimeSeries = (): ECOption[] => {
     if (!pvData) return [];
 
     // Lossless history buffer: accumulated on every WS message, independent of render throttling.
@@ -115,7 +115,7 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
 
     if (!xData || xData.length === 0) return [];
 
-    const newSeries: SeriesOption[] = [];
+    const newSeries: ECOption[] = [];
     for (let i = 1; i < pvNames.length; i++) {
       const yPvName = pvNames[i];
       const yPv = pvData[yPvName];
@@ -142,7 +142,7 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
         lineStyle: { color: lineColors[i - 1] },
         itemStyle: { color: lineColors[i - 1] },
         name: `${pvNames[0]} vs ${pvNames[i]}`,
-      } as SeriesOption);
+      } as ECOption);
     }
 
     return newSeries;
@@ -150,7 +150,7 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
 
   const series = inEditMode ? buildPreviewSeries() : buildRuntimeSeries();
 
-  const option = useMemo<EChartsOption>(() => {
+  const option = useMemo<ECOption>(() => {
     return {
       title: {
         text: p.plotTitle?.value,
@@ -233,7 +233,7 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
       ],
       backgroundColor: p.backgroundColor?.value,
       animation: false,
-    };
+    } as ECOption;
   }, [
     inEditMode,
     p.backgroundColor?.value,
@@ -274,7 +274,8 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
           overflow: "hidden",
         }}
       >
-        <ReactECharts
+        <ReactEChartsCore
+          echarts={echarts}
           option={option}
           style={{ width: "100%", height: "100%" }}
           notMerge={false}

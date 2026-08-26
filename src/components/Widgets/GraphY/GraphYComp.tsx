@@ -7,8 +7,8 @@ import { COLORS } from "@src/constants/constants";
 import { getPVHistory, registerPVHistory } from "@src/utils/historyBuffers";
 import AlarmBorder from "@src/components/AlarmBorder/AlarmBorder";
 import { useUIContext } from "@src/context/useUIContext";
-import ReactECharts from "echarts-for-react";
-import type { EChartsOption, SeriesOption } from "echarts";
+import ReactEChartsCore from "echarts-for-react/lib/core";
+import { echarts, type ECOption } from "@src/utils/eChartsMinified";
 
 const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
   const { inEditMode } = useUIContext();
@@ -61,7 +61,7 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- scalarPvNamesKey is the stable identity for scalarPvNames
   }, [inEditMode, scalarPvNamesKey, bufferSize]);
 
-  const buildPreviewSeries = (): SeriesOption[] => {
+  const buildPreviewSeries = (): ECOption[] => {
     const previewPvs = pvNames ?? ["<pvname>"];
     return previewPvs.map((pvName, idx) => {
       const base = idx * 0.5;
@@ -73,7 +73,7 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
         lineStyle: { color: lineColors[idx] },
         itemStyle: { color: lineColors[idx] },
         name: pvName,
-      } as SeriesOption;
+      } as ECOption;
     });
   };
 
@@ -83,7 +83,7 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
     Object.keys(pvData).length > 0 &&
     Object.values(pvData).every((pv) => typeof pv.value === "number");
 
-  const buildRuntimeSeries = (): SeriesOption[] => {
+  const buildRuntimeSeries = (): ECOption[] => {
     if (!pvData) return [];
 
     const orderedPvNames = pvNames.length > 0 ? pvNames : Object.keys(pvData);
@@ -117,14 +117,14 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
           data: seriesData,
           lineStyle: { color },
           itemStyle: { color },
-        } as SeriesOption;
+        } as ECOption;
       })
-      .filter((series): series is SeriesOption => series !== null);
+      .filter((series): series is ECOption => series !== null);
   };
 
   const series = inEditMode ? buildPreviewSeries() : buildRuntimeSeries();
 
-  const option = useMemo<EChartsOption>(() => {
+  const option = useMemo<ECOption>(() => {
     return {
       title: {
         text: p.plotTitle?.value,
@@ -203,7 +203,7 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
       ],
       backgroundColor: p.backgroundColor?.value,
       animation: false,
-    };
+    } as ECOption;
   }, [
     inEditMode,
     isScalarOnlyRuntimeData,
@@ -244,7 +244,8 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
           overflow: "hidden",
         }}
       >
-        <ReactECharts
+        <ReactEChartsCore
+          echarts={echarts}
           option={option}
           style={{ width: "100%", height: "100%" }}
           notMerge={false}
