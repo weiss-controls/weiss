@@ -19,9 +19,9 @@ into a namespace where your Git settings have access to (if applicable). Make su
 one file to it, e.g. a `README.md` or `.gitignore`, so it is not empty.
 
 :::{tip}  
- Alternatively, you can create a fork of
+Alternatively, you can create a fork of
 [weiss-demo-opis](https://github.com/weiss-controls/weiss-demo-opis) to use as a playground.  
- :::
+:::
 
 With WEISS app running, login as a "Developer" and click on the "Import new repository" button in
 the right sidebar of the "Navigate" tab. Provide the repository's HTTPS URL and an alias for it,
@@ -46,7 +46,7 @@ new file, as WEISS will automatically append it if missing.
 ![Create file animation](../_static/create-file.gif)
 
 :::{note}  
- As part of the git-oriented system, WEISS will highlight the new file name with green. Modified
+As part of the git-oriented system, WEISS will highlight the new file name with green. Modified
 files will be highlighted in yellow.  
 :::
 
@@ -81,9 +81,9 @@ connection to the PVs and start updating the widgets accordingly.
 ![Testing runtime](../_static/runtime.gif)
 
 :::{hint}  
- If your PVs are not connecting, check if your IOC can be seen from the server running WEISS. You
-may need to update the `EPICS_XXX_ADDR_LIST` environment variables in your `.env` file to include
-the IOC's address or appropriate gateway.  
+If your PVs are not connecting, check if your IOC can be seen from the server running WEISS. You may
+need to update the `EPICS_XXX_ADDR_LIST` environment variables in your `.env` file to include the
+IOC's address or appropriate gateway.  
 If change is needed, update the variables then update the containers with
 `docker compose up -d --build`. The local volume will persist your repository files, so you won't
 lose your work in progress.  

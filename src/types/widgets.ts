@@ -41,12 +41,7 @@ export interface StateEntry {
 
 /** Allowed values for a widget property */
 export type PropertyValue =
-  | string
-  | number
-  | boolean
-  | string[]
-  | Record<string, string>
-  | StateEntry[];
+  string | number | boolean | string[] | Record<string, string> | StateEntry[];
 
 export const valueDisplayFormats = [
   "Default",

@@ -817,15 +817,13 @@ export function useWidgetManager() {
       ),
       ...(widget.rules?.length
         ? {
-            rules: widget.rules.map(
-              ({ id: _id, rulesets, ...rest }): ExportedRule => ({
-                ...rest,
-                rulesets: rulesets.map(
-                  ({ id: _rulesetId, pvNames: _pvNames, conditionLogic, ...ruleset }) =>
-                    conditionLogic === "OR" ? { conditionLogic, ...ruleset } : ruleset,
-                ),
-              }),
-            ),
+            rules: widget.rules.map(({ id: _id, rulesets, ...rest }): ExportedRule => ({
+              ...rest,
+              rulesets: rulesets.map(
+                ({ id: _rulesetId, pvNames: _pvNames, conditionLogic, ...ruleset }) =>
+                  conditionLogic === "OR" ? { conditionLogic, ...ruleset } : ruleset,
+              ),
+            })),
           }
         : {}),
       children: exportChildren,
