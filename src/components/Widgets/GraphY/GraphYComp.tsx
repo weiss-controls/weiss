@@ -13,18 +13,17 @@ import type { EChartsOption, SeriesOption } from "echarts";
 const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
   const { inEditMode } = useUIContext();
   const p = data.editableProperties;
-  const pvData = data.multiPvData ?? {};
+  const pvData = useMemo(() => data.multiPvData ?? {}, [data.multiPvData]);
   const alarmData = Object.values(pvData)
     .map((d) => d.alarm)
     .filter((a) => a !== undefined);
-  const lineColors = p.lineColors?.value ?? [];
-  const pvNames = p.pvNames?.value ?? [];
+  const lineColors = useMemo(() => p.lineColors?.value ?? [], [p.lineColors?.value]);
+  const pvNames = useMemo(() => p.pvNames?.value ?? [], [p.pvNames?.value]);
   const bufferSize = p.plotBufferSize?.value ?? 50;
   // Backward-compatibility: map ECharts plot type to legacy plotly plotLineStyle property
   const plotType = p.plotLineStyle?.value == "markers" ? "scatter" : "line";
   const showSymbols = p.plotLineStyle?.value !== "lines";
   const showLegend = p.showLegend?.value;
-  const previewPvs = pvNames ?? ["<pvname>"];
   const titleHAlign = p.textHAlign?.value;
   const titleVAlign = p.textVAlign?.value;
   const legendHAlign = p.legendHAlign?.value;
@@ -33,18 +32,24 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
   const allInBottom = showLegend && legendVAlign === "bottom" && titleVAlign === "bottom";
   const gridTop = allInTop ? 80 : titleVAlign === "top" ? 70 : 40;
   const gridBottom = allInBottom ? 80 : titleVAlign === "bottom" ? 70 : 45;
-  const titlePadding = [
-    titleVAlign === "top" ? 20 : 0,
-    titleHAlign === "right" ? 50 : 0,
-    titleVAlign === "bottom" ? 15 : 0,
-    titleHAlign === "left" ? 50 : 0,
-  ];
-  const legendPadding = [
-    legendVAlign === "top" ? 50 : 0,
-    legendHAlign === "right" ? 50 : 0,
-    showLegend && legendVAlign === "bottom" ? (allInBottom ? 35 : 5) : 0,
-    legendHAlign === "left" ? 50 : 0,
-  ];
+  const titlePadding = useMemo(
+    () => [
+      titleVAlign === "top" ? 20 : 0,
+      titleHAlign === "right" ? 50 : 0,
+      titleVAlign === "bottom" ? 15 : 0,
+      titleHAlign === "left" ? 50 : 0,
+    ],
+    [titleVAlign, titleHAlign],
+  );
+  const legendPadding = useMemo(
+    () => [
+      legendVAlign === "top" ? 50 : 0,
+      legendHAlign === "right" ? 50 : 0,
+      showLegend && legendVAlign === "bottom" ? (allInBottom ? 35 : 5) : 0,
+      legendHAlign === "left" ? 50 : 0,
+    ],
+    [legendVAlign, legendHAlign, showLegend, allInBottom],
+  );
 
   // If PV carries only scalar values, request a buffer from PVStore
   const scalarPvNames = pvNames?.filter((pv) => typeof pvData[pv]?.value === "number") ?? [];
@@ -56,19 +61,21 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- scalarPvNamesKey is the stable identity for scalarPvNames
   }, [inEditMode, scalarPvNamesKey, bufferSize]);
 
-  const buildPreviewSeries = (): SeriesOption[] =>
-    previewPvs.map((pvName, idx) => {
+  const buildPreviewSeries = (): SeriesOption[] => {
+    const previewPvs = pvNames ?? ["<pvname>"];
+    return previewPvs.map((pvName, idx) => {
       const base = idx * 0.5;
       const values = [base, base + 3, base + 2, base + 5];
       return {
         type: plotType,
         showSymbol: showSymbols,
         data: values.map((value, index) => [index, value]),
-        lineStyle: { color: lineColors[idx] ?? undefined },
-        itemStyle: { color: lineColors[idx] ?? undefined },
+        lineStyle: { color: lineColors[idx] },
+        itemStyle: { color: lineColors[idx] },
         name: pvName,
       } as SeriesOption;
     });
+  };
 
   const isScalarOnlyRuntimeData =
     !inEditMode &&
@@ -139,9 +146,9 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
       },
       legend: {
         selectedMode: inEditMode ? false : "multiple",
-        show: p.showLegend?.value,
-        top: p.legendVAlign?.value,
-        left: p.legendHAlign?.value,
+        show: showLegend,
+        top: legendVAlign,
+        left: legendHAlign,
         orient: p.legendOrient?.value as "horizontal" | "vertical",
         align: "auto",
         padding: legendPadding,
@@ -198,11 +205,8 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
       animation: false,
     };
   }, [
-    bufferSize,
     inEditMode,
     isScalarOnlyRuntimeData,
-    lineColors,
-    pvData,
     p.backgroundColor?.value,
     p.fontBold?.value,
     p.fontFamily?.value,
@@ -210,17 +214,16 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
     p.fontSize?.value,
     p.logscaleY?.value,
     p.plotTitle?.value,
-    p.showLegend?.value,
+    p.legendOrient?.value,
     p.textColor?.value,
     p.textHAlign?.value,
     p.textVAlign?.value,
-    p.width?.value,
     p.xAxisTitle?.value,
     p.yAxisTitle?.value,
-    plotType,
-    previewPvs,
-    pvNames,
-    pvData,
+    showLegend,
+    legendVAlign,
+    legendHAlign,
+    series,
     titlePadding,
     legendPadding,
     gridTop,

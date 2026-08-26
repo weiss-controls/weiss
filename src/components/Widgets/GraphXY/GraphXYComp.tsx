@@ -46,19 +46,24 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
   const gridTop = allInTop ? 80 : titleVAlign === "top" ? 70 : 40;
   const gridBottom = allInBottom ? 80 : titleVAlign === "bottom" ? 70 : 45;
 
-  const titlePadding = [
-    titleVAlign === "top" ? 20 : 0,
-    titleHAlign === "right" ? 50 : 0,
-    titleVAlign === "bottom" ? 15 : 0,
-    titleHAlign === "left" ? 50 : 0,
-  ];
-
-  const legendPadding = [
-    legendVAlign === "top" ? 50 : 0,
-    legendHAlign === "right" ? 50 : 0,
-    showLegend && legendVAlign === "bottom" ? (allInBottom ? 35 : 5) : 0,
-    legendHAlign === "left" ? 50 : 0,
-  ];
+  const titlePadding = useMemo(
+    () => [
+      titleVAlign === "top" ? 20 : 0,
+      titleHAlign === "right" ? 50 : 0,
+      titleVAlign === "bottom" ? 15 : 0,
+      titleHAlign === "left" ? 50 : 0,
+    ],
+    [titleVAlign, titleHAlign],
+  );
+  const legendPadding = useMemo(
+    () => [
+      legendVAlign === "top" ? 50 : 0,
+      legendHAlign === "right" ? 50 : 0,
+      showLegend && legendVAlign === "bottom" ? (allInBottom ? 35 : 5) : 0,
+      legendHAlign === "left" ? 50 : 0,
+    ],
+    [legendVAlign, legendHAlign, showLegend, allInBottom],
+  );
 
   // Only accumulate scalar history for PVs that actually carry scalar values.
   const scalarPvNames = pvNames.filter((pv) => typeof pvData[pv]?.value === "number");
@@ -167,9 +172,9 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
       },
       legend: {
         selectedMode: inEditMode ? false : "multiple",
-        show: p.showLegend?.value,
-        top: p.legendVAlign?.value,
-        left: p.legendHAlign?.value,
+        show: showLegend,
+        top: legendVAlign,
+        left: legendHAlign,
         orient: p.legendOrient?.value as "horizontal" | "vertical",
         align: "auto",
         padding: legendPadding,
@@ -231,8 +236,6 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
     };
   }, [
     inEditMode,
-    lineColors,
-    pvData,
     p.backgroundColor?.value,
     p.fontBold?.value,
     p.fontFamily?.value,
@@ -240,20 +243,21 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
     p.fontSize?.value,
     p.logscaleY?.value,
     p.plotTitle?.value,
-    p.showLegend?.value,
+    p.legendOrient?.value,
     p.textColor?.value,
     p.textHAlign?.value,
     p.textVAlign?.value,
-    p.width?.value,
     p.xAxisTitle?.value,
     p.yAxisTitle?.value,
-    plotType,
+    xLabel,
     showLegend,
-    pvNames,
+    legendVAlign,
+    legendHAlign,
     series,
     titlePadding,
-    titleVAlign,
-    xLabel,
+    legendPadding,
+    gridTop,
+    gridBottom,
   ]);
 
   return (
