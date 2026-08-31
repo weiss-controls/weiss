@@ -24,6 +24,7 @@ export const GraphXY: WidgetDefinition = {
     width: { ...PROPERTY_SCHEMAS.width, value: 480 },
     height: { ...PROPERTY_SCHEMAS.height, value: 400 },
     ...PLOT_PROPS,
+    plotLineStyle: { ...PROPERTY_SCHEMAS.plotLineStyle, value: "lines+markers" },
     ...TEXT_PROPS,
     textVAlign: { ...PROPERTY_SCHEMAS.textVAlign, value: "top" },
     textHAlign: { ...PROPERTY_SCHEMAS.textHAlign, value: "center" },

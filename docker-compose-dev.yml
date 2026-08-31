@@ -9,6 +9,7 @@ services:
     image: weiss-dev:${DOCKER_TAG:-latest}
     container_name: weiss-dev
     network_mode: host
+    tty: true
     restart: always
     environment:
       NODE_ENV: development

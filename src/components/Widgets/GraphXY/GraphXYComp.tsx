@@ -2,13 +2,14 @@
 // GraphXY widget — X vs Y scatter/line plot for WEISS
 // Contributed by Elmaddin Guliyev
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo } from "react";
 import type { WidgetUpdate } from "@src/types/widgets";
-import Plot from "@src/utils/plotlyMinified";
 import { COLORS } from "@src/constants/constants";
 import { getPVHistory, registerPVHistory } from "@src/utils/historyBuffers";
 import AlarmBorder from "@src/components/AlarmBorder/AlarmBorder";
 import { useUIContext } from "@src/context/useUIContext";
+import ReactEChartsCore from "echarts-for-react/lib/core";
+import { echarts, type ECOption } from "@src/utils/eChartsMinified";
 
 type ScalarPoint = [number, number];
 
@@ -27,18 +28,42 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
     .map((d) => d.alarm)
     .filter((a) => a !== undefined);
 
-  const lineColors = p.lineColors?.value;
-  const pvNames: string[] = React.useMemo(() => p.pvNames?.value ?? [], [p.pvNames?.value]);
+  const lineColors = p.lineColors?.value ?? [];
+  const pvNames: string[] = p.pvNames?.value ?? [];
   const bufferSize: number = p.plotBufferSize?.value ?? 50;
   const plotLineStyle: string = p.plotLineStyle?.value ?? "lines+markers";
-  const textHAlign = p.textHAlign?.value;
-  const textVAlign = p.textVAlign?.value;
-  const titleXpos = textHAlign === "left" ? 0.05 : textHAlign === "right" ? 0.95 : 0.5;
-  const titleYpos = textVAlign === "bottom" ? 0.05 : textVAlign === "middle" ? 0.5 : 0.95;
-
-  // Ring buffers: one per PV
-  const plotData = useRef<Plotly.Data[]>([]);
+  // Backward-compatibility: map ECharts plot type to legacy plotly plotLineStyle property
+  const plotType = plotLineStyle === "markers" ? "scatter" : "line";
+  const showSymbols = plotLineStyle !== "lines";
+  const showLegend = p.showLegend?.value;
   const xLabel = pvNames.length > 0 ? pvNames[0] : "X";
+  const legendHAlign = p.legendHAlign?.value;
+  const legendVAlign = p.legendVAlign?.value;
+  const titleHAlign = p.textHAlign?.value;
+  const titleVAlign = p.textVAlign?.value;
+  const allInTop = showLegend && legendVAlign === "top" && titleVAlign === "top";
+  const allInBottom = showLegend && legendVAlign === "bottom" && titleVAlign === "bottom";
+  const gridTop = allInTop ? 80 : titleVAlign === "top" ? 70 : 40;
+  const gridBottom = allInBottom ? 80 : titleVAlign === "bottom" ? 70 : 45;
+
+  const titlePadding = useMemo(
+    () => [
+      titleVAlign === "top" ? 20 : 0,
+      titleHAlign === "right" ? 50 : 0,
+      titleVAlign === "bottom" ? 15 : 0,
+      titleHAlign === "left" ? 50 : 0,
+    ],
+    [titleVAlign, titleHAlign],
+  );
+  const legendPadding = useMemo(
+    () => [
+      legendVAlign === "top" ? 50 : 0,
+      legendHAlign === "right" ? 50 : 0,
+      showLegend && legendVAlign === "bottom" ? (allInBottom ? 35 : 5) : 0,
+      legendHAlign === "left" ? 50 : 0,
+    ],
+    [legendVAlign, legendHAlign, showLegend, allInBottom],
+  );
 
   // Only accumulate scalar history for PVs that actually carry scalar values.
   const scalarPvNames = pvNames.filter((pv) => typeof pvData[pv]?.value === "number");
@@ -50,35 +75,35 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- scalarPvNamesKey is the stable identity for scalarPvNames
   }, [inEditMode, scalarPvNamesKey, bufferSize]);
 
-  const buildPreviewTraces = () => {
-    plotData.current = [{}];
+  const buildPreviewSeries = (): ECOption[] => {
     const previewPvs = pvNames.length > 0 ? pvNames : ["X PV", "Y PV"];
-    if (previewPvs.length >= 2) {
-      const xPreview = [1, 2, 3, 4, 5, 6, 7, 8];
-      for (let i = 1; i < previewPvs.length; i++) {
-        const yPreview = xPreview.map((v) => v * (1 + i * 0.3) + Math.sin(v * i) * 2);
-        plotData.current.push({
-          x: xPreview,
-          y: yPreview,
-          type: "scatter",
-          mode: plotLineStyle as Plotly.PlotData["mode"],
-          line: { color: lineColors?.[i - 1] ?? "auto" },
-          marker: { size: 6 },
-          name: `${previewPvs[0]} vs ${previewPvs[i]}`,
-        });
-      }
-    }
+    if (previewPvs.length < 2) return [];
+
+    const xPreview = [0, 1, 2, 3];
+
+    return previewPvs.slice(1).map((pvName, idx) => {
+      const base = idx * 0.5;
+      const yPreview = [base, base + 3, base + 2, base + 5];
+      return {
+        type: plotType,
+        showSymbol: showSymbols,
+        data: xPreview.map((x, pointIdx) => [x, yPreview[pointIdx]]),
+        lineStyle: { color: lineColors[idx] },
+        itemStyle: { color: lineColors[idx] },
+        name: `${previewPvs[0]} vs ${pvName}`,
+      } as ECOption;
+    });
   };
 
-  const buildRuntimeTraces = () => {
-    if (!pvData) return;
+  const buildRuntimeSeries = (): ECOption[] => {
+    if (!pvData) return [];
 
     // Lossless history buffer: accumulated on every WS message, independent of render throttling.
     const getBuffer = (pvName: string): ScalarPoint[] => getPVHistory(pvName).slice(-bufferSize);
 
     const xPvName = pvNames[0];
     const xPv = pvData[xPvName];
-    if (!xPv) return;
+    if (!xPv) return [];
 
     const xVal = xPv.value;
     const xData =
@@ -88,9 +113,9 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
           ? [...(xVal as number[])]
           : null;
 
-    if (!xData || xData.length === 0) return;
+    if (!xData || xData.length === 0) return [];
 
-    const newTraces: Plotly.Data[] = [];
+    const newSeries: ECOption[] = [];
     for (let i = 1; i < pvNames.length; i++) {
       const yPvName = pvNames[i];
       const yPv = pvData[yPvName];
@@ -107,81 +132,133 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
       if (!yData || yData.length === 0) continue;
 
       const len = Math.min(xData.length, yData.length);
+      const xSlice = xData.slice(-len);
+      const ySlice = yData.slice(-len);
 
-      newTraces.push({
-        x: xData.slice(-len),
-        y: yData.slice(-len),
-        type: "scatter",
-        mode: plotLineStyle as Plotly.PlotData["mode"],
-        line: { color: lineColors?.[i - 1] ?? "auto" },
-        marker: { size: 5 },
-        name: `${yPvName}`,
-      });
+      newSeries.push({
+        type: plotType,
+        showSymbol: showSymbols,
+        data: xSlice.map((x, idx) => [x, ySlice[idx]]),
+        lineStyle: { color: lineColors[i - 1] },
+        itemStyle: { color: lineColors[i - 1] },
+        name: `${pvNames[0]} vs ${pvNames[i]}`,
+      } as ECOption);
     }
 
-    if (newTraces.length > 0) {
-      plotData.current = newTraces;
-    }
+    return newSeries;
   };
 
-  if (inEditMode) {
-    buildPreviewTraces();
-  } else {
-    buildRuntimeTraces();
-  }
+  const series = inEditMode ? buildPreviewSeries() : buildRuntimeSeries();
 
-  // Layout
-  const layout: Partial<Plotly.Layout> = {
-    title: {
-      text: p.plotTitle?.value ?? "",
-      font: {
-        family: p.fontFamily?.value,
-        size: p.fontSize?.value,
-        weight: p.fontBold?.value ? 800 : 0,
-        style: p.fontItalic?.value ? "italic" : "normal",
-        lineposition: p.fontUnderlined?.value ? "under" : "none",
-        color: p.textColor?.value,
-      },
-      x: titleXpos,
-      y: titleYpos,
-    },
-    xaxis: {
+  const option = useMemo<ECOption>(() => {
+    return {
       title: {
-        text: p.xAxisTitle?.value ?? xLabel,
-        font: {
-          family: p.fontFamily?.value,
-          size: (p.fontSize?.value ?? 12) - 2,
-          color: COLORS.lightGray,
+        text: p.plotTitle?.value,
+        left: p.textHAlign?.value,
+        top: p.textVAlign?.value,
+        textStyle: {
+          fontFamily: p.fontFamily?.value,
+          fontSize: p.fontSize?.value,
+          fontWeight: p.fontBold?.value ? "bold" : "normal",
+          fontStyle: p.fontItalic?.value ? "italic" : "normal",
+          color: p.textColor?.value,
+        },
+        padding: titlePadding,
+      },
+      tooltip: {
+        show: !inEditMode,
+        trigger: "axis",
+        axisPointer: { type: "cross" },
+      },
+      legend: {
+        selectedMode: inEditMode ? false : "multiple",
+        show: showLegend,
+        top: legendVAlign,
+        left: legendHAlign,
+        orient: p.legendOrient?.value as "horizontal" | "vertical",
+        align: "auto",
+        padding: legendPadding,
+      },
+      grid: {
+        left: 50,
+        right: 50,
+        top: gridTop,
+        bottom: gridBottom,
+      },
+      toolbox: {
+        feature: {
+          restore: { show: !inEditMode },
+          saveAsImage: { name: p.plotTitle?.value, show: !inEditMode },
+          dataZoom: { show: !inEditMode, yAxisIndex: "none" },
         },
       },
-      type: "linear",
-    },
-    yaxis: {
-      type: p.logscaleY?.value ? "log" : "linear",
-      title: {
-        text: p.yAxisTitle?.value ?? "",
-        font: {
-          family: p.fontFamily?.value,
-          size: (p.fontSize?.value ?? 12) - 2,
+      xAxis: {
+        type: "value",
+        min: "dataMin",
+        max: "dataMax",
+        name: p.xAxisTitle?.value ?? xLabel,
+        nameTextStyle: {
           color: COLORS.lightGray,
+          fontSize: (p.fontSize?.value ?? 12) - 2,
         },
+        axisLabel: { color: COLORS.lightGray },
+        splitLine: { show: false },
       },
-    },
-    paper_bgcolor: p.backgroundColor?.value,
-    plot_bgcolor: p.backgroundColor?.value,
-    margin: { b: 45, l: 45, t: 50, r: 30 },
-    width: p.width?.value,
-    height: p.height?.value,
-    showlegend: p.showLegend?.value,
-    legend: {
-      orientation: "h",
-      x: 1,
-      xanchor: "right",
-      y: 0.975,
-      bgcolor: "00000000",
-    },
-    uirevision: String(inEditMode),
-  };
+      yAxis: {
+        type: p.logscaleY?.value ? "log" : "value",
+        min: "dataMin",
+        max: "dataMax",
+        name: p.yAxisTitle?.value,
+        nameTextStyle: {
+          color: COLORS.lightGray,
+          fontSize: (p.fontSize?.value ?? 12) - 2,
+        },
+        axisLabel: { color: COLORS.lightGray },
+        splitLine: { lineStyle: { color: COLORS.gridLineColor } },
+      },
+      series,
+      dataZoom: [
+        {
+          show: !inEditMode,
+          realtime: true,
+          showDetail: true,
+          height: 25,
+        },
+        {
+          show: !inEditMode,
+          type: "inside",
+          realtime: true,
+          showDetail: true,
+        },
+      ],
+      backgroundColor: p.backgroundColor?.value,
+      animation: false,
+    } as ECOption;
+  }, [
+    inEditMode,
+    p.backgroundColor?.value,
+    p.fontBold?.value,
+    p.fontFamily?.value,
+    p.fontItalic?.value,
+    p.fontSize?.value,
+    p.logscaleY?.value,
+    p.plotTitle?.value,
+    p.legendOrient?.value,
+    p.textColor?.value,
+    p.textHAlign?.value,
+    p.textVAlign?.value,
+    p.xAxisTitle?.value,
+    p.yAxisTitle?.value,
+    xLabel,
+    showLegend,
+    legendVAlign,
+    legendHAlign,
+    series,
+    titlePadding,
+    legendPadding,
+    gridTop,
+    gridBottom,
+  ]);
 
   return (
     <AlarmBorder alarmData={alarmData} enable={p.alarmBorder?.value}>
@@ -197,15 +274,13 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
           overflow: "hidden",
         }}
       >
-        <Plot
-          data={plotData.current}
-          layout={layout}
-          config={{
-            responsive: true,
-            modeBarButtonsToRemove: ["lasso2d", "select2d"],
-            displaylogo: false,
-            staticPlot: inEditMode,
-          }}
+        <ReactEChartsCore
+          echarts={echarts}
+          option={option}
+          style={{ width: "100%", height: "100%" }}
+          notMerge={false}
+          opts={{ devicePixelRatio: 2 }} // increase pixel density for better resolution on high-DPI screens
+          lazyUpdate
         />
       </div>
     </AlarmBorder>

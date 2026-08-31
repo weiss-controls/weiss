@@ -127,15 +127,13 @@ const SpinnerComp: React.FC<WidgetUpdate> = ({ data }) => {
                 notched={labelShrink}
                 inputRef={props.ref}
                 value={state.inputValue}
-                onBlur={(e) => {
-                  props.onBlur?.(e);
+                onBlur={() => {
                   setIsFocused(false);
                   setEditValue(null);
                 }}
                 onChange={props.onChange}
                 onKeyUp={props.onKeyUp}
-                onFocus={(e) => {
-                  props.onFocus?.(e);
+                onFocus={() => {
                   setIsFocused(true);
                   setEditValue(pvNumValue);
                 }}
