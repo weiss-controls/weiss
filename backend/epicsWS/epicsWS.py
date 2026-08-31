@@ -58,6 +58,16 @@ def format_pv_name(pv_name: str, provider: str) -> str:
     return pv_name
 
 
+def _cleanup_pv_state(pv_name: str) -> None:
+    """Called once a PV has no more subscribers, from any teardown path."""
+    _pv_metadata.pop(pv_name, None)
+    _last_sent_time.pop(pv_name, None)
+    _pending_update.pop(pv_name, None)
+    handle = _trailing_handle.pop(pv_name, None)
+    if handle:
+        handle.cancel()
+
+
 _loop: Optional[asyncio.AbstractEventLoop] = None
 
 
@@ -164,30 +174,35 @@ async def send_update(pv_name: str, pv_obj, provider: str):
     if update.get("enumChoices") is not None:
         base_msg["enumChoices"] = update["enumChoices"]
 
-    # Serialize the common payload once and reuse it for all clients that already have metadata
-    common_data: Optional[str] = None
+    # Split subscribers into those who already have metadata (fast path) and
+    # those who need the full payload (first update, or after a disconnect).
+    ws_snapshot = set(ws_set)
+    fast_path_ws = [ws for ws in ws_snapshot if sent_metadata.get((ws, pv_name))]
+    full_path_ws = [ws for ws in ws_snapshot if not sent_metadata.get((ws, pv_name))]
 
-    for ws in set(ws_set):
-        key = (ws, pv_name)
-        if sent_metadata.get(key):
-            # Fast path: reuse pre-serialized common payload
-            if common_data is None:
-                common_data = json.dumps({k: v for k, v in base_msg.items() if v is not None})
-            try:
-                await ws.send(common_data)
-            except Exception:
-                print(f"[epicsWS]: Error sending update to {ws}")
-        else:
-            # First update for this client (or after a disconnect): include metadata + connected flag
-            full_msg = dict(base_msg)
-            full_msg.update(_pv_metadata[pv_name])
-            full_msg["connected"] = True
-            sent_metadata[key] = True
-            data = json.dumps({k: v for k, v in full_msg.items() if v is not None})
-            try:
-                await ws.send(data)
-            except Exception:
-                print(f"[epicsWS]: Error sending update to {ws}")
+    async def _send(ws: ServerConnection, data: str):
+        try:
+            await ws.send(data)
+        except Exception:
+            print(f"[epicsWS]: Error sending update to {ws}")
+
+    send_tasks = []
+
+    if fast_path_ws:
+        common_data = json.dumps({k: v for k, v in base_msg.items() if v is not None})
+        send_tasks.extend(_send(ws, common_data) for ws in fast_path_ws)
+
+    if full_path_ws:
+        full_msg = dict(base_msg)
+        full_msg.update(_pv_metadata[pv_name])
+        full_msg["connected"] = True
+        data = json.dumps({k: v for k, v in full_msg.items() if v is not None})
+        for ws in full_path_ws:
+            sent_metadata[(ws, pv_name)] = True
+        send_tasks.extend(_send(ws, data) for ws in full_path_ws)
+
+    if send_tasks:
+        await asyncio.gather(*send_tasks)
 
 
 async def _send_disconnect(pv_name: str, provider: str):
@@ -199,13 +214,14 @@ async def _send_disconnect(pv_name: str, provider: str):
     msg = {"type": "update", "pv": format_pv_name(pv_name, provider), "connected": False}
     data = json.dumps(msg)
 
-    for ws in set(ws_set):
+    async def _send(ws: ServerConnection):
         try:
             await ws.send(data)
         except Exception:
             print(f"[epicsWS]: Error sending disconnect notice to {ws}")
         sent_metadata[(ws, pv_name)] = False
 
+    await asyncio.gather(*(_send(ws) for ws in set(ws_set)))
     _pv_metadata.pop(pv_name, None)
 
 
@@ -228,7 +244,7 @@ async def message_handler(ws: ServerConnection):
                     subscriptions[pv_name].add(ws)
                     ws_subscriptions[ws].add(pv_name)
                     _pv_metadata.pop(pv_name, None)
-                    client.subscribe(client_id, pv_name)
+                    asyncio.create_task(asyncio.to_thread(client.subscribe, client_id, pv_name))
 
             elif msg_type == "unsubscribe":
                 for pv in msg.get("pvs", []):
@@ -239,8 +255,8 @@ async def message_handler(ws: ServerConnection):
                         ws_subscriptions[ws].discard(pv_name)
                         if not subscriptions[pv_name]:
                             del subscriptions[pv_name]
-                            _pv_metadata.pop(pv_name, None)
-                        client.unsubscribe(client_id, pv_name)
+                            _cleanup_pv_state(pv_name)
+                        asyncio.create_task(asyncio.to_thread(client.unsubscribe, client_id, pv_name))
                     sent_metadata.pop((ws, pv_name), None)
 
             elif msg_type == "write":
@@ -330,11 +346,11 @@ async def message_handler(ws: ServerConnection):
                 pv_set.discard(ws)
                 if not pv_set:
                     del subscriptions[pv_name]
-                    _pv_metadata.pop(pv_name, None)
+                    _cleanup_pv_state(pv_name)
             sent_metadata.pop((ws, pv_name), None)
         for c in clients.values():
             if c:
-                c.unsubscribe_all(client_id)
+                asyncio.create_task(asyncio.to_thread(c.unsubscribe_all, client_id))
 
 
 async def main():
