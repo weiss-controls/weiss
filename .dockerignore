@@ -6,5 +6,4 @@ dist/
 roles.toml/
 .pnpm-store/
 .ruff_cache/
-.github/
 .venv/
