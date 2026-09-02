@@ -12,7 +12,7 @@ export const Histogram: WidgetDefinition = {
   widgetName: "Histogram",
   widgetIcon: BarChartIcon,
   widgetLabel: "Histogram",
-  category: "Monitoring",
+  category: "Plots",
   defaultProperties: {
     pvName: PROPERTY_SCHEMAS.pvName,
     ...COMMON_PROPS,

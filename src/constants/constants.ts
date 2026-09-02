@@ -94,6 +94,11 @@ export type Mode = typeof EDIT_MODE | typeof RUNTIME_MODE;
 /** Width of the widget selector panel in pixels */
 export const WIDGET_SELECTOR_WIDTH = 230;
 
+/**
+ * Display order of widget categories in the palette (WidgetPicker).
+ */
+export const WIDGET_CATEGORY_ORDER = ["Basic", "Controls", "Monitoring", "Plots", "Layout"];
+
 /** Reserved ID for the grid widget */
 export const GRID_ID = "__grid__";
 

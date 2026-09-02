@@ -17,7 +17,7 @@ export const GraphXY: WidgetDefinition = {
   widgetName: "GraphXY",
   widgetIcon: TimelineIcon,
   widgetLabel: "Graph XY",
-  category: "Monitoring",
+  category: "Plots",
   defaultProperties: {
     ...COMMON_PROPS,
     tooltip: { ...PROPERTY_SCHEMAS.tooltip, value: "" },

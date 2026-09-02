@@ -2,7 +2,7 @@
 // Copyright (C) 2026 André Favoto
 
 import * as React from "react";
-import { WIDGET_SELECTOR_WIDTH } from "@src/constants/constants";
+import { WIDGET_CATEGORY_ORDER, WIDGET_SELECTOR_WIDTH } from "@src/constants/constants";
 import type { WidgetDefinition } from "@src/types/widgets";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import { styled } from "@mui/material/styles";
@@ -109,7 +109,7 @@ const DraggableItem: React.FC<DraggableItemProps> = ({ item, open }) => {
           selected={isActive}
           onDragStart={handleDragStart}
           onClick={handleClick}
-          sx={{ minHeight: 30, justifyContent: open ? "initial" : "center" }}
+          sx={{ minHeight: 25, justifyContent: open ? "initial" : "center" }}
         >
           <ListItemIcon
             sx={{
@@ -118,12 +118,12 @@ const DraggableItem: React.FC<DraggableItemProps> = ({ item, open }) => {
               alignItems: "center",
               justifyContent: "center",
               mr: open ? 2 : 0,
-              height: 30,
+              height: 25,
             }}
           >
             {item.widgetIcon ? <item.widgetIcon /> : <WidgetsIcon />}
           </ListItemIcon>
-          {open && <ListItemText primary={item.widgetLabel} />}
+          {open && <ListItemText primary={item.widgetLabel} sx={{ height: 20 }} />}
         </ListItemButton>
       </Tooltip>
     </ListItem>
@@ -151,7 +151,16 @@ const WidgetPicker: React.FC = () => {
       if (!grouped[category]) grouped[category] = [];
       grouped[category].push(entry);
     }
-    return grouped;
+
+    // Order categories per WIDGET_CATEGORY_ORDER; unlisted ones are placed last.
+    const ordered: Record<string, WidgetDefinition[]> = {};
+    for (const category of WIDGET_CATEGORY_ORDER) {
+      if (grouped[category]) ordered[category] = grouped[category];
+    }
+    for (const [category, entries] of Object.entries(grouped)) {
+      if (!ordered[category]) ordered[category] = entries;
+    }
+    return ordered;
   }, [palette]);
   if (!inEditMode) return;
   return (

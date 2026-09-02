@@ -16,7 +16,7 @@ export const GraphY: WidgetDefinition = {
   widgetName: "GraphY",
   widgetIcon: StackedLineChartIcon,
   widgetLabel: "Graph Y",
-  category: "Monitoring",
+  category: "Plots",
   defaultProperties: {
     ...COMMON_PROPS,
     tooltip: { ...PROPERTY_SCHEMAS.tooltip, value: "" },
