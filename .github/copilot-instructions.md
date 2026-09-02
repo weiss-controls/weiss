@@ -193,6 +193,20 @@ Pre-built reusable sets (import from `widgetProperties.ts`):
 5. Add the export to `src/components/Widgets/index.ts`.
 6. The widget is automatically picked up by `WidgetRegistry` and appears in the palette.
 
+#### Widgets that dynamically load another `.opi.json` file
+
+`EmbeddedDisplay` and `NavigationTabs` (category `"Layout"`) both load a linked display file at
+render time and inject its (scaled, macro-substituted) widget tree as `data.children` via
+`updateWidgetChildren` — the file is never authored by dragging widgets onto the canvas. Shared
+fetch/scale/macro logic lives in `src/components/Widgets/shared/embeddedContent.ts`
+(`fetchDisplayContent`, `applyDisplayLayout`, `exportedToWidget`, `scaleWidgets`,
+`resolveDisplayMacros`, `macrosToKey`) and `src/components/Widgets/shared/Placeholder.tsx`; reuse
+these for any future widget with the same pattern instead of duplicating the fetch/cache logic. Any
+widget following this pattern must be special-cased (alongside `EmbeddedDisplay`) in the few places
+that assume dynamically-injected children are not part of the authored tree: `WidgetRenderer.tsx`
+(`childIsEmbedded`), `useWidgetManager.ts` (`ungroupSelected`, `formatWdgToExport`), and
+`WidgetTree.tsx` (`buildLayerItems`).
+
 ### OPI File Format
 
 Saved as `.opi.json` — an array of `ExportedWidget`:

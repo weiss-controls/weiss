@@ -17,6 +17,7 @@ export { SelectionBox } from "./SelectionBox";
 export { Slider } from "./Slider";
 export { Image } from "./Image";
 export { EmbeddedDisplay } from "./EmbeddedDisplay";
+export { NavigationTabs } from "./NavigationTabs";
 export { NavigationButton } from "./NavigationButton";
 export { Spinner } from "./Spinner";
 export { GraphXY } from "./GraphXY";

@@ -27,7 +27,10 @@ function buildLayerItems(widgets: Widget[], groupId: string | null): WidgetLayer
     widgetName: w.widgetName,
     groupId,
     children:
-      w.children && w.children.length > 0 && w.widgetName !== "EmbeddedDisplay"
+      w.children &&
+      w.children.length > 0 &&
+      w.widgetName !== "EmbeddedDisplay" &&
+      w.widgetName !== "NavigationTabs"
         ? buildLayerItems(w.children, w.id)
         : undefined,
   }));

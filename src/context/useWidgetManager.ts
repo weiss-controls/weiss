@@ -294,7 +294,12 @@ export function useWidgetManager() {
       const newWidgets: Widget[] = [];
 
       prev.forEach((w) => {
-        if (selectedWidgetIDs.includes(w.id) && w.children && w.widgetName !== "EmbeddedDisplay") {
+        if (
+          selectedWidgetIDs.includes(w.id) &&
+          w.children &&
+          w.widgetName !== "EmbeddedDisplay" &&
+          w.widgetName !== "NavigationTabs"
+        ) {
           newWidgets.push(...w.children);
         } else {
           newWidgets.push(w);
@@ -805,9 +810,9 @@ export function useWidgetManager() {
   );
 
   const formatWdgToExport = useCallback((widget: Widget): ExportedWidget => {
-    // EmbeddedDisplay children are injected dynamically at runtime — omit them from export.
+    // EmbeddedDisplay/NavigationTabs children are injected dynamically at runtime — omit from export.
     const exportChildren =
-      widget.widgetName === "EmbeddedDisplay"
+      widget.widgetName === "EmbeddedDisplay" || widget.widgetName === "NavigationTabs"
         ? undefined
         : widget.children?.map((child) => formatWdgToExport(child));
     return {

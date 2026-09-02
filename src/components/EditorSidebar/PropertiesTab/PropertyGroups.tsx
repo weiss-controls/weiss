@@ -17,6 +17,7 @@ import StrRecordProperty from "./Properties/StrRecordProperty";
 import ColorListProperty from "./Properties/ColorListProperty";
 import RepoFileProperty from "./Properties/RepoFileProperty";
 import StateListProperty from "./Properties/StateListProperty";
+import TabListProperty from "./Properties/TabListProperty";
 import { FRONT_UI_ZIDX } from "@src/constants/constants";
 import { Box } from "@mui/material";
 
@@ -117,6 +118,9 @@ const PropertyGroups: React.FC<PropertyGroupsProps> = ({
 
                     case "stateList":
                       return <StateListProperty key={propName} {...commonProps} />;
+
+                    case "tabList":
+                      return <TabListProperty key={propName} {...commonProps} />;
 
                     default:
                       return null;
