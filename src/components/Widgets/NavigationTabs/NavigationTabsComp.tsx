@@ -193,7 +193,7 @@ const NavigationTabsComp: React.FC<WidgetUpdate> = ({ data }) => {
           <Tab
             key={index}
             label={tab.label || `Tab ${index + 1}`}
-            sx={{ "&.Mui-selected": { color: activeTabColor } }}
+            sx={{ textTransform: "none", "&.Mui-selected": { color: activeTabColor } }}
           />
         ))}
       </Tabs>
