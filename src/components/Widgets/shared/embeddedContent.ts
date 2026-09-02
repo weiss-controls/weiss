@@ -3,11 +3,11 @@
 
 import { v4 as uuidv4 } from "uuid";
 import { getDeployedRepoFile, getStagingRepoFile } from "@src/services/APIClient";
-import { substituteMacroInStr, substituteMacrosInWidgetTree } from "@src/utils/macros";
+import { resolveMacroRecord, substituteMacrosInWidgetTree } from "@src/utils/macros";
 import { parseSerializedRules } from "@src/utils/ruleCompatibility";
-import { createGroupWidget } from "@src/context/widgetHelpers";
+import { createGroupWidget, createWidgetInstance } from "@src/context/widgetHelpers";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
-import type { ExportedWidget, PropertyKey, Widget, WidgetProperties } from "@src/types/widgets";
+import type { DOMRectLike, ExportedWidget, PropertyKey, Widget } from "@src/types/widgets";
 
 /**
  * Cache of raw ExportedWidget arrays keyed by "<fileLoadedTrig>::<staging|deployed>::<repoId>::<path>".
@@ -46,35 +46,27 @@ export function exportedToWidget(raw: ExportedWidget): Widget | null {
 
   // groups are not in the registry
   if (raw.widgetName === "Group") {
-    const group = createGroupWidget(uuidv4(), children ?? []);
-    // Overlay the serialised x/y/width/height onto the group.
-    for (const key of ["x", "y", "width", "height"] as const) {
-      if (raw.properties?.[key] !== undefined && group.editableProperties[key]) {
-        group.editableProperties[key].value = raw.properties[key] as number;
-      }
-    }
-    return group;
+    const bounds: DOMRectLike = {
+      x: (raw.properties?.x as number | undefined) ?? 0,
+      y: (raw.properties?.y as number | undefined) ?? 0,
+      width: (raw.properties?.width as number | undefined) ?? 0,
+      height: (raw.properties?.height as number | undefined) ?? 0,
+    };
+    return createGroupWidget(uuidv4(), children ?? [], bounds);
   }
 
   const def = WidgetRegistry[raw.widgetName];
   if (!def) return null;
 
-  const editableProperties: WidgetProperties = Object.fromEntries(
-    Object.entries(def.defaultProperties).map(([k, v]) => [
-      k,
-      { ...v, value: raw.properties?.[k as PropertyKey] ?? v.value },
-    ]),
-  );
+  const instance = createWidgetInstance(def, `${raw.widgetName}-${uuidv4()}`);
+  for (const [key, val] of Object.entries(raw.properties ?? {})) {
+    const propName = key as PropertyKey;
+    if (instance.editableProperties[propName]) {
+      instance.editableProperties[propName].value = val;
+    }
+  }
 
-  const rules = parseSerializedRules(raw.rules);
-
-  return {
-    id: `${raw.widgetName}-${uuidv4()}`,
-    widgetName: raw.widgetName,
-    editableProperties,
-    children,
-    rules,
-  };
+  return { ...instance, children, rules: parseSerializedRules(raw.rules) };
 }
 
 /**
@@ -159,13 +151,7 @@ export function resolveDisplayMacros(
   displayMacros: Record<string, string> | undefined,
   globalMacros: Record<string, string>,
 ): Record<string, string> {
-  if (!displayMacros) return {};
-
-  const resolved: Record<string, string> = {};
-  for (const [key, value] of Object.entries(displayMacros)) {
-    resolved[key] = substituteMacroInStr(value, globalMacros);
-  }
-  return resolved;
+  return displayMacros ? resolveMacroRecord(displayMacros, globalMacros) : {};
 }
 
 /** Assign new UUIDs to avoid ID clashes when multiple instances of the same display exist. */

@@ -28,6 +28,23 @@ export function substituteMacroInStr(str: string, macros: Record<string, string>
 }
 
 /**
+ * Substitute $(MACRO_NAME) patterns in every value of a macro record (e.g. a
+ * widget's own local macro table) against an outer macros map. Used both for
+ * the "macros" property (embedded screens) and for resolving a linked
+ * display's local macros against app-level global macros.
+ */
+export function resolveMacroRecord(
+  record: Record<string, string>,
+  macros: Record<string, string>,
+): Record<string, string> {
+  const resolved: Record<string, string> = {};
+  for (const [key, value] of Object.entries(record)) {
+    resolved[key] = substituteMacroInStr(value, macros);
+  }
+  return resolved;
+}
+
+/**
  * Build the forwarded navigation macro layer from the current runtime base macros
  * and a clicked button macro map.
  *
@@ -111,18 +128,10 @@ export function substituteTextProps(
     if (key === "macros") {
       // Substitute possible macros in the macros values (e.g. embedded screens)
       const original = prop.value as Record<string, string>;
-      const substituted: Record<string, string> = {};
-      let macrosChanged = false;
-      for (const macroKey of Object.keys(original)) {
-        const macroValue = original[macroKey];
-        const substitutedValue = substituteMacroInStr(macroValue, macros);
-        substituted[macroKey] = substitutedValue;
-        if (substitutedValue !== macroValue) {
-          macrosChanged = true;
-        }
-        resultRecord[key] = macrosChanged ? { ...prop, value: substituted } : prop;
-        changed ||= macrosChanged;
-      }
+      const substituted = resolveMacroRecord(original, macros);
+      const macrosChanged = Object.keys(original).some((k) => substituted[k] !== original[k]);
+      resultRecord[key] = macrosChanged ? { ...prop, value: substituted } : prop;
+      changed ||= macrosChanged;
     } else if (prop.selType === "text" && typeof prop.value === "string") {
       const substituted = substituteMacroInStr(prop.value, macros);
       if (substituted !== prop.value) {
