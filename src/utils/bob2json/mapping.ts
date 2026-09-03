@@ -396,7 +396,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     propMap: {
       ...COMMON_PROP_MAP,
       ...STYLE_PROP_MAP,
-      // pvNames, lineColors are deferred for now.
+      [PhoebusProperty.TRACES]: "pvNames",
     },
   },
 
