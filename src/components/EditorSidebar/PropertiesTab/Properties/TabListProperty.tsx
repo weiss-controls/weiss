@@ -242,6 +242,7 @@ const TabListProperty: React.FC<TabListPropertyProps> = ({ propName, label, valu
               flexDirection: "column",
               alignItems: "center",
               width: "100%",
+              gap: 0.5,
             }}
           >
             <Box sx={{ display: "flex", width: "100%", alignItems: "center", gap: 0.5 }}>
