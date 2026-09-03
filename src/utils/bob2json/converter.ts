@@ -25,6 +25,7 @@ import {
   mapEmbeddedDisplayPath,
   mapHAlign,
   mapLineStyle,
+  mapNavTabs,
   mapStates,
   mapVAlign,
   normalizeTooltipMacros,
@@ -179,6 +180,20 @@ function convertWidget(
         warnings.push(
           `Widget "${phWidget.name ?? phWidget.type}": ` +
             `could not parse states for "${phoebusKey}" - skipped.`,
+        );
+      }
+      continue;
+    }
+
+    // Navigation tabs
+    if (phoebusKey === PhoebusProperty.TABS) {
+      const mappedTabs = mapNavTabs(raw);
+      if (mappedTabs !== undefined) {
+        properties[weissKey] = mappedTabs;
+      } else {
+        warnings.push(
+          `Widget "${phWidget.name ?? phWidget.type}": ` +
+            `could not parse tabs for "${phoebusKey}" - skipped.`,
         );
       }
       continue;

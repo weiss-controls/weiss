@@ -11,6 +11,7 @@ import type {
   PhoebusColor,
   PhoebusDisplay,
   PhoebusFont,
+  PhoebusNavTab,
   PhoebusState,
   PhoebusWidget,
 } from "./types";
@@ -156,6 +157,28 @@ function parseItems(itemsEl: Element): string[] {
 }
 
 /**
+ * Parses a navtabs <tabs> element into PhoebusNavTab entries.
+ *
+ * Shape:
+ *   <tabs>
+ *     <tab>
+ *       <name>Tab 1</name>
+ *       <file>bla</file>
+ *       <macros><key>value</key></macros>
+ *     </tab>
+ *   </tabs>
+ */
+function parseNavTabs(tabsEl: Element): PhoebusNavTab[] {
+  return Array.from(tabsEl.getElementsByTagName(PhoebusElement.TAB)).map((tabEl) => {
+    const name = childText(tabEl, PhoebusElement.NAME) ?? "";
+    const file = childText(tabEl, PhoebusProperty.FILE);
+    const macrosEl = directChild(tabEl, PhoebusProperty.MACROS);
+    const macros = macrosEl ? parseMacros(macrosEl) : undefined;
+    return { name, file, macros };
+  });
+}
+
+/**
  * Parses a <macros> block into a string record.
  * Each direct child tag name becomes a macro key; text content is the value.
  */
@@ -176,6 +199,7 @@ const COLOR_WRAPPER_TAGS: ReadonlySet<ColorWrapperProperty> = new Set([
   PhoebusProperty.ON_COLOR,
   PhoebusProperty.OFF_COLOR,
   PhoebusProperty.LINE_COLOR,
+  PhoebusProperty.SELECTED_COLOR,
 ]);
 
 const PHOEBUS_PROPERTY_VALUES = new Set<string>(Object.values(PhoebusProperty));
@@ -206,8 +230,14 @@ function parseWidget(widgetEl: Element): PhoebusWidget {
       continue;
     }
 
-    // Tab children. Each <tab> contains a <children> block.
+    // Tab children. Navtabs' <tab> entries carry name/file/macros; group-tabs'
+    // <tab> entries instead contain a <children> block of nested widgets.
     if (tag === PhoebusElement.TABS) {
+      if (type === PhoebusWidgetType.NAVIGATION_TABS) {
+        properties.set(PhoebusProperty.TABS, parseNavTabs(child));
+        continue;
+      }
+
       const tabWidgets: PhoebusWidget[] = [];
       for (const tabEl of Array.from(child.getElementsByTagName(PhoebusElement.TAB))) {
         const childrenEl = tabEl.getElementsByTagName(PhoebusElement.CHILDREN)[0];

@@ -25,6 +25,7 @@ Converts Phoebus Display Builder XML files (`.bob`) into WEISS widget arrays (`.
 | `picture`                             | `Image`                             | ✅                                                    |
 | `embedded`                            | `EmbeddedDisplay`                   | ✅ `.bob` path rewritten to `.opi.json`               |
 | `group`                               | `Group`                             | ✅                                                    |
+| `navtabs`                             | `NavigationTabs`                    | ✅ per-tab colors not supported                       |
 | `xyplot`                              | `GraphXY`                           | 🔶 layout only — `pvNames`/`lineColors` not converted |
 | `stripchart`                          | `GraphY`                            | 🔶 layout only — `pvNames`/`lineColors` not converted |
 | `checkbox`                            | —                                   | 🔶 not implemented                                    |
@@ -35,7 +36,7 @@ Converts Phoebus Display Builder XML files (`.bob`) into WEISS widget arrays (`.
 | `thermometer`                         | —                                   | 🔶 not implemented                                    |
 | `array`                               | —                                   | 🔶 not implemented                                    |
 | `image`                               | —                                   | 🔶 not implemented                                    |
-| `tabs` / `navtabs`                    | —                                   | 🔶 not implemented                                    |
+| `tabs`                                | —                                   | 🔶 not implemented                                    |
 | `slide_button`                        | —                                   | 🔶 not implemented                                    |
 | `thumbwheel`                          | —                                   | 🔶 not implemented                                    |
 | `radio`                               | —                                   | 🔶 not implemented                                    |
