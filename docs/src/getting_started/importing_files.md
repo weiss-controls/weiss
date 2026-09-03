@@ -78,6 +78,7 @@ The current widget suppor, to be extended, is:
 | `picture`                             | `Image`                             | ✅                                                    |
 | `embedded`                            | `EmbeddedDisplay`                   | ✅ `.bob` path rewritten to `.opi.json`               |
 | `group`                               | `Group`                             | ✅                                                    |
+| `navtabs`                             | `NavigationTabs`                    | ✅ per-tab colors not supported                       |
 | `xyplot`                              | `GraphXY`                           | 🔶 layout only — `pvNames`/`lineColors` not converted |
 | `stripchart`                          | `GraphY`                            | 🔶 layout only — `pvNames`/`lineColors` not converted |
 | `checkbox`                            | —                                   | 🔶 not implemented                                    |
@@ -88,7 +89,7 @@ The current widget suppor, to be extended, is:
 | `thermometer`                         | —                                   | 🔶 not implemented                                    |
 | `array`                               | —                                   | 🔶 not implemented                                    |
 | `image`                               | —                                   | 🔶 not implemented                                    |
-| `tabs` / `navtabs`                    | —                                   | 🔶 not implemented                                    |
+| `tabs`                                | —                                   | 🔶 not implemented                                    |
 | `slide_button`                        | —                                   | 🔶 not implemented                                    |
 | `thumbwheel`                          | —                                   | 🔶 not implemented                                    |
 | `radio`                               | —                                   | 🔶 not implemented                                    |
@@ -105,7 +106,28 @@ The current widget suppor, to be extended, is:
 | `polygon`                             | —                                   | ❌ won't implement                                    |
 | `webbrowser`                          | —                                   | ❌ won't implement                                    |
 
-### Add related files
+The current feature support, to be extended, is:
+
+| Feature                                              | Status                              |
+| ---------------------------------------------------- | ----------------------------------- |
+| Position & size                                      | ✅                                  |
+| Colors (background, foreground, border, on/off/line) | ✅                                  |
+| Font (family, size, bold, italic)                    | ✅                                  |
+| Text alignment (horizontal & vertical)               | ✅                                  |
+| Visibility                                           | ✅                                  |
+| Tooltip                                              | ✅                                  |
+| Transparent background                               | ✅                                  |
+| Display macros                                       | ✅                                  |
+| Grid settings (color, visibility, step)              | ✅                                  |
+| Embedded display path (`.bob` → `.opi.json`)         | ✅                                  |
+| Multi-state LED states (value, color, label)         | ✅                                  |
+| Actions                                              | ✅ (write PV and open display only) |
+| Rules                                                | 🔶 not implemented                  |
+| Plot PV names & line colors                          | 🔶 not implemented                  |
+| Tab pane content                                     | 🔶 not implemented                  |
+| Points (polyline / line drawing)                     | 🔶 not implemented                  |
+| Scripts                                              | ❌ won't implement                  |
+| Points (polygon geometry)                            | ❌ won't implement                  |
 
 If the display uses pictures, upload the corresponding `.svg`, `.png`, `.jpg`, or `.jpeg` files to
 the same repository. Make sure the paths used by the imported `Image` widgets match the paths of the
