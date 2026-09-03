@@ -33,6 +33,12 @@ export interface PhoebusNavTab {
   macros?: Record<string, string>;
 }
 
+/** A single <trace> entry of an xyplot/stripchart widget: monitored PV and line color. */
+export interface PhoebusTrace {
+  yPv?: string;
+  color?: PhoebusColor;
+}
+
 export type ColorWrapperProperty =
   | typeof PhoebusProperty.BACKGROUND_COLOR
   | typeof PhoebusProperty.FOREGROUND_COLOR

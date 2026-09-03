@@ -2,8 +2,15 @@
 // Copyright (C) 2026 André Favoto
 
 import { PhoebusAlignment, PhoebusAttribute, PhoebusBoolean, PhoebusProperty } from "../constants";
-import type { PhoebusFont, PhoebusNavTab, PhoebusState, PhoebusWidget } from "../types";
+import type {
+  PhoebusFont,
+  PhoebusNavTab,
+  PhoebusState,
+  PhoebusTrace,
+  PhoebusWidget,
+} from "../types";
 import type { PropertyValue, StateEntry, TabEntry } from "@src/types/widgets";
+import { COLORS } from "@src/constants/constants";
 
 /**
  * Shared value transformation utilities for Phoebus -> WEISS conversion.
@@ -192,6 +199,22 @@ export function mapStates(raw: unknown): StateEntry[] | undefined {
 export function mapEmbeddedDisplayPath(raw: unknown): string | undefined {
   if (typeof raw !== "string") return undefined;
   return raw.replace(/\.bob$/i, ".opi.json");
+}
+
+/** Converts a plot's parsed <traces> entries into parallel pvNames/lineColors arrays. */
+export function mapTraces(raw: unknown): { pvNames: string[]; lineColors: string[] } | undefined {
+  if (!Array.isArray(raw)) return undefined;
+
+  const traces = raw as PhoebusTrace[];
+  const pvNames: string[] = [];
+  const lineColors: string[] = [];
+  for (const trace of traces) {
+    if (!trace.yPv) continue;
+    pvNames.push(trace.yPv);
+    lineColors.push(colorToRgba(trace.color) ?? COLORS.graphLineColor);
+  }
+
+  return pvNames.length > 0 ? { pvNames, lineColors } : undefined;
 }
 
 /** Converts navtabs' parsed <tab> entries into WEISS TabEntry objects. */

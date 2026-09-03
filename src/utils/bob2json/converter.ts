@@ -27,6 +27,7 @@ import {
   mapLineStyle,
   mapNavTabs,
   mapStates,
+  mapTraces,
   mapVAlign,
   normalizeTooltipMacros,
 } from "./converter/valueMappers";
@@ -194,6 +195,21 @@ function convertWidget(
         warnings.push(
           `Widget "${phWidget.name ?? phWidget.type}": ` +
             `could not parse tabs for "${phoebusKey}" - skipped.`,
+        );
+      }
+      continue;
+    }
+
+    // Plot traces
+    if (phoebusKey === PhoebusProperty.TRACES) {
+      const mappedTraces = mapTraces(raw);
+      if (mappedTraces !== undefined) {
+        properties.pvNames = mappedTraces.pvNames;
+        properties.lineColors = mappedTraces.lineColors;
+      } else {
+        warnings.push(
+          `Widget "${phWidget.name ?? phWidget.type}": ` +
+            `could not parse traces for "${phoebusKey}" - skipped.`,
         );
       }
       continue;

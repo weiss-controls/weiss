@@ -13,6 +13,7 @@ import type {
   PhoebusFont,
   PhoebusNavTab,
   PhoebusState,
+  PhoebusTrace,
   PhoebusWidget,
 } from "./types";
 
@@ -179,6 +180,27 @@ function parseNavTabs(tabsEl: Element): PhoebusNavTab[] {
 }
 
 /**
+ * Parses a plot's <traces> element into PhoebusTrace entries.
+ *
+ * Shape:
+ *   <traces>
+ *     <trace>
+ *       <name>...</name>
+ *       <y_pv>$(P)PhasA-Mon</y_pv>
+ *       <color><color red="0" green="0" blue="255"/></color>
+ *     </trace>
+ *   </traces>
+ */
+function parseTraces(tracesEl: Element): PhoebusTrace[] {
+  return Array.from(tracesEl.getElementsByTagName(PhoebusElement.TRACE)).map((traceEl) => {
+    const yPv = childText(traceEl, PhoebusProperty.Y_PV);
+    const colorWrapper = directChild(traceEl, PhoebusElement.COLOR);
+    const color = colorWrapper ? parseColorWrapper(colorWrapper) : undefined;
+    return { yPv, color };
+  });
+}
+
+/**
  * Parses a <macros> block into a string record.
  * Each direct child tag name becomes a macro key; text content is the value.
  */
@@ -249,6 +271,12 @@ function parseWidget(widgetEl: Element): PhoebusWidget {
         }
       }
       properties.set(PhoebusProperty.TABS, tabWidgets);
+      continue;
+    }
+
+    // Plot traces (xyplot / stripchart).
+    if (tag === PhoebusElement.TRACES) {
+      properties.set(PhoebusProperty.TRACES, parseTraces(child));
       continue;
     }
 

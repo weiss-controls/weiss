@@ -38,6 +38,10 @@ export const PhoebusElement = {
   TABS: "tabs",
   TAB: "tab",
   CHILDREN: "children",
+
+  // plot traces
+  TRACES: "traces",
+  TRACE: "trace",
 } as const;
 
 // XML attributes
@@ -134,6 +138,8 @@ export const PhoebusProperty = {
   COLUMNS: "columns",
   STATES: "states",
   TABS: "tabs",
+  TRACES: "traces",
+  Y_PV: "y_pv",
 } as const;
 
 // Widget types
