@@ -53,6 +53,38 @@ const NavigationTabsComp: React.FC<WidgetUpdate> = ({ data }) => {
     setActiveTab((prev) => Math.min(prev, tabs.length - 1));
   }, [tabs.length]);
 
+  /* MUI tab indicator does not follow the correct layout when transform from parent (zoom) is
+   * applied. See https://github.com/mui/material-ui/issues/35631 for details.
+   * Until (and if) this is fixed, we render our own indicator based on the active tab's
+   * position and size.
+   */
+  const tabsBarRef = useRef<HTMLDivElement | null>(null);
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const [indicatorRect, setIndicatorRect] = useState({ start: 0, size: 0 });
+
+  const recomputeIndicator = useCallback(() => {
+    const container = tabsBarRef.current;
+    const activeEl = tabRefs.current[activeTab];
+    if (!container || !activeEl) return;
+    setIndicatorRect(
+      isVertical
+        ? { start: activeEl.offsetTop, size: activeEl.offsetHeight }
+        : { start: activeEl.offsetLeft, size: activeEl.offsetWidth },
+    );
+  }, [activeTab, isVertical]);
+
+  useEffect(() => {
+    recomputeIndicator();
+  }, [recomputeIndicator, tabs]);
+
+  useEffect(() => {
+    const container = tabsBarRef.current;
+    if (!container || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(recomputeIndicator);
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, [recomputeIndicator]);
+
   const repoId = selectedFile?.repo_id ?? "";
   const opiPath = selectedFile?.path ?? "";
 
@@ -162,12 +194,8 @@ const NavigationTabsComp: React.FC<WidgetUpdate> = ({ data }) => {
         boxSizing: "border-box",
       }}
     >
-      <Tabs
-        orientation={isVertical ? "vertical" : "horizontal"}
-        variant="scrollable"
-        scrollButtons={false}
-        value={activeTab}
-        onChange={(_, newValue: number) => setActiveTab(newValue)}
+      <Box
+        ref={tabsBarRef}
         sx={{
           position: "absolute",
           top: 0,
@@ -176,27 +204,51 @@ const NavigationTabsComp: React.FC<WidgetUpdate> = ({ data }) => {
             ? { width: tabBarSize, height: "100%", borderRight: 1 }
             : { height: tabBarSize, width: "100%", borderBottom: 1 }),
           borderColor: "divider",
-          "& .MuiTabs-indicator": {
-            backgroundColor: activeTabColor,
-          },
-          "& .MuiTab-root": {
-            color: textColor,
-            fontSize,
-            fontFamily,
-            fontWeight: fontBold ? "bold" : "normal",
-            fontStyle: fontItalic ? "italic" : "normal",
-            minHeight: isVertical ? undefined : tabBarSize,
-          },
         }}
       >
-        {tabs.map((tab, index) => (
-          <Tab
-            key={index}
-            label={tab.label || `Tab ${index + 1}`}
-            sx={{ textTransform: "none", "&.Mui-selected": { color: activeTabColor } }}
-          />
-        ))}
-      </Tabs>
+        <Tabs
+          orientation={isVertical ? "vertical" : "horizontal"}
+          variant="scrollable"
+          scrollButtons={false}
+          value={activeTab}
+          onChange={(_, newValue: number) => setActiveTab(newValue)}
+          slotProps={{ indicator: { style: { display: "none" } } }}
+          sx={{
+            width: "100%",
+            height: "100%",
+            "& .MuiTab-root": {
+              color: textColor,
+              fontSize,
+              fontFamily,
+              fontWeight: fontBold ? "bold" : "normal",
+              fontStyle: fontItalic ? "italic" : "normal",
+              minHeight: isVertical ? undefined : tabBarSize,
+            },
+          }}
+        >
+          {tabs.map((tab, index) => (
+            <Tab
+              key={index}
+              ref={(el) => {
+                tabRefs.current[index] = el as HTMLButtonElement | null;
+              }}
+              label={tab.label || `Tab ${index + 1}`}
+              sx={{ textTransform: "none", "&.Mui-selected": { color: activeTabColor } }}
+            />
+          ))}
+        </Tabs>
+        <Box
+          sx={{
+            position: "absolute",
+            pointerEvents: "none",
+            backgroundColor: activeTabColor,
+            transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+            ...(isVertical
+              ? { left: 0, width: 2, top: indicatorRect.start, height: indicatorRect.size }
+              : { bottom: 0, height: 2, left: indicatorRect.start, width: indicatorRect.size }),
+          }}
+        />
+      </Box>
       {/* Active tab's content is injected as `data.children` and rendered separately by WidgetRenderer. */}
     </Box>
   );
