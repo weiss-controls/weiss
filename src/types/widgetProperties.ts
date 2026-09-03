@@ -119,7 +119,7 @@ export const PROPERTY_SCHEMAS = {
   // EmbeddedDisplay and NavigationButton
   displayPath:      defineProp({ selType: "repoFile", label: "Display path", value: "" as string, category: "General", options: [".opi.json"] }),
   // NavigationTabs
-  tabs:            defineProp({ selType: "tabList", label: "Tabs", value: [{ label: "Tab 1", displayPath: "", macros: {} }] as TabEntry[], category: "General" }),
+  tabs:            defineProp({ selType: "tabList", label: "Tabs", value: [{ label: "Tab 1", displayPath: "", macros: {} }] as TabEntry[], category: "Layout" }),
   activeTabColor:   defineProp({ selType: "colorSel", label: "Active tab color", value: COLORS.midDarkBlue, category: "Style" }),
   tabOrientation:  defineProp({ selType: "select", label: "Tab Orientation", value: "horizontal" as string, options: ["horizontal", "vertical"], category: "Layout" }),
   target:          defineProp({ selType: "text", label: "Target", value: "" as string, category: "General" }),

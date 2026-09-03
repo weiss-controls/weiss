@@ -219,68 +219,88 @@ const TabListProperty: React.FC<TabListPropertyProps> = ({ propName, label, valu
             borderColor: "divider",
             borderRadius: 1,
             display: "flex",
-            flexDirection: "column",
-            gap: 0.5,
+            flexDirection: "row",
+            width: "100%",
           }}
         >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+          <Box
+            sx={{
+              mr: 1,
+              width: "10%",
+              alignItems: "center",
+              display: "flex",
+              justifyContent: "center",
+            }}
+          >
             <Typography variant="caption" sx={{ color: "text.secondary" }}>
-              {index}:
+              {index + 1}
             </Typography>
-            <TextField
-              size="small"
-              label="Tab Label"
-              value={tab.label}
-              onChange={(e) => handleLabelChange(index, e.target.value)}
-              onBlur={handleLabelCommit}
-              sx={{ flex: 1 }}
-              slotProps={{ htmlInput: { style: { fontSize: 12 } } }}
-            />
-            <IconButton size="small" color="primary" onClick={() => handleAdd(index)}>
-              <AddIcon fontSize="small" />
-            </IconButton>
-            <IconButton
-              size="small"
-              color="error"
-              onClick={() => handleRemove(index)}
-              disabled={localTabs.length === 1}
-            >
-              <RemoveIcon fontSize="small" />
-            </IconButton>
           </Box>
-
-          <TextField
-            size="small"
-            label="Display path"
-            value={tab.displayPath}
-            onChange={(e) => {
-              const newTabs = localTabs.map((t, i) =>
-                i === index ? { ...t, displayPath: e.target.value } : t,
-              );
-              setLocalTabs(newTabs);
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              width: "100%",
             }}
-            onBlur={handleLabelCommit}
-            slotProps={{
-              input: {
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <Tooltip title="Browse repo files">
-                      <span>
-                        <IconButton edge="end" size="small" onClick={() => setBrowseIndex(index)}>
-                          <FolderOpenIcon fontSize="small" />
-                        </IconButton>
-                      </span>
-                    </Tooltip>
-                  </InputAdornment>
-                ),
-              },
-            }}
-          />
+          >
+            <Box sx={{ display: "flex", width: "100%", alignItems: "center", gap: 0.5 }}>
+              <TextField
+                size="small"
+                label="Tab Label"
+                value={tab.label}
+                onChange={(e) => handleLabelChange(index, e.target.value)}
+                onBlur={handleLabelCommit}
+                sx={{ flex: 1 }}
+                slotProps={{ htmlInput: { style: { fontSize: 12 } } }}
+              />
+              <IconButton size="small" color="primary" onClick={() => handleAdd(index)}>
+                <AddIcon fontSize="small" />
+              </IconButton>
+              <IconButton
+                size="small"
+                color="error"
+                onClick={() => handleRemove(index)}
+                disabled={localTabs.length === 1}
+              >
+                <RemoveIcon fontSize="small" />
+              </IconButton>
+            </Box>
 
-          <TabMacrosEditor
-            macros={tab.macros}
-            onCommit={(macros) => handleMacrosCommit(index, macros)}
-          />
+            <TextField
+              sx={{ width: "100%" }}
+              size="small"
+              label="Display path"
+              value={tab.displayPath}
+              onChange={(e) => {
+                const newTabs = localTabs.map((t, i) =>
+                  i === index ? { ...t, displayPath: e.target.value } : t,
+                );
+                setLocalTabs(newTabs);
+              }}
+              onBlur={handleLabelCommit}
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <Tooltip title="Browse repo files">
+                        <span>
+                          <IconButton edge="end" size="small" onClick={() => setBrowseIndex(index)}>
+                            <FolderOpenIcon fontSize="small" />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
+
+            <TabMacrosEditor
+              macros={tab.macros}
+              onCommit={(macros) => handleMacrosCommit(index, macros)}
+            />
+          </Box>
         </Box>
       ))}
 
