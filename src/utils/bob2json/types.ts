@@ -26,13 +26,21 @@ export interface PhoebusState {
   color?: PhoebusColor;
 }
 
+/** A single <tab> entry of a navtabs widget: display name, linked file, and its own macros. */
+export interface PhoebusNavTab {
+  name: string;
+  file?: string;
+  macros?: Record<string, string>;
+}
+
 export type ColorWrapperProperty =
   | typeof PhoebusProperty.BACKGROUND_COLOR
   | typeof PhoebusProperty.FOREGROUND_COLOR
   | typeof PhoebusProperty.BORDER_COLOR
   | typeof PhoebusProperty.ON_COLOR
   | typeof PhoebusProperty.OFF_COLOR
-  | typeof PhoebusProperty.LINE_COLOR;
+  | typeof PhoebusProperty.LINE_COLOR
+  | typeof PhoebusProperty.SELECTED_COLOR;
 
 // Phoebus IR
 

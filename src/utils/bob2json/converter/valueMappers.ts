@@ -2,8 +2,8 @@
 // Copyright (C) 2026 André Favoto
 
 import { PhoebusAlignment, PhoebusAttribute, PhoebusBoolean, PhoebusProperty } from "../constants";
-import type { PhoebusFont, PhoebusState, PhoebusWidget } from "../types";
-import type { PropertyValue, StateEntry } from "@src/types/widgets";
+import type { PhoebusFont, PhoebusNavTab, PhoebusState, PhoebusWidget } from "../types";
+import type { PropertyValue, StateEntry, TabEntry } from "@src/types/widgets";
 
 /**
  * Shared value transformation utilities for Phoebus -> WEISS conversion.
@@ -192,6 +192,20 @@ export function mapStates(raw: unknown): StateEntry[] | undefined {
 export function mapEmbeddedDisplayPath(raw: unknown): string | undefined {
   if (typeof raw !== "string") return undefined;
   return raw.replace(/\.bob$/i, ".opi.json");
+}
+
+/** Converts navtabs' parsed <tab> entries into WEISS TabEntry objects. */
+export function mapNavTabs(raw: unknown): TabEntry[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+
+  const tabs = raw as PhoebusNavTab[];
+  const mapped: TabEntry[] = tabs.map((tab) => ({
+    label: tab.name,
+    displayPath: mapEmbeddedDisplayPath(tab.file) ?? "",
+    macros: tab.macros ?? {},
+  }));
+
+  return mapped.length > 0 ? mapped : undefined;
 }
 
 export function getNumericProperty(

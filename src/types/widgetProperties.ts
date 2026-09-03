@@ -7,6 +7,7 @@ import {
   type WidgetProperties,
   type ValueDisplayFormat,
   type StateEntry,
+  type TabEntry,
   valueDisplayFormats,
 } from "./widgets";
 import { COLORS } from "@src/constants/constants";
@@ -117,7 +118,11 @@ export const PROPERTY_SCHEMAS = {
   keepAspectRatio: defineProp({ selType: "boolean", label: "Keep aspect ratio", value: true as boolean, category: "Style" }),
   // EmbeddedDisplay and NavigationButton
   displayPath:      defineProp({ selType: "repoFile", label: "Display path", value: "" as string, category: "General", options: [".opi.json"] }),
-  target:           defineProp({ selType: "text", label: "Target", value: "" as string, category: "General" }),
+  // NavigationTabs
+  tabs:            defineProp({ selType: "tabList", label: "Tabs", value: [{ label: "Tab 1", displayPath: "", macros: {} }] as TabEntry[], category: "Layout" }),
+  activeTabColor:   defineProp({ selType: "colorSel", label: "Active tab color", value: COLORS.midDarkBlue, category: "Style" }),
+  tabOrientation:  defineProp({ selType: "select", label: "Tab Orientation", value: "horizontal" as string, options: ["horizontal", "vertical"], category: "Layout" }),
+  target:          defineProp({ selType: "text", label: "Target", value: "" as string, category: "General" }),
   // MultiStateLED
   stateList:       defineProp({ selType: "stateList", label: "States", value: [{ value: "0", color: COLORS.offColor, label: "" }, { value: "1", color: COLORS.onColor, label: "" }, { value: "", color: COLORS.midGray, label: "" }] as StateEntry[], category: "EPICS" }),
 };

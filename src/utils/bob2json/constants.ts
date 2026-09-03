@@ -105,6 +105,7 @@ export const PhoebusProperty = {
   LINE_STYLE: "line_style",
   ON_LABEL: "on_label",
   OFF_LABEL: "off_label",
+  SELECTED_COLOR: "selected_color",
 
   TRANSPARENT: "transparent",
   SQUARE: "square",
@@ -208,6 +209,7 @@ export const COLOR_PROP_KEYS = new Set<PhoebusProperty>([
   PhoebusProperty.ON_COLOR,
   PhoebusProperty.OFF_COLOR,
   PhoebusProperty.LINE_COLOR,
+  PhoebusProperty.SELECTED_COLOR,
 ]);
 
 // Type aliases

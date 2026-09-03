@@ -435,9 +435,14 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.NAVIGATION_TABS]: {
-    weissName: undefined,
+    weissName: "NavigationTabs",
+    hasFont: true,
     propMap: {
       ...COMMON_PROP_MAP,
+      ...STYLE_PROP_MAP,
+      [PhoebusProperty.FOREGROUND_COLOR]: "textColor",
+      [PhoebusProperty.SELECTED_COLOR]: "activeTabColor",
+      [PhoebusProperty.TABS]: "tabs",
     },
   },
 

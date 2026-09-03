@@ -11,14 +11,19 @@ import type { DOMRectLike, ExportedWidget } from "@src/types/widgets";
  */
 
 const computeScreenBounds = (widgets: ExportedWidget[]): DOMRectLike | null => {
-  if (!widgets.length) return null;
+  const withGeometry = widgets.filter(
+    (w) =>
+      Number.isFinite(w.properties.x as number) &&
+      Number.isFinite(w.properties.y as number) &&
+      Number.isFinite(w.properties.width as number) &&
+      Number.isFinite(w.properties.height as number),
+  );
+  if (!withGeometry.length) return null;
 
-  const xs = widgets.map((w) => w.properties.x as number);
-  const ys = widgets.map((w) => w.properties.y as number);
-  const ws = widgets.map((w) => w.properties.width as number);
-  const hs = widgets.map((w) => w.properties.height as number);
-
-  if (!xs.length || !ys.length || !ws.length || !hs.length) return null;
+  const xs = withGeometry.map((w) => w.properties.x as number);
+  const ys = withGeometry.map((w) => w.properties.y as number);
+  const ws = withGeometry.map((w) => w.properties.width as number);
+  const hs = withGeometry.map((w) => w.properties.height as number);
 
   const minX = Math.min(...xs);
   const minY = Math.min(...ys);
@@ -29,11 +34,11 @@ const computeScreenBounds = (widgets: ExportedWidget[]): DOMRectLike | null => {
 };
 
 const shiftWidgetPosition = (widget: ExportedWidget, dx: number, dy: number): void => {
-  if (typeof widget.properties.x === "number") {
-    widget.properties.x += dx;
+  if (Number.isFinite(widget.properties.x as number)) {
+    (widget.properties.x as number) += dx;
   }
-  if (typeof widget.properties.y === "number") {
-    widget.properties.y += dy;
+  if (Number.isFinite(widget.properties.y as number)) {
+    (widget.properties.y as number) += dy;
   }
 
   const children = widget.children;

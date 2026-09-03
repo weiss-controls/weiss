@@ -162,6 +162,15 @@ export const PHOEBUS_WIDGET_DEFAULTS: Partial<
       [PhoebusProperty.HEIGHT]: 20,
     },
   },
+
+  // Containers
+
+  [PhoebusWidgetType.NAVIGATION_TABS]: {
+    inputDefaults: {
+      [PhoebusProperty.WIDTH]: 500,
+      [PhoebusProperty.HEIGHT]: 300,
+    },
+  },
 };
 
 /**

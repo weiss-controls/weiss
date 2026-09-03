@@ -85,7 +85,8 @@ const WidgetRenderer: React.FC<RendererProps> = ({ scale }) => {
     const canDrag = inEditMode && !isPanning && !isChild && !isEmbedded && !isTextEditing;
     const canResize = inEditMode && !isPanning && !isChild;
     const isGroup = w.children?.length;
-    const childIsEmbedded = isEmbedded || w.widgetName === "EmbeddedDisplay";
+    const childIsEmbedded =
+      isEmbedded || w.widgetName === "EmbeddedDisplay" || w.widgetName === "NavigationTabs";
     const groupHasSelectedChild =
       isGroup && !isSelected && hasSelectedDescendant(w, selectedWidgetIDs);
 

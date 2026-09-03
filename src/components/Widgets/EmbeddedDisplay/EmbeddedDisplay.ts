@@ -11,7 +11,7 @@ export const EmbeddedDisplay: WidgetDefinition = {
   widgetName: "EmbeddedDisplay",
   widgetIcon: ScreenshotMonitorIcon,
   widgetLabel: "Embedded Display",
-  category: "Basic",
+  category: "Layout",
   defaultProperties: {
     alias: PROPERTY_SCHEMAS.alias,
     x: PROPERTY_SCHEMAS.x,
