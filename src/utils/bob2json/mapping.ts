@@ -48,6 +48,7 @@ const SINGLE_LED_PROP_MAP: PropertyMap = {
   [PhoebusProperty.OFF_COLOR]: "offColor",
   [PhoebusProperty.ON_LABEL]: "onLabel",
   [PhoebusProperty.OFF_LABEL]: "offLabel",
+  [PhoebusProperty.LABELS_FROM_PV]: "labelFromPV",
 };
 
 export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
@@ -121,6 +122,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
       ...COMMON_PROP_MAP,
       ...STYLE_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
+      [PhoebusProperty.LABELS_FROM_PV]: "labelFromPV",
       [PhoebusProperty.STATES]: "stateList",
     },
   },
@@ -205,6 +207,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
       ...STYLE_PROP_MAP,
       ...TEXT_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
+      [PhoebusProperty.LABELS_FROM_PV]: "labelFromPV",
       [PhoebusProperty.ENABLED]: "disabled",
     },
   },
@@ -227,6 +230,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
       ...COMMON_PROP_MAP,
       ...STYLE_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
+      [PhoebusProperty.LABELS_FROM_PV]: "labelFromPV",
       [PhoebusProperty.ENABLED]: "disabled",
     },
   },
