@@ -186,6 +186,7 @@ function parseNavTabs(tabsEl: Element): PhoebusNavTab[] {
  *   <traces>
  *     <trace>
  *       <name>...</name>
+ *       <x_pv>$(P)Time</x_pv>
  *       <y_pv>$(P)PhasA-Mon</y_pv>
  *       <color><color red="0" green="0" blue="255"/></color>
  *     </trace>
@@ -193,10 +194,11 @@ function parseNavTabs(tabsEl: Element): PhoebusNavTab[] {
  */
 function parseTraces(tracesEl: Element): PhoebusTrace[] {
   return Array.from(tracesEl.getElementsByTagName(PhoebusElement.TRACE)).map((traceEl) => {
+    const xPv = childText(traceEl, PhoebusProperty.X_PV);
     const yPv = childText(traceEl, PhoebusProperty.Y_PV);
     const colorWrapper = directChild(traceEl, PhoebusElement.COLOR);
     const color = colorWrapper ? parseColorWrapper(colorWrapper) : undefined;
-    return { yPv, color };
+    return { xPv, yPv, color };
   });
 }
 

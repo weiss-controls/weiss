@@ -139,6 +139,7 @@ export const PhoebusProperty = {
   STATES: "states",
   TABS: "tabs",
   TRACES: "traces",
+  X_PV: "x_pv",
   Y_PV: "y_pv",
 } as const;
 

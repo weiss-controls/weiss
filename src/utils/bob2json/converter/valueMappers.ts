@@ -201,13 +201,24 @@ export function mapEmbeddedDisplayPath(raw: unknown): string | undefined {
   return raw.replace(/\.bob$/i, ".opi.json");
 }
 
-/** Converts a plot's parsed <traces> entries into parallel pvNames/lineColors arrays. */
-export function mapTraces(raw: unknown): { pvNames: string[]; lineColors: string[] } | undefined {
+/** Converts parsed plot traces into WEISS PV and line-color arrays. */
+export function mapTraces(
+  raw: unknown,
+  xyPlot = false,
+): { pvNames: string[]; lineColors: string[] } | undefined {
   if (!Array.isArray(raw)) return undefined;
 
   const traces = raw as PhoebusTrace[];
   const pvNames: string[] = [];
   const lineColors: string[] = [];
+  let xPv: string | undefined;
+
+  for (const trace of traces) {
+    if (xyPlot && !xPv && trace.xPv) xPv = trace.xPv;
+  }
+
+  if (xPv) pvNames.push(xPv);
+
   for (const trace of traces) {
     if (!trace.yPv) continue;
     pvNames.push(trace.yPv);

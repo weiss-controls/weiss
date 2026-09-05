@@ -116,7 +116,7 @@ export const PHOEBUS_WIDGET_DEFAULTS: Partial<
   [PhoebusWidgetType.SPINNER]: {
     inputDefaults: {
       [PhoebusProperty.WIDTH]: 100,
-      [PhoebusProperty.HEIGHT]: 30,
+      [PhoebusProperty.HEIGHT]: 20,
     },
   },
   // Monitors

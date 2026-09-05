@@ -281,6 +281,20 @@ function convertWidget(
     if (converted !== null) children.push(converted);
   }
 
+  if (
+    phWidget.type === PhoebusWidgetType.STRIP_CHART ||
+    phWidget.type === PhoebusWidgetType.XY_PLOT
+  ) {
+    const mappedTraces = mapTraces(
+      phWidget.properties.get(PhoebusProperty.TRACES),
+      phWidget.type === PhoebusWidgetType.XY_PLOT,
+    );
+    if (mappedTraces !== undefined) {
+      properties.pvNames = mappedTraces.pvNames;
+      properties.lineColors = mappedTraces.lineColors;
+    }
+  }
+
   const widgetOutputDefaults = PHOEBUS_WIDGET_DEFAULTS[phWidget.type]?.outputDefaults;
   if (widgetOutputDefaults) {
     Object.assign(properties, widgetOutputDefaults);
