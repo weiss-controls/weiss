@@ -109,6 +109,7 @@ export const PhoebusProperty = {
   LINE_STYLE: "line_style",
   ON_LABEL: "on_label",
   OFF_LABEL: "off_label",
+  LABELS_FROM_PV: "labels_from_pv",
   SELECTED_COLOR: "selected_color",
 
   TRANSPARENT: "transparent",
@@ -139,6 +140,7 @@ export const PhoebusProperty = {
   STATES: "states",
   TABS: "tabs",
   TRACES: "traces",
+  X_PV: "x_pv",
   Y_PV: "y_pv",
 } as const;
 

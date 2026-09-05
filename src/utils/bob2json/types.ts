@@ -33,8 +33,9 @@ export interface PhoebusNavTab {
   macros?: Record<string, string>;
 }
 
-/** A single <trace> entry of an xyplot/stripchart widget: monitored PV and line color. */
+/** A single <trace> entry of an xyplot/stripchart widget: monitored PVs and line color. */
 export interface PhoebusTrace {
+  xPv?: string;
   yPv?: string;
   color?: PhoebusColor;
 }
