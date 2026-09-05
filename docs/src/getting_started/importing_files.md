@@ -25,7 +25,6 @@ Be sure to have all image files or embedded displays used by your OPI at hand, a
 need to be uploaded or imported.
 
 ![Example CS-Studio display](../_static/cs-studio-screen.gif)
-<!-- TODO: Add an image showing a CS-Studio/Phoebus display ready to export. -->
 
 ### Import the display
 
@@ -34,100 +33,9 @@ Click **Import** in the application header, select **From CSS/Phoebus**, and cho
 from your computer.
 
 ![Import a CS-Studio display](../_static/import-cs-studio.gif)
-<!-- TODO: Replace the placeholder above with an import animation or screenshot. -->
 
 Before the import starts, WEISS will show a warning that the result may require validation. Confirm
 the message to continue. The converted widgets will be added to the current OPI.
-
-:::{important} Not all Phoebus widgets and features are supported. The unsupported widgets will be
-substituted by a dashed outline as placeholder, and a warning will be shown. Check next section for
-details on supported widgets and features.
-
-The goal of this tool is to reduce the manual effort required to recreate already existent displays,
-but does not eliminate the need for checking and validating the imported application.  
-:::
-
-### Review the conversion
-
-Inspect the imported display in the editor. Check the widget positions, dimensions, colors, fonts,
-and text alignment, then open the properties sidebar for any PV names or display macros that need to
-be updated.
-
-If the importer finds limitations, WEISS will show a warning after the import. Review each warning
-and adjust the affected widget manually. Unsupported widgets are not converted into functional WEISS
-widgets.
-
-The current widget suppor, to be extended, is:
-
-| Phoebus type                          | WEISS widget                        | Status                                                |
-| ------------------------------------- | ----------------------------------- | ----------------------------------------------------- |
-| `label`                               | `TextLabel`                         | ✅                                                    |
-| `textupdate`                          | `TextUpdate`                        | ✅                                                    |
-| `textentry`                           | `InputField`                        | ✅                                                    |
-| `action_button`                       | `ActionButton` / `NavigationButton` | ✅ map based on action type                           |
-| `bool_button`                         | `ToggleButton`                      | ✅                                                    |
-| `combo`                               | `SelectionBox`                      | ✅                                                    |
-| `spinner`                             | `Spinner`                           | ✅                                                    |
-| `scaledslider`                        | `Slider`                            | ✅                                                    |
-| `led`                                 | `BitIndicator`                      | ✅                                                    |
-| `multi_state_led`                     | `MultiStateLED`                     | ✅                                                    |
-| `byte_monitor`                        | `MultiBitIndicator`                 | ✅                                                    |
-| `progressbar`                         | `ProgressBar`                       | ✅                                                    |
-| `rectangle`                           | `Rectangle`                         | ✅                                                    |
-| `ellipse`                             | `Ellipse`                           | ✅                                                    |
-| `picture`                             | `Image`                             | ✅                                                    |
-| `embedded`                            | `EmbeddedDisplay`                   | ✅ `.bob` path rewritten to `.opi.json`               |
-| `group`                               | `Group`                             | ✅                                                    |
-| `navtabs`                             | `NavigationTabs`                    | ✅ per-tab colors not supported                       |
-| `xyplot`                              | `GraphXY`                           | 🔶 layout only — `pvNames`/`lineColors` not converted |
-| `stripchart`                          | `GraphY`                            | 🔶 layout only — `pvNames`/`lineColors` not converted |
-| `checkbox`                            | —                                   | 🔶 not implemented                                    |
-| `choice`                              | —                                   | 🔶 not implemented                                    |
-| `meter`                               | —                                   | 🔶 not implemented                                    |
-| `linearmeter`                         | —                                   | 🔶 not implemented                                    |
-| `tank`                                | —                                   | 🔶 not implemented                                    |
-| `thermometer`                         | —                                   | 🔶 not implemented                                    |
-| `array`                               | —                                   | 🔶 not implemented                                    |
-| `image`                               | —                                   | 🔶 not implemented                                    |
-| `tabs`                                | —                                   | 🔶 not implemented                                    |
-| `slide_button`                        | —                                   | 🔶 not implemented                                    |
-| `thumbwheel`                          | —                                   | 🔶 not implemented                                    |
-| `radio`                               | —                                   | 🔶 not implemented                                    |
-| `table`                               | —                                   | 🔶 not implemented                                    |
-| `polyline`                            | —                                   | 🔶 not implemented                                    |
-| `template`                            | —                                   | 🔶 not implemented                                    |
-| `3d viewer`                           | —                                   | 🔶 not implemented                                    |
-| `fileselector`                        | —                                   | ❌ won't implement                                    |
-| `text-symbol`                         | —                                   | ❌ won't implement                                    |
-| `symbol`                              | —                                   | ❌ won't implement                                    |
-| `scrollbar`                           | —                                   | ❌ won't implement                                    |
-| `databrowser` / `waterfallplotwidget` | —                                   | ❌ won't implement                                    |
-| `arc`                                 | —                                   | ❌ won't implement                                    |
-| `polygon`                             | —                                   | ❌ won't implement                                    |
-| `webbrowser`                          | —                                   | ❌ won't implement                                    |
-
-The current feature support, to be extended, is:
-
-| Feature                                              | Status                              |
-| ---------------------------------------------------- | ----------------------------------- |
-| Position & size                                      | ✅                                  |
-| Colors (background, foreground, border, on/off/line) | ✅                                  |
-| Font (family, size, bold, italic)                    | ✅                                  |
-| Text alignment (horizontal & vertical)               | ✅                                  |
-| Visibility                                           | ✅                                  |
-| Tooltip                                              | ✅                                  |
-| Transparent background                               | ✅                                  |
-| Display macros                                       | ✅                                  |
-| Grid settings (color, visibility, step)              | ✅                                  |
-| Embedded display path (`.bob` → `.opi.json`)         | ✅                                  |
-| Multi-state LED states (value, color, label)         | ✅                                  |
-| Actions                                              | ✅ (write PV and open display only) |
-| Rules                                                | 🔶 not implemented                  |
-| Plot PV names & line colors                          | 🔶 not implemented                  |
-| Tab pane content                                     | 🔶 not implemented                  |
-| Points (polyline / line drawing)                     | 🔶 not implemented                  |
-| Scripts                                              | ❌ won't implement                  |
-| Points (polygon geometry)                            | ❌ won't implement                  |
 
 If the display uses pictures, upload the corresponding `.svg`, `.png`, `.jpg`, or `.jpeg` files to
 the same repository. Make sure the paths used by the imported `Image` widgets match the paths of the
@@ -135,6 +43,88 @@ uploaded files.
 
 For embedded displays, import each referenced `.bob` file using the same proccess as the main
 display. Make sure the path on the main display matches the location of the imported files.
+
+:::{important} Not all Phoebus widgets and features are supported. The unsupported widgets will be
+substituted by a dashed outline as placeholder, and a warning will be shown. Check next section for
+details on supported widgets and features.  
+:::
+
+### Review the conversion
+
+**The goal of this tool is to reduce the manual effort required to recreate already existent
+displays**, but does not eliminate the need for checking and validating your OPI in WEISS. Manual
+adjustments may be needed, especially for more complex widgets or rules.
+
+The current widget support is:
+
+| Phoebus type                          | WEISS widget                        | Status                                  |
+| ------------------------------------- | ----------------------------------- | --------------------------------------- |
+| `label`                               | `TextLabel`                         | ✅                                      |
+| `textupdate`                          | `TextUpdate`                        | ✅                                      |
+| `textentry`                           | `InputField`                        | ✅                                      |
+| `action_button`                       | `ActionButton` / `NavigationButton` | ✅ map based on action type             |
+| `bool_button`                         | `ToggleButton`                      | ✅                                      |
+| `combo`                               | `SelectionBox`                      | ✅                                      |
+| `spinner`                             | `Spinner`                           | ✅                                      |
+| `scaledslider`                        | `Slider`                            | ✅                                      |
+| `led`                                 | `BitIndicator`                      | ✅                                      |
+| `multi_state_led`                     | `MultiStateLED`                     | ✅                                      |
+| `byte_monitor`                        | `MultiBitIndicator`                 | ✅                                      |
+| `progressbar`                         | `ProgressBar`                       | ✅                                      |
+| `rectangle`                           | `Rectangle`                         | ✅                                      |
+| `ellipse`                             | `Ellipse`                           | ✅                                      |
+| `picture`                             | `Image`                             | ✅                                      |
+| `embedded`                            | `EmbeddedDisplay`                   | ✅ `.bob` path rewritten to `.opi.json` |
+| `group`                               | `Group`                             | ✅                                      |
+| `navtabs`                             | `NavigationTabs`                    | ✅ per-tab colors not supported         |
+| `xyplot`                              | `GraphXY`                           | ✅                                      |
+| `stripchart`                          | `GraphY`                            | ✅                                      |
+| `checkbox`                            | —                                   | 🔶 not implemented                      |
+| `choice`                              | —                                   | 🔶 not implemented                      |
+| `meter`                               | —                                   | 🔶 not implemented                      |
+| `linearmeter`                         | —                                   | 🔶 not implemented                      |
+| `tank`                                | —                                   | 🔶 not implemented                      |
+| `thermometer`                         | —                                   | 🔶 not implemented                      |
+| `array`                               | —                                   | 🔶 not implemented                      |
+| `image`                               | —                                   | 🔶 not implemented                      |
+| `tabs`                                | —                                   | 🔶 not implemented                      |
+| `slide_button`                        | —                                   | 🔶 not implemented                      |
+| `thumbwheel`                          | —                                   | 🔶 not implemented                      |
+| `radio`                               | —                                   | 🔶 not implemented                      |
+| `table`                               | —                                   | 🔶 not implemented                      |
+| `polyline`                            | —                                   | 🔶 not implemented                      |
+| `template`                            | —                                   | 🔶 not implemented                      |
+| `3d viewer`                           | —                                   | 🔶 not implemented                      |
+| `fileselector`                        | —                                   | ❌ not planned                          |
+| `text-symbol`                         | —                                   | ❌ not planned                          |
+| `symbol`                              | —                                   | ❌ not planned                          |
+| `scrollbar`                           | —                                   | ❌ not planned                          |
+| `databrowser` / `waterfallplotwidget` | —                                   | ❌ not planned                          |
+| `arc`                                 | —                                   | ❌ not planned                          |
+| `polygon`                             | —                                   | ❌ not planned                          |
+| `webbrowser`                          | —                                   | ❌ not planned                          |
+
+The current feature support, to be extended, is:
+
+| Feature                                               | Status                              |
+| ----------------------------------------------------- | ----------------------------------- |
+| Position & size                                       | ✅                                  |
+| Colors (background, foreground, border, on/off/lines) | ✅                                  |
+| Font (family, size, bold, italic)                     | ✅                                  |
+| Text alignment (horizontal & vertical)                | ✅                                  |
+| Visibility                                            | ✅                                  |
+| Tooltip                                               | ✅                                  |
+| Transparent background                                | ✅                                  |
+| Display macros                                        | ✅                                  |
+| Grid settings (color, visibility, step)               | ✅                                  |
+| Embedded display path (`.bob` → `.opi.json`)          | ✅                                  |
+| Multi-state LED states (value, color, label)          | ✅                                  |
+| Actions                                               | ✅ (write PV and open display only) |
+| Plot PV names & line colors                           | ✅                                  |
+| Rules                                                 | 🔶 not implemented                  |
+| Points (polyline / line drawing)                      | 🔶 not implemented                  |
+| Scripts                                               | ❌ not planned                      |
+| Points (polygon geometry)                             | ❌ not planned                      |
 
 ### Test and save
 
