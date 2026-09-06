@@ -1,7 +1,11 @@
+FROM ghcr.io/astral-sh/uv:0.8.22 AS uv
+
 FROM docker.io/library/python:3.14.4-slim-trixie AS build
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
+
+COPY --from=uv /uv /uvx /bin/
 
 RUN apt-get update && apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
@@ -12,14 +16,12 @@ RUN apt-get update && apt-get upgrade -y && \
 WORKDIR /build
 COPY . .
 
-RUN pip install --upgrade pip build && \
-    python -m build
+RUN uv build
 
 # Create a virtual environment and install the built wheel
-RUN python -m venv /venv
+RUN uv venv /venv
 ENV PATH=/venv/bin:$PATH
-RUN pip install --upgrade pip && \
-    pip install dist/*.whl
+RUN uv pip install dist/*.whl
 
 FROM docker.io/library/python:3.14.4-slim-trixie AS runtime
 

@@ -13,13 +13,13 @@ classifiers = [
 description = "WEISS' backend (API)"
 
 dependencies = [
-    "fastapi==0.126.0",
-    "httpx==0.28.1",
-    "cryptography==46.0.3",
-    "msal==1.34.0",
-    "uvicorn[standard]==0.39.0",
-    "python-multipart==0.0.22",
-    "Authlib==1.6.9"
+    "fastapi>=0.141.1",
+    "httpx>=0.28.1",
+    "cryptography>=50.0.1",
+    "msal>=1.38.0",
+    "uvicorn[standard]>=0.52.4",
+    "python-multipart>=0.0.32",
+    "authlib>=1.8.0",
 ]
 requires-python = ">=3.12"
 
@@ -48,4 +48,9 @@ lint.select = [
     "F",    # pyflakes rules - https://beta.ruff.rs/docs/rules/#pyflakes-f
     "W",    # pycodestyle warnings - https://beta.ruff.rs/docs/rules/#warning-w
     "I001", # isort
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.16.6",
 ]
