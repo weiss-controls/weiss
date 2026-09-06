@@ -7,6 +7,8 @@ dist
 .pnpm-store
 __pycache__
 .ruff_cache/
+*.egg-info/
+dist/*
 
 ## Development environment
 .venv/
