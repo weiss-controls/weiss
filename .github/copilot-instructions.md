@@ -38,8 +38,8 @@ Three services in Docker:
 
 ## Frontend
 
-**Stack:** React 19, TypeScript 5.8, Vite 7, MUI 7, Zustand, react-rnd, react-router-dom 7,
-Plotly.js, `@hey-api/openapi-ts` (generated API client).
+**Stack:** React, TypeScript, Vite, MUI, Zustand, react-rnd, react-router-dom, Plotly.js,
+`@hey-api/openapi-ts` (generated API client).
 
 **Path aliases** (configured in `vite.config.ts`):
 
@@ -247,8 +247,7 @@ Roles: `"developer"` (full CRUD on staging repos) | `"operator"` (read-only, dep
 
 ## Backend API
 
-**Stack:** Python ≥ 3.12, FastAPI, Uvicorn, Authlib + generic OAuth/OIDC provider loading, Pydantic
-v2.
+**Stack:** Python, FastAPI, Uvicorn, Authlib + generic OAuth/OIDC provider loading, Pydantic v2.
 
 **Entry:** `backend/api/src/api/main.py`.
 
@@ -353,7 +352,7 @@ docker compose -f docker-compose-dev.yml up --build
 pnpm exec openapi-ts
 
 # Backend tests
-cd backend/api && pip install -e ".[dev]" && pytest
+cd backend/api && uv sync --extra dev && uv run pytest
 
 # Linting
 pnpm lint                          # ESLint + typescript-eslint
