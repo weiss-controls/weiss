@@ -94,6 +94,14 @@ const EditorSidebar: React.FC = () => {
   }, [drawerWidth]);
 
   useEffect(() => {
+    // Always unpin and close the sidebar when in runtime mode
+    if (!inEditMode) {
+      setPinned(false);
+      setOpen(false);
+    }
+  }, [inEditMode]);
+
+  useEffect(() => {
     setEditorSidebarOpen(open);
     setEditorSidebarWidth(drawerWidth);
   }, [open, drawerWidth, setEditorSidebarOpen, setEditorSidebarWidth]);
