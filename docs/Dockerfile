@@ -1,9 +1,9 @@
-FROM python:3.14-slim AS builder
+FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim AS builder
 
 WORKDIR /docs
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN uv pip install --system -r requirements.txt
 
 COPY src/ ./src/
 RUN sphinx-build -b html src /build/html

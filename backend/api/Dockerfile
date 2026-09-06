@@ -1,11 +1,7 @@
-FROM ghcr.io/astral-sh/uv:0.8.22 AS uv
-
-FROM docker.io/library/python:3.14.4-slim-trixie AS build
+FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim AS build
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
-
-COPY --from=uv /uv /uvx /bin/
 
 RUN apt-get update && apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
