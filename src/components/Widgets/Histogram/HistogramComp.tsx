@@ -115,7 +115,7 @@ const HistogramComp: React.FC<WidgetUpdate> = ({ data }) => {
         type: "bar",
         data: bins.map((bin) => bin.count),
         itemStyle: { color: barColor },
-        barCategoryGap: "5%", // equivalent to Plotly's bargap: 0.05
+        barCategoryGap: "5%",
       },
     ];
 

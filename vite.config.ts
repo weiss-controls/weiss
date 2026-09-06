@@ -20,13 +20,5 @@ export default defineConfig({
   plugins: [react(), ...(process.env.BUILD_STATS ? [visualizer()] : [])],
   define: {
     __APP_VERSION__: JSON.stringify(version),
-    // plotly.js/lib/core pulls in CJS deps (e.g. has-hover) that reference Node's
-    // `global` directly. Since we build a custom bundle, we need to add a ref to it here.
-    global: "globalThis",
-  },
-  optimizeDeps: {
-    esbuildOptions: {
-      define: { global: "globalThis" },
-    },
   },
 });

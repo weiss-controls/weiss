@@ -38,7 +38,7 @@ Three services in Docker:
 
 ## Frontend
 
-**Stack:** React, TypeScript, Vite, MUI, Zustand, react-rnd, react-router-dom, Plotly.js,
+**Stack:** React, TypeScript, Vite, MUI, Zustand, react-rnd, react-router-dom, ECharts,
 `@hey-api/openapi-ts` (generated API client).
 
 **Path aliases** (configured in `vite.config.ts`):
