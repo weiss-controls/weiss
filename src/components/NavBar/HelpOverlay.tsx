@@ -141,7 +141,18 @@ const HelpOverlay: React.FC = () => {
           </Typography>
           <Typography variant="body2" gutterBottom>
             Select a widget from the left bar, drag and drop it on the canvas. Edit its properties
-            using the right menu. Add PV names as needed. Enter runtime mode when ready. <br />
+            using the right menu. Add PV names as needed. Enter runtime mode when ready. For more
+            information, refer to the{" "}
+            <a
+              href={`docs.weiss-controls.org`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "white" }}
+            >
+              documentation.
+              <OpenInNewIcon sx={{ fontSize: 12, ml: 0.5 }} />
+            </a>{" "}
+            <br />
             <br />
             <i>
               If you find any problems, please create a{" "}
