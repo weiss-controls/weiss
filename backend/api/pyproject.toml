@@ -1,9 +1,10 @@
 [build-system]
-requires = ["setuptools>=64", "setuptools_scm[toml]>=6.2", "wheel"]
+requires = ["setuptools>=64", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "weiss-api"
+version = "2.0.0"
 classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -20,75 +21,23 @@ dependencies = [
     "python-multipart==0.0.22",
     "Authlib==1.6.9"
 ]
-dynamic = ["version"]
-requires-python = ">=3.12"    
+requires-python = ">=3.12"
 
 [project.optional-dependencies]
 dev = [
-    "ruff",
-    "pytest~=8.4.2",
-    "pytest-cov",
-    "mypy",
-    "tox-direct",
-    "pytest-asyncio"
+    "ruff"
 ]
-
-[project.scripts]
-weiss = "weiss.__main__:main"
 
 [project.urls]
 GitHub = "https://github.com/weiss-controls/weiss"
 
-[[project.authors]] # Further authors may be added by duplicating this section
+[[project.authors]]
 name = "André Favoto"
 email = "andrefavotto@hotmail.com"
 
 [[project.authors]]
 email = "guilherme.de-freitas@diamond.ac.uk"
 name = "Guilherme de Freitas"
-
-[tool.setuptools_scm]
-write_to = "src//_version.py"
-fallback_version = "1.3.0"
-
-[tool.mypy]
-ignore_missing_imports = true # Ignore missing stubs in imported modules
-
-[tool.pytest.ini_options]
-# Run pytest with all our checkers, and don't spam us with massive tracebacks on error
-addopts = """
-    --tb=native -vv --doctest-modules --doctest-glob="*.rst"
-    """
-# https://iscinumpy.gitlab.io/post/bound-version-constraints/#watch-for-warnings
-# filterwarnings = "error"
-
-[tool.coverage.run]
-data_file = "/tmp/weiss-api.coverage"
-
-[tool.coverage.paths]
-# Tests are run from installed location, map back to the src directory
-source = ["src", "**/site-packages/"]
-
-# tox must currently be configured via an embedded ini string
-# See: https://github.com/tox-dev/tox/issues/999
-[tool.tox]
-legacy_tox_ini = """
-[tox]
-skipsdist=True
-
-[testenv:{pre-commit,mypy,pytest}]
-# Don't create a virtualenv for the command, requires tox-direct plugin
-direct = True
-passenv = *
-allowlist_externals =
-    pytest
-    pre-commit
-    mypy
-commands =
-    pytest: pytest tests --cov=weiss --cov-report term --cov-report xml:cov.xml {posargs}
-    mypy: mypy src tests {posargs}
-    pre-commit: pre-commit run --all-files {posargs}
-"""
 
 [tool.ruff]
 src = ["src", "tests"]

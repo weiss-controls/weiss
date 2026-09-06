@@ -83,6 +83,7 @@ Further planned improvements are tracked in the
 
 getting_started/quickstart
 getting_started/tutorial
+getting_started/importing_files
 ```
 
 ```{toctree}
