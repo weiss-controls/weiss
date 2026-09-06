@@ -2,7 +2,7 @@ name: base
 channels:
   - conda-forge
 dependencies:
-  - python=3.12
-  - pyepics=3.5.9
+  - python=3.14
+  - pyepics=3.5.10
   - p4p=4.2.2
-  - websockets=16.0.0
+  - websockets=17.1
