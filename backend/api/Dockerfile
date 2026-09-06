@@ -10,14 +10,13 @@ RUN apt-get update && apt-get upgrade -y && \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
+COPY pyproject.toml uv.lock ./
+
+ENV UV_PROJECT_ENVIRONMENT=/venv
+RUN uv sync --locked --no-dev --no-install-project
+
 COPY . .
-
-RUN uv build
-
-# Create a virtual environment and install the built wheel
-RUN uv venv /venv
-ENV PATH=/venv/bin:$PATH
-RUN uv pip install dist/*.whl
+RUN uv sync --locked --no-dev --no-editable
 
 FROM docker.io/library/python:3.14.4-slim-trixie AS runtime
 

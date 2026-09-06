@@ -2,11 +2,11 @@ FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim AS builder
 
 WORKDIR /docs
 
-COPY requirements.txt .
-RUN uv pip install --system -r requirements.txt
+COPY pyproject.toml uv.lock ./
+RUN uv sync --locked
 
 COPY src/ ./src/
-RUN sphinx-build -b html src /build/html
+RUN uv run --locked sphinx-build -b html src /build/html
 
 
 FROM nginx:alpine

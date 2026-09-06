@@ -1,0 +1,13 @@
+[project]
+name = "weiss-docs"
+version = "2.0.0"
+requires-python = ">=3.14"
+dependencies = [
+    "furo",
+    "myst-parser",
+    "sphinx",
+    "sphinx-copybutton",
+]
+
+[tool.uv]
+package = false
