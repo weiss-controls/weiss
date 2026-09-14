@@ -6,7 +6,7 @@ import { IconButton, InputAdornment, ListItem, TextField, Tooltip } from "@mui/m
 import FolderOpenIcon from "@mui/icons-material/FolderOpen";
 import type { PropertyKey, PropertyValue } from "@src/types/widgets";
 import { useUIContext } from "@src/context/useUIContext";
-import { toRelativeRepoPath, resolveRepoPath } from "@src/utils/repoPath";
+import { resolveRepoPath } from "@src/utils/repoPath";
 import RepoFileBrowserDialog from "./RepoFileBrowserDialog";
 
 const IMAGE_EXTENSIONS = new Set([".svg", ".png", ".jpg", ".jpeg"]);
@@ -45,9 +45,15 @@ const RepoFileProperty: React.FC<RepoFilePropertyProps> = ({
   }, [accept]);
 
   const handlePick = (absPath: string) => {
-    const relative = opiPath ? toRelativeRepoPath(absPath, opiPath) : `./${absPath}`;
-    onChange(propName, relative);
+    onChange(propName, absPath);
     setOpen(false);
+  };
+
+  // Manually typed relative paths are normalized to absolute as soon as the field loses focus.
+  const handleBlur = () => {
+    if (typeof value !== "string" || !value) return;
+    const resolved = resolveRepoPath(value, opiPath);
+    if (resolved !== value) onChange(propName, resolved);
   };
 
   return (
@@ -59,6 +65,7 @@ const RepoFileProperty: React.FC<RepoFilePropertyProps> = ({
         size="small"
         value={value as string}
         onChange={(e) => onChange(propName, e.target.value)}
+        onBlur={handleBlur}
         slotProps={{
           input: {
             endAdornment: (

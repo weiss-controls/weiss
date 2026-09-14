@@ -16,7 +16,7 @@ import RemoveIcon from "@mui/icons-material/Remove";
 import FolderOpenIcon from "@mui/icons-material/FolderOpen";
 import type { PropertyKey, PropertyValue, TabEntry } from "@src/types/widgets";
 import { useUIContext } from "@src/context/useUIContext";
-import { toRelativeRepoPath, resolveRepoPath } from "@src/utils/repoPath";
+import { resolveRepoPath } from "@src/utils/repoPath";
 import RepoFileBrowserDialog from "./RepoFileBrowserDialog";
 
 interface TabListPropertyProps {
@@ -164,13 +164,26 @@ const TabListProperty: React.FC<TabListPropertyProps> = ({ propName, label, valu
 
   const handlePickFile = (absPath: string) => {
     if (browseIndex === null) return;
-    const relative = opiPath ? toRelativeRepoPath(absPath, opiPath) : `./${absPath}`;
     const newTabs = localTabs.map((t, i) =>
-      i === browseIndex ? { ...t, displayPath: relative } : t,
+      i === browseIndex ? { ...t, displayPath: absPath } : t,
     );
     setLocalTabs(newTabs);
     commit(newTabs);
     setBrowseIndex(null);
+  };
+
+  // Manually typed relative paths (or legacy `./`/`../` stored values) are
+  // normalized to absolute as soon as the field loses focus.
+  const handleDisplayPathBlur = (index: number) => {
+    const path = localTabs[index]?.displayPath;
+    if (!path) {
+      commit(localTabs);
+      return;
+    }
+    const resolved = resolveRepoPath(path, opiPath);
+    const newTabs = localTabs.map((t, i) => (i === index ? { ...t, displayPath: resolved } : t));
+    setLocalTabs(newTabs);
+    commit(newTabs);
   };
 
   const handleMacrosCommit = (index: number, macros: Record<string, string>) => {
@@ -279,7 +292,7 @@ const TabListProperty: React.FC<TabListPropertyProps> = ({ propName, label, valu
                 );
                 setLocalTabs(newTabs);
               }}
-              onBlur={handleLabelCommit}
+              onBlur={() => handleDisplayPathBlur(index)}
               slotProps={{
                 input: {
                   endAdornment: (

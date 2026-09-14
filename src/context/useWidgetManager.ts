@@ -19,7 +19,11 @@ import { GRID_ID, MAX_HISTORY } from "@src/constants/constants";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import { v4 as uuidv4 } from "uuid";
 import { notifyUser } from "@src/services/Notifications/Notification";
-import { composeForwardNavigationMacros, substituteMacroInStr } from "@src/utils/macros";
+import {
+  composeForwardNavigationMacros,
+  resolveMacroRecord,
+  substituteMacroInStr,
+} from "@src/utils/macros";
 import { collectRulePVNames, parseSerializedRules } from "@src/utils/ruleCompatibility";
 import {
   createGroupWidget,
@@ -1056,25 +1060,31 @@ export function useWidgetManager() {
     [getWidget],
   );
 
-  /** Runtime base macros = Grid macros plus navigation-provided overrides. */
-  const runtimeBaseMacros = useMemo(
-    () =>
+  /** Runtime base macros = Grid macros plus navigation-provided overrides.
+   * Grid macro values are resolved against this merged map so a local macro
+   * (e.g. $(PRE)) can reference macros inherited from navigation (e.g. $(P),
+   * $(R)) without leaving them as unresolved literal tokens.
+   */
+  const runtimeBaseMacros = useMemo(() => {
+    const merged =
       Object.keys(navMacroOverrides).length > 0
         ? { ...baseGlobalMacros, ...navMacroOverrides }
-        : baseGlobalMacros,
-    [baseGlobalMacros, navMacroOverrides],
-  );
+        : baseGlobalMacros;
+    return resolveMacroRecord(merged, merged);
+  }, [baseGlobalMacros, navMacroOverrides]);
 
   /**
    * Forward runtime macros from a navigation action.
-   * Runtime base macros are forwarded and button macros are appended on top.
-   * Duplicate keys from the button win only when they resolve to concrete values.
+   *
+   * Forwards `navMacroOverrides` (the macros inherited from earlier navigation
+   * steps). Button macros are appended on top; duplicate keys from the button win
+   * only when they resolve to concrete values (not other macros).
    */
   const forwardNavigationMacros = useCallback(
     (macros: Record<string, string>) => {
-      setNavMacroOverrides(composeForwardNavigationMacros(runtimeBaseMacros, macros));
+      setNavMacroOverrides(composeForwardNavigationMacros(navMacroOverrides, macros));
     },
-    [runtimeBaseMacros],
+    [navMacroOverrides],
   );
 
   /**

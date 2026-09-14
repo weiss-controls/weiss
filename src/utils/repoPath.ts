@@ -2,16 +2,17 @@
 // Copyright (C) 2026 André Favoto
 
 /**
- * Utilities for translating between repo-absolute paths and OPI-relative paths.
+ * All repo file paths (imagePath, displayPath, etc.) are stored as absolute,
+ * repo-root-relative POSIX paths (no leading slash, no `./` or `../`), matching
+ * what the API accepts. This avoids ambiguity when a display is embedded inside
+ * another OPI file at a different depth: a path relative to the *authoring* OPI's
+ * directory would otherwise be resolved against the *embedding* OPI's directory
+ * instead, since only one currently-open file path is tracked at render time.
  *
- * All paths are POSIX-style and relative to the repo root (no leading slash).
- * "OPI-relative" means relative to the directory containing the OPI (.json) file.
- * Stored values always start with `./` (same dir or deeper) or `../` (going up).
- *
- * Example:
- *   OPI at  "screens/main.json"  (opiDir = "screens")
- *   Image at "images/logo.png"   (absolute repo path)
- *   Relative path: "../images/logo.png"
+ * `resolveRepoPath` still accepts legacy `./`/`../`-prefixed values (from OPI
+ * files saved before this change, or manually typed by a user) and resolves them
+ * against `opiPath` for backward compatibility; anything else is treated as
+ * already absolute and only normalized.
  */
 
 /** Returns the directory portion of a repo-relative file path (no trailing slash). */
@@ -36,37 +37,15 @@ function normalizePath(path: string): string {
 }
 
 /**
- * Resolve an OPI-relative path to an absolute repo path.
+ * Resolve a repo file path to an absolute repo path. Values already absolute
+ * are only normalized; values starting with `./` or `../` (legacy format) are
+ * resolved against the directory of `opiPath`.
  */
 export function resolveRepoPath(imagePath: string, opiPath: string): string {
   if (!imagePath) return imagePath;
+  if (!imagePath.startsWith("./") && !imagePath.startsWith("../")) {
+    return normalizePath(imagePath);
+  }
   const dir = opiDir(opiPath);
   return normalizePath(dir ? `${dir}/${imagePath}` : imagePath);
-}
-
-/**
- * Convert an absolute repo path to a path relative to the OPI file's directory.
- * The result always starts with `./` or `../`.
- */
-export function toRelativeRepoPath(absPath: string, opiPath: string): string {
-  const dir = opiDir(opiPath);
-
-  if (!dir) return `./${absPath}`;
-
-  const fromParts = dir.split("/");
-  const toParts = absPath.split("/");
-
-  let common = 0;
-  while (
-    common < fromParts.length &&
-    common < toParts.length &&
-    fromParts[common] === toParts[common]
-  ) {
-    common++;
-  }
-
-  const ups = fromParts.length - common;
-  const rest = toParts.slice(common);
-  const segments = [...Array<string>(ups).fill(".."), ...rest];
-  return (ups === 0 ? "./" : "") + segments.join("/");
 }

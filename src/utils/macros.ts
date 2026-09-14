@@ -45,19 +45,19 @@ export function resolveMacroRecord(
 }
 
 /**
- * Build the forwarded navigation macro layer from the current runtime base macros
- * and a clicked button macro map.
+ * Build the forwarded navigation macro layer from the macros inherited from
+ * earlier navigation steps and a clicked button's own macro map.
  *
- * - Existing runtime macros are forwarded by default.
+ * - Inherited macros are forwarded by default.
  * - New button entries override duplicates when they resolve to concrete values.
  * - If a new value remains unresolved (e.g. "$(A)"), it does not clobber an
  *   already concrete value for that key.
  */
 export function composeForwardNavigationMacros(
-  runtimeBaseMacros: Record<string, string>,
+  inheritedMacros: Record<string, string>,
   buttonMacros: Record<string, string>,
 ): Record<string, string> {
-  const forwarded: Record<string, string> = { ...runtimeBaseMacros };
+  const forwarded: Record<string, string> = { ...inheritedMacros };
 
   for (const [rawKey, rawValue] of Object.entries(buttonMacros)) {
     const normalizedKey = normalizeMacroKey(rawKey);
