@@ -26,6 +26,7 @@ interface PropertyGroupsProps {
   collapsedGroups: Record<string, boolean>;
   onToggleGroup: (category: string) => void;
   onChange: (propName: PropertyKey, newValue: PropertyValue) => void;
+  widgetsKey: string;
 }
 
 const PropertyGroups: React.FC<PropertyGroupsProps> = ({
@@ -33,6 +34,7 @@ const PropertyGroups: React.FC<PropertyGroupsProps> = ({
   collapsedGroups,
   onToggleGroup,
   onChange,
+  widgetsKey,
 }) => {
   return (
     <>
@@ -85,42 +87,41 @@ const PropertyGroups: React.FC<PropertyGroupsProps> = ({
                     category,
                     onChange,
                   };
+                  // Include widgetsKey so switching the selected widget(s) remounts the row
+                  // even if the property name is the same across different widgets.
+                  const key = `${widgetsKey}:${propName}`;
 
                   switch (selType) {
                     case "text":
                     case "number":
-                      return (
-                        <TextFieldProperty key={propName} {...commonProps} selType={selType} />
-                      );
+                      return <TextFieldProperty key={key} {...commonProps} selType={selType} />;
 
                     case "strList":
-                      return <StrListProperty key={propName} {...commonProps} />;
+                      return <StrListProperty key={key} {...commonProps} />;
 
                     case "strRecord":
-                      return <StrRecordProperty key={propName} {...commonProps} />;
+                      return <StrRecordProperty key={key} {...commonProps} />;
 
                     case "boolean":
-                      return <BooleanProperty key={propName} {...commonProps} />;
+                      return <BooleanProperty key={key} {...commonProps} />;
 
                     case "colorSel":
-                      return <ColorProperty key={propName} {...commonProps} />;
+                      return <ColorProperty key={key} {...commonProps} />;
 
                     case "colorSelList":
-                      return <ColorListProperty key={propName} {...commonProps} />;
+                      return <ColorListProperty key={key} {...commonProps} />;
 
                     case "select":
-                      return (
-                        <SelectProperty key={propName} {...commonProps} options={options ?? []} />
-                      );
+                      return <SelectProperty key={key} {...commonProps} options={options ?? []} />;
 
                     case "repoFile":
-                      return <RepoFileProperty key={propName} {...commonProps} accept={options} />;
+                      return <RepoFileProperty key={key} {...commonProps} accept={options} />;
 
                     case "stateList":
-                      return <StateListProperty key={propName} {...commonProps} />;
+                      return <StateListProperty key={key} {...commonProps} />;
 
                     case "tabList":
-                      return <TabListProperty key={propName} {...commonProps} />;
+                      return <TabListProperty key={key} {...commonProps} />;
 
                     default:
                       return null;

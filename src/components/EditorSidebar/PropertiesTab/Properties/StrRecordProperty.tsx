@@ -8,6 +8,7 @@ import IconButton from "@mui/material/IconButton";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import type { PropertyKey, PropertyValue } from "@src/types/widgets";
+import useCommitOnUnmount from "./propUtils/useCommitOnUnmount";
 
 interface StrRecordPropertyProps {
   propName: PropertyKey;
@@ -52,6 +53,13 @@ const StrRecordProperty: React.FC<StrRecordPropertyProps> = ({
     if (/^\$\(.+\)$/.test(key)) return key;
     return `$(${key})`;
   }, []);
+
+  useCommitOnUnmount(() => {
+    const normalized = localItems.map(([k, v]) => [normalizeKey(k), v] as StrPair);
+    if (JSON.stringify(Object.fromEntries(normalized)) !== JSON.stringify(value)) {
+      commitItems(normalized);
+    }
+  });
 
   const handleKeyChange = (index: number, newKey: string) => {
     const newEntries = [...localItems];
