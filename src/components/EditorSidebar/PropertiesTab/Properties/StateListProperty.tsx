@@ -8,6 +8,7 @@ import RemoveIcon from "@mui/icons-material/Remove";
 import { Sketch } from "@uiw/react-color";
 import type { PropertyKey, PropertyValue, StateEntry } from "@src/types/widgets";
 import { COLORS } from "@src/constants/constants";
+import useCommitOnUnmount from "./propUtils/useCommitOnUnmount";
 
 interface StateListPropertyProps {
   propName: PropertyKey;
@@ -51,6 +52,12 @@ const StateListProperty: React.FC<StateListPropertyProps> = ({
   React.useEffect(() => {
     setLocalStates(normalizeStates(value));
   }, [value]);
+
+  useCommitOnUnmount(() => {
+    if (JSON.stringify(localStates) !== JSON.stringify(normalizeStates(value))) {
+      onChange(propName, localStates);
+    }
+  });
 
   if (!Array.isArray(value)) {
     console.warn(`StateListProperty expected StateEntry[], got`, value);

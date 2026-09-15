@@ -18,6 +18,7 @@ import type { PropertyKey, PropertyValue, TabEntry } from "@src/types/widgets";
 import { useUIContext } from "@src/context/useUIContext";
 import { resolveRepoPath } from "@src/utils/repoPath";
 import RepoFileBrowserDialog from "./RepoFileBrowserDialog";
+import useCommitOnUnmount from "./propUtils/useCommitOnUnmount";
 
 interface TabListPropertyProps {
   propName: PropertyKey;
@@ -70,6 +71,14 @@ const TabMacrosEditor: React.FC<{
     if (!key.trim()) return key;
     return /^\$\(.+\)$/.test(key) ? key : `$(${key})`;
   };
+
+  useCommitOnUnmount(() => {
+    const normalized = localPairs.map(([k, v]) => [normalizeKey(k), v] as MacroPair);
+    const filtered = normalized.filter(([k]) => k.trim() !== "");
+    if (JSON.stringify(Object.fromEntries(filtered)) !== JSON.stringify(macros)) {
+      commit(normalized);
+    }
+  });
 
   const handleKeyCommit = (index: number) => {
     const newPairs = [...localPairs];
@@ -152,6 +161,12 @@ const TabListProperty: React.FC<TabListPropertyProps> = ({ propName, label, valu
   const commit = (newTabs: TabEntry[]) => {
     onChange(propName, newTabs);
   };
+
+  useCommitOnUnmount(() => {
+    if (JSON.stringify(localTabs) !== JSON.stringify(normalizeTabs(value))) {
+      commit(localTabs);
+    }
+  });
 
   const handleLabelChange = (index: number, newLabel: string) => {
     const newTabs = localTabs.map((t, i) => (i === index ? { ...t, label: newLabel } : t));

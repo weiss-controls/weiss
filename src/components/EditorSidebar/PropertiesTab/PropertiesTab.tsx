@@ -84,6 +84,8 @@ const PropertiesTab: React.FC = () => {
 
   const groupedProperties = useMemo(() => getGroupedProperties(properties), [properties]);
 
+  const widgetsKey = useMemo(() => editingWidgets.map((w) => w.id).join(","), [editingWidgets]);
+
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
 
   const toggleGroup = useCallback((category: string) => {
@@ -124,6 +126,7 @@ const PropertiesTab: React.FC = () => {
         collapsedGroups={collapsedGroups}
         onToggleGroup={toggleGroup}
         onChange={handlePropChange}
+        widgetsKey={widgetsKey}
       />
 
       <Box sx={{ px: 2, py: 1 }}>

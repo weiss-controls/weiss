@@ -8,6 +8,7 @@ import IconButton from "@mui/material/IconButton";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import type { PropertyKey, PropertyValue } from "@src/types/widgets";
+import useCommitOnUnmount from "./propUtils/useCommitOnUnmount";
 
 interface StrListPropertyProps {
   propName: PropertyKey;
@@ -38,6 +39,12 @@ const StrListProperty: React.FC<StrListPropertyProps> = ({ propName, label, valu
     },
     [onChange, propName],
   );
+
+  useCommitOnUnmount(() => {
+    if (JSON.stringify(localItems) !== JSON.stringify(normalizeItems(value))) {
+      commitItems(localItems);
+    }
+  });
 
   const handleChange = (index: number, newVal: string) => {
     const newArr = [...localItems];

@@ -4,7 +4,7 @@
 import React, { useEffect, useRef } from "react";
 import { TextField, ListItem } from "@mui/material";
 import type { PropertyKey, PropertyLimits, PropertyValue } from "@src/types/widgets";
-import LocalValueWrapper from "./LocalValueWrapper";
+import LocalValueWrapper from "./propUtils/LocalValueWrapper";
 
 interface TextFieldPropertyProps {
   propName: PropertyKey;
