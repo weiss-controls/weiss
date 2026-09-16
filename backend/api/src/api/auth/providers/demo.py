@@ -32,17 +32,22 @@ class Provider(GenericProvider):
         return {"authorize_url": redirect_url}
 
     @staticmethod
-    async def handle_auth_callback(code: str, redirect_uri: str, state: str | None = None):
+    async def handle_auth_callback(
+        code: str, redirect_uri: str, state: str | None = None, browser_demo_id: str | None = None
+    ):
         expiry = _pending_states.pop(state, None) if state else None
         if expiry is None or expiry < datetime.now(timezone.utc):
             raise HTTPException(status_code=400, detail="Invalid or expired auth state")
+
+        if not browser_demo_id:
+            raise HTTPException(status_code=400, detail="Missing demo session identifier")
 
         demo_role = code.split("_")[-1]
         if demo_role not in {r.value for r in UserRole}:
             raise HTTPException(status_code=400, detail="Invalid demo profile")
 
         return User(
-            id=f"demo-{demo_role}",
+            id=f"demo-{demo_role}-{browser_demo_id}",
             username=f"weiss-demo-{demo_role.lower()}",
             displayName=f"Demo {demo_role.capitalize()}",
             email="weiss-dummy@email",
