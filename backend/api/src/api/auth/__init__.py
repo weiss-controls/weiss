@@ -148,11 +148,34 @@ async def oauth_callback(
         raise HTTPException(status_code=400, detail="Missing OAuth parameters")
 
     selected_provider = _resolve_provider(payload.provider)
-    user: User = await selected_provider.handle_auth_callback(
-        code=payload.code,
-        redirect_uri=payload.redirect_uri,
-        state=payload.state,
-    )
+
+    if selected_provider is DemoProvider:
+        # Demo sessions are differentiated by a per-browser cookie so that concurrent demo
+        # sessions (e.g. multiple tabs/browsers) don't share the same user/staging state.
+        browser_demo_id = request.cookies.get(DEMO_ID_COOKIE)
+        if not browser_demo_id:
+            browser_demo_id = secrets.token_urlsafe(12)
+            response.set_cookie(
+                key=DEMO_ID_COOKIE,
+                value=browser_demo_id,
+                httponly=True,
+                secure=ENABLE_HTTPS,
+                samesite="none" if ENABLE_HTTPS else "lax",
+                max_age=SESSION_EXPIRE_HOURS * 3600,
+                path="/",
+            )
+        user: User = await DemoProvider.handle_auth_callback(
+            code=payload.code,
+            redirect_uri=payload.redirect_uri,
+            state=payload.state,
+            browser_demo_id=browser_demo_id,
+        )
+    else:
+        user: User = await selected_provider.handle_auth_callback(
+            code=payload.code,
+            redirect_uri=payload.redirect_uri,
+            state=payload.state,
+        )
 
     if user.id not in users_db:
         if payload.provider == AuthProvider.DEMO:
