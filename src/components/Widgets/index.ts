@@ -19,6 +19,7 @@ export { ProgressBar } from "./ProgressBar";
 export { GraphY } from "./GraphY";
 export { GraphXY } from "./GraphXY";
 export { Histogram } from "./Histogram";
+export { Heatmap } from "./Heatmap";
 // Basic
 export { Ellipse } from "./Ellipse";
 export { Rectangle } from "./Rectangle";
@@ -27,3 +28,4 @@ export { TextLabel } from "./TextLabel";
 // Layout
 export { EmbeddedDisplay } from "./EmbeddedDisplay";
 export { NavigationTabs } from "./NavigationTabs";
+

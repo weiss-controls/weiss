@@ -125,6 +125,10 @@ export const PROPERTY_SCHEMAS = {
   target:          defineProp({ selType: "text", label: "Target", value: "" as string, category: "General" }),
   // MultiStateLED
   stateList:       defineProp({ selType: "stateList", label: "States", value: [{ value: "0", color: COLORS.offColor, label: "" }, { value: "1", color: COLORS.onColor, label: "" }, { value: "", color: COLORS.midGray, label: "" }] as StateEntry[], category: "EPICS" }),
+  colorScale:      defineProp({ selType: "select", label: "Color Scale", value: "Viridis" as string, options: ["Viridis", "Plasma", "Inferno", "Magma", "Greys", "Jet"], category: "Style" }),
+dimsFromPVs:     defineProp({ selType: "boolean", label: "Dimensions from PVs", value: true as boolean, category: "EPICS" }),
+imageSizeX:      defineProp({ selType: "number", label: "Size X (manual)", value: 128 as number, limits: { min: 1 }, category: "Layout" }),
+imageSizeY:      defineProp({ selType: "number", label: "Size Y (manual)", value: 128 as number, limits: { min: 1 }, category: "Layout" }),
 };
 
 /**

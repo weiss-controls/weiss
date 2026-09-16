@@ -1,5 +1,12 @@
 import * as echarts from "echarts/core";
-import { LineChart, type LineSeriesOption, BarChart, type BarSeriesOption } from "echarts/charts";
+import {
+  LineChart,
+  type LineSeriesOption,
+  BarChart,
+  type BarSeriesOption,
+  HeatmapChart,
+  type HeatmapSeriesOption,
+} from "echarts/charts";
 import {
   GridComponent,
   type GridComponentOption,
@@ -13,6 +20,8 @@ import {
   type DataZoomComponentOption,
   ToolboxComponent,
   type ToolboxComponentOption,
+  VisualMapComponent,
+  type VisualMapComponentOption,
 } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 
@@ -21,6 +30,7 @@ echarts.use([
   // Charts
   LineChart,
   BarChart,
+  HeatmapChart,
   // Components
   GridComponent,
   TooltipComponent,
@@ -28,6 +38,7 @@ echarts.use([
   LegendComponent,
   DataZoomComponent,
   ToolboxComponent,
+  VisualMapComponent,
   // Renderer
   CanvasRenderer,
 ]);
@@ -35,12 +46,14 @@ echarts.use([
 export type ECOption = echarts.ComposeOption<
   | BarSeriesOption
   | LineSeriesOption
+  | HeatmapSeriesOption
   | TitleComponentOption
   | GridComponentOption
   | TooltipComponentOption
   | LegendComponentOption
   | DataZoomComponentOption
   | ToolboxComponentOption
+  | VisualMapComponentOption
 >;
 
 export { echarts };
