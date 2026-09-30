@@ -4,6 +4,7 @@
 import asyncio
 import json
 import os
+from dataclasses import asdict
 from typing import Any, Dict, Optional, Set, Tuple, Union
 
 import numpy as np
@@ -13,7 +14,7 @@ from websockets.asyncio.server import ServerConnection
 from binaryFrame import build_binary_frame
 from CAClient import CAClient
 from PVAClient import PVAClient
-from pvParser import PVParser
+from pvParser import PVMetadata, PVParser
 
 CA_PROVIDER_KEY = "ca"
 PVA_PROVIDER_KEY = "pva"
@@ -28,7 +29,7 @@ ws_subscriptions: Dict[ServerConnection, Set[str]] = {}
 sent_metadata: Dict[Tuple[ServerConnection, str], bool] = {}
 
 # cached quasi-static metadata per pv_name
-_pv_metadata: Dict[str, dict] = {}
+_pv_metadata: Dict[str, PVMetadata] = {}
 
 # environment variable fallback
 DEFAULT_PROTOCOL = os.getenv("EPICS_DEFAULT_PROTOCOL", PVA_PROVIDER_KEY).lower()
@@ -167,24 +168,24 @@ async def send_update(pv_name: str, pv_obj, provider: str):
         except Exception:
             print(f"[epicsWS]: Error sending update to {ws}")
 
-    raw_array = update["rawArray"]
+    raw_array = update.rawArray
     base_msg = {
         "type": "update",
         "pv": pv_name_with_provider,
-        "alarm": update["alarm"],
-        "timeStamp": update["timeStamp"],
+        "alarm": asdict(update.alarm),
+        "timeStamp": asdict(update.timeStamp),
     }
     if raw_array is not None:
-        base_msg["dtype"] = update["dtype"]
+        base_msg["dtype"] = update.dtype
     else:
-        base_msg["value"] = update["value"]
-    if update.get("enumChoices") is not None:
-        base_msg["enumChoices"] = update["enumChoices"]
+        base_msg["value"] = update.value
+    if update.enumChoices is not None:
+        base_msg["enumChoices"] = update.enumChoices
 
     def serialize(msg):
         fields = {key: val for key, val in msg.items() if val is not None}
         if raw_array is not None:
-            return build_binary_frame(fields, raw_array, np.dtype(update["dtype"]).itemsize)
+            return build_binary_frame(fields, raw_array, np.dtype(update.dtype).itemsize)
         return json.dumps(fields)
 
     ws_snapshot = set(ws_set)
@@ -196,7 +197,7 @@ async def send_update(pv_name: str, pv_obj, provider: str):
         send_tasks.extend(_send(ws, data) for ws in fast_path_ws)
     if full_path_ws:
         full_msg = dict(base_msg)
-        full_msg.update(_pv_metadata[pv_name])
+        full_msg.update(asdict(_pv_metadata[pv_name]))
         full_msg["connected"] = True
         data = serialize(full_msg)
         for ws in full_path_ws:

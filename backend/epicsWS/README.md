@@ -19,6 +19,5 @@ a standard structure in the format of the `PVData` class, regardless of the orig
 
 This class was based on the EPICS Normative Types (with minor modifications for convenience), so a
 known format is used, and the front-end client only needs to know one data structure for all
-protocols. Similar to PVWS, **extra fields were added for base64 encoding** for arrays, improving
-JSON data traffic. A separate field for enumeration strings for enum/enum-like records was also
-added.
+protocols. Numeric array updates are encoded as raw binary payloads; snapshots use base64 JSON
+encoding temporarily. Enum-like records include a separate field for enumeration strings.

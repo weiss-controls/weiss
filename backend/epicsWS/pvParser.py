@@ -5,15 +5,13 @@ from __future__ import annotations
 
 import base64
 import math
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Any, List, Optional, Union
 
 import numpy as np
 from p4p.wrapper import Value as p4pValue
 
 
-# NormativeType data definitions
-# See: https://docs.epics-controls.org/en/latest/pv-access/Normative-Types-Specification.html
 @dataclass
 class Alarm:
     severity: int = 0
@@ -61,52 +59,25 @@ class ValueAlarm:
 
 
 @dataclass
+class PVMetadata:
+    display: Display
+    control: Control
+    valueAlarm: ValueAlarm
+
+
+@dataclass
 class PVData:
-    pv: Optional[str] = None
-    connected: Optional[bool] = False
+    pv: Optional[str]
+    alarm: Alarm
+    timeStamp: TimeStamp
     value: Optional[Union[float, int, str, List[float], List[int], List[str]]] = None
     enumChoices: Optional[List[str]] = None
-    alarm: Optional[Alarm] = None
-    timeStamp: Optional[TimeStamp] = None
     display: Optional[Display] = None
     control: Optional[Control] = None
     valueAlarm: Optional[ValueAlarm] = None
-    b64arr: Optional[str] = None
-    b64dtype: Optional[str] = None
-
-
-def encode_base64_array(array: Union[List, np.ndarray], dtype: str) -> str:
-    arr = np.asarray(array, dtype=dtype)
-    if arr.dtype.byteorder not in ("<", "="):
-        arr = arr.astype("<" + arr.dtype.str[1:])
-    return base64.b64encode(arr.tobytes()).decode("ascii")
-
-
-def encode_array(arr: Any) -> tuple[Optional[str], Optional[str]]:
-    """Returns (b64arr, b64dtype) for numeric arrays."""
-    if arr is None:
-        return None, None
-
-    arr = np.asarray(arr)
-    if arr.size == 0:
-        return None, None
-
-    if np.issubdtype(arr.dtype, np.floating):
-        return encode_base64_array(arr, "float64"), "float64"
-
-    if np.issubdtype(arr.dtype, np.integer):
-        min_val, max_val = arr.min(), arr.max()
-        if -128 <= min_val <= max_val <= 127:
-            dtype = "int8"
-        elif -32768 <= min_val <= max_val <= 32767:
-            dtype = "int16"
-        elif -2147483648 <= min_val <= max_val <= 2147483647:
-            dtype = "int32"
-        else:
-            return None, None
-        return encode_base64_array(arr, dtype), dtype
-
-    return None, None
+    connected: Optional[bool] = None
+    rawArray: Optional[bytes] = None
+    dtype: Optional[str] = None
 
 
 def encode_array_raw(arr: Any) -> tuple[Optional[bytes], Optional[str]]:
@@ -122,12 +93,27 @@ def encode_array_raw(arr: Any) -> tuple[Optional[bytes], Optional[str]]:
     elif np.issubdtype(array.dtype, np.integer):
         minimum, maximum = int(array.min()), int(array.max())
         if minimum >= 0:
-            dtype = next((name for limit, name in ((255, "uint8"), (65535, "uint16"), (4294967295, "uint32"))
-                          if maximum <= limit), None)
+            dtype = next(
+                (
+                    name
+                    for limit, name in ((255, "uint8"), (65535, "uint16"), (4294967295, "uint32"))
+                    if maximum <= limit
+                ),
+                None,
+            )
         else:
-            dtype = next((name for low, high, name in ((-128, 127, "int8"), (-32768, 32767, "int16"),
-                                                       (-2147483648, 2147483647, "int32"))
-                          if low <= minimum and maximum <= high), None)
+            dtype = next(
+                (
+                    name
+                    for low, high, name in (
+                        (-128, 127, "int8"),
+                        (-32768, 32767, "int16"),
+                        (-2147483648, 2147483647, "int32"),
+                    )
+                    if low <= minimum and maximum <= high
+                ),
+                None,
+            )
         if dtype is None:
             return None, None
     else:
@@ -137,298 +123,146 @@ def encode_array_raw(arr: Any) -> tuple[Optional[bytes], Optional[str]]:
     return encoded.tobytes(), dtype
 
 
-def safe_get_nan(obj, k: str):
-    v = obj.get(k)
-    return None if isinstance(v, float) and math.isnan(v) else v
+def safe_get_nan(obj, key: str):
+    value = obj.get(key)
+    return None if isinstance(value, float) and math.isnan(value) else value
+
+
+def _normalize_value(value):
+    if isinstance(value, np.generic):
+        return value.item()
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    return value
 
 
 class PVParser:
     @staticmethod
-    def pva_update(pv_obj, pv_name: Optional[str] = None) -> dict:
-        """Parse only the fast-changing fields (value, alarm, timeStamp) from a PVA object."""
-        enumChoices = value = raw_array = dtype = None
-
+    def pva_update(pv_obj, pv_name: Optional[str] = None) -> PVData:
         value_field = pv_obj.get("value")
+        value = enum_choices = raw_array = dtype = None
+
         if isinstance(value_field, (int, float, str)):
             value = value_field
         elif isinstance(value_field, p4pValue) and value_field.has("index") and value_field.has("choices"):
             value = value_field.get("index")
-            enumChoices = value_field.get("choices")
+            enum_choices = value_field.get("choices")
         elif isinstance(value_field, (list, np.ndarray)):
             raw_array, dtype = encode_array_raw(value_field)
             if raw_array is None:
-                value = value_field.tolist() if isinstance(value_field, np.ndarray) else value_field
+                value = _normalize_value(value_field)
 
-        a = pv_obj.get("alarm", {})
-        ts = pv_obj.get("timeStamp", {})
-
-        return {
-            "pv": pv_name,
-            "value": value,
-            "enumChoices": enumChoices,
-            "alarm": {
-                "severity": a.get("severity", 0),
-                "status": a.get("status", 0),
-                "message": a.get("message", "NO_ALARM"),
-            },
-            "timeStamp": {
-                "secondsPastEpoch": ts.get("secondsPastEpoch", 0),
-                "nanoseconds": ts.get("nanoseconds", 0),
-                "userTag": ts.get("userTag", 0),
-            },
-            "rawArray": raw_array,
-            "dtype": dtype,
-        }
-
-    @staticmethod
-    def pva_metadata(pv_obj) -> dict:
-        """Parse metadata fields from a PVA object."""
-        d = pv_obj.get("display", {})
-        c = pv_obj.get("control", {})
-        va = pv_obj.get("valueAlarm", {})
-
-        return {
-            "display": {
-                "limitLow": d.get("limitLow"),
-                "limitHigh": d.get("limitHigh"),
-                "description": d.get("description"),
-                "units": d.get("units"),
-                "precision": d.get("precision"),
-                "form": (d.get("form")).get("index") if d.get("form") else None,
-                "choices": (d.get("form")).get("choices") if d.get("form") else None,
-            },
-            "control": {
-                "limitLow": c.get("limitLow"),
-                "limitHigh": c.get("limitHigh"),
-                "minStep": c.get("minStep"),
-            },
-            "valueAlarm": {
-                "active": va.get("active"),
-                "lowAlarmLimit": safe_get_nan(va, "lowAlarmLimit"),
-                "lowWarningLimit": safe_get_nan(va, "lowWarningLimit"),
-                "highWarningLimit": safe_get_nan(va, "highWarningLimit"),
-                "highAlarmLimit": safe_get_nan(va, "highAlarmLimit"),
-                "lowAlarmSeverity": va.get("lowAlarmSeverity"),
-                "lowWarningSeverity": va.get("lowWarningSeverity"),
-                "highWarningSeverity": va.get("highWarningSeverity"),
-                "highAlarmSeverity": va.get("highAlarmSeverity"),
-                "hysteresis": va.get("hysteresis"),
-            },
-        }
+        alarm_data = pv_obj.get("alarm", {})
+        timestamp_data = pv_obj.get("timeStamp", {})
+        return PVData(
+            pv=pv_name,
+            value=value,
+            enumChoices=enum_choices,
+            alarm=Alarm(
+                severity=alarm_data.get("severity", 0),
+                status=alarm_data.get("status", 0),
+                message=alarm_data.get("message", "NO_ALARM"),
+            ),
+            timeStamp=TimeStamp(
+                secondsPastEpoch=timestamp_data.get("secondsPastEpoch", 0),
+                nanoseconds=timestamp_data.get("nanoseconds", 0),
+                userTag=timestamp_data.get("userTag", 0),
+            ),
+            rawArray=raw_array,
+            dtype=dtype,
+        )
 
     @staticmethod
-    def ca_update(pv_obj: dict, pv_name: str) -> dict:
-        """Parse only the fast-changing fields (value, alarm, timeStamp) from a CA dict."""
+    def pva_metadata(pv_obj) -> PVMetadata:
+        display_data = pv_obj.get("display", {})
+        control_data = pv_obj.get("control", {})
+        alarm_data = pv_obj.get("valueAlarm", {})
+        form = display_data.get("form")
 
-        def normalize_value(v):
-            if isinstance(v, np.generic):
-                return v.item()
-            elif isinstance(v, np.ndarray):
-                return v.tolist()
-            return v
+        return PVMetadata(
+            display=Display(
+                limitLow=display_data.get("limitLow"),
+                limitHigh=display_data.get("limitHigh"),
+                description=display_data.get("description"),
+                units=display_data.get("units"),
+                precision=display_data.get("precision"),
+                form=form.get("index") if form else None,
+                choices=form.get("choices") if form else None,
+            ),
+            control=Control(
+                limitLow=control_data.get("limitLow"),
+                limitHigh=control_data.get("limitHigh"),
+                minStep=control_data.get("minStep"),
+            ),
+            valueAlarm=ValueAlarm(
+                active=alarm_data.get("active"),
+                lowAlarmLimit=safe_get_nan(alarm_data, "lowAlarmLimit"),
+                lowWarningLimit=safe_get_nan(alarm_data, "lowWarningLimit"),
+                highWarningLimit=safe_get_nan(alarm_data, "highWarningLimit"),
+                highAlarmLimit=safe_get_nan(alarm_data, "highAlarmLimit"),
+                lowAlarmSeverity=alarm_data.get("lowAlarmSeverity"),
+                lowWarningSeverity=alarm_data.get("lowWarningSeverity"),
+                highWarningSeverity=alarm_data.get("highWarningSeverity"),
+                highAlarmSeverity=alarm_data.get("highAlarmSeverity"),
+                hysteresis=alarm_data.get("hysteresis"),
+            ),
+        )
 
+    @staticmethod
+    def ca_update(pv_obj: dict, pv_name: str) -> PVData:
         value_field = pv_obj.get("value")
         raw_array = dtype = None
         if isinstance(value_field, (list, np.ndarray)):
             raw_array, dtype = encode_array_raw(value_field)
-        value = None if raw_array is not None else normalize_value(value_field)
-        enumChoices = pv_obj.get("enum_strs")
+        value = None if raw_array is not None else _normalize_value(value_field)
 
-        ts = normalize_value(pv_obj.get("timestamp", 0.0)) or 0.0
-        sec = int(ts)
-        nsec = int((ts - sec) * 1e9)
-
-        return {
-            "pv": pv_name,
-            "value": value,
-            "enumChoices": enumChoices,
-            "alarm": {
-                "severity": normalize_value(pv_obj.get("severity", 0)),
-                "status": normalize_value(pv_obj.get("status", 0)),
-                "message": str(pv_obj.get("status", "NO_ALARM")),
-            },
-            "timeStamp": {"secondsPastEpoch": sec, "nanoseconds": nsec, "userTag": 0},
-            "rawArray": raw_array,
-            "dtype": dtype,
-        }
-
-    @staticmethod
-    def snapshot_update(update: dict) -> dict:
-        raw_array = update["rawArray"]
-        return {
-            "value": update["value"],
-            "alarm": update["alarm"],
-            "timeStamp": update["timeStamp"],
-            "b64arr": base64.b64encode(raw_array).decode("ascii") if raw_array is not None else None,
-            "b64dtype": update["dtype"],
-        }
-
-    @staticmethod
-    def ca_metadata(pv_obj: dict) -> dict:
-        """Parse quasi-static metadata fields from a CA dict."""
-
-        def normalize_value(v):
-            if isinstance(v, np.generic):
-                return v.item()
-            elif isinstance(v, np.ndarray):
-                return v.tolist()
-            return v
-
-        return {
-            "display": {
-                "limitLow": normalize_value(pv_obj.get("lower_disp_limit")),
-                "limitHigh": normalize_value(pv_obj.get("upper_disp_limit")),
-                "units": pv_obj.get("units"),
-                "precision": normalize_value(pv_obj.get("precision")),
-            },
-            "control": {
-                "limitLow": normalize_value(pv_obj.get("lower_ctrl_limit")),
-                "limitHigh": normalize_value(pv_obj.get("upper_ctrl_limit")),
-            },
-            "valueAlarm": {
-                "lowAlarmLimit": normalize_value(safe_get_nan(pv_obj, "lower_alarm_limit")),
-                "highAlarmLimit": normalize_value(safe_get_nan(pv_obj, "upper_alarm_limit")),
-                "lowWarningLimit": normalize_value(safe_get_nan(pv_obj, "lower_warning_limit")),
-                "highWarningLimit": normalize_value(safe_get_nan(pv_obj, "upper_warning_limit")),
-                "hysteresis": normalize_value(safe_get_nan(pv_obj, "hyst")),
-            },
-        }
-
-    @staticmethod
-    def from_pva(pv_obj, pv_name: Optional[str] = None) -> PVData:
-        """Converts a p4p NTValue to PVData."""
-        enumChoices = value = b64arr = b64dtype = None
-
-        value_field = pv_obj.get("value")
-
-        if isinstance(value_field, (int, float, str)):
-            value = value_field
-        elif isinstance(value_field, p4pValue) and value_field.has("index") and value_field.has("choices"):
-            value = value_field.get("index")
-            enumChoices = value_field.get("choices")
-        elif isinstance(value_field, (list, np.ndarray)):
-            b64arr, b64dtype = encode_array(value_field)
-
-        a = pv_obj.get("alarm", {})
-        alarm = Alarm(
-            severity=a.get("severity", 0),
-            status=a.get("status", 0),
-            message=a.get("message", "NO_ALARM"),
-        )
-
-        ts = pv_obj.get("timeStamp", {})
-        timestamp = TimeStamp(
-            secondsPastEpoch=ts.get("secondsPastEpoch", 0),
-            nanoseconds=ts.get("nanoseconds", 0),
-            userTag=ts.get("userTag", 0),
-        )
-
-        d = pv_obj.get("display", {})
-        display = Display(
-            limitLow=d.get("limitLow"),
-            limitHigh=d.get("limitHigh"),
-            description=d.get("description"),
-            units=d.get("units"),
-            precision=d.get("precision"),
-            form=(d.get("form")).get("index") if d.get("form") else None,
-            choices=(d.get("form")).get("choices") if d.get("form") else None,
-        )
-
-        c = pv_obj.get("control", {})
-        control = Control(
-            limitLow=c.get("limitLow"),
-            limitHigh=c.get("limitHigh"),
-            minStep=c.get("minStep"),
-        )
-
-        va = pv_obj.get("valueAlarm", {})
-
-        value_alarm = ValueAlarm(
-            active=va.get("active"),
-            lowAlarmLimit=safe_get_nan(va, "lowAlarmLimit"),
-            lowWarningLimit=safe_get_nan(va, "lowWarningLimit"),
-            highWarningLimit=safe_get_nan(va, "highWarningLimit"),
-            highAlarmLimit=safe_get_nan(va, "highAlarmLimit"),
-            lowAlarmSeverity=va.get("lowAlarmSeverity"),
-            lowWarningSeverity=va.get("lowWarningSeverity"),
-            highWarningSeverity=va.get("highWarningSeverity"),
-            highAlarmSeverity=va.get("highAlarmSeverity"),
-            hysteresis=va.get("hysteresis"),
-        )
-
+        timestamp = _normalize_value(pv_obj.get("timestamp", 0.0)) or 0.0
+        seconds = int(timestamp)
         return PVData(
             pv=pv_name,
             value=value,
-            enumChoices=enumChoices,
-            alarm=alarm,
-            timeStamp=timestamp,
-            display=display,
-            control=control,
-            valueAlarm=value_alarm,
-            b64arr=b64arr,
-            b64dtype=b64dtype,
+            enumChoices=pv_obj.get("enum_strs"),
+            alarm=Alarm(
+                severity=_normalize_value(pv_obj.get("severity", 0)),
+                status=_normalize_value(pv_obj.get("status", 0)),
+                message=str(pv_obj.get("status", "NO_ALARM")),
+            ),
+            timeStamp=TimeStamp(
+                secondsPastEpoch=seconds,
+                nanoseconds=int((timestamp - seconds) * 1e9),
+            ),
+            rawArray=raw_array,
+            dtype=dtype,
         )
 
     @staticmethod
-    def from_ca(pv_obj: dict, pv_name: str) -> PVData:
-        """Converts a dict-based CA response to PVData, ensuring JSON-serializable values."""
+    def snapshot_update(update: PVData) -> dict:
+        return {
+            "value": update.value,
+            "alarm": asdict(update.alarm),
+            "timeStamp": asdict(update.timeStamp),
+            "b64arr": base64.b64encode(update.rawArray).decode("ascii") if update.rawArray is not None else None,
+            "b64dtype": update.dtype,
+        }
 
-        def normalize_value(v):
-            """Converts numpy types and arrays to JSON-serializable Python types."""
-            if isinstance(v, np.generic):
-                return v.item()
-            elif isinstance(v, np.ndarray):
-                return v.tolist()
-            return v
-
-        value = normalize_value(pv_obj.get("value"))
-
-        b64arr, b64dtype = encode_array(value) if isinstance(value, list) else (None, None)
-        if b64arr is not None:
-            value = None
-
-        enumChoices = pv_obj.get("enum_strs")
-
-        alarm = Alarm(
-            severity=normalize_value(pv_obj.get("severity", 0)),
-            status=normalize_value(pv_obj.get("status", 0)),
-            message=str(pv_obj.get("status", "NO_ALARM")),
-        )
-
-        ts = normalize_value(pv_obj.get("timestamp", 0.0)) or 0.0
-        sec = int(ts)
-        nsec = int((ts - sec) * 1e9)
-        timestamp = TimeStamp(secondsPastEpoch=sec, nanoseconds=nsec)
-
-        display = Display(
-            limitLow=normalize_value(pv_obj.get("lower_disp_limit")),
-            limitHigh=normalize_value(pv_obj.get("upper_disp_limit")),
-            units=pv_obj.get("units"),
-            precision=normalize_value(pv_obj.get("precision")),
-        )
-
-        control = Control(
-            limitLow=normalize_value(pv_obj.get("lower_ctrl_limit")),
-            limitHigh=normalize_value(pv_obj.get("upper_ctrl_limit")),
-        )
-
-        value_alarm = ValueAlarm(
-            lowAlarmLimit=normalize_value(safe_get_nan(pv_obj, "lower_alarm_limit")),
-            highAlarmLimit=normalize_value(safe_get_nan(pv_obj, "upper_alarm_limit")),
-            lowWarningLimit=normalize_value(safe_get_nan(pv_obj, "lower_warning_limit")),
-            highWarningLimit=normalize_value(safe_get_nan(pv_obj, "upper_warning_limit")),
-            hysteresis=normalize_value(safe_get_nan(pv_obj, "hyst")),
-        )
-
-        return PVData(
-            pv=pv_name,
-            value=value,
-            enumChoices=enumChoices,
-            alarm=alarm,
-            timeStamp=timestamp,
-            display=display,
-            control=control,
-            valueAlarm=value_alarm,
-            b64arr=b64arr,
-            b64dtype=b64dtype,
+    @staticmethod
+    def ca_metadata(pv_obj: dict) -> PVMetadata:
+        return PVMetadata(
+            display=Display(
+                limitLow=_normalize_value(pv_obj.get("lower_disp_limit")),
+                limitHigh=_normalize_value(pv_obj.get("upper_disp_limit")),
+                units=pv_obj.get("units"),
+                precision=_normalize_value(pv_obj.get("precision")),
+            ),
+            control=Control(
+                limitLow=_normalize_value(pv_obj.get("lower_ctrl_limit")),
+                limitHigh=_normalize_value(pv_obj.get("upper_ctrl_limit")),
+            ),
+            valueAlarm=ValueAlarm(
+                lowAlarmLimit=_normalize_value(safe_get_nan(pv_obj, "lower_alarm_limit")),
+                highAlarmLimit=_normalize_value(safe_get_nan(pv_obj, "upper_alarm_limit")),
+                lowWarningLimit=_normalize_value(safe_get_nan(pv_obj, "lower_warning_limit")),
+                highWarningLimit=_normalize_value(safe_get_nan(pv_obj, "upper_warning_limit")),
+                hysteresis=_normalize_value(safe_get_nan(pv_obj, "hyst")),
+            ),
         )
