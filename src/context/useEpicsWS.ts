@@ -2,7 +2,8 @@
 // Copyright (C) 2026 André Favoto
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { WSClient } from "@src/services/WSClient/WSClient";
+import { WSWorkerClient } from "@src/services/WSClient/WSWorkerClient";
+import type { PVBatch } from "@src/services/WSClient/workerProtocol";
 import type { PVData, PVWriteValue, WSMessage } from "@src/types/epicsWS";
 import { WS_URL } from "@src/constants/constants";
 import { usePVStore } from "@src/services/pvStore";
@@ -11,6 +12,8 @@ import { pushPVHistory, clearPVHistory } from "@src/utils/historyBuffers";
 /**
  * Hook that manages a WebSocket session to the PV WebSocket.
  *
+ * The socket itself lives in a dedicated worker (see `ws.worker.ts`), which
+ * handles updates and posts them here in ~16 ms batches.
  * PV data is written directly to the Zustand pvStore (no React state).
  * This means PV updates trigger zero React re-renders at the provider level —
  * only components that subscribe to specific PVs via usePVStore re-render.
@@ -18,16 +21,15 @@ import { pushPVHistory, clearPVHistory } from "@src/utils/historyBuffers";
  * @param resolvedPVList  Flat deduplicated list of all resolved PV names to subscribe to
  */
 export default function useEpicsWS(resolvedPVList: string[]) {
-  /** WebSocket client instance */
-  const ws = useRef<WSClient | null>(null);
+  /** WebSocket worker client instance */
+  const ws = useRef<WSWorkerClient | null>(null);
   const [wsConnected, setWSConnected] = useState(false);
   /** Tracks which resolved PVs are currently subscribed on the server */
   const subscribedRef = useRef<Set<string>>(new Set());
   /**
    * PV updates accumulate here between animation frames.
    * A single requestAnimationFrame flush writes them all to the Zustand store
-   * in one call, capping the React re-render rate at ~60 fps regardless of how
-   * fast the WebSocket server sends messages.
+   * in one call, capping the React re-render rate at ~60 fps.
    */
   const pendingPVsRef = useRef<Record<string, PVData>>({});
   const rafHandleRef = useRef<number | null>(null);
@@ -49,33 +51,28 @@ export default function useEpicsWS(resolvedPVList: string[]) {
   }
 
   /**
-   * Handles incoming WebSocket messages.
+   * Handles a batch of PV traffic from the WS worker.
    *
-   * Merges partial/sticky metadata fields into the per-frame accumulator.
-   * The actual Zustand store write is deferred to the next animation frame so
-   * that multiple messages arriving in the same frame are batched into one
-   * React re-render cycle.
-   * In case of scalar PVs that have been registered for buffering (plots), push
-   * the sample into the history buffer independently of rAF batching so that
-   * the history is always up to date even if the widget is not re-rendering.
-   * On disconnect, the PV's cached data and history are purged immediately
-   * instead of merged, so widgets fall back to their "no data" state.
+   * Disconnected PVs are discarded first so widgets fall back to their "no data"
+   * state. Scalar samples are pushed to the history buffers immediately (every
+   * sample, not just the latest) so plot history stays lossless. Merged updates
+   * are deferred to the next animation frame, so multiple batches arriving in
+   * the same frame produce one React re-render cycle, and rendering pauses while
+   * the tab is hidden.
    */
-  const onMessage = useCallback((msg: WSMessage) => {
-    if (!subscribedRef.current.has(msg.pv)) {
-      console.warn(`received message from unsolicited PV: ${msg.pv}`);
-      return;
+  const onBatch = useCallback((batch: PVBatch) => {
+    const subscribed = subscribedRef.current;
+    if (batch.disconnected.length > 0) {
+      for (const pv of batch.disconnected) delete pendingPVsRef.current[pv];
+      usePVStore.getState().removePVs(batch.disconnected);
+      clearPVHistory(batch.disconnected);
     }
-    if (msg.connected === false) {
-      delete pendingPVsRef.current[msg.pv];
-      usePVStore.getState().removePVs([msg.pv]);
-      clearPVHistory([msg.pv]);
-      return;
+    for (const [pv, timeStamp, value] of batch.samples) {
+      if (subscribed.has(pv)) pushPVHistory(pv, timeStamp, value);
     }
-    if (typeof msg.value === "number" && msg.timeStamp) {
-      pushPVHistory(msg.pv, msg.timeStamp, msg.value);
+    for (const msg of Object.values(batch.updates)) {
+      if (subscribed.has(msg.pv)) pendingPVsRef.current[msg.pv] = buildPVData(msg);
     }
-    pendingPVsRef.current[msg.pv] = buildPVData(msg);
     rafHandleRef.current ??= requestAnimationFrame(() => {
       rafHandleRef.current = null;
       const updates = pendingPVsRef.current;
@@ -84,10 +81,10 @@ export default function useEpicsWS(resolvedPVList: string[]) {
     });
   }, []);
 
-  // Always kept up to date so the WSClient never captures a stale closure.
-  const onMessageRef = useRef(onMessage);
-  onMessageRef.current = onMessage;
-  const stableMessageHandler = useRef<(msg: WSMessage) => void>((msg) => onMessageRef.current(msg));
+  // Always kept up to date so the worker client never captures a stale closure.
+  const onBatchRef = useRef(onBatch);
+  onBatchRef.current = onBatch;
+  const stableBatchHandler = useRef<(batch: PVBatch) => void>((batch) => onBatchRef.current(batch));
 
   /**
    * Handles connection state changes.
@@ -149,7 +146,7 @@ export default function useEpicsWS(resolvedPVList: string[]) {
     if (ws.current) {
       stopSession();
     }
-    ws.current = new WSClient(WS_URL, handleConnect, stableMessageHandler.current);
+    ws.current = new WSWorkerClient(WS_URL, handleConnect, stableBatchHandler.current);
     ws.current.open();
   }, [handleConnect, stopSession]);
 

@@ -64,9 +64,11 @@ Starting by these will naturally guide you through the other related files.
   connection state changes.
 
 Live PV data is stored in a [Zustand](https://zustand.pmnd.rs/) module-level store (`usePVStore`,
-`src/services/pvStore.ts`). `useEpicsWS` collects incoming WebSocket messages in a buffer and
-flushes them into the store via `requestAnimationFrame`, capping updates at the user's monitor
-update rate. Widget components subscribe with a PV-specific selector:
+`src/services/pvStore.ts`). The WebSocket runs in a dedicated Web Worker, which decodes and merges
+incoming messages and posts them to `useEpicsWS` in ~16 ms batches. `useEpicsWS` then flushes them
+into the store via `requestAnimationFrame`, capping updates at the user's monitor update rate. Every
+scalar sample is still forwarded for plot history buffers, so merging never drops history points.
+Widget components subscribe with a PV-specific selector:
 
 ```ts
 const pvData = usePVStore((state) => state.pvs["MY:PV"]);
@@ -124,10 +126,13 @@ through one of the above.
   to display a 4-second auto-dismiss snackbar. Accepted severity values: `"success"`, `"info"`,
   `"warning"`, `"error"`.
 
-- **`WSClient`** - stateful WebSocket class injected into `useEpicsWS`. Manages
-  subscribe/unsubscribe/write messaging to the EPICS bridge, auto-reconnects with exponential
-  backoff on unexpected disconnection, and decodes binary array updates into `number[]` values
-  before data reaches `pvStore`.
+- **`WSClient`** - stateful WebSocket class that runs inside `ws.worker.ts`, off the main thread.
+  Manages subscribe/unsubscribe/write messaging to the EPICS bridge, auto-reconnects with
+  exponential backoff on unexpected disconnection, and decodes binary array updates into typed
+  arrays. The worker merges updates per PV and transfers array buffers (zero-copy) to the main
+  thread in batches. `useEpicsWS` talks to it through `WSWorkerClient`, a thin proxy with the same
+  methods; the message contract lives in `workerProtocol.ts`. Worker files (`*.worker.ts`) are
+  type-checked by `tsconfig.worker.json` (WebWorker lib).
 
 - **`pvStore`** - Zustand store for live EPICS PV data. See the
   [State management layer](#state-management-layer) section above for a full description.
