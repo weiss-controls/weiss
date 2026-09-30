@@ -6,9 +6,11 @@ import json
 import os
 from typing import Any, Dict, Optional, Set, Tuple, Union
 
+import numpy as np
 import websockets
 from websockets.asyncio.server import ServerConnection
 
+from binaryFrame import build_binary_frame
 from CAClient import CAClient
 from PVAClient import PVAClient
 from pvParser import PVParser
@@ -147,11 +149,8 @@ async def send_update(pv_name: str, pv_obj, provider: str):
     if not ws_set:
         return
 
-    # Parse fast-changing fields (value, alarm, timeStamp, b64arr/dtype)
-    if provider == PVA_PROVIDER_KEY:
-        update = PVParser.pva_update(pv_obj, pv_name)
-    else:
-        update = PVParser.ca_update(pv_obj, pv_name)
+    parser = PVParser.pva_update if provider == PVA_PROVIDER_KEY else PVParser.ca_update
+    update = parser(pv_obj, pv_name)
 
     # Populate metadata cache on first update for this PV
     if pv_name not in _pv_metadata:
@@ -162,41 +161,44 @@ async def send_update(pv_name: str, pv_obj, provider: str):
 
     pv_name_with_provider = format_pv_name(pv_name, provider)
 
-    base_msg = {
-        "type": "update",
-        "pv": pv_name_with_provider,
-        "value": update["value"],
-        "alarm": update["alarm"],
-        "timeStamp": update["timeStamp"],
-        "b64arr": update["b64arr"],
-        "b64dtype": update["b64dtype"],
-    }
-    if update.get("enumChoices") is not None:
-        base_msg["enumChoices"] = update["enumChoices"]
-
-    # Split subscribers into those who already have metadata (fast path) and
-    # those who need the full payload (first update, or after a disconnect).
-    ws_snapshot = set(ws_set)
-    fast_path_ws = [ws for ws in ws_snapshot if sent_metadata.get((ws, pv_name))]
-    full_path_ws = [ws for ws in ws_snapshot if not sent_metadata.get((ws, pv_name))]
-
-    async def _send(ws: ServerConnection, data: str):
+    async def _send(ws: ServerConnection, data: str | bytes):
         try:
             await ws.send(data)
         except Exception:
             print(f"[epicsWS]: Error sending update to {ws}")
 
+    raw_array = update["rawArray"]
+    base_msg = {
+        "type": "update",
+        "pv": pv_name_with_provider,
+        "alarm": update["alarm"],
+        "timeStamp": update["timeStamp"],
+    }
+    if raw_array is not None:
+        base_msg["dtype"] = update["dtype"]
+    else:
+        base_msg["value"] = update["value"]
+    if update.get("enumChoices") is not None:
+        base_msg["enumChoices"] = update["enumChoices"]
+
+    def serialize(msg):
+        fields = {key: val for key, val in msg.items() if val is not None}
+        if raw_array is not None:
+            return build_binary_frame(fields, raw_array, np.dtype(update["dtype"]).itemsize)
+        return json.dumps(fields)
+
+    ws_snapshot = set(ws_set)
+    fast_path_ws = [ws for ws in ws_snapshot if sent_metadata.get((ws, pv_name))]
+    full_path_ws = [ws for ws in ws_snapshot if not sent_metadata.get((ws, pv_name))]
     send_tasks = []
-
     if fast_path_ws:
-        common_data = json.dumps({k: v for k, v in base_msg.items() if v is not None})
-        send_tasks.extend(_send(ws, common_data) for ws in fast_path_ws)
-
+        data = serialize(base_msg)
+        send_tasks.extend(_send(ws, data) for ws in fast_path_ws)
     if full_path_ws:
         full_msg = dict(base_msg)
         full_msg.update(_pv_metadata[pv_name])
         full_msg["connected"] = True
-        data = json.dumps({k: v for k, v in full_msg.items() if v is not None})
+        data = serialize(full_msg)
         for ws in full_path_ws:
             sent_metadata[(ws, pv_name)] = True
         send_tasks.extend(_send(ws, data) for ws in full_path_ws)
@@ -280,13 +282,7 @@ async def message_handler(ws: ServerConnection):
                                 parsed = PVParser.pva_update(raw, clean_name)
                             else:
                                 parsed = PVParser.ca_update(raw, clean_name)
-                            snapshot_data[pv_name] = {
-                                "value": parsed["value"],
-                                "alarm": parsed["alarm"],
-                                "timeStamp": parsed["timeStamp"],
-                                "b64arr": parsed["b64arr"],
-                                "b64dtype": parsed["b64dtype"],
-                            }
+                            snapshot_data[pv_name] = PVParser.snapshot_update(parsed)
 
                 await ws.send(
                     json.dumps(

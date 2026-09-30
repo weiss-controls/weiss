@@ -126,8 +126,8 @@ through one of the above.
 
 - **`WSClient`** - stateful WebSocket class injected into `useEpicsWS`. Manages
   subscribe/unsubscribe/write messaging to the EPICS bridge, auto-reconnects with exponential
-  backoff on unexpected disconnection, and decodes base64-encoded binary arrays before data reaches
-  `pvStore`.
+  backoff on unexpected disconnection, and decodes binary array updates into `number[]` values
+  before data reaches `pvStore`.
 
 - **`pvStore`** - Zustand store for live EPICS PV data. See the
   [State management layer](#state-management-layer) section above for a full description.
@@ -192,11 +192,25 @@ the origin of the message.
 This class was based on the
 [EPICS Normative Types](https://docs.epics-controls.org/projects/normativetypes-cpp/en/latest/ntCPP.html)
 (with minor modifications for convenience). This way, a known format is always used, and the
-front-end client only needs to know one data structure for all protocols. Similar to PVWS, **extra
-fields were added for base64 encoding** for arrays, improving JSON data traffic. A separate field
-for enumeration strings for enum/enum-like records was also added.
+front-end client only needs to know one data structure for all protocols. Extra fields provide
+enumeration strings for enum/enum-like records.
+
+#### Array update transport
+
+Scalar and disconnect updates, client requests, and snapshot/restore messages use JSON text frames.
+Nonempty numeric array updates use a single binary WebSocket frame, without size thresholds or
+capability negotiation. Empty and nonnumeric arrays stay in JSON. The frontend and bridge are
+deployed together; saved displays, widget values, and authentication do not change.
+
+Binary frames contain
+`[uint32 LE header length][UTF-8 JSON header][ASCII-space padding][raw array bytes]`. The length
+includes padding, which aligns the payload offset to the element size. Array bytes are
+little-endian; `dtype` in the header is one of `int8`, `uint8`, `int16`, `uint16`, `int32`,
+`uint32`, or `float64`. The header carries the usual update fields except `value`; first updates
+also include metadata. The client decodes the array to `number[]`. Snapshots retain their existing
+base64 JSON format. Array shape is not transmitted; NTNDArray shape/codec support is separate.
 
 This service is intentionally isolated from the API: it has no dependency on authentication or
-repository management and can be deployed and scaled independently.
+repository management.
 
 Further tests on performance and scalability are planned for the near future.

@@ -2,35 +2,10 @@
 // Copyright (C) 2026 André Favoto
 
 import type { PVValue, WSMessage } from "@src/types/epicsWS";
+import { decodeBinaryUpdate } from "./binaryArray.ts";
 
 type ConnectionHandler = (connected: boolean) => void;
 type MessageHandler = (message: WSMessage) => void;
-
-/**
- * Normalizes a base64 string to standard Base64 format by replacing URL-safe
- * characters with standard characters.
- * @param b64 The base64 string to normalize.
- * @returns The normalized base64 string.
- */
-function normalizeBase64(b64: string): string {
-  return b64.replace(/-/g, "+").replace(/_/g, "/");
-}
-
-/**
- * Converts a base64-encoded string into an ArrayBuffer.
- * @param b64 The base64 string to decode.
- * @returns The decoded ArrayBuffer.
- */
-function base64ToArrayBuffer(b64: string): ArrayBuffer {
-  const binary = atob(normalizeBase64(b64));
-  const len = binary.length;
-  const bytes = new Uint8Array(len);
-
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes.buffer;
-}
 
 /**
  * Type guard to check if an object is a WSMessage.
@@ -81,8 +56,9 @@ export class WSClient {
 
   private _connect(): void {
     this.socket = new WebSocket(this.url);
+    this.socket.binaryType = "arraybuffer";
     this.socket.onopen = (event) => this.handleConnection(event);
-    this.socket.onmessage = (event) => this.handleMessage(event.data as string);
+    this.socket.onmessage = (event) => this.handleMessage(event.data as string | ArrayBuffer);
     this.socket.onclose = (event) => this.handleClose(event);
     this.socket.onerror = (event) => this.handleError(event);
   }
@@ -102,43 +78,25 @@ export class WSClient {
   }
 
   /**
-   * Handles incoming WebSocket messages, decodes base64 arrays, and forwards them.
-   * @param message The raw WebSocket message string.
+   * Handles incoming WebSocket messages and forwards decoded PV updates.
+   * @param message The raw WebSocket message.
    */
-  private handleMessage(message: string): void {
-    const uncheckedMessage: unknown = JSON.parse(message);
+  private handleMessage(message: string | ArrayBuffer): void {
+    let uncheckedMessage: unknown;
+    try {
+      uncheckedMessage =
+        typeof message === "string" ? JSON.parse(message) : decodeBinaryUpdate(message);
+    } catch (error) {
+      console.error("Invalid WebSocket message:", error);
+      return;
+    }
 
     if (!isWSMessage(uncheckedMessage)) {
       console.error("Received invalid message:", message);
       return;
     }
 
-    const msg = uncheckedMessage;
-
-    if (msg.type === "update" && msg.b64arr && msg.b64dtype) {
-      const buffer = base64ToArrayBuffer(msg.b64arr);
-      switch (msg.b64dtype) {
-        case "float64":
-          msg.value = Array.from(new Float64Array(buffer));
-          break;
-        case "int8":
-          msg.value = Array.from(new Int8Array(buffer));
-          break;
-        case "int16":
-          msg.value = Array.from(new Int16Array(buffer));
-          break;
-        case "int32":
-          msg.value = Array.from(new Int32Array(buffer));
-          break;
-        default:
-          console.error("Unsupported b64dtype:", msg.b64dtype);
-          msg.value = [];
-      }
-
-      delete msg.b64arr;
-      delete msg.b64dtype;
-    }
-    this.message_handler(msg);
+    this.message_handler(uncheckedMessage);
   }
 
   /**
@@ -232,7 +190,8 @@ export class WSClient {
       }
 
       const handler = (event: MessageEvent) => {
-        const msg = JSON.parse(event.data as string) as Record<string, unknown>;
+        if (typeof event.data !== "string") return;
+        const msg = JSON.parse(event.data) as Record<string, unknown>;
         if (msg.type === "snapshot") {
           this.socket.removeEventListener("message", handler);
           resolve(msg);
@@ -263,7 +222,8 @@ export class WSClient {
       }
 
       const handler = (event: MessageEvent) => {
-        const msg = JSON.parse(event.data as string) as Record<string, unknown>;
+        if (typeof event.data !== "string") return;
+        const msg = JSON.parse(event.data) as Record<string, unknown>;
         if (msg.type === "restore_result") {
           this.socket.removeEventListener("message", handler);
           resolve(msg);

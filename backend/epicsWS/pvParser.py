@@ -100,11 +100,41 @@ def encode_array(arr: Any) -> tuple[Optional[str], Optional[str]]:
             dtype = "int8"
         elif -32768 <= min_val <= max_val <= 32767:
             dtype = "int16"
-        else:
+        elif -2147483648 <= min_val <= max_val <= 2147483647:
             dtype = "int32"
+        else:
+            return None, None
         return encode_base64_array(arr, dtype), dtype
 
     return None, None
+
+
+def encode_array_raw(arr: Any) -> tuple[Optional[bytes], Optional[str]]:
+    if arr is None:
+        return None, None
+
+    array = np.asarray(arr)
+    if array.size == 0:
+        return None, None
+
+    if np.issubdtype(array.dtype, np.floating):
+        dtype = "float64"
+    elif np.issubdtype(array.dtype, np.integer):
+        minimum, maximum = int(array.min()), int(array.max())
+        if minimum >= 0:
+            dtype = next((name for limit, name in ((255, "uint8"), (65535, "uint16"), (4294967295, "uint32"))
+                          if maximum <= limit), None)
+        else:
+            dtype = next((name for low, high, name in ((-128, 127, "int8"), (-32768, 32767, "int16"),
+                                                       (-2147483648, 2147483647, "int32"))
+                          if low <= minimum and maximum <= high), None)
+        if dtype is None:
+            return None, None
+    else:
+        return None, None
+
+    encoded = np.asarray(array, dtype=np.dtype(dtype).newbyteorder("<"))
+    return encoded.tobytes(), dtype
 
 
 def safe_get_nan(obj, k: str):
@@ -116,7 +146,7 @@ class PVParser:
     @staticmethod
     def pva_update(pv_obj, pv_name: Optional[str] = None) -> dict:
         """Parse only the fast-changing fields (value, alarm, timeStamp) from a PVA object."""
-        enumChoices = value = b64arr = b64dtype = None
+        enumChoices = value = raw_array = dtype = None
 
         value_field = pv_obj.get("value")
         if isinstance(value_field, (int, float, str)):
@@ -125,7 +155,9 @@ class PVParser:
             value = value_field.get("index")
             enumChoices = value_field.get("choices")
         elif isinstance(value_field, (list, np.ndarray)):
-            b64arr, b64dtype = encode_array(value_field)
+            raw_array, dtype = encode_array_raw(value_field)
+            if raw_array is None:
+                value = value_field.tolist() if isinstance(value_field, np.ndarray) else value_field
 
         a = pv_obj.get("alarm", {})
         ts = pv_obj.get("timeStamp", {})
@@ -144,8 +176,8 @@ class PVParser:
                 "nanoseconds": ts.get("nanoseconds", 0),
                 "userTag": ts.get("userTag", 0),
             },
-            "b64arr": b64arr,
-            "b64dtype": b64dtype,
+            "rawArray": raw_array,
+            "dtype": dtype,
         }
 
     @staticmethod
@@ -195,12 +227,12 @@ class PVParser:
                 return v.tolist()
             return v
 
-        value = normalize_value(pv_obj.get("value"))
+        value_field = pv_obj.get("value")
+        raw_array = dtype = None
+        if isinstance(value_field, (list, np.ndarray)):
+            raw_array, dtype = encode_array_raw(value_field)
+        value = None if raw_array is not None else normalize_value(value_field)
         enumChoices = pv_obj.get("enum_strs")
-
-        b64arr, b64dtype = encode_array(value) if isinstance(value, list) else (None, None)
-        if b64arr is not None:
-            value = None
 
         ts = normalize_value(pv_obj.get("timestamp", 0.0)) or 0.0
         sec = int(ts)
@@ -216,8 +248,19 @@ class PVParser:
                 "message": str(pv_obj.get("status", "NO_ALARM")),
             },
             "timeStamp": {"secondsPastEpoch": sec, "nanoseconds": nsec, "userTag": 0},
-            "b64arr": b64arr,
-            "b64dtype": b64dtype,
+            "rawArray": raw_array,
+            "dtype": dtype,
+        }
+
+    @staticmethod
+    def snapshot_update(update: dict) -> dict:
+        raw_array = update["rawArray"]
+        return {
+            "value": update["value"],
+            "alarm": update["alarm"],
+            "timeStamp": update["timeStamp"],
+            "b64arr": base64.b64encode(raw_array).decode("ascii") if raw_array is not None else None,
+            "b64dtype": update["dtype"],
         }
 
     @staticmethod
