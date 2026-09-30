@@ -10,6 +10,8 @@ const types = {
   uint16: [2, Uint16Array],
   int32: [4, Int32Array],
   uint32: [4, Uint32Array],
+  int64: [8, BigInt64Array],
+  uint64: [8, BigUint64Array],
   float64: [8, Float64Array],
 } as const;
 
@@ -46,8 +48,30 @@ export function decodeBinaryUpdate(buffer: ArrayBuffer): WSMessage {
   }
 
   let value: number[];
-  if (littleEndian) {
-    value = Array.from(new ArrayType(buffer, offset, length / size));
+  if (dtype === "int64" || dtype === "uint64") {
+    if (littleEndian) {
+      const ArrayType = dtype === "int64" ? BigInt64Array : BigUint64Array;
+      value = Array.from(new ArrayType(buffer, offset, length / size), Number);
+    } else {
+      const view = new DataView(buffer, offset, length);
+      value = Array.from({ length: length / size }, (_, index) =>
+        Number(
+          dtype === "int64"
+            ? view.getBigInt64(index * size, true)
+            : view.getBigUint64(index * size, true),
+        ),
+      );
+    }
+  } else if (littleEndian) {
+    const NumericArrayType = ArrayType as
+      | Int8ArrayConstructor
+      | Uint8ArrayConstructor
+      | Int16ArrayConstructor
+      | Uint16ArrayConstructor
+      | Int32ArrayConstructor
+      | Uint32ArrayConstructor
+      | Float64ArrayConstructor;
+    value = Array.from(new NumericArrayType(buffer, offset, length / size));
   } else {
     const view = new DataView(buffer, offset, length);
     value = Array.from({ length: length / size }, (_, index) => {
@@ -67,6 +91,8 @@ export function decodeBinaryUpdate(buffer: ArrayBuffer): WSMessage {
           return view.getUint32(position, true);
         case "float64":
           return view.getFloat64(position, true);
+        default:
+          throw new Error("Unsupported binary update dtype");
       }
     });
   }

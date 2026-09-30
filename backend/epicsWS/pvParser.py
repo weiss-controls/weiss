@@ -96,7 +96,12 @@ def encode_array_raw(arr: Any) -> tuple[Optional[bytes], Optional[str]]:
             dtype = next(
                 (
                     name
-                    for limit, name in ((255, "uint8"), (65535, "uint16"), (4294967295, "uint32"))
+                    for limit, name in (
+                        (255, "uint8"),
+                        (65535, "uint16"),
+                        (4294967295, "uint32"),
+                        (18446744073709551615, "uint64"),
+                    )
                     if maximum <= limit
                 ),
                 None,
@@ -109,6 +114,7 @@ def encode_array_raw(arr: Any) -> tuple[Optional[bytes], Optional[str]]:
                         (-128, 127, "int8"),
                         (-32768, 32767, "int16"),
                         (-2147483648, 2147483647, "int32"),
+                        (-9223372036854775808, 9223372036854775807, "int64"),
                     )
                     if low <= minimum and maximum <= high
                 ),

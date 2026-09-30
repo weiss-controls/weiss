@@ -195,20 +195,29 @@ This class was based on the
 front-end client only needs to know one data structure for all protocols. Extra fields provide
 enumeration strings for enum/enum-like records.
 
-#### Array update transport
+#### Binary array updates
 
-Scalar and disconnect updates, client requests, and snapshot/restore messages use JSON text frames.
-Nonempty numeric array updates use a single binary WebSocket frame, without size thresholds or
-capability negotiation. Empty and nonnumeric arrays stay in JSON. The frontend and bridge are
-deployed together; saved displays, widget values, and authentication do not change.
+Scalar and disconnect updates, client requests, and snapshot/restore messages use standard JSON text
+frames. For efficiency of transport of bigger amounts of data, Nonempty numeric array updates use a
+single binary WebSocket frame, without size thresholds or capability negotiation. Empty and
+nonnumeric arrays stay in JSON.
 
 Binary frames contain
 `[uint32 LE header length][UTF-8 JSON header][ASCII-space padding][raw array bytes]`. The length
 includes padding, which aligns the payload offset to the element size. Array bytes are
 little-endian; `dtype` in the header is one of `int8`, `uint8`, `int16`, `uint16`, `int32`,
-`uint32`, or `float64`. The header carries the usual update fields except `value`; first updates
-also include metadata. The client decodes the array to `number[]`. Snapshots retain their existing
-base64 JSON format. Array shape is not transmitted; NTNDArray shape/codec support is separate.
+`uint32`, `int64`, `uint64`, or `float64`. The header carries the usual update fields except
+`value`; first updates also include metadata. The client decodes the array to `number[]`. Snapshots
+retain their existing base64 JSON format until further improvements are applied on that feature.
+Array shape is not transmitted; NTNDArray shape/codec support is separate.
+
+::: {note}  
+The existing `number[]` API means integers beyond JavaScript's safe integer range can lose precision
+on the client. `Number.MAX_SAFE_INTEGER` is `9,007,199,254,740,991` (`2^53 - 1`). This only applies
+to actual 64-bit integer PV arrays, which are not expected to be common. If you need exact 64-bit
+integer values, consider opening an issue or feature request to discuss support for `bigint[]` in
+the client.  
+:::
 
 This service is intentionally isolated from the API: it has no dependency on authentication or
 repository management.
