@@ -9,7 +9,7 @@ classifiers = [
 description = "WEISS EPICS WebSocket bridge"
 requires-python = ">=3.12"
 dependencies = [
-    "p4p==4.2.2",
+    "p4p==4.3.0",
     "pyepics==3.5.10",
     "websockets==17.1",
 ]
