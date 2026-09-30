@@ -71,10 +71,12 @@ explicit layers (Widget → EPICS → UI):
 | `WSActionsContext` | `useEpicsWS`       | Exposes only `writePVValue`; stable (empty dep array) so write-only widgets never re-render |
 
 Live PV data is **not** in React context. It lives in a [Zustand](https://zustand.pmnd.rs/) store
-(`usePVStore` in `src/services/pvStore.ts`). `useEpicsWS` writes incoming updates via
-`usePVStore.getState().setPVs()`, batched on `requestAnimationFrame` (~60 fps cap). Widget
-components consume PV data by calling `usePVStore(selector)` with a PV-specific selector, so they
-re-render only when their own PV changes — not on every update across the system.
+(`usePVStore` in `src/services/pvStore.ts`). The WebSocket runs in a dedicated worker
+(`src/services/WSClient/ws.worker.ts`) that decodes and merges updates into ~16 ms batches;
+`useEpicsWS` writes them via `usePVStore.getState().setPVs()`, batched on `requestAnimationFrame`
+(~60 fps cap). Widget components consume PV data by calling `usePVStore(selector)` with a
+PV-specific selector, so they re-render only when their own PV changes — not on every update across
+the system.
 
 #### `useWidgetManager` — mutation discipline
 
@@ -90,9 +92,13 @@ re-render only when their own PV changes — not on every update across the syst
 #### `useEpicsWS`
 
 - Manages the WebSocket connection lifecycle (`ws`, `wsConnected`, `startNewSession`,
-  `stopSession`).
+  `stopSession`). `ws` is a `WSWorkerClient` proxy; the socket, binary decoding and per-PV merging
+  live in `ws.worker.ts` (message contract in `workerProtocol.ts`).
 - Writes incoming PV updates to the Zustand `usePVStore`, batched per animation frame — no React
-  state involved, so PV ticks cause zero re-renders at the context level.
+  state involved, so PV ticks cause zero re-renders at the context level. Every scalar sample is
+  forwarded separately to `pushPVHistory`, so worker merging never drops plot history.
+- Worker files use the `*.worker.ts` suffix and are type-checked by `tsconfig.worker.json`
+  (WebWorker lib); they are excluded from `tsconfig.app.json`.
 - `writePVValue(pvName, value)` — sends a write message; exposed via `WSActionsContext` so
   write-only widgets don't re-render on connection state changes.
 
@@ -370,32 +376,33 @@ cd backend/api && ruff check .     # ruff
 
 ## Key File Locations
 
-| What                        | Where                                             |
-| --------------------------- | ------------------------------------------------- |
-| Widget definitions          | `src/components/Widgets/<Name>/<Name>.ts`         |
-| Widget components           | `src/components/Widgets/<Name>/<Name>Comp.tsx`    |
-| Widget registry             | `src/components/WidgetRegistry/WidgetRegistry.ts` |
-| All widget property schemas | `src/types/widgetProperties.ts`                   |
-| Widget + type definitions   | `src/types/widgets.ts`                            |
-| EPICS WS types              | `src/types/epicsWS.ts`                            |
-| Global constants / colors   | `src/constants/constants.ts`                      |
-| Widget manager hook         | `src/context/useWidgetManager.ts`                 |
-| UI manager hook             | `src/context/useUIManager.ts`                     |
-| EPICS WS hook               | `src/context/useEpicsWS.ts`                       |
-| PV data store (Zustand)     | `src/services/pvStore.ts`                         |
-| Per-widget PV rendering     | `src/components/WidgetRenderer/LiveWidget.tsx`    |
-| Generated API client        | `src/services/APIClient/` (do not edit manually)  |
-| Auth service                | `src/services/AuthService/AuthService.ts`         |
-| API entry point             | `backend/api/src/api/main.py`                     |
-| Auth routes                 | `backend/api/src/api/auth/auth.py`                |
-| Staging routes              | `backend/api/src/api/repos/staging.py`            |
-| Deployed routes             | `backend/api/src/api/repos/deployed.py`           |
-| Shared repo helpers         | `backend/api/src/api/repos/common.py`             |
-| API config (env vars)       | `backend/api/src/api/config.py`                   |
-| Roles config loader         | `backend/api/src/api/auth/roles_config.py`        |
-| epicsWS server              | `backend/epicsWS/epicsWS.py`                      |
-| Dev compose                 | `docker-compose-dev.yml`                          |
-| Prod compose                | `docker-compose.yml`                              |
+| What                        | Where                                                          |
+| --------------------------- | -------------------------------------------------------------- |
+| Widget definitions          | `src/components/Widgets/<Name>/<Name>.ts`                      |
+| Widget components           | `src/components/Widgets/<Name>/<Name>Comp.tsx`                 |
+| Widget registry             | `src/components/WidgetRegistry/WidgetRegistry.ts`              |
+| All widget property schemas | `src/types/widgetProperties.ts`                                |
+| Widget + type definitions   | `src/types/widgets.ts`                                         |
+| EPICS WS types              | `src/types/epicsWS.ts`                                         |
+| Global constants / colors   | `src/constants/constants.ts`                                   |
+| Widget manager hook         | `src/context/useWidgetManager.ts`                              |
+| UI manager hook             | `src/context/useUIManager.ts`                                  |
+| EPICS WS hook               | `src/context/useEpicsWS.ts`                                    |
+| WebSocket worker + proxy    | `src/services/WSClient/` (`ws.worker.ts`, `WSWorkerClient.ts`) |
+| PV data store (Zustand)     | `src/services/pvStore.ts`                                      |
+| Per-widget PV rendering     | `src/components/WidgetRenderer/LiveWidget.tsx`                 |
+| Generated API client        | `src/services/APIClient/` (do not edit manually)               |
+| Auth service                | `src/services/AuthService/AuthService.ts`                      |
+| API entry point             | `backend/api/src/api/main.py`                                  |
+| Auth routes                 | `backend/api/src/api/auth/auth.py`                             |
+| Staging routes              | `backend/api/src/api/repos/staging.py`                         |
+| Deployed routes             | `backend/api/src/api/repos/deployed.py`                        |
+| Shared repo helpers         | `backend/api/src/api/repos/common.py`                          |
+| API config (env vars)       | `backend/api/src/api/config.py`                                |
+| Roles config loader         | `backend/api/src/api/auth/roles_config.py`                     |
+| epicsWS server              | `backend/epicsWS/epicsWS.py`                                   |
+| Dev compose                 | `docker-compose-dev.yml`                                       |
+| Prod compose                | `docker-compose.yml`                                           |
 
 ---
 

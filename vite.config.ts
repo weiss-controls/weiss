@@ -18,6 +18,9 @@ export default defineConfig({
     },
   },
   plugins: [react(), ...(process.env.BUILD_STATS ? [visualizer()] : [])],
+  worker: {
+    format: "es",
+  },
   define: {
     __APP_VERSION__: JSON.stringify(version),
   },
