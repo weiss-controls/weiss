@@ -3,6 +3,7 @@
 
 import type { PVValue } from "@src/types/epicsWS";
 import type { ValueDisplayFormat } from "@src/types/widgets";
+import { isNumericArray } from "@src/utils/numericArray";
 
 function toEngineeringNotation(value: number, precision?: number): string {
   if (value === 0) return "0";
@@ -34,9 +35,9 @@ export function formatDisplayValue(
 
   switch (format) {
     case "String":
-      if (Array.isArray(value) && value.every((v) => typeof v === "number")) {
+      if (isNumericArray(value)) {
         // Int8 char-code array to string; strip null terminator
-        return String.fromCharCode(...value.filter((c) => c !== 0));
+        return String.fromCharCode(...Array.from(value).filter((c) => c !== 0));
       }
       return String(value);
 

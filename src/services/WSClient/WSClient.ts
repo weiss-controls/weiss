@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
-import type { PVValue, WSMessage } from "@src/types/epicsWS";
+import type { PVWriteValue, WSMessage } from "@src/types/epicsWS";
 import { decodeBinaryUpdate } from "./binaryArray.ts";
 
 type ConnectionHandler = (connected: boolean) => void;
@@ -95,7 +95,7 @@ export class WSClient {
       console.error("Received invalid message:", message);
       return;
     }
-
+    // narrowed down to WSMessage type
     this.message_handler(uncheckedMessage);
   }
 
@@ -120,6 +120,7 @@ export class WSClient {
       message += `, ${event.reason}`;
     }
     message += ")";
+    // code 1000 means normal closure. See https://www.rfc-editor.org/info/rfc6455/#section-7.4.1
     if (event.code !== 1000) {
       console.error(message);
       if (!this.intentionallyClosed) {
@@ -173,7 +174,7 @@ export class WSClient {
    * @param pv The PV name.
    * @param value The value to write.
    */
-  write(pv: string, value: PVValue): void {
+  write(pv: string, value: PVWriteValue): void {
     if (!this.connected) return;
     this.socket.send(JSON.stringify({ type: "write", pv, value }));
   }
@@ -214,7 +215,7 @@ export class WSClient {
    * @param pvs Record of PV names to their saved values.
    * @returns A promise that resolves with the restore results.
    */
-  restoreSnapshot(pvs: Record<string, { value: PVValue }>): Promise<Record<string, unknown>> {
+  restoreSnapshot(pvs: Record<string, { value: PVWriteValue }>): Promise<Record<string, unknown>> {
     return new Promise((resolve, reject) => {
       if (!this.connected) {
         reject(new Error("Not connected"));

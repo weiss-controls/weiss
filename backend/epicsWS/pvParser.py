@@ -12,6 +12,8 @@ import numpy as np
 from p4p.wrapper import Value as p4pValue
 
 
+# NormativeType data definitions
+# See: https://docs.epics-controls.org/en/latest/pv-access/Normative-Types-Specification.html
 @dataclass
 class Alarm:
     severity: int = 0
@@ -75,9 +77,14 @@ class PVData:
     display: Optional[Display] = None
     control: Optional[Control] = None
     valueAlarm: Optional[ValueAlarm] = None
-    connected: Optional[bool] = None
+    connected: Optional[bool] = False
     rawArray: Optional[bytes] = None
     dtype: Optional[str] = None
+
+
+ARRAY_DTYPES = frozenset(
+    ("int8", "uint8", "int16", "uint16", "int32", "uint32", "int64", "uint64", "float32", "float64")
+)
 
 
 def encode_array_raw(arr: Any) -> tuple[Optional[bytes], Optional[str]]:
@@ -88,44 +95,13 @@ def encode_array_raw(arr: Any) -> tuple[Optional[bytes], Optional[str]]:
     if array.size == 0:
         return None, None
 
-    if np.issubdtype(array.dtype, np.floating):
-        dtype = "float64"
-    elif np.issubdtype(array.dtype, np.integer):
-        minimum, maximum = int(array.min()), int(array.max())
-        if minimum >= 0:
-            dtype = next(
-                (
-                    name
-                    for limit, name in (
-                        (255, "uint8"),
-                        (65535, "uint16"),
-                        (4294967295, "uint32"),
-                        (18446744073709551615, "uint64"),
-                    )
-                    if maximum <= limit
-                ),
-                None,
-            )
-        else:
-            dtype = next(
-                (
-                    name
-                    for low, high, name in (
-                        (-128, 127, "int8"),
-                        (-32768, 32767, "int16"),
-                        (-2147483648, 2147483647, "int32"),
-                        (-9223372036854775808, 9223372036854775807, "int64"),
-                    )
-                    if low <= minimum and maximum <= high
-                ),
-                None,
-            )
-        if dtype is None:
+    dtype = array.dtype.name
+    if dtype not in ARRAY_DTYPES:
+        if array.dtype.kind != "f":
             return None, None
-    else:
-        return None, None
+        dtype = "float32" if array.dtype.itemsize < 4 else "float64"
 
-    encoded = np.asarray(array, dtype=np.dtype(dtype).newbyteorder("<"))
+    encoded = array.astype(np.dtype(dtype).newbyteorder("<"), copy=False)
     return encoded.tobytes(), dtype
 
 

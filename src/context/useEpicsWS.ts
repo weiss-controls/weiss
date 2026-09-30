@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { WSClient } from "@src/services/WSClient/WSClient";
-import type { PVData, PVValue, WSMessage } from "@src/types/epicsWS";
+import type { PVData, PVWriteValue, WSMessage } from "@src/types/epicsWS";
 import { WS_URL } from "@src/constants/constants";
 import { usePVStore } from "@src/services/pvStore";
 import { pushPVHistory, clearPVHistory } from "@src/utils/historyBuffers";
@@ -156,7 +156,7 @@ export default function useEpicsWS(resolvedPVList: string[]) {
   /**
    * Writes a new value to a PV.
    */
-  const writePVValue = useCallback((pv: string, newValue: PVValue) => {
+  const writePVValue = useCallback((pv: string, newValue: PVWriteValue) => {
     ws.current?.write(pv, newValue);
   }, []);
 
@@ -177,7 +177,9 @@ export default function useEpicsWS(resolvedPVList: string[]) {
    * Restores PV values from a saved snapshot.
    */
   const restoreFromSnapshot = useCallback(
-    async (pvs: Record<string, { value: PVValue }>): Promise<Record<string, unknown> | null> => {
+    async (
+      pvs: Record<string, { value: PVWriteValue }>,
+    ): Promise<Record<string, unknown> | null> => {
       if (!ws.current) return null;
       try {
         return await ws.current.restoreSnapshot(pvs);

@@ -205,18 +205,21 @@ nonnumeric arrays stay in JSON.
 Binary frames contain
 `[uint32 LE header length][UTF-8 JSON header][ASCII-space padding][raw array bytes]`. The length
 includes padding, which aligns the payload offset to the element size. Array bytes are
-little-endian; `dtype` in the header is one of `int8`, `uint8`, `int16`, `uint16`, `int32`,
-`uint32`, `int64`, `uint64`, or `float64`. The header carries the usual update fields except
-`value`; first updates also include metadata. The client decodes the array to `number[]`. Snapshots
-retain their existing base64 JSON format until further improvements are applied on that feature.
-Array shape is not transmitted; NTNDArray shape/codec support is separate.
+little-endian; `dtype` in the header is the PV's native element type, one of `int8`, `uint8`,
+`int16`, `uint16`, `int32`, `uint32`, `int64`, `uint64`, `float32`, or `float64`. The header carries
+the usual update fields except `value`; first updates also include metadata. The client exposes the
+array as a zero-copy typed array view over the received buffer (`NumericArray` in
+`src/types/epicsWS.ts`); consumers must use `isNumericArray()` from `src/utils/numericArray.ts`
+instead of `Array.isArray()`. Snapshots retain their existing base64 JSON format until further
+improvements are applied on that feature. Array shape is not transmitted; NTNDArray shape/codec
+support is separate.
 
 ::: {note}  
-The existing `number[]` API means integers beyond JavaScript's safe integer range can lose precision
-on the client. `Number.MAX_SAFE_INTEGER` is `9,007,199,254,740,991` (`2^53 - 1`). This only applies
-to actual 64-bit integer PV arrays, which are not expected to be common. If you need exact 64-bit
-integer values, consider opening an issue or feature request to discuss support for `bigint[]` in
-the client.  
+JavaScript has no safe 64-bit integer view, so `int64`/`uint64` arrays are converted to
+`Float64Array` on the client and integers beyond `Number.MAX_SAFE_INTEGER` (`2^53 - 1`) lose
+precision. This only applies to actual 64-bit integer PV arrays, which are not expected to be
+common. If you need exact 64-bit integer values, consider opening an issue or feature request to
+discuss `BigInt64Array` support in the client.  
 :::
 
 This service is intentionally isolated from the API: it has no dependency on authentication or

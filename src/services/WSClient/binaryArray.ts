@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
-import type { WSMessage } from "@src/types/epicsWS";
+import type { NumericArray, WSMessage } from "@src/types/epicsWS";
 
 const types = {
   int8: [1, Int8Array],
@@ -12,10 +12,24 @@ const types = {
   uint32: [4, Uint32Array],
   int64: [8, BigInt64Array],
   uint64: [8, BigUint64Array],
+  float32: [4, Float32Array],
   float64: [8, Float64Array],
 } as const;
 
 const littleEndian = new Uint8Array(new Uint16Array([1]).buffer)[0] === 1;
+
+const bigEndianReaders: Record<keyof typeof types, (view: DataView, pos: number) => number> = {
+  int8: (v, p) => v.getInt8(p),
+  uint8: (v, p) => v.getUint8(p),
+  int16: (v, p) => v.getInt16(p, true),
+  uint16: (v, p) => v.getUint16(p, true),
+  int32: (v, p) => v.getInt32(p, true),
+  uint32: (v, p) => v.getUint32(p, true),
+  int64: (v, p) => Number(v.getBigInt64(p, true)),
+  uint64: (v, p) => Number(v.getBigUint64(p, true)),
+  float32: (v, p) => v.getFloat32(p, true),
+  float64: (v, p) => v.getFloat64(p, true),
+};
 
 export function decodeBinaryUpdate(buffer: ArrayBuffer): WSMessage {
   if (buffer.byteLength < 4) throw new Error("Truncated binary update");
@@ -46,55 +60,24 @@ export function decodeBinaryUpdate(buffer: ArrayBuffer): WSMessage {
   if (offset % size !== 0 || length === 0 || length % size !== 0) {
     throw new Error("Invalid binary update payload");
   }
+  const count = length / size;
 
-  let value: number[];
-  if (dtype === "int64" || dtype === "uint64") {
-    if (littleEndian) {
-      const ArrayType = dtype === "int64" ? BigInt64Array : BigUint64Array;
-      value = Array.from(new ArrayType(buffer, offset, length / size), Number);
-    } else {
-      const view = new DataView(buffer, offset, length);
-      value = Array.from({ length: length / size }, (_, index) =>
-        Number(
-          dtype === "int64"
-            ? view.getBigInt64(index * size, true)
-            : view.getBigUint64(index * size, true),
-        ),
-      );
-    }
-  } else if (littleEndian) {
-    const NumericArrayType = ArrayType as
-      | Int8ArrayConstructor
-      | Uint8ArrayConstructor
-      | Int16ArrayConstructor
-      | Uint16ArrayConstructor
-      | Int32ArrayConstructor
-      | Uint32ArrayConstructor
-      | Float64ArrayConstructor;
-    value = Array.from(new NumericArrayType(buffer, offset, length / size));
-  } else {
+  let value: NumericArray;
+  if (!littleEndian) {
     const view = new DataView(buffer, offset, length);
-    value = Array.from({ length: length / size }, (_, index) => {
-      const position = index * size;
-      switch (dtype) {
-        case "int8":
-          return view.getInt8(position);
-        case "uint8":
-          return view.getUint8(position);
-        case "int16":
-          return view.getInt16(position, true);
-        case "uint16":
-          return view.getUint16(position, true);
-        case "int32":
-          return view.getInt32(position, true);
-        case "uint32":
-          return view.getUint32(position, true);
-        case "float64":
-          return view.getFloat64(position, true);
-        default:
-          throw new Error("Unsupported binary update dtype");
-      }
-    });
+    const read = bigEndianReaders[dtype];
+    value = new Float64Array(count);
+    for (let i = 0; i < count; i++) value[i] = read(view, i * size);
+  } else if (dtype === "int64" || dtype === "uint64") {
+    // No safe 64-bit integer view in JS; values beyond 2^53 lose precision
+    value = Float64Array.from(
+      new (ArrayType as typeof BigInt64Array)(buffer, offset, count),
+      Number,
+    );
+  } else {
+    value = new (
+      ArrayType as Exclude<typeof ArrayType, typeof BigInt64Array | typeof BigUint64Array>
+    )(buffer, offset, count);
   }
 
   const { dtype: unused, ...fields } = header;

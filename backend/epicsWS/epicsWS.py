@@ -160,6 +160,18 @@ async def send_update(pv_name: str, pv_obj, provider: str):
     if not ws_set:
         return
 
+    async def _send(ws: ServerConnection, data: str | bytes):
+        try:
+            await ws.send(data)
+        except Exception:
+            print(f"[epicsWS]: Error sending update to {ws}")
+
+    def serialize(msg):
+        fields = {key: val for key, val in msg.items() if val is not None}
+        if raw_array is not None:
+            return build_binary_frame(fields, raw_array, np.dtype(update.dtype).itemsize)
+        return json.dumps(fields)
+
     parser = PVParser.pva_update if provider == PVA_PROVIDER_KEY else PVParser.ca_update
     update = parser(pv_obj, pv_name)
 
@@ -171,12 +183,6 @@ async def send_update(pv_name: str, pv_obj, provider: str):
             _pv_metadata[pv_name] = PVParser.ca_metadata(pv_obj)
 
     pv_name_with_provider = format_pv_name(pv_name, provider)
-
-    async def _send(ws: ServerConnection, data: str | bytes):
-        try:
-            await ws.send(data)
-        except Exception:
-            print(f"[epicsWS]: Error sending update to {ws}")
 
     raw_array = update.rawArray
     base_msg = {
@@ -191,12 +197,6 @@ async def send_update(pv_name: str, pv_obj, provider: str):
         base_msg["value"] = update.value
     if update.enumChoices is not None:
         base_msg["enumChoices"] = update.enumChoices
-
-    def serialize(msg):
-        fields = {key: val for key, val in msg.items() if val is not None}
-        if raw_array is not None:
-            return build_binary_frame(fields, raw_array, np.dtype(update.dtype).itemsize)
-        return json.dumps(fields)
 
     ws_snapshot = set(ws_set)
     fast_path_ws = [ws for ws in ws_snapshot if sent_metadata.get((ws, pv_name))]

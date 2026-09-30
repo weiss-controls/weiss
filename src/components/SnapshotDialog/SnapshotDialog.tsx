@@ -28,7 +28,7 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import SaveIcon from "@mui/icons-material/Save";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import { COLORS } from "@src/constants/constants";
-import type { PVValue } from "@src/types/epicsWS";
+import type { PVWriteValue } from "@src/types/epicsWS";
 import type { SnapshotEntry } from "@src/services/APIClient/types.gen";
 import {
   saveSnapshot,
@@ -41,7 +41,9 @@ interface SnapshotDialogProps {
   open: boolean;
   onClose: () => void;
   onTakeSnapshot: () => Promise<Record<string, unknown> | null>;
-  onRestore: (pvs: Record<string, { value: PVValue }>) => Promise<Record<string, unknown> | null>;
+  onRestore: (
+    pvs: Record<string, { value: PVWriteValue }>,
+  ) => Promise<Record<string, unknown> | null>;
   opiFile: string;
 }
 
@@ -158,9 +160,9 @@ export default function SnapshotDialog({
           return;
         }
 
-        const pvData: Record<string, { value: PVValue }> = {};
+        const pvData: Record<string, { value: PVWriteValue }> = {};
         for (const [pv, d] of Object.entries(detail.pvs)) {
-          pvData[pv] = { value: d.value as PVValue };
+          pvData[pv] = { value: d.value as PVWriteValue };
         }
         const restoreResult = await onRestore(pvData);
         if (restoreResult && "succeeded" in restoreResult) {

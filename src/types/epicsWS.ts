@@ -5,8 +5,20 @@
 //export type WSMessageType = "update" | "subscribe" | "unsubscribe" | "write";
 export type WSMessageType =
   "update" | "subscribe" | "unsubscribe" | "write" | "snapshot" | "restore" | "restore_result";
+/** Numeric arrays decoded from binary frames: zero-copy views over the received buffer */
+export type NumericArray =
+  | Int8Array
+  | Uint8Array
+  | Int16Array
+  | Uint16Array
+  | Int32Array
+  | Uint32Array
+  | Float32Array
+  | Float64Array;
 /** Possible PV values: scalar or array of numbers or strings */
-export type PVValue = number | number[] | string | string[];
+export type PVValue = number | number[] | NumericArray | string | string[];
+/** Values accepted by PV writes and snapshot restores (must be JSON-serializable) */
+export type PVWriteValue = number | number[] | string | string[];
 
 /**
  * EPICS Normative Type support for alarm fields
