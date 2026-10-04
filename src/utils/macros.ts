@@ -97,9 +97,10 @@ export function buildRuntimeMacros(
   macros["$(pvdesc)"] = pvData?.display?.description ?? "";
   macros["$(pvunits)"] = pvData?.display?.units ?? "";
   if (pvData?.value !== undefined)
-    macros["$(pvvalue)"] = Array.isArray(pvData.value)
-      ? "pvvalue macro not supported for arrays"
-      : String(pvData.value);
+    macros["$(pvvalue)"] =
+      Array.isArray(pvData.value) || ArrayBuffer.isView(pvData.value)
+        ? "pvvalue macro not supported for arrays"
+        : String(pvData.value);
   else {
     macros["$(pvvalue)"] = "";
   }

@@ -326,13 +326,20 @@ Runs a WebSocket server on port 8080. Clients send JSON messages:
 { "type": "write",       "pv": "MY:PV:NAME", "value": 42 }
 ```
 
-Server pushes `WSMessage` updates (full type in `src/types/epicsWS.ts`):
+Server pushes scalar `WSMessage` updates as JSON text (full type in `src/types/epicsWS.ts`):
 
 ```json
-{ "type": "update", "pv": "MY:PV:NAME", "value": ..., "timeStamp": {...}, "alarm": {...}, "display": {...}, "control": {...}, "valueAlarm": {...}, "enumChoices": [...], "b64arr": "...", "b64dtype": "..." }
+{ "type": "update", "pv": "MY:PV:NAME", "value": ..., "timeStamp": {...}, "alarm": {...}, "display": {...}, "control": {...}, "valueAlarm": {...}, "enumChoices": [...] }
 ```
 
-All fields except `type`, `pv`, `value`, and `timeStamp` are optional.  
+Numeric array updates use binary WebSocket frames carrying the PV's native dtype and decode to a
+zero-copy typed array (`NumericArray`); use `isNumericArray()` from `src/utils/numericArray.ts`
+rather than `Array.isArray()` on PV values, and avoid copying/spreading them. PV writes use
+`PVWriteValue` (JSON-serializable). Snapshots remain base64 JSON. The frontend and bridge are
+released together. See `docs/src/developer/architecture.md` for the wire contract.
+
+All fields except `type`, `pv`, `value`, and `timeStamp` are optional for scalar updates.
+
 Protocol: prefix `pva://` or `ca://`, or set `EPICS_DEFAULT_PROTOCOL`.
 
 ---

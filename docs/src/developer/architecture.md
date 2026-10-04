@@ -126,8 +126,8 @@ through one of the above.
 
 - **`WSClient`** - stateful WebSocket class injected into `useEpicsWS`. Manages
   subscribe/unsubscribe/write messaging to the EPICS bridge, auto-reconnects with exponential
-  backoff on unexpected disconnection, and decodes base64-encoded binary arrays before data reaches
-  `pvStore`.
+  backoff on unexpected disconnection, and decodes binary array updates into `number[]` values
+  before data reaches `pvStore`.
 
 - **`pvStore`** - Zustand store for live EPICS PV data. See the
   [State management layer](#state-management-layer) section above for a full description.
@@ -192,11 +192,37 @@ the origin of the message.
 This class was based on the
 [EPICS Normative Types](https://docs.epics-controls.org/projects/normativetypes-cpp/en/latest/ntCPP.html)
 (with minor modifications for convenience). This way, a known format is always used, and the
-front-end client only needs to know one data structure for all protocols. Similar to PVWS, **extra
-fields were added for base64 encoding** for arrays, improving JSON data traffic. A separate field
-for enumeration strings for enum/enum-like records was also added.
+front-end client only needs to know one data structure for all protocols. Extra fields provide
+enumeration strings for enum/enum-like records.
+
+#### Binary array updates
+
+Scalar and disconnect updates, client requests, and snapshot/restore messages use standard JSON text
+frames. For efficiency of transport of bigger amounts of data, Nonempty numeric array updates use a
+single binary WebSocket frame, without size thresholds or capability negotiation. Empty and
+nonnumeric arrays stay in JSON.
+
+Binary frames contain
+`[uint32 LE header length][UTF-8 JSON header][ASCII-space padding][raw array bytes]`. The length
+includes padding, which aligns the payload offset to the element size. Array bytes are
+little-endian; `dtype` in the header is the PV's native element type, one of `int8`, `uint8`,
+`int16`, `uint16`, `int32`, `uint32`, `int64`, `uint64`, `float32`, or `float64`. The header carries
+the usual update fields except `value`; first updates also include metadata. The client exposes the
+array as a zero-copy typed array view over the received buffer (`NumericArray` in
+`src/types/epicsWS.ts`); consumers must use `isNumericArray()` from `src/utils/numericArray.ts`
+instead of `Array.isArray()`. Snapshots retain their existing base64 JSON format until further
+improvements are applied on that feature. Array shape is not transmitted; NTNDArray shape/codec
+support is separate.
+
+::: {note}  
+JavaScript has no safe 64-bit integer view, so `int64`/`uint64` arrays are converted to
+`Float64Array` on the client and integers beyond `Number.MAX_SAFE_INTEGER` (`2^53 - 1`) lose
+precision. This only applies to actual 64-bit integer PV arrays, which are not expected to be
+common. If you need exact 64-bit integer values, consider opening an issue or feature request to
+discuss `BigInt64Array` support in the client.  
+:::
 
 This service is intentionally isolated from the API: it has no dependency on authentication or
-repository management and can be deployed and scaled independently.
+repository management.
 
 Further tests on performance and scalability are planned for the near future.

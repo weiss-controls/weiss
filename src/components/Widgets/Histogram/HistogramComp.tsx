@@ -4,12 +4,14 @@
 
 import React, { useEffect, useMemo } from "react";
 import type { WidgetUpdate } from "@src/types/widgets";
+import type { NumericArray } from "@src/types/epicsWS";
 import { COLORS } from "@src/constants/constants";
 import { getPVHistory, registerPVHistory } from "@src/utils/historyBuffers";
 import AlarmBorder from "@src/components/AlarmBorder/AlarmBorder";
 import { useUIContext } from "@src/context/useUIContext";
 import ReactEChartsCore from "echarts-for-react/lib/core";
 import { echarts, type ECOption } from "@src/utils/eChartsMinified";
+import { isNumericArray } from "@src/utils/numericArray";
 
 const DEFAULT_BIN_COUNT = 20;
 
@@ -19,12 +21,16 @@ interface Bin {
   count: number;
 }
 
-const computeBins = (values: number[], binCount: number): Bin[] => {
+const computeBins = (values: number[] | NumericArray, binCount: number): Bin[] => {
   if (values.length === 0) return [];
 
-  const min = Math.min(...values);
-  const max =
-    Math.min(...values) === Math.max(...values) ? Math.min(...values) + 1 : Math.max(...values);
+  let min = Infinity;
+  let max = -Infinity;
+  for (const v of values) {
+    if (v < min) min = v;
+    if (v > max) max = v;
+  }
+  if (min === max) max = min + 1;
   const range = max - min;
   const binWidth = range / binCount;
 
@@ -34,10 +40,10 @@ const computeBins = (values: number[], binCount: number): Bin[] => {
     count: 0,
   }));
 
-  values.forEach((v) => {
+  for (const v of values) {
     const idx = Math.min(Math.floor((v - min) / binWidth), binCount - 1);
     bins[idx].count += 1;
-  });
+  }
 
   return bins;
 };
@@ -94,13 +100,13 @@ const HistogramComp: React.FC<WidgetUpdate> = ({ data }) => {
     if (!pvData) return [];
     const value = pvData.value;
 
-    const values =
+    const values: number[] | NumericArray | null =
       typeof value === "number"
         ? getPVHistory(pvData.pv)
             .slice(-bufferSize)
             .map(([, v]) => v)
-        : Array.isArray(value)
-          ? [...(value as number[])]
+        : isNumericArray(value)
+          ? value
           : null;
 
     if (!values || values.length === 0) return [];

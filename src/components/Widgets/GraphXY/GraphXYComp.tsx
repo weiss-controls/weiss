@@ -10,6 +10,7 @@ import AlarmBorder from "@src/components/AlarmBorder/AlarmBorder";
 import { useUIContext } from "@src/context/useUIContext";
 import ReactEChartsCore from "echarts-for-react/lib/core";
 import { echarts, type ECOption } from "@src/utils/eChartsMinified";
+import { isNumericArray } from "@src/utils/numericArray";
 
 type ScalarPoint = [number, number];
 
@@ -106,11 +107,11 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
     if (!xPv) return [];
 
     const xVal = xPv.value;
-    const xData =
+    const xData: ArrayLike<number> | null =
       typeof xVal === "number"
         ? getBuffer(xPvName).map(([, v]) => v)
-        : Array.isArray(xVal)
-          ? [...(xVal as number[])]
+        : isNumericArray(xVal)
+          ? xVal
           : null;
 
     if (!xData || xData.length === 0) return [];
@@ -122,23 +123,24 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
       if (!yPv) continue;
 
       const yVal = yPv.value;
-      const yData =
+      const yData: ArrayLike<number> | null =
         typeof yVal === "number"
           ? getBuffer(yPvName).map(([, v]) => v)
-          : Array.isArray(yVal)
-            ? [...(yVal as number[])]
+          : isNumericArray(yVal)
+            ? yVal
             : null;
 
       if (!yData || yData.length === 0) continue;
 
+      // Align on the most recent samples when lengths differ
       const len = Math.min(xData.length, yData.length);
-      const xSlice = xData.slice(-len);
-      const ySlice = yData.slice(-len);
+      const xOffset = xData.length - len;
+      const yOffset = yData.length - len;
 
       newSeries.push({
         type: plotType,
         showSymbol: showSymbols,
-        data: xSlice.map((x, idx) => [x, ySlice[idx]]),
+        data: Array.from({ length: len }, (_, idx) => [xData[xOffset + idx], yData[yOffset + idx]]),
         lineStyle: { color: lineColors[i - 1] },
         itemStyle: { color: lineColors[i - 1] },
         name: `${pvNames[0]} vs ${pvNames[i]}`,

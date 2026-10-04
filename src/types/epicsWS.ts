@@ -5,8 +5,20 @@
 //export type WSMessageType = "update" | "subscribe" | "unsubscribe" | "write";
 export type WSMessageType =
   "update" | "subscribe" | "unsubscribe" | "write" | "snapshot" | "restore" | "restore_result";
+/** Numeric arrays decoded from binary frames: zero-copy views over the received buffer */
+export type NumericArray =
+  | Int8Array
+  | Uint8Array
+  | Int16Array
+  | Uint16Array
+  | Int32Array
+  | Uint32Array
+  | Float32Array
+  | Float64Array;
 /** Possible PV values: scalar or array of numbers or strings */
-export type PVValue = number | number[] | string | string[];
+export type PVValue = number | number[] | NumericArray | string | string[];
+/** Values accepted by PV writes and snapshot restores (must be JSON-serializable) */
+export type PVWriteValue = number | number[] | string | string[];
 
 /**
  * EPICS Normative Type support for alarm fields
@@ -115,14 +127,10 @@ export interface PVData {
  * Structure of a WebSocket message exchanged with the PV server
  * @extends PVData
  * @property type - Type of the message (update, write, subscribe, unsubscribe)
- * @property b64arr - Optional base64-encoded array data
- * @property b64dtype - Optional data type of the base64-encoded array
  * @property connected - Sent once on (re)connect together with metadata, or as `false` on disconnect
  */
 export interface WSMessage extends PVData {
   type: WSMessageType;
-  b64arr?: string;
-  b64dtype?: string;
   connected?: boolean;
 }
 

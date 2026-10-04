@@ -9,6 +9,7 @@ import AlarmBorder from "@src/components/AlarmBorder/AlarmBorder";
 import { useUIContext } from "@src/context/useUIContext";
 import ReactEChartsCore from "echarts-for-react/lib/core";
 import { echarts, type ECOption } from "@src/utils/eChartsMinified";
+import { isNumericArray } from "@src/utils/numericArray";
 
 const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
   const { inEditMode } = useUIContext();
@@ -94,21 +95,17 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
         if (!pv) return null;
 
         const rawValue = pv.value;
-        const points =
+        const seriesData =
           typeof rawValue === "number"
-            ? [...(getPVHistory(pvName).slice(-bufferSize) ?? [])]
-            : Array.isArray(rawValue)
-              ? [...rawValue]
+            ? getPVHistory(pvName).slice(-bufferSize)
+            : isNumericArray(rawValue)
+              ? Array.from(rawValue, (value, index) => [index, value])
               : null;
 
-        if (!points) return null;
+        if (!seriesData) return null;
 
         const pvIndex = pvNames.indexOf(pvName);
         const color = lineColors[pvIndex]; // Gets a random color if not defined
-        const seriesData =
-          typeof rawValue === "number"
-            ? points
-            : (points as number[]).map((value, index) => [index, value]);
 
         return {
           name: pvName,
