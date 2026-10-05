@@ -367,7 +367,7 @@ async def main():
     clients[PVA_PROVIDER_KEY] = PVAClient(pva_callback, pva_disconnect_callback)
     clients[CA_PROVIDER_KEY] = CAClient(ca_callback, ca_disconnect_callback)
 
-    async with websockets.serve(message_handler, "0.0.0.0", 8080):
+    async with websockets.serve(message_handler, "0.0.0.0", 8080, compression=None):
         print("[epicsWS]: WebSocket server running on ws://localhost:8080")
         await asyncio.Future()
 
