@@ -44,8 +44,8 @@ ws_subscriptions: Dict[ServerConnection, Set[str]] = {}
 # per-ws queue of messages to send, handled by a dedicated writer task
 send_queues: Dict[ServerConnection, asyncio.Queue] = {}
 
-# track if metadata has been sent per (ws, pv_name)
-sent_metadata: Dict[Tuple[ServerConnection, str], bool] = {}
+# clients that already received metadata, per pv_name
+metadata_sent: Dict[str, Set[ServerConnection]] = {}
 
 # cached quasi-static metadata per pv_name
 _pv_metadata: Dict[str, PVMetadata] = {}
@@ -86,6 +86,7 @@ def format_pv_name(pv_name: str, provider: str) -> str:
 def _cleanup_pv_state(pv_name: str) -> None:
     """Called once a PV has no more subscribers, from any teardown path."""
     _pv_metadata.pop(pv_name, None)
+    metadata_sent.pop(pv_name, None)
     _last_sent_time.pop(pv_name, None)
     _pending_update.pop(pv_name, None)
     handle = _trailing_handle.pop(pv_name, None)
@@ -247,20 +248,20 @@ def send_update(pv_name: str, pv_obj, provider: str):
     if update.enumChoices is not None:
         base_msg["enumChoices"] = update.enumChoices
 
-    ws_snapshot = set(ws_set)
-    fast_path_ws = [ws for ws in ws_snapshot if sent_metadata.get((ws, pv_name))]
-    full_path_ws = [ws for ws in ws_snapshot if not sent_metadata.get((ws, pv_name))]
-    if fast_path_ws:
+    sent = metadata_sent.setdefault(pv_name, set())
+    needs_metadata_ws = ws_set - sent
+    has_metadata_ws = ws_set & sent
+    if has_metadata_ws:
         data = serialize(base_msg)
-        for ws in fast_path_ws:
+        for ws in has_metadata_ws:
             _enqueue(ws, data)
-    if full_path_ws:
+    if needs_metadata_ws:
         full_msg = dict(base_msg)
         full_msg.update(asdict(_pv_metadata[pv_name]))
         full_msg["connected"] = True
         data = serialize(full_msg)
-        for ws in full_path_ws:
-            sent_metadata[(ws, pv_name)] = True
+        sent |= needs_metadata_ws
+        for ws in needs_metadata_ws:
             _enqueue(ws, data)
 
 
@@ -275,7 +276,7 @@ def _send_disconnect(pv_name: str, provider: str):
 
     for ws in set(ws_set):
         _enqueue(ws, data)
-        sent_metadata[(ws, pv_name)] = False
+    metadata_sent.pop(pv_name, None)
     _pv_metadata.pop(pv_name, None)
 
 
@@ -313,7 +314,7 @@ async def message_handler(ws: ServerConnection):
                             del subscriptions[pv_name]
                             _cleanup_pv_state(pv_name)
                         asyncio.create_task(asyncio.to_thread(client.unsubscribe, client_id, pv_name))
-                    sent_metadata.pop((ws, pv_name), None)
+                    metadata_sent.get(pv_name, set()).discard(ws)
 
             elif msg_type == "write":
                 pv = msg.get("pv")
@@ -401,7 +402,7 @@ async def message_handler(ws: ServerConnection):
                 if not pv_set:
                     del subscriptions[pv_name]
                     _cleanup_pv_state(pv_name)
-            sent_metadata.pop((ws, pv_name), None)
+            metadata_sent.get(pv_name, set()).discard(ws)
         for c in clients.values():
             if c:
                 asyncio.create_task(asyncio.to_thread(c.unsubscribe_all, client_id))
