@@ -2,7 +2,6 @@
 # Copyright (C) 2026 André Favoto
 
 import asyncio
-import json
 import os
 import struct
 import threading
@@ -21,6 +20,11 @@ from pvParser import PVMetadata, PVParser
 
 CA_PROVIDER_KEY = "ca"
 PVA_PROVIDER_KEY = "pva"
+
+
+def dumps_text(obj) -> str:
+    # str keeps the WebSocket frame type as text
+    return orjson.dumps(obj).decode()
 
 
 def build_binary_frame(json_header: dict, raw_bytes: bytes, dtype_size: int) -> bytes:
@@ -215,7 +219,7 @@ def send_update(pv_name: str, pv_obj, provider: str):
         fields = {key: val for key, val in msg.items() if val is not None}
         if raw_array is not None:
             return build_binary_frame(fields, raw_array, np.dtype(update.dtype).itemsize)
-        return orjson.dumps(fields).decode()
+        return dumps_text(fields)
 
     parser = PVParser.pva_update if provider == PVA_PROVIDER_KEY else PVParser.ca_update
     update = parser(pv_obj, pv_name)
@@ -267,7 +271,7 @@ def _send_disconnect(pv_name: str, provider: str):
         return
 
     msg = {"type": "update", "pv": format_pv_name(pv_name, provider), "connected": False}
-    data = json.dumps(msg)
+    data = dumps_text(msg)
 
     for ws in set(ws_set):
         _enqueue(ws, data)
@@ -284,7 +288,7 @@ async def message_handler(ws: ServerConnection):
 
     try:
         async for message in ws:
-            msg = json.loads(message)
+            msg = orjson.loads(message)
             msg_type = msg.get("type")
 
             if msg_type == "subscribe":
@@ -335,7 +339,7 @@ async def message_handler(ws: ServerConnection):
                             snapshot_data[pv_name] = PVParser.snapshot_update(parsed)
 
                 await ws.send(
-                    json.dumps(
+                    dumps_text(
                         {
                             k: v
                             for k, v in {
@@ -366,7 +370,7 @@ async def message_handler(ws: ServerConnection):
                 )
 
                 await ws.send(
-                    json.dumps(
+                    dumps_text(
                         {
                             "type": "restore_result",
                             "results": results,
@@ -377,7 +381,7 @@ async def message_handler(ws: ServerConnection):
                 )
 
             else:
-                await ws.send(json.dumps({"type": "error", "message": "Unknown message type"}))
+                await ws.send(dumps_text({"type": "error", "message": "Unknown message type"}))
 
     except Exception as e:
         print(f"[epicsWS]: Error handling message from {client_id}: {e}")
