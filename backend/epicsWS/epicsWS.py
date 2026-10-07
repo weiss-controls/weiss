@@ -51,6 +51,9 @@ DEFAULT_PROTOCOL = os.getenv("EPICS_DEFAULT_PROTOCOL", PVA_PROVIDER_KEY).lower()
 MAX_UPDATE_RATE_HZ = float(os.getenv("EPICS_MAX_UPDATE_RATE_HZ", 30))
 MIN_UPDATE_INTERVAL = 1.0 / MAX_UPDATE_RATE_HZ if MAX_UPDATE_RATE_HZ > 0 else 0.0
 
+# Clients with more queued messages than this are disconnected.
+MAX_CLIENT_QUEUE = int(os.getenv("EPICS_MAX_CLIENT_QUEUE", 1000))
+
 # Per-PV throttle bookkeeping
 _last_sent_time: Dict[str, float] = {}
 _pending_update: Dict[str, Tuple[Any, str]] = {}
@@ -156,8 +159,14 @@ def get_client(protocol: str) -> Union[PVAClient, CAClient]:
 
 def _enqueue(ws: ServerConnection, data: str | bytes):
     queue = send_queues.get(ws)
-    if queue is not None:
-        queue.put_nowait(data)
+    if queue is None:
+        return
+    if queue.qsize() >= MAX_CLIENT_QUEUE:
+        print(f"[epicsWS]: Client {ws.remote_address} is too slow, closing connection")
+        del send_queues[ws]
+        asyncio.create_task(ws.close(code=1013, reason="Client too slow"))
+        return
+    queue.put_nowait(data)
 
 
 async def _writer(ws: ServerConnection, queue: asyncio.Queue):
