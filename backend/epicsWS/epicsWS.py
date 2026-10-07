@@ -35,6 +35,9 @@ subscriptions: Dict[str, Set[ServerConnection]] = {}
 # per-ws inverse index for O(pvs_per_client) disconnect cleanup
 ws_subscriptions: Dict[ServerConnection, Set[str]] = {}
 
+# per-ws queue of messages to send, handled by a dedicated writer task
+send_queues: Dict[ServerConnection, asyncio.Queue] = {}
+
 # track if metadata has been sent per (ws, pv_name)
 sent_metadata: Dict[Tuple[ServerConnection, str], bool] = {}
 
@@ -96,23 +99,19 @@ def pva_callback(pv_name, pv_obj):
 
 def ca_disconnect_callback(pv_name):
     if _loop:
-        _loop.call_soon_threadsafe(_schedule_disconnect, pv_name, CA_PROVIDER_KEY)
+        _loop.call_soon_threadsafe(_send_disconnect, pv_name, CA_PROVIDER_KEY)
 
 
 def pva_disconnect_callback(pv_name):
     if _loop:
-        _loop.call_soon_threadsafe(_schedule_disconnect, pv_name, PVA_PROVIDER_KEY)
-
-
-def _schedule_disconnect(pv_name: str, provider: str):
-    asyncio.create_task(_send_disconnect(pv_name, provider))
+        _loop.call_soon_threadsafe(_send_disconnect, pv_name, PVA_PROVIDER_KEY)
 
 
 def _send_throttled(pv_name: str, pv_obj, provider: str):
     """Forwards immediately if the rate limit allows, otherwise sends the latest
     value and flushes once the window elapses"""
     if MIN_UPDATE_INTERVAL <= 0:
-        asyncio.create_task(send_update(pv_name, pv_obj, provider))
+        send_update(pv_name, pv_obj, provider)
         return
     if not _loop:
         return
@@ -121,7 +120,7 @@ def _send_throttled(pv_name: str, pv_obj, provider: str):
     if elapsed >= MIN_UPDATE_INTERVAL:
         _last_sent_time[pv_name] = now
         _pending_update.pop(pv_name, None)
-        asyncio.create_task(send_update(pv_name, pv_obj, provider))
+        send_update(pv_name, pv_obj, provider)
         return
 
     _pending_update[pv_name] = (pv_obj, provider)
@@ -138,7 +137,7 @@ def _flush_trailing(pv_name: str):
         return
     pv_obj, provider = pending
     _last_sent_time[pv_name] = _loop.time()
-    asyncio.create_task(send_update(pv_name, pv_obj, provider))
+    send_update(pv_name, pv_obj, provider)
 
 
 # EPICS clients initialized in main() once the event loop is running
@@ -155,16 +154,24 @@ def get_client(protocol: str) -> Union[PVAClient, CAClient]:
     return client
 
 
-async def send_update(pv_name: str, pv_obj, provider: str):
+def _enqueue(ws: ServerConnection, data: str | bytes):
+    queue = send_queues.get(ws)
+    if queue is not None:
+        queue.put_nowait(data)
+
+
+async def _writer(ws: ServerConnection, queue: asyncio.Queue):
+    try:
+        while True:
+            await ws.send(await queue.get())
+    except Exception:
+        print(f"[epicsWS]: Error sending update to {ws}")
+
+
+def send_update(pv_name: str, pv_obj, provider: str):
     ws_set = subscriptions.get(pv_name)
     if not ws_set:
         return
-
-    async def _send(ws: ServerConnection, data: str | bytes):
-        try:
-            await ws.send(data)
-        except Exception:
-            print(f"[epicsWS]: Error sending update to {ws}")
 
     def serialize(msg):
         fields = {key: val for key, val in msg.items() if val is not None}
@@ -201,10 +208,10 @@ async def send_update(pv_name: str, pv_obj, provider: str):
     ws_snapshot = set(ws_set)
     fast_path_ws = [ws for ws in ws_snapshot if sent_metadata.get((ws, pv_name))]
     full_path_ws = [ws for ws in ws_snapshot if not sent_metadata.get((ws, pv_name))]
-    send_tasks = []
     if fast_path_ws:
         data = serialize(base_msg)
-        send_tasks.extend(_send(ws, data) for ws in fast_path_ws)
+        for ws in fast_path_ws:
+            _enqueue(ws, data)
     if full_path_ws:
         full_msg = dict(base_msg)
         full_msg.update(asdict(_pv_metadata[pv_name]))
@@ -212,13 +219,10 @@ async def send_update(pv_name: str, pv_obj, provider: str):
         data = serialize(full_msg)
         for ws in full_path_ws:
             sent_metadata[(ws, pv_name)] = True
-        send_tasks.extend(_send(ws, data) for ws in full_path_ws)
-
-    if send_tasks:
-        await asyncio.gather(*send_tasks)
+            _enqueue(ws, data)
 
 
-async def _send_disconnect(pv_name: str, provider: str):
+def _send_disconnect(pv_name: str, provider: str):
     """Notifies subscribed clients that a PV has disconnected and forces metadata resend on reconnect."""
     ws_set = subscriptions.get(pv_name)
     if not ws_set:
@@ -227,14 +231,9 @@ async def _send_disconnect(pv_name: str, provider: str):
     msg = {"type": "update", "pv": format_pv_name(pv_name, provider), "connected": False}
     data = json.dumps(msg)
 
-    async def _send(ws: ServerConnection):
-        try:
-            await ws.send(data)
-        except Exception:
-            print(f"[epicsWS]: Error sending disconnect notice to {ws}")
+    for ws in set(ws_set):
+        _enqueue(ws, data)
         sent_metadata[(ws, pv_name)] = False
-
-    await asyncio.gather(*(_send(ws) for ws in set(ws_set)))
     _pv_metadata.pop(pv_name, None)
 
 
@@ -242,6 +241,8 @@ async def message_handler(ws: ServerConnection):
     client_id = f"{ws.remote_address[0]}:{ws.remote_address[1]}"
     print(f"New connection from {client_id}")
     ws_subscriptions[ws] = set()
+    send_queues[ws] = asyncio.Queue()
+    writer_task = asyncio.create_task(_writer(ws, send_queues[ws]))
 
     try:
         async for message in ws:
@@ -345,6 +346,8 @@ async def message_handler(ws: ServerConnection):
 
     finally:
         print(f"[epicsWS]: Client disconnected: {client_id}")
+        writer_task.cancel()
+        send_queues.pop(ws, None)
         # Clean up all subscriptions for this client using the inverse index
         pv_names = ws_subscriptions.pop(ws, set())
         for pv_name in pv_names:
