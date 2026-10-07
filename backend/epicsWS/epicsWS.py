@@ -23,9 +23,8 @@ CA_PROVIDER_KEY = "ca"
 PVA_PROVIDER_KEY = "pva"
 
 
-def dumps_text(obj) -> str:
-    # str keeps the WebSocket frame type as text
-    return orjson.dumps(obj).decode()
+# (payload, is_text) pairs are shared between all clients receiving the same message
+Frame = Tuple[bytes, bool]
 
 
 def build_binary_frame(json_header: dict, raw_bytes: bytes, dtype_size: int) -> bytes:
@@ -191,7 +190,7 @@ def get_client(protocol: str) -> Union[PVAClient, CAClient]:
     return client
 
 
-def _enqueue(ws: ServerConnection, data: str | bytes):
+def _enqueue(ws: ServerConnection, frame: Frame):
     queue = send_queues.get(ws)
     if queue is None:
         return
@@ -200,13 +199,14 @@ def _enqueue(ws: ServerConnection, data: str | bytes):
         del send_queues[ws]
         asyncio.create_task(ws.close(code=1013, reason="Client too slow"))
         return
-    queue.put_nowait(data)
+    queue.put_nowait(frame)
 
 
 async def _writer(ws: ServerConnection, queue: asyncio.Queue):
     try:
         while True:
-            await ws.send(await queue.get())
+            payload, text = await queue.get()
+            await ws.send(payload, text=text)
     except Exception:
         print(f"[epicsWS]: Error sending update to {ws}")
 
@@ -216,11 +216,11 @@ def send_update(pv_name: str, pv_obj, provider: str):
     if not ws_set:
         return
 
-    def serialize(msg):
+    def serialize(msg) -> Frame:
         fields = {key: val for key, val in msg.items() if val is not None}
         if raw_array is not None:
-            return build_binary_frame(fields, raw_array, np.dtype(update.dtype).itemsize)
-        return dumps_text(fields)
+            return build_binary_frame(fields, raw_array, np.dtype(update.dtype).itemsize), False
+        return orjson.dumps(fields), True
 
     parser = PVParser.pva_update if provider == PVA_PROVIDER_KEY else PVParser.ca_update
     update = parser(pv_obj, pv_name)
@@ -272,7 +272,7 @@ def _send_disconnect(pv_name: str, provider: str):
         return
 
     msg = {"type": "update", "pv": format_pv_name(pv_name, provider), "connected": False}
-    data = dumps_text(msg)
+    data = (orjson.dumps(msg), True)
 
     for ws in set(ws_set):
         _enqueue(ws, data)
@@ -340,7 +340,7 @@ async def message_handler(ws: ServerConnection):
                             snapshot_data[pv_name] = PVParser.snapshot_update(parsed)
 
                 await ws.send(
-                    dumps_text(
+                    orjson.dumps(
                         {
                             k: v
                             for k, v in {
@@ -350,7 +350,8 @@ async def message_handler(ws: ServerConnection):
                             }.items()
                             if v is not None
                         }
-                    )
+                    ),
+                    text=True,
                 )
 
             elif msg_type == "restore":
@@ -371,18 +372,19 @@ async def message_handler(ws: ServerConnection):
                 )
 
                 await ws.send(
-                    dumps_text(
+                    orjson.dumps(
                         {
                             "type": "restore_result",
                             "results": results,
                             "total": len(results),
                             "succeeded": sum(1 for r in results if r["success"]),
                         }
-                    )
+                    ),
+                    text=True,
                 )
 
             else:
-                await ws.send(dumps_text({"type": "error", "message": "Unknown message type"}))
+                await ws.send(orjson.dumps({"type": "error", "message": "Unknown message type"}), text=True)
 
     except Exception as e:
         print(f"[epicsWS]: Error handling message from {client_id}: {e}")
