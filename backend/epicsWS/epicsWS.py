@@ -11,6 +11,7 @@ from dataclasses import asdict
 from typing import Any, Callable, Deque, Dict, Optional, Set, Tuple, Union
 
 import numpy as np
+import orjson
 import websockets
 from websockets.asyncio.server import ServerConnection
 
@@ -26,7 +27,7 @@ def build_binary_frame(json_header: dict, raw_bytes: bytes, dtype_size: int) -> 
     if dtype_size not in (1, 2, 4, 8) or len(raw_bytes) % dtype_size:
         raise ValueError("Invalid array element size or payload length")
 
-    header = json.dumps(json_header, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    header = orjson.dumps(json_header)
     header += b" " * (-(4 + len(header)) % dtype_size)
     return struct.pack("<I", len(header)) + header + raw_bytes
 
@@ -214,7 +215,7 @@ def send_update(pv_name: str, pv_obj, provider: str):
         fields = {key: val for key, val in msg.items() if val is not None}
         if raw_array is not None:
             return build_binary_frame(fields, raw_array, np.dtype(update.dtype).itemsize)
-        return json.dumps(fields)
+        return orjson.dumps(fields).decode()
 
     parser = PVParser.pva_update if provider == PVA_PROVIDER_KEY else PVParser.ca_update
     update = parser(pv_obj, pv_name)
@@ -232,8 +233,8 @@ def send_update(pv_name: str, pv_obj, provider: str):
     base_msg = {
         "type": "update",
         "pv": pv_name_with_provider,
-        "alarm": asdict(update.alarm),
-        "timeStamp": asdict(update.timeStamp),
+        "alarm": update.alarm,
+        "timeStamp": update.timeStamp,
     }
     if raw_array is not None:
         base_msg["dtype"] = update.dtype
