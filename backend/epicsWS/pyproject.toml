@@ -12,6 +12,7 @@ dependencies = [
     "orjson==3.13.0",
     "p4p==4.3.0",
     "pyepics==3.5.10",
+    "uvloop==0.23.0",
     "websockets==17.1",
 ]
 

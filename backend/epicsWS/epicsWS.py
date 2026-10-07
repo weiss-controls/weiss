@@ -11,6 +11,7 @@ from typing import Any, Callable, Deque, Dict, Optional, Set, Tuple, Union
 
 import numpy as np
 import orjson
+import uvloop
 import websockets
 from websockets.asyncio.server import ServerConnection
 
@@ -418,4 +419,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    uvloop.run(main())
