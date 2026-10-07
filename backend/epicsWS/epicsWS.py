@@ -5,8 +5,10 @@ import asyncio
 import json
 import os
 import struct
+import threading
+from collections import deque
 from dataclasses import asdict
-from typing import Any, Dict, Optional, Set, Tuple, Union
+from typing import Any, Callable, Deque, Dict, Optional, Set, Tuple, Union
 
 import numpy as np
 import websockets
@@ -89,25 +91,51 @@ def _cleanup_pv_state(pv_name: str) -> None:
 
 _loop: Optional[asyncio.AbstractEventLoop] = None
 
+# Events from EPICS threads, processed in order by a single loop callback per batch
+_incoming: Deque[Tuple[Callable[..., None], tuple]] = deque()
+_incoming_lock = threading.Lock()
+_incoming_scheduled = False
+
+
+def _post(func: Callable[..., None], *args):
+    global _incoming_scheduled
+    if not _loop:
+        return
+    with _incoming_lock:
+        _incoming.append((func, args))
+        if _incoming_scheduled:
+            return
+        _incoming_scheduled = True
+    _loop.call_soon_threadsafe(_process_incoming)
+
+
+def _process_incoming():
+    global _incoming_scheduled
+    with _incoming_lock:
+        batch = list(_incoming)
+        _incoming.clear()
+        _incoming_scheduled = False
+    for func, args in batch:
+        try:
+            func(*args)
+        except Exception as e:
+            print(f"[epicsWS]: Error processing {func.__name__}: {e}")
+
 
 def ca_callback(pv_name, pv_obj):
-    if _loop:
-        _loop.call_soon_threadsafe(_send_throttled, pv_name, pv_obj, CA_PROVIDER_KEY)
+    _post(_send_throttled, pv_name, pv_obj, CA_PROVIDER_KEY)
 
 
 def pva_callback(pv_name, pv_obj):
-    if _loop:
-        _loop.call_soon_threadsafe(_send_throttled, pv_name, pv_obj, PVA_PROVIDER_KEY)
+    _post(_send_throttled, pv_name, pv_obj, PVA_PROVIDER_KEY)
 
 
 def ca_disconnect_callback(pv_name):
-    if _loop:
-        _loop.call_soon_threadsafe(_send_disconnect, pv_name, CA_PROVIDER_KEY)
+    _post(_send_disconnect, pv_name, CA_PROVIDER_KEY)
 
 
 def pva_disconnect_callback(pv_name):
-    if _loop:
-        _loop.call_soon_threadsafe(_send_disconnect, pv_name, PVA_PROVIDER_KEY)
+    _post(_send_disconnect, pv_name, PVA_PROVIDER_KEY)
 
 
 def _send_throttled(pv_name: str, pv_obj, provider: str):
