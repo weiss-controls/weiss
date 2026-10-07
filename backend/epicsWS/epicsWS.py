@@ -9,7 +9,6 @@ from collections import deque
 from dataclasses import asdict
 from typing import Any, Callable, Deque, Dict, Optional, Set, Tuple, Union
 
-import numpy as np
 import orjson
 import uvloop
 import websockets
@@ -17,7 +16,7 @@ from websockets.asyncio.server import ServerConnection
 
 from CAClient import CAClient
 from PVAClient import PVAClient
-from pvParser import PVMetadata, PVParser
+from pvParser import ARRAY_ITEMSIZE, PVMetadata, PVParser
 
 CA_PROVIDER_KEY = "ca"
 PVA_PROVIDER_KEY = "pva"
@@ -27,13 +26,13 @@ PVA_PROVIDER_KEY = "pva"
 Frame = Tuple[bytes, bool]
 
 
-def build_binary_frame(json_header: dict, raw_bytes: bytes, dtype_size: int) -> bytes:
+def build_binary_frame(json_header: dict, raw_bytes: memoryview, dtype_size: int) -> bytes:
     if dtype_size not in (1, 2, 4, 8) or len(raw_bytes) % dtype_size:
         raise ValueError("Invalid array element size or payload length")
 
     header = orjson.dumps(json_header)
     header += b" " * (-(4 + len(header)) % dtype_size)
-    return struct.pack("<I", len(header)) + header + raw_bytes
+    return b"".join((struct.pack("<I", len(header)), header, raw_bytes))
 
 
 # map PV -> set of websocket clients
@@ -219,7 +218,7 @@ def send_update(pv_name: str, pv_obj, provider: str):
     def serialize(msg) -> Frame:
         fields = {key: val for key, val in msg.items() if val is not None}
         if raw_array is not None:
-            return build_binary_frame(fields, raw_array, np.dtype(update.dtype).itemsize), False
+            return build_binary_frame(fields, raw_array, ARRAY_ITEMSIZE[update.dtype]), False
         return orjson.dumps(fields), True
 
     parser = PVParser.pva_update if provider == PVA_PROVIDER_KEY else PVParser.ca_update

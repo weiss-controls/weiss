@@ -78,7 +78,7 @@ class PVData:
     control: Optional[Control] = None
     valueAlarm: Optional[ValueAlarm] = None
     connected: Optional[bool] = False
-    rawArray: Optional[bytes] = None
+    rawArray: Optional[memoryview] = None
     dtype: Optional[str] = None
 
 
@@ -87,7 +87,10 @@ ARRAY_DTYPES = frozenset(
 )
 
 
-def encode_array_raw(arr: Any) -> tuple[Optional[bytes], Optional[str]]:
+ARRAY_ITEMSIZE = {name: np.dtype(name).itemsize for name in ARRAY_DTYPES}
+
+
+def encode_array_raw(arr: Any) -> tuple[Optional[memoryview], Optional[str]]:
     if arr is None:
         return None, None
 
@@ -102,7 +105,8 @@ def encode_array_raw(arr: Any) -> tuple[Optional[bytes], Optional[str]]:
         dtype = "float32" if array.dtype.itemsize < 4 else "float64"
 
     encoded = array.astype(np.dtype(dtype).newbyteorder("<"), copy=False)
-    return encoded.tobytes(), dtype
+    # Flat byte view of the data (copied only if not contiguous), so the frame builder makes the only copy
+    return memoryview(np.ascontiguousarray(encoded).reshape(-1).view(np.uint8)), dtype
 
 
 def safe_get_nan(obj, key: str):
