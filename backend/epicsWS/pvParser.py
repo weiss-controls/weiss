@@ -122,6 +122,25 @@ def _normalize_value(value):
     return value
 
 
+# Dotted-path indexing is about twice as fast as fetching each sub-structure first
+def _pva_alarm(pv_obj) -> Alarm:
+    try:
+        return Alarm(pv_obj["alarm.severity"], pv_obj["alarm.status"], pv_obj["alarm.message"])
+    except KeyError:
+        data = pv_obj.get("alarm", {})
+        return Alarm(data.get("severity", 0), data.get("status", 0), data.get("message", "NO_ALARM"))
+
+
+def _pva_timestamp(pv_obj) -> TimeStamp:
+    try:
+        return TimeStamp(
+            pv_obj["timeStamp.secondsPastEpoch"], pv_obj["timeStamp.nanoseconds"], pv_obj["timeStamp.userTag"]
+        )
+    except KeyError:
+        data = pv_obj.get("timeStamp", {})
+        return TimeStamp(data.get("secondsPastEpoch", 0), data.get("nanoseconds", 0), data.get("userTag", 0))
+
+
 class PVParser:
     @staticmethod
     def pva_update(pv_obj, pv_name: Optional[str] = None) -> PVData:
@@ -138,22 +157,12 @@ class PVParser:
             if raw_array is None:
                 value = _normalize_value(value_field)
 
-        alarm_data = pv_obj.get("alarm", {})
-        timestamp_data = pv_obj.get("timeStamp", {})
         return PVData(
             pv=pv_name,
             value=value,
             enumChoices=enum_choices,
-            alarm=Alarm(
-                severity=alarm_data.get("severity", 0),
-                status=alarm_data.get("status", 0),
-                message=alarm_data.get("message", "NO_ALARM"),
-            ),
-            timeStamp=TimeStamp(
-                secondsPastEpoch=timestamp_data.get("secondsPastEpoch", 0),
-                nanoseconds=timestamp_data.get("nanoseconds", 0),
-                userTag=timestamp_data.get("userTag", 0),
-            ),
+            alarm=_pva_alarm(pv_obj),
+            timeStamp=_pva_timestamp(pv_obj),
             rawArray=raw_array,
             dtype=dtype,
         )
