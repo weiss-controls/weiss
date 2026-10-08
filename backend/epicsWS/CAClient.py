@@ -28,7 +28,8 @@ class CAClient:
     def _callback(self, value, **kwargs):
         """Generic callback for all PVs — passes raw data upstream."""
         pvname = kwargs.get("pvname")
-        if not pvname:
+        # pyepics calls back with no value for a PV that has not delivered one yet
+        if not pvname or value is None:
             return
         val = {"value": value, **kwargs}
 
@@ -56,7 +57,9 @@ class CAClient:
         if first_sub:
             try:
                 pv = epics.get_pv(pv_name, connection_callback=self._connection_callback)
-                pv.get_ctrlvars()
+                if not pv.wait_for_connection():
+                    print(f"[CAClient]: {pv_name} not connected after {pv.connection_timeout}s, still waiting")
+                # add_callback fetches the control variables once, if connected
                 cb = pv.add_callback(self._callback, with_ctrlvars=True)
                 pv.run_callback(cb)
                 self._pvs[pv_name] = pv
