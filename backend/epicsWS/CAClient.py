@@ -9,24 +9,24 @@ import epics
 
 class CAClient:
     """
-    PyEpics based CA Client.
-    Handles per-client subscriptions and forwards raw callback data to the upper layer.
+    PyEpics based CA client.
+    Manages per-client subscriptions and forwards raw monitor data to the upper layer.
     """
 
     def __init__(self, handle_update: Callable[[str, Any], None], handle_disconnect: Callable[[str], None]):
         """
         handle_update: callable(pv_name: str, raw_data: dict)
-        handle_disconnect: callable(pv_name: str), called when the PV disconnects
+        handle_disconnect: callable(pv_name: str), called when the channel disconnects
         """
         self._handle_update = handle_update
         self._handle_disconnect = handle_disconnect
-        self._pvs: Dict[str, Any] = {}
-        self._subscribers: Dict[str, Set[str]] = {}
+        self._channels: Dict[str, Any] = {}  # pv_name -> epics.PV
+        self._subscribers: Dict[str, Set[str]] = {}  # pv_name -> set(client_ids)
+        self._latest_value: Dict[str, Any] = {}  # pv_name -> last value
         self._lock = Lock()
-        self._latest_value: Dict[str, Any] = {}
 
-    def _callback(self, **kwargs):
-        """Generic callback for all PVs — passes raw data upstream."""
+    def _on_update(self, **kwargs):
+        """Monitor callback for all PVs; pyepics passes the update as keyword arguments."""
         pvname = kwargs.get("pvname")
         # pyepics calls back with no value for a PV that has not delivered one yet
         if not pvname or kwargs.get("value") is None:
@@ -37,31 +37,30 @@ class CAClient:
 
         self._handle_update(pvname, kwargs)
 
-    def _connection_callback(self, pvname=None, conn=True, **kwargs):
+    def _on_connection(self, pvname=None, conn=True, **kwargs):
         """Fires on both connect and disconnect; only disconnect needs forwarding."""
         if not conn and pvname:
             self._handle_disconnect(pvname)
 
     def subscribe(self, client_id: str, pv_name: str):
-        """
-        Subscribe a client to a PV.
-        On first subscription, creates the PV and attaches a callback.
-        """
+        """Subscribe a client to a PV, creating the monitor on the first subscription."""
         with self._lock:
-            first_sub = pv_name not in self._pvs
+            first_sub = pv_name not in self._channels
             self._subscribers.setdefault(pv_name, set()).add(client_id)
+            # Send last value if the monitor already existed (late subscriber)
             if not first_sub and pv_name in self._latest_value:
                 self._handle_update(pv_name, self._latest_value[pv_name])
 
+        # Outside the lock, since waiting for the connection blocks
         if first_sub:
             try:
-                pv = epics.get_pv(pv_name, connection_callback=self._connection_callback)
-                if not pv.wait_for_connection():
-                    print(f"[CAClient]: {pv_name} not connected after {pv.connection_timeout}s, still waiting")
+                channel = epics.get_pv(pv_name, connection_callback=self._on_connection)
+                if not channel.wait_for_connection():
+                    print(f"[CAClient]: {pv_name} not connected after {channel.connection_timeout}s, still waiting")
                 # add_callback fetches the control variables once, if connected
-                cb = pv.add_callback(self._callback, with_ctrlvars=True)
-                pv.run_callback(cb)
-                self._pvs[pv_name] = pv
+                cb = channel.add_callback(self._on_update, with_ctrlvars=True)
+                channel.run_callback(cb)
+                self._channels[pv_name] = channel
             except Exception as e:
                 print(f"[CAClient]: Failed to subscribe to {pv_name}: {e}")
 
@@ -75,11 +74,11 @@ class CAClient:
             clients.discard(client_id)
             if clients:
                 return
-            pv = self._pvs.pop(pv_name, None)
+            channel = self._channels.pop(pv_name, None)
             self._subscribers.pop(pv_name, None)
             self._latest_value.pop(pv_name, None)
 
-        self._release(pv_name, pv)
+        self._release(pv_name, channel)
 
     def unsubscribe_all(self, client_id: str):
         """Remove a client from all subscriptions."""
@@ -92,46 +91,46 @@ class CAClient:
                     empty_pvs.append(pv_name)
 
             for pv_name in empty_pvs:
-                released.append((pv_name, self._pvs.pop(pv_name, None)))
+                released.append((pv_name, self._channels.pop(pv_name, None)))
                 self._subscribers.pop(pv_name, None)
                 self._latest_value.pop(pv_name, None)
 
-        for pv_name, pv in released:
-            self._release(pv_name, pv)
+        for pv_name, channel in released:
+            self._release(pv_name, channel)
 
     @staticmethod
-    def _release(pv_name: str, pv):
+    def _release(pv_name: str, channel):
         """Stop the monitor and drop the PV from pyepics' cache, so it stops being decoded."""
-        if not pv:
+        if not channel:
             return
         try:
             # disconnect() looks the PV up in the cache of the calling thread's context
             if epics.ca.current_context() is None:
                 epics.ca.use_initial_context()
-            pv.disconnect()
+            channel.disconnect()
         except Exception as e:
             print(f"[CAClient]: Failed to disconnect {pv_name}: {e}")
 
     def write_to_pv(self, pv: str, value: Any):
-        """Write synchronously to a PV."""
+        """Write a value to a PV."""
         with self._lock:
-            pv_obj = self._pvs.get(pv)
-        if not pv_obj:
+            channel = self._channels.get(pv)
+        if not channel:
             print(f"[CAClient]: Cannot write: PV {pv} not subscribed.")
             return
 
         try:
-            pv_obj.put(value)
+            channel.put(value)
         except Exception as e:
             print(f"[CAClient]: Write to {pv} failed: {e}")
 
     def close(self):
-        """Stop all subscriptions and clear resources."""
+        """Close all subscriptions."""
         with self._lock:
-            pvs = list(self._pvs.items())
-            self._pvs.clear()
+            channels = list(self._channels.items())
+            self._channels.clear()
             self._subscribers.clear()
             self._latest_value.clear()
-        for pv_name, pv in pvs:
-            self._release(pv_name, pv)
+        for pv_name, channel in channels:
+            self._release(pv_name, channel)
         print("[CAClient]: Closed all subscriptions.")
