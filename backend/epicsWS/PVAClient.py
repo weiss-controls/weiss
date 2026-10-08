@@ -5,6 +5,7 @@ import threading
 from typing import Any, Callable, Dict, Set
 
 from p4p.client.thread import Cancelled, Context, Disconnected, RemoteError, Subscription
+from p4p.util import ThreadedWorkQueue
 
 
 class PVAClient:
@@ -22,6 +23,10 @@ class PVAClient:
         self._handle_update = handle_update
         self._handle_disconnect = handle_disconnect
         self._ctxt = Context("pva", nt=False)  # nt=False to get unpacked data
+        # Use one worker instead of p4p's default four to reduce GIL contention with the event loop.
+        # Due to this, callbacks must never block.
+        # Set maxsize=0 (unbounded) to avoid dropping updates.
+        self._queue = ThreadedWorkQueue(name="p4p-callbacks", workers=1, daemon=True, maxsize=0).start()
         self._lock = threading.Lock()
         self._latest_value: Dict[str, Any] = {}  # pv_name -> last value
 
@@ -45,7 +50,7 @@ class PVAClient:
         """Subscribe a single client to a PV."""
         with self._lock:
             if pv_name not in self._channels:
-                mon = self._ctxt.monitor(pv_name, self._on_update(pv_name), notify_disconnect=True)
+                mon = self._ctxt.monitor(pv_name, self._on_update(pv_name), notify_disconnect=True, queue=self._queue)
                 self._channels[pv_name] = mon
                 self._subscribers[pv_name] = set()
             # Send last value if monitor already existed (late subscriber)
@@ -105,3 +110,4 @@ class PVAClient:
             self._subscribers.clear()
             self._latest_value.clear()
             self._ctxt.close()
+            self._queue.stop()
