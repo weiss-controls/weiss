@@ -74,18 +74,17 @@ class CAClient:
                 return
 
             clients.discard(client_id)
-            if not clients:
-                pv = self._pvs.pop(pv_name, None)
-                self._subscribers.pop(pv_name, None)
-                self._latest_value.pop(pv_name, None)
-                if pv:
-                    try:
-                        pv.clear_callbacks()
-                    except Exception as e:
-                        print(f"[CAClient]: Failed to clear callbacks for {pv_name}: {e}")
+            if clients:
+                return
+            pv = self._pvs.pop(pv_name, None)
+            self._subscribers.pop(pv_name, None)
+            self._latest_value.pop(pv_name, None)
+
+        self._release(pv_name, pv)
 
     def unsubscribe_all(self, client_id: str):
         """Remove a client from all subscriptions."""
+        released = []
         with self._lock:
             empty_pvs = []
             for pv_name, clients in self._subscribers.items():
@@ -94,14 +93,25 @@ class CAClient:
                     empty_pvs.append(pv_name)
 
             for pv_name in empty_pvs:
-                pv = self._pvs.pop(pv_name, None)
+                released.append((pv_name, self._pvs.pop(pv_name, None)))
                 self._subscribers.pop(pv_name, None)
                 self._latest_value.pop(pv_name, None)
-                if pv:
-                    try:
-                        pv.clear_callbacks()
-                    except Exception as e:
-                        print(f"[CAClient]: Failed to clear callbacks for {pv_name}: {e}")
+
+        for pv_name, pv in released:
+            self._release(pv_name, pv)
+
+    @staticmethod
+    def _release(pv_name: str, pv):
+        """Stop the monitor and drop the PV from pyepics' cache, so it stops being decoded."""
+        if not pv:
+            return
+        try:
+            # disconnect() looks the PV up in the cache of the calling thread's context
+            if epics.ca.current_context() is None:
+                epics.ca.use_initial_context()
+            pv.disconnect()
+        except Exception as e:
+            print(f"[CAClient]: Failed to disconnect {pv_name}: {e}")
 
     def write_to_pv(self, pv: str, value: Any):
         """Write synchronously to a PV."""
@@ -119,12 +129,10 @@ class CAClient:
     def close(self):
         """Stop all subscriptions and clear resources."""
         with self._lock:
-            for pv_name, pv in self._pvs.items():
-                try:
-                    pv.clear_callbacks()
-                except Exception as e:
-                    print(f"[CAClient]: Failed to clear callbacks for {pv_name}: {e}")
+            pvs = list(self._pvs.items())
             self._pvs.clear()
             self._subscribers.clear()
             self._latest_value.clear()
+        for pv_name, pv in pvs:
+            self._release(pv_name, pv)
         print("[CAClient]: Closed all subscriptions.")
