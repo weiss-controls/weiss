@@ -24,6 +24,9 @@ class CAClient:
         self._subscribers: Dict[str, Set[str]] = {}  # pv_name -> set(client_ids)
         self._latest_value: Dict[str, Any] = {}  # pv_name -> last value
         self._lock = Lock()
+        # pyepics initializes libca lazily. If that happens on several subscribe threads at once, some
+        # of them end up without a CA context and their PVs never connect.
+        epics.ca.current_context()
 
     def _on_update(self, **kwargs):
         """Monitor callback for all PVs; pyepics passes the update as keyword arguments."""
