@@ -25,18 +25,17 @@ class CAClient:
         self._lock = Lock()
         self._latest_value: Dict[str, Any] = {}
 
-    def _callback(self, value, **kwargs):
+    def _callback(self, **kwargs):
         """Generic callback for all PVs — passes raw data upstream."""
         pvname = kwargs.get("pvname")
         # pyepics calls back with no value for a PV that has not delivered one yet
-        if not pvname or value is None:
+        if not pvname or kwargs.get("value") is None:
             return
-        val = {"value": value, **kwargs}
 
         with self._lock:
-            self._latest_value[pvname] = val
+            self._latest_value[pvname] = kwargs
 
-        self._handle_update(pvname, val)
+        self._handle_update(pvname, kwargs)
 
     def _connection_callback(self, pvname=None, conn=True, **kwargs):
         """Fires on both connect and disconnect; only disconnect needs forwarding."""
