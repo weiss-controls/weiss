@@ -44,8 +44,8 @@ ws_subscriptions: Dict[ServerConnection, Set[str]] = {}
 # per-ws queue of messages to send, handled by a dedicated writer task
 send_queues: Dict[ServerConnection, asyncio.Queue] = {}
 
-# clients that already received metadata, per pv_name
-metadata_sent: Dict[str, Set[ServerConnection]] = {}
+# Clients that already received metadata, per PV name
+metadata_sent_to_clients: Dict[str, Set[ServerConnection]] = {}
 
 # cached quasi-static metadata per pv_name
 _pv_metadata: Dict[str, PVMetadata] = {}
@@ -62,8 +62,8 @@ MAX_CLIENT_QUEUE = int(os.getenv("EPICS_MAX_CLIENT_QUEUE", 1000))
 
 # Per-PV throttle bookkeeping
 _last_sent_time: Dict[str, float] = {}
-_pending_update: Dict[str, Tuple[Any, str]] = {}
-_trailing_handle: Dict[str, asyncio.TimerHandle] = {}
+_pending_updates: Dict[str, Tuple[Any, str]] = {}
+_throttle_timer_handles: Dict[str, asyncio.TimerHandle] = {}
 
 
 def parse_protocol(pv_name: str) -> Tuple[str, str]:
@@ -86,61 +86,61 @@ def format_pv_name(pv_name: str, provider: str) -> str:
 def _cleanup_pv_state(pv_name: str) -> None:
     """Called once a PV has no more subscribers, from any teardown path."""
     _pv_metadata.pop(pv_name, None)
-    metadata_sent.pop(pv_name, None)
+    metadata_sent_to_clients.pop(pv_name, None)
     _last_sent_time.pop(pv_name, None)
-    _pending_update.pop(pv_name, None)
-    handle = _trailing_handle.pop(pv_name, None)
-    if handle:
-        handle.cancel()
+    _pending_updates.pop(pv_name, None)
+    throttle_timer = _throttle_timer_handles.pop(pv_name, None)
+    if throttle_timer:
+        throttle_timer.cancel()
 
 
 _loop: Optional[asyncio.AbstractEventLoop] = None
 
-# Events from EPICS threads, processed in order by a single loop callback per batch
-_incoming: Deque[Tuple[Callable[..., None], tuple]] = deque()
-_incoming_lock = threading.Lock()
-_incoming_scheduled = False
+# EPICS callbacks can run on worker threads, so queue them for ordered dispatch on the event loop.
+_loop_callback_queue: Deque[Tuple[Callable[..., None], tuple]] = deque()
+_loop_callback_queue_lock = threading.Lock()
+_loop_callback_dispatch_scheduled = False
 
 
-def _post(func: Callable[..., None], *args):
-    global _incoming_scheduled
+def _enqueue_loop_callback(func: Callable[..., None], *args):
+    global _loop_callback_dispatch_scheduled
     if not _loop:
         return
-    with _incoming_lock:
-        _incoming.append((func, args))
-        if _incoming_scheduled:
+    with _loop_callback_queue_lock:
+        _loop_callback_queue.append((func, args))
+        if _loop_callback_dispatch_scheduled:
             return
-        _incoming_scheduled = True
-    _loop.call_soon_threadsafe(_process_incoming)
+        _loop_callback_dispatch_scheduled = True
+    _loop.call_soon_threadsafe(_dispatch_queued_loop_callbacks)
 
 
-def _process_incoming():
-    global _incoming_scheduled
-    with _incoming_lock:
-        batch = list(_incoming)
-        _incoming.clear()
-        _incoming_scheduled = False
-    for func, args in batch:
+def _dispatch_queued_loop_callbacks():
+    global _loop_callback_dispatch_scheduled
+    with _loop_callback_queue_lock:
+        queued_callbacks = list(_loop_callback_queue)
+        _loop_callback_queue.clear()
+        _loop_callback_dispatch_scheduled = False
+    for callback, callback_args in queued_callbacks:
         try:
-            func(*args)
+            callback(*callback_args)
         except Exception as e:
-            print(f"[epicsWS]: Error processing {func.__name__}: {e}")
+            print(f"[epicsWS]: Error processing {callback.__name__}: {e}")
 
 
 def ca_callback(pv_name, pv_obj):
-    _post(_send_throttled, pv_name, pv_obj, CA_PROVIDER_KEY)
+    _enqueue_loop_callback(_send_throttled, pv_name, pv_obj, CA_PROVIDER_KEY)
 
 
 def pva_callback(pv_name, pv_obj):
-    _post(_send_throttled, pv_name, pv_obj, PVA_PROVIDER_KEY)
+    _enqueue_loop_callback(_send_throttled, pv_name, pv_obj, PVA_PROVIDER_KEY)
 
 
 def ca_disconnect_callback(pv_name):
-    _post(_send_disconnect, pv_name, CA_PROVIDER_KEY)
+    _enqueue_loop_callback(_send_disconnect, pv_name, CA_PROVIDER_KEY)
 
 
 def pva_disconnect_callback(pv_name):
-    _post(_send_disconnect, pv_name, PVA_PROVIDER_KEY)
+    _enqueue_loop_callback(_send_disconnect, pv_name, PVA_PROVIDER_KEY)
 
 
 def _send_throttled(pv_name: str, pv_obj, provider: str):
@@ -155,23 +155,25 @@ def _send_throttled(pv_name: str, pv_obj, provider: str):
     elapsed = now - _last_sent_time.get(pv_name, 0.0)
     if elapsed >= MIN_UPDATE_INTERVAL:
         _last_sent_time[pv_name] = now
-        _pending_update.pop(pv_name, None)
+        _pending_updates.pop(pv_name, None)
         send_update(pv_name, pv_obj, provider)
         return
 
-    _pending_update[pv_name] = (pv_obj, provider)
-    if pv_name not in _trailing_handle:
-        _trailing_handle[pv_name] = _loop.call_later(MIN_UPDATE_INTERVAL - elapsed, _flush_trailing, pv_name)
+    _pending_updates[pv_name] = (pv_obj, provider)
+    if pv_name not in _throttle_timer_handles:
+        _throttle_timer_handles[pv_name] = _loop.call_later(
+            MIN_UPDATE_INTERVAL - elapsed, _send_pending_update, pv_name
+        )
 
 
-def _flush_trailing(pv_name: str):
-    _trailing_handle.pop(pv_name, None)
-    pending = _pending_update.pop(pv_name, None)
-    if pending is None:
+def _send_pending_update(pv_name: str):
+    _throttle_timer_handles.pop(pv_name, None)
+    pending_update = _pending_updates.pop(pv_name, None)
+    if pending_update is None:
         return
     if not _loop:
         return
-    pv_obj, provider = pending
+    pv_obj, provider = pending_update
     _last_sent_time[pv_name] = _loop.time()
     send_update(pv_name, pv_obj, provider)
 
@@ -212,8 +214,8 @@ async def _writer(ws: ServerConnection, queue: asyncio.Queue):
 
 
 def send_update(pv_name: str, pv_obj, provider: str):
-    ws_set = subscriptions.get(pv_name)
-    if not ws_set:
+    subscribed_clients = subscriptions.get(pv_name)
+    if not subscribed_clients:
         return
 
     def serialize(msg) -> Frame:
@@ -248,35 +250,35 @@ def send_update(pv_name: str, pv_obj, provider: str):
     if update.enumChoices is not None:
         base_msg["enumChoices"] = update.enumChoices
 
-    sent = metadata_sent.setdefault(pv_name, set())
-    needs_metadata_ws = ws_set - sent
-    has_metadata_ws = ws_set & sent
-    if has_metadata_ws:
+    clients_with_metadata = metadata_sent_to_clients.setdefault(pv_name, set())
+    clients_needing_metadata = subscribed_clients - clients_with_metadata
+    clients_with_metadata_to_update = subscribed_clients & clients_with_metadata
+    if clients_with_metadata_to_update:
         data = serialize(base_msg)
-        for ws in has_metadata_ws:
+        for ws in clients_with_metadata_to_update:
             _enqueue(ws, data)
-    if needs_metadata_ws:
+    if clients_needing_metadata:
         full_msg = dict(base_msg)
         full_msg.update(asdict(_pv_metadata[pv_name]))
         full_msg["connected"] = True
         data = serialize(full_msg)
-        sent |= needs_metadata_ws
-        for ws in needs_metadata_ws:
+        clients_with_metadata |= clients_needing_metadata
+        for ws in clients_needing_metadata:
             _enqueue(ws, data)
 
 
 def _send_disconnect(pv_name: str, provider: str):
     """Notifies subscribed clients that a PV has disconnected and forces metadata resend on reconnect."""
-    ws_set = subscriptions.get(pv_name)
-    if not ws_set:
+    subscribed_clients = subscriptions.get(pv_name)
+    if not subscribed_clients:
         return
 
     msg = {"type": "update", "pv": format_pv_name(pv_name, provider), "connected": False}
     data = (orjson.dumps(msg), True)
 
-    for ws in set(ws_set):
+    for ws in set(subscribed_clients):
         _enqueue(ws, data)
-    metadata_sent.pop(pv_name, None)
+    metadata_sent_to_clients.pop(pv_name, None)
     _pv_metadata.pop(pv_name, None)
 
 
@@ -314,7 +316,7 @@ async def message_handler(ws: ServerConnection):
                             del subscriptions[pv_name]
                             _cleanup_pv_state(pv_name)
                         asyncio.create_task(asyncio.to_thread(client.unsubscribe, client_id, pv_name))
-                    metadata_sent.get(pv_name, set()).discard(ws)
+                    metadata_sent_to_clients.get(pv_name, set()).discard(ws)
 
             elif msg_type == "write":
                 pv = msg.get("pv")
@@ -402,7 +404,7 @@ async def message_handler(ws: ServerConnection):
                 if not pv_set:
                     del subscriptions[pv_name]
                     _cleanup_pv_state(pv_name)
-            metadata_sent.get(pv_name, set()).discard(ws)
+            metadata_sent_to_clients.get(pv_name, set()).discard(ws)
         for c in clients.values():
             if c:
                 asyncio.create_task(asyncio.to_thread(c.unsubscribe_all, client_id))

@@ -27,8 +27,10 @@ class PVAClient:
         self._lock = Lock()
         self._ctxt = Context("pva", nt=False)  # nt=False to get unpacked data
         # Use one worker instead of p4p's default four to reduce GIL contention with the event loop.
-        # Due to this, callbacks must never block.
-        # Set maxsize=0 (unbounded) to avoid dropping updates.
+        # Due to this, callbacks must never block to avoid stalling the single worker thread.
+        # In the future we may want to use free-threaded python here (no GIL), depending on support
+        # of dependencies. When that happens we may revisit this change.
+        # Set maxsize=0 (unbounded) to avoid ever dropping updates if they queue up.
         self._queue = ThreadedWorkQueue(name="p4p-callbacks", workers=1, daemon=True, maxsize=0).start()
 
     def _on_update(self, pv_name: str) -> Callable[[Any], None]:
