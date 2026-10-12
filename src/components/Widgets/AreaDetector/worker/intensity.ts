@@ -18,13 +18,17 @@ export function computeLimits(value: NumericArray): Limits | null {
   let min = Infinity;
   let max = -Infinity;
   if (value instanceof Float32Array || value instanceof Float64Array) {
-    for (const v of value) {
+    // oxlint-disable-next-line typescript/prefer-for-of -- indexed loops are ~5x faster than for...of on typed arrays
+    for (let i = 0; i < value.length; i++) {
+      const v = value[i];
       if (v - v !== 0) continue; // NaN and +/-Infinity
       if (v < min) min = v;
       if (v > max) max = v;
     }
   } else {
-    for (const v of value) {
+    // oxlint-disable-next-line typescript/prefer-for-of -- see above
+    for (let i = 0; i < value.length; i++) {
+      const v = value[i];
       if (v < min) min = v;
       if (v > max) max = v;
     }
