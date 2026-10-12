@@ -249,6 +249,8 @@ def send_update(pv_name: str, pv_obj, provider: str):
         base_msg["value"] = update.value
     if update.enumChoices is not None:
         base_msg["enumChoices"] = update.enumChoices
+    if update.ndarray is not None:
+        base_msg["ndarray"] = update.ndarray
 
     clients_with_metadata = metadata_sent_to_clients.setdefault(pv_name, set())
     clients_needing_metadata = subscribed_clients - clients_with_metadata
