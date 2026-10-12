@@ -8,6 +8,8 @@ import { WS_URL } from "@src/constants/constants";
 import { usePVStore } from "@src/services/pvStore";
 import { pushPVHistory, clearPVHistory } from "@src/utils/historyBuffers";
 
+const EMPTY_FRAME = new Uint8Array(0);
+
 /**
  * Hook that manages a WebSocket session to the PV WebSocket.
  *
@@ -32,19 +34,24 @@ export default function useEpicsWS(resolvedPVList: string[]) {
   const pendingPVsRef = useRef<Record<string, PVData>>({});
   const rafHandleRef = useRef<number | null>(null);
 
-  /** Merge a WSMessage into the pending accumulator (sticky metadata fields). */
+  /**
+   * Merge a WSMessage into the pending accumulator (sticky metadata fields).
+   * `ndarray` is frame-bound: it is never carried over, and an image frame without
+   * pixel data clears the previous value so a stale image never pairs with new metadata.
+   */
   function buildPVData(msg: WSMessage): PVData {
     const prev: Partial<PVData> =
       pendingPVsRef.current[msg.pv] ?? usePVStore.getState().pvs[msg.pv] ?? {};
     return {
       pv: msg.pv,
-      value: msg.value ?? prev.value,
+      value: msg.value ?? (msg.ndarray ? EMPTY_FRAME : prev.value),
       enumChoices: msg.enumChoices ?? prev.enumChoices,
       alarm: msg.alarm ?? prev.alarm,
       timeStamp: msg.timeStamp ?? prev.timeStamp,
       display: prev.display ?? msg.display,
       control: prev.control ?? msg.control,
       valueAlarm: prev.valueAlarm ?? msg.valueAlarm,
+      ndarray: msg.ndarray,
     };
   }
 

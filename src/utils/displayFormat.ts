@@ -3,7 +3,9 @@
 
 import type { PVValue } from "@src/types/epicsWS";
 import type { ValueDisplayFormat } from "@src/types/widgets";
-import { isNumericArray } from "@src/utils/numericArray";
+import { isNumericArray, isLargeArray } from "@src/utils/numericArray";
+
+export const LARGE_ARRAY_TEXT = "[large array]";
 
 function toEngineeringNotation(value: number, precision?: number): string {
   if (value === 0) return "0";
@@ -32,6 +34,7 @@ export function formatDisplayValue(
   precision?: number,
 ): string {
   if (value === undefined || value === null) return "";
+  if (isLargeArray(value)) return LARGE_ARRAY_TEXT;
 
   switch (format) {
     case "String":

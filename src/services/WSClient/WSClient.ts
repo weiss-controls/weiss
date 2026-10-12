@@ -3,6 +3,7 @@
 
 import type { PVWriteValue, WSMessage } from "@src/types/epicsWS";
 import { decodeBinaryUpdate } from "./binaryArray.ts";
+import { parseNDArrayInfo } from "./ndarrayInfo.ts";
 
 type ConnectionHandler = (connected: boolean) => void;
 type MessageHandler = (message: WSMessage) => void;
@@ -94,6 +95,14 @@ export class WSClient {
     if (!isWSMessage(uncheckedMessage)) {
       console.error("Received invalid message:", message);
       return;
+    }
+    if ("ndarray" in uncheckedMessage) {
+      try {
+        uncheckedMessage.ndarray = parseNDArrayInfo(uncheckedMessage.ndarray);
+      } catch (error) {
+        console.error(`Invalid NDArray metadata for ${uncheckedMessage.pv}:`, error);
+        return;
+      }
     }
     // narrowed down to WSMessage type
     this.message_handler(uncheckedMessage);

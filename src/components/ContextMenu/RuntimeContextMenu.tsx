@@ -16,6 +16,8 @@ import ContentCopy from "@mui/icons-material/ContentCopy";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import HistoryIcon from "@mui/icons-material/History";
 import { notifyUser } from "@src/services/Notifications/Notification";
+import { LARGE_ARRAY_TEXT } from "@src/utils/displayFormat";
+import { isLargeArray } from "@src/utils/numericArray";
 
 export interface RuntimeContextMenuProps {
   pos: GridPosition;
@@ -49,7 +51,8 @@ const RuntimeContextMenu: React.FC<RuntimeContextMenuProps> = ({
     onClose();
   };
 
-  const formatValue = (data: PVData): string => String(data.value);
+  const formatValue = (data: PVData): string =>
+    isLargeArray(data.value) ? LARGE_ARRAY_TEXT : String(data.value);
   const formatTimestamp = (data: PVData): string => {
     const seconds = data.timeStamp.secondsPastEpoch + data.timeStamp.nanoseconds / 1e9;
     return new Date(seconds * 1000).toLocaleString("sv");

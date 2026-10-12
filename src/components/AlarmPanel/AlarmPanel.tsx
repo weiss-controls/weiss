@@ -23,6 +23,8 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
 import { COLORS } from "@src/constants/constants";
 import type { PVData } from "@src/types/epicsWS";
+import { LARGE_ARRAY_TEXT } from "@src/utils/displayFormat";
+import { isLargeArray } from "@src/utils/numericArray";
 
 const SEVERITY_LABELS: Record<number, string> = {
   0: "NO_ALARM",
@@ -122,6 +124,7 @@ export default function AlarmPanel({ open, onClose }: AlarmPanelProps) {
 
   const formatValue = (value: PVData["value"], units: string, precision?: number) => {
     if (value === undefined || value === null) return "--";
+    if (isLargeArray(value)) return LARGE_ARRAY_TEXT;
     if (typeof value === "number") {
       const formatted =
         precision !== undefined && precision >= 0 ? value.toFixed(precision) : String(value);

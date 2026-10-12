@@ -3,6 +3,17 @@
 
 import type { NumericArray } from "@src/types/epicsWS";
 
+/** Numeric arrays to be converted to text typically represent strings encoded into utf-8 ASCII chars. 1000 elements should be more than enought to cover that case. Do not convert larger arrays to text. */
+const LARGE_ARRAY_THRESHOLD = 1000;
+
+export function isLargeArray(value: unknown): boolean {
+  if (Array.isArray(value)) return value.length > LARGE_ARRAY_THRESHOLD;
+  if (ArrayBuffer.isView(value) && !(value instanceof DataView)) {
+    return (value as unknown as { length: number }).length > LARGE_ARRAY_THRESHOLD;
+  }
+  return false;
+}
+
 export function isNumericArray(value: unknown): value is NumericArray | number[] {
   if (ArrayBuffer.isView(value)) return !(value instanceof DataView);
   return Array.isArray(value) && value.every((v) => typeof v === "number");

@@ -12,6 +12,7 @@ import type {
 } from "@src/types/widgets";
 import type { PVData } from "@src/types/epicsWS";
 import { substituteMacroInStr as substituteMacroStr } from "@src/utils/macros";
+import { isLargeArray } from "@src/utils/numericArray";
 
 /**
  * Evaluate a single condition against the current pvState.
@@ -30,6 +31,7 @@ function evaluateCondition(
 
   const rawValue = pvData.value;
   if (rawValue === undefined || rawValue === null) return false;
+  if (isLargeArray(rawValue)) return false;
 
   const pvStr = String(rawValue);
   const condStr = condition.value;
