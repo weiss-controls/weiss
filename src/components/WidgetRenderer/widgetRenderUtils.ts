@@ -6,6 +6,24 @@ import type { PVData } from "@src/types/epicsWS";
 import { buildRuntimeMacros, substituteTextProps } from "@src/utils/macros";
 import { applyRules, evaluateRules } from "@src/utils/ruleEngine";
 
+const NO_VALUE = new Uint8Array(0);
+
+const withoutValue = (data: PVData): PVData => ({ ...data, value: NO_VALUE });
+
+/** The widget with the value of its PV data emptied, see `WidgetDefinition.omitPVValue` */
+export function withoutPVValues(w: Widget): Widget {
+  if (!w.pvData && !w.multiPvData) return w;
+  return {
+    ...w,
+    pvData: w.pvData && withoutValue(w.pvData),
+    multiPvData:
+      w.multiPvData &&
+      Object.fromEntries(
+        Object.entries(w.multiPvData).map(([pv, data]) => [pv, withoutValue(data)]),
+      ),
+  };
+}
+
 // Selection helpers
 export const hasSelectedDescendant = (w: Widget, selectedIDs: string[]): boolean =>
   !!w.children?.some((c) => selectedIDs.includes(c.id) || hasSelectedDescendant(c, selectedIDs));

@@ -14,6 +14,8 @@ export const AreaDetector: WidgetDefinition = {
   widgetIcon: CameraAltIcon,
   widgetLabel: "Area Detector",
   category: "Monitoring",
+  // Frames come from the PV store, not from props
+  omitPVValue: true,
   defaultProperties: {
     ...FILTERED_COMMON_PROPS,
     tooltip: { ...PROPERTY_SCHEMAS.tooltip, value: "" },

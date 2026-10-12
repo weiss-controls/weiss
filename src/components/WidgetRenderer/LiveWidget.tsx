@@ -8,7 +8,7 @@ import type { Widget } from "@src/types/widgets";
 import type { PVData } from "@src/types/epicsWS";
 import { usePVStore } from "@src/services/pvStore";
 import { substituteMacroInStr } from "@src/utils/macros";
-import { applyWidgetPVData } from "./widgetRenderUtils";
+import { applyWidgetPVData, withoutPVValues } from "./widgetRenderUtils";
 
 /**
  * Renders a single widget's content by subscribing only to the PV(s) that
@@ -73,10 +73,11 @@ const LiveWidget = memo(function WidgetRenderItem({
   );
 
   // Inject pvData + runtime macros + rule overrides.
-  const mergedWidget = useMemo(
-    () => applyWidgetPVData(w, relevantPvs, globalMacros),
-    [w, relevantPvs, globalMacros],
-  );
+  const omitPVValue = WidgetRegistry[w.widgetName]?.omitPVValue;
+  const mergedWidget = useMemo(() => {
+    const merged = applyWidgetPVData(w, relevantPvs, globalMacros);
+    return omitPVValue ? withoutPVValues(merged) : merged;
+  }, [w, relevantPvs, globalMacros, omitPVValue]);
 
   const Comp = WidgetRegistry[w.widgetName]?.component;
   if (!Comp) return null;
