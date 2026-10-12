@@ -29,5 +29,6 @@
       "@components/*": ["./src/components/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/**/*.worker.ts"]
 }
