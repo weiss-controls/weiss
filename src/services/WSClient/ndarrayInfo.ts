@@ -73,11 +73,8 @@ function parseTimeStamp(raw: unknown): TimeStamp {
 /** Validates the untrusted `ndarray` header field of a WebSocket update; throws if malformed. */
 export function parseNDArrayInfo(raw: unknown): NDArrayInfo {
   const info = asRecord(raw, "info");
-  if (
-    !Array.isArray(info.dimension) ||
-    info.dimension.length < 1 ||
-    info.dimension.length > MAX_DIMENSIONS
-  ) {
+  // An NTNDArray that has not received a frame yet has no dimensions
+  if (!Array.isArray(info.dimension) || info.dimension.length > MAX_DIMENSIONS) {
     throw new Error("Invalid NDArray dimension list");
   }
   const parsed: NDArrayInfo = {
