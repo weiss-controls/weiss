@@ -34,7 +34,7 @@ export type RejectCode =
   | "tooLarge";
 
 export type LayoutResult =
-  | { ok: true; layout: ImageLayout; pixels: NumericArray }
+  | { ok: true; layout: ImageLayout; pixels: NumericArray; info: NDArrayInfo }
   | { ok: false; code: RejectCode; message: string };
 
 // areaDetector NDColorMode_t
@@ -139,5 +139,5 @@ export function resolveLayout(value: unknown, info: NDArrayInfo | undefined): La
     rgb2: { strideX: 1, strideY: 3 * width, strideC: width },
     rgb3: { strideX: 1, strideY: width, strideC: width * height },
   }[kind];
-  return { ok: true, layout: { kind, width, height, channels, ...strides }, pixels };
+  return { ok: true, layout: { kind, width, height, channels, ...strides }, pixels, info };
 }
