@@ -156,7 +156,7 @@ export function zoomAt(
   const anchor = toImage(resolved, view, image, point, orientation);
   const zoom = clamp(view, image, orientation, {
     ...resolved.state,
-    zoom: state.zoom * factor,
+    zoom: resolved.state.zoom * factor,
   }).zoom;
   const scale = fitScale(view, image, orientation) * zoom;
   const [m00, m01, m10, m11] = orientationMatrix(orientation);

@@ -3,7 +3,7 @@
 
 import type { NDArrayInfo, NumericArray, PVData } from "@src/types/epicsWS";
 import type { FrameSource, Unsubscribe } from "./frameSource.ts";
-import { type RejectCode, resolveLayout } from "./worker/imageLayout.ts";
+import { type ImageLayout, type RejectCode, resolveLayout } from "./worker/imageLayout.ts";
 import type { MainToWorker, WorkerToMain } from "./workerProtocol.ts";
 import {
   FIT,
@@ -12,6 +12,8 @@ import {
   type Size,
   type ViewState,
   capPixelRatio,
+  panBy,
+  zoomAt,
 } from "./viewport.ts";
 import { attachViewportInput } from "./viewportInput.ts";
 
@@ -28,6 +30,7 @@ interface Frame {
   uniqueId: number;
   info: NDArrayInfo;
   value: NumericArray;
+  layout: ImageLayout;
 }
 
 /**
@@ -45,8 +48,11 @@ export class AdController {
   private unsubscribe: Unsubscribe | null = null;
   private detachInput: (() => void) | null = null;
   private epoch = 1;
-  private inFlight = false;
+  private inFlight: Frame | null = null;
   private pending: Frame | null = null;
+  /** The frame on screen, as acknowledged by the worker */
+  private displayed: Frame | null = null;
+  private lastSize: Size | null = null;
   // Store updates that do not carry a new frame keep the same array
   private lastValue: unknown;
   private status: AdStatus | null = null;
@@ -90,6 +96,13 @@ export class AdController {
     this.send({ type: "init", epoch: this.epoch, canvas }, [canvas]);
     this.detachInput = attachViewportInput(container, {
       onResize: (view, pixelRatio) => this.resize(view, pixelRatio),
+      onZoom: (factor, point) =>
+        this.changeView((image) =>
+          zoomAt(this.view, image, this.orientation, this.state, factor, point),
+        ),
+      onPan: (dx, dy) =>
+        this.changeView((image) => panBy(this.view, image, this.orientation, this.state, dx, dy)),
+      onReset: () => this.changeView(() => FIT),
     });
     this.unsubscribe = source(pv, (data) => this.handleData(data));
   }
@@ -129,17 +142,30 @@ export class AdController {
     this.requestView();
   }
 
+  /** Zoom and pan act on the image on screen */
+  private changeView(update: (image: Size) => ViewState) {
+    if (!this.displayed) return;
+    this.state = update(this.displayed.layout);
+    this.requestView();
+  }
+
   private requestView() {
     if (this.viewRequest || !this.worker) return;
     this.viewRequest = requestAnimationFrame(() => {
       this.viewRequest = 0;
-      this.send({
-        type: "view",
-        ...this.view,
-        pixelRatio: this.pixelRatio,
-        orientation: this.orientation,
-        state: this.state,
-      });
+      this.sendView();
+    });
+  }
+
+  private sendView() {
+    cancelAnimationFrame(this.viewRequest);
+    this.viewRequest = 0;
+    this.send({
+      type: "view",
+      ...this.view,
+      pixelRatio: this.pixelRatio,
+      orientation: this.orientation,
+      state: this.state,
     });
   }
 
@@ -161,8 +187,9 @@ export class AdController {
   /** Drops the image on screen and everything queued for it */
   private discard() {
     this.epoch++;
-    this.inFlight = false;
+    this.inFlight = null;
     this.pending = null;
+    this.displayed = null;
     this.send({ type: "reset", epoch: this.epoch });
   }
 
@@ -185,19 +212,34 @@ export class AdController {
       return;
     }
 
-    const frame = { uniqueId: check.info.uniqueId, info: check.info, value: check.pixels };
+    const frame = {
+      uniqueId: check.info.uniqueId,
+      info: check.info,
+      value: check.pixels,
+      layout: check.layout,
+    };
     if (this.inFlight) this.pending = frame;
     else this.dispatch(frame);
   }
 
   private dispatch(frame: Frame) {
-    this.inFlight = true;
+    const { uniqueId, info, value, layout } = frame;
+    // A new image size starts at fit; the view goes first so the frame is drawn with it
+    if (
+      this.lastSize &&
+      (this.lastSize.width !== layout.width || this.lastSize.height !== layout.height)
+    ) {
+      this.state = FIT;
+      this.sendView();
+    }
+    this.lastSize = { width: layout.width, height: layout.height };
+    this.inFlight = frame;
     // Copied rather than transferred: the store's array is shared with other consumers
-    this.send({ type: "frame", epoch: this.epoch, ...frame });
+    this.send({ type: "frame", epoch: this.epoch, uniqueId, info, value });
   }
 
   private release() {
-    this.inFlight = false;
+    this.inFlight = null;
     const next = this.pending;
     this.pending = null;
     if (next) this.dispatch(next);
@@ -207,10 +249,12 @@ export class AdController {
     if (this.disposed || message.epoch !== this.epoch) return;
     switch (message.type) {
       case "displayed":
+        this.displayed = this.inFlight;
         this.setStatus({ kind: "image" });
         this.release();
         break;
       case "rejected":
+        this.displayed = null;
         this.setStatus({ kind: "rejected", code: message.code, message: message.message });
         this.release();
         break;
@@ -228,8 +272,9 @@ export class AdController {
     this.stopInput();
     this.unsubscribe?.();
     this.unsubscribe = null;
-    this.inFlight = false;
+    this.inFlight = null;
     this.pending = null;
+    this.displayed = null;
     this.canvas.style.visibility = "hidden";
     this.setStatus({ kind: "rejected", code: "workerError", message });
   }
