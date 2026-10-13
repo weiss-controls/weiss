@@ -7,7 +7,6 @@ import { type ImageLayout, type RejectCode, resolveLayout } from "./worker/image
 import type { MainToWorker, WorkerToMain } from "./workerProtocol.ts";
 import {
   FIT,
-  NO_ORIENTATION,
   type Orientation,
   type Size,
   type ViewState,
@@ -59,7 +58,7 @@ export class AdController {
   private disposed = false;
   private view: Size = { width: 0, height: 0 };
   private pixelRatio = 1;
-  private orientation: Orientation = NO_ORIENTATION;
+  private orientation: Orientation;
   private state: ViewState = FIT;
   private viewRequest = 0;
 
@@ -67,9 +66,11 @@ export class AdController {
     container: HTMLElement,
     pv: string,
     source: FrameSource,
+    orientation: Orientation,
     onStatus: (status: AdStatus) => void,
   ) {
     this.onStatus = onStatus;
+    this.orientation = orientation;
     // A canvas can only be transferred once, so every controller makes its own
     this.canvas = document.createElement("canvas");
     Object.assign(this.canvas.style, { display: "block", width: "100%", height: "100%" });
@@ -115,6 +116,20 @@ export class AdController {
     this.worker?.terminate();
     this.worker = null;
     this.canvas.remove();
+  }
+
+  /** The view is kept: its centre refers to the unoriented image */
+  setOrientation(orientation: Orientation) {
+    const current = this.orientation;
+    if (
+      current.rotation === orientation.rotation &&
+      current.flipX === orientation.flipX &&
+      current.flipY === orientation.flipY
+    ) {
+      return;
+    }
+    this.orientation = orientation;
+    this.requestView();
   }
 
   private send(message: MainToWorker, transfer: Transferable[] = []) {

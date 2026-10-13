@@ -30,6 +30,16 @@ export interface Point {
   y: number;
 }
 
+/** Orientation from widget properties; anything but a right angle counts as no rotation */
+export function toOrientation(rotation: unknown, flipX: unknown, flipY: unknown): Orientation {
+  const degrees = Number(rotation);
+  return {
+    rotation: degrees === 90 || degrees === 180 || degrees === 270 ? degrees : 0,
+    flipX: flipX === true,
+    flipY: flipY === true,
+  };
+}
+
 export const NO_ORIENTATION: Orientation = { rotation: 0, flipX: false, flipY: false };
 export const FIT: ViewState = { zoom: 1, centerX: 0.5, centerY: 0.5 };
 

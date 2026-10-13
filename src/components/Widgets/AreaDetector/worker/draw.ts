@@ -12,7 +12,7 @@ type DrawContext = CanvasDrawImage &
 /** Clears the context's canvas and draws `source` on it as seen through the view */
 export function drawView(
   context: DrawContext,
-  source: OffscreenCanvas | ImageBitmap,
+  source: CanvasImageSource & Size,
   view: Size,
   orientation: Orientation,
   state: ViewState,

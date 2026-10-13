@@ -123,6 +123,10 @@ export const PROPERTY_SCHEMAS = {
   activeTabColor:   defineProp({ selType: "colorSel", label: "Active tab color", value: COLORS.midDarkBlue, category: "Style" }),
   tabOrientation:  defineProp({ selType: "select", label: "Tab Orientation", value: "horizontal" as string, options: ["horizontal", "vertical"], category: "Layout" }),
   target:          defineProp({ selType: "text", label: "Target", value: "" as string, category: "General" }),
+  // AreaDetector
+  imageRotation:   defineProp({ selType: "select", label: "Rotation (clockwise)", value: "0" as string, options: ["0", "90", "180", "270"], category: "Layout" }),
+  imageFlipX:      defineProp({ selType: "boolean", label: "Flip horizontally", value: false as boolean, category: "Layout" }),
+  imageFlipY:      defineProp({ selType: "boolean", label: "Flip vertically", value: false as boolean, category: "Layout" }),
   // MultiStateLED
   stateList:       defineProp({ selType: "stateList", label: "States", value: [{ value: "0", color: COLORS.offColor, label: "" }, { value: "1", color: COLORS.onColor, label: "" }, { value: "", color: COLORS.midGray, label: "" }] as StateEntry[], category: "EPICS" }),
 };

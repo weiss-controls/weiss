@@ -23,5 +23,8 @@ export const AreaDetector: WidgetDefinition = {
     height: { ...PROPERTY_SCHEMAS.height, value: 360 },
     backgroundColor: { ...PROPERTY_SCHEMAS.backgroundColor, value: "black" },
     pvName: PROPERTY_SCHEMAS.pvName,
+    imageRotation: PROPERTY_SCHEMAS.imageRotation,
+    imageFlipX: PROPERTY_SCHEMAS.imageFlipX,
+    imageFlipY: PROPERTY_SCHEMAS.imageFlipY,
   },
 };
