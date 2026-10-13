@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
-import type { MainToWorker, WorkerToMain } from "../workerProtocol.ts";
+import type { MainToWorker, ViewMessage, WorkerToMain } from "../workerProtocol.ts";
+import { drawView } from "./draw.ts";
 import { resolveLayout } from "./imageLayout.ts";
 import { type RenderParams, renderFrame } from "./render.ts";
 
@@ -11,8 +12,13 @@ const PARAMS: RenderParams = { scale: "linear", colorMap: "grayscale" };
 let epoch = 0;
 let canvas: OffscreenCanvas | null = null;
 let context: OffscreenCanvasRenderingContext2D | null = null;
+let view: ViewMessage | null = null;
 // Reused while the frame size stays the same
 let imageData: ImageData | null = null;
+// The last processed frame, redrawn whenever the view changes
+let image: OffscreenCanvas | null = null;
+let imageContext: OffscreenCanvasRenderingContext2D | null = null;
+let hasImage = false;
 
 function post(message: WorkerToMain) {
   postMessage(message);
@@ -22,8 +28,31 @@ function fail(error: unknown) {
   post({ type: "error", epoch, message: error instanceof Error ? error.message : String(error) });
 }
 
+function present() {
+  if (!canvas || !context) return;
+  if (hasImage && image && view) {
+    drawView(context, image, view, view.orientation, view.state);
+  } else {
+    context.clearRect(0, 0, canvas.width, canvas.height);
+  }
+}
+
+/** Forgets the image too, so a later view change cannot bring it back */
 function clear() {
-  if (canvas && context) context.clearRect(0, 0, canvas.width, canvas.height);
+  hasImage = false;
+  present();
+}
+
+function handleView(message: ViewMessage) {
+  view = message;
+  if (canvas) {
+    // Resizing clears the canvas; it is redrawn right away
+    const width = Math.round(message.width * message.pixelRatio);
+    const height = Math.round(message.height * message.pixelRatio);
+    if (canvas.width !== width) canvas.width = width;
+    if (canvas.height !== height) canvas.height = height;
+  }
+  present();
 }
 
 function handleFrame(message: Extract<MainToWorker, { type: "frame" }>) {
@@ -55,10 +84,16 @@ function handleFrame(message: Extract<MainToWorker, { type: "frame" }>) {
     ...stats,
   };
 
-  if (!canvas || !context) throw new Error("Frame received before the canvas");
-  if (canvas.width !== layout.width) canvas.width = layout.width;
-  if (canvas.height !== layout.height) canvas.height = layout.height;
-  context.putImageData(imageData, 0, 0);
+  if (!image || !imageContext) {
+    image = new OffscreenCanvas(layout.width, layout.height);
+    imageContext = image.getContext("2d");
+    if (!imageContext) throw new Error("Could not create a 2D context");
+  }
+  if (image.width !== layout.width) image.width = layout.width;
+  if (image.height !== layout.height) image.height = layout.height;
+  imageContext.putImageData(imageData, 0, 0);
+  hasImage = true;
+  present();
   post({ type: "displayed", epoch, ...frame, processMs: performance.now() - start });
 }
 
@@ -71,6 +106,9 @@ self.onmessage = (event: MessageEvent<MainToWorker>) => {
         canvas = message.canvas;
         context = canvas.getContext("2d");
         if (!context) throw new Error("Could not create a 2D context");
+        break;
+      case "view":
+        handleView(message);
         break;
       case "reset":
         epoch = message.epoch;
