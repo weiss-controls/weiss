@@ -27,6 +27,7 @@ export const AreaDetector: WidgetDefinition = {
     imageFlipX: PROPERTY_SCHEMAS.imageFlipX,
     imageFlipY: PROPERTY_SCHEMAS.imageFlipY,
     showPixelReadout: PROPERTY_SCHEMAS.showPixelReadout,
+    colorMap: PROPERTY_SCHEMAS.colorMap,
     autoLimits: PROPERTY_SCHEMAS.autoLimits,
     min: { ...PROPERTY_SCHEMAS.min, label: "Intensity minimum", category: "Layout" },
     max: { ...PROPERTY_SCHEMAS.max, label: "Intensity maximum", value: 255, category: "Layout" },

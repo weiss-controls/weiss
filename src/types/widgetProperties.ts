@@ -127,6 +127,7 @@ export const PROPERTY_SCHEMAS = {
   imageRotation:   defineProp({ selType: "select", label: "Rotation (clockwise)", value: "0" as string, options: ["0", "90", "180", "270"], category: "Layout" }),
   imageFlipX:      defineProp({ selType: "boolean", label: "Flip horizontally", value: false as boolean, category: "Layout" }),
   imageFlipY:      defineProp({ selType: "boolean", label: "Flip vertically", value: false as boolean, category: "Layout" }),
+  colorMap:        defineProp({ selType: "select", label: "Colormap", value: "grayscale" as string, options: ["grayscale", "viridis", "inferno", "turbo"], category: "Style" }),
   autoLimits:      defineProp({ selType: "boolean", label: "Automatic limits", value: true as boolean, category: "Layout" }),
   logIntensity:    defineProp({ selType: "boolean", label: "Logarithmic intensity", value: false as boolean, category: "Layout" }),
   showPixelReadout: defineProp({ selType: "boolean", label: "Show pixel readout", value: true as boolean, category: "Layout" }),

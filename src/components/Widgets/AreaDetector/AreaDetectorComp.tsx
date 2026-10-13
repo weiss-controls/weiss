@@ -74,13 +74,14 @@ const AreaDetectorComp: React.FC<WidgetUpdate> = ({ data }) => {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const controllerRef = useRef<AdController | null>(null);
+  const colorMap = p.colorMap?.value;
   const autoLimits = p.autoLimits?.value;
   const min = p.min?.value;
   const max = p.max?.value;
   const logIntensity = p.logIntensity?.value;
   const params = useMemo(
-    () => toRenderParams("grayscale", autoLimits, min, max, logIntensity),
-    [autoLimits, min, max, logIntensity],
+    () => toRenderParams(colorMap, autoLimits, min, max, logIntensity),
+    [colorMap, autoLimits, min, max, logIntensity],
   );
 
   // Read when a controller is created; later changes go through the setters

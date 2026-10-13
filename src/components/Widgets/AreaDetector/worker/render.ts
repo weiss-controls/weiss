@@ -2,7 +2,7 @@
 // Copyright (C) 2026 André Favoto
 
 import type { NumericArray } from "@src/types/epicsWS";
-import { type ColorMapName, getColorTable } from "./colorMaps.ts";
+import { type ColorMapName, getColorTable, isColorMapName } from "./colorMaps.ts";
 import type { ImageLayout } from "./imageLayout.ts";
 import {
   LEVELS,
@@ -31,7 +31,7 @@ export const DEFAULT_RENDER_PARAMS: RenderParams = {
 
 /** Rendering parameters from widget properties */
 export function toRenderParams(
-  colorMap: ColorMapName,
+  colorMap: unknown,
   autoLimits: unknown,
   min: unknown,
   max: unknown,
@@ -39,7 +39,7 @@ export function toRenderParams(
 ): RenderParams {
   return {
     scale: log === true ? "log" : "linear",
-    colorMap,
+    colorMap: isColorMapName(colorMap) ? colorMap : "grayscale",
     limits: autoLimits === false ? { min: Number(min), max: Number(max) } : "auto",
   };
 }
