@@ -10,8 +10,7 @@ import type { Limits, ScaleMode } from "./worker/intensity.ts";
  * configuration epoch it belongs to, and messages from an older epoch are dropped.
  */
 export type MainToWorker =
-  /** With a canvas the worker draws on it directly; without one it returns ImageBitmaps */
-  | { type: "init"; epoch: number; canvas?: OffscreenCanvas }
+  | { type: "init"; epoch: number; canvas: OffscreenCanvas }
   /** Starts a new epoch and clears the canvas, e.g. when the PV changes */
   | { type: "reset"; epoch: number }
   | { type: "frame"; epoch: number; uniqueId: number; info: NDArrayInfo; value: NumericArray }
@@ -28,8 +27,8 @@ export interface FrameStats {
 }
 
 export type WorkerToMain =
-  /** The frame is on screen (or in `bitmap`); the next frame may be sent */
-  | ({ type: "displayed"; epoch: number; bitmap?: ImageBitmap } & FrameStats)
+  /** The frame is on screen; the next frame may be sent */
+  | ({ type: "displayed"; epoch: number } & FrameStats)
   /** The frame was refused; the canvas was cleared and the next frame may be sent */
   | { type: "rejected"; epoch: number; uniqueId: number; code: RejectCode; message: string }
   | { type: "error"; epoch: number; message: string };

@@ -13,10 +13,9 @@ let canvas: OffscreenCanvas | null = null;
 let context: OffscreenCanvasRenderingContext2D | null = null;
 // Reused while the frame size stays the same
 let imageData: ImageData | null = null;
-let disposed = false;
 
-function post(message: WorkerToMain, transfer: Transferable[] = []) {
-  postMessage(message, transfer);
+function post(message: WorkerToMain) {
+  postMessage(message);
 }
 
 function fail(error: unknown) {
@@ -56,26 +55,11 @@ function handleFrame(message: Extract<MainToWorker, { type: "frame" }>) {
     ...stats,
   };
 
-  if (canvas && context) {
-    if (canvas.width !== layout.width) canvas.width = layout.width;
-    if (canvas.height !== layout.height) canvas.height = layout.height;
-    context.putImageData(imageData, 0, 0);
-    post({ type: "displayed", epoch, ...frame, processMs: performance.now() - start });
-    return;
-  }
-
-  const frameEpoch = epoch;
-  createImageBitmap(imageData)
-    .then((bitmap) => {
-      if (disposed || frameEpoch !== epoch) {
-        bitmap.close();
-        return;
-      }
-      post({ type: "displayed", epoch, bitmap, ...frame, processMs: performance.now() - start }, [
-        bitmap,
-      ]);
-    })
-    .catch(fail);
+  if (!canvas || !context) throw new Error("Frame received before the canvas");
+  if (canvas.width !== layout.width) canvas.width = layout.width;
+  if (canvas.height !== layout.height) canvas.height = layout.height;
+  context.putImageData(imageData, 0, 0);
+  post({ type: "displayed", epoch, ...frame, processMs: performance.now() - start });
 }
 
 self.onmessage = (event: MessageEvent<MainToWorker>) => {
@@ -84,11 +68,9 @@ self.onmessage = (event: MessageEvent<MainToWorker>) => {
     switch (message.type) {
       case "init":
         epoch = message.epoch;
-        if (message.canvas) {
-          canvas = message.canvas;
-          context = canvas.getContext("2d");
-          if (!context) throw new Error("Could not create a 2D context");
-        }
+        canvas = message.canvas;
+        context = canvas.getContext("2d");
+        if (!context) throw new Error("Could not create a 2D context");
         break;
       case "reset":
         epoch = message.epoch;
@@ -98,7 +80,6 @@ self.onmessage = (event: MessageEvent<MainToWorker>) => {
         handleFrame(message);
         break;
       case "dispose":
-        disposed = true;
         self.close();
         break;
     }

@@ -32,7 +32,6 @@ export class AdController {
   private readonly canvas: HTMLCanvasElement;
   private readonly onStatus: (status: AdStatus) => void;
   private worker: Worker | null = null;
-  private bitmapContext: ImageBitmapRenderingContext | null = null;
   private unsubscribe: Unsubscribe | null = null;
   private epoch = 1;
   private inFlight = false;
@@ -56,19 +55,13 @@ export class AdController {
     container.appendChild(this.canvas);
     this.setStatus({ kind: "waiting" });
 
-    const offscreen =
-      typeof OffscreenCanvas !== "undefined" && "transferControlToOffscreen" in this.canvas;
-    if (!offscreen) {
-      this.bitmapContext =
-        typeof createImageBitmap === "function" ? this.canvas.getContext("bitmaprenderer") : null;
-      if (!this.bitmapContext) {
-        this.setStatus({
-          kind: "rejected",
-          code: "unsupportedBrowser",
-          message: "This browser cannot render images off the main thread",
-        });
-        return;
-      }
+    if (typeof OffscreenCanvas === "undefined" || !("transferControlToOffscreen" in this.canvas)) {
+      this.setStatus({
+        kind: "rejected",
+        code: "unsupportedBrowser",
+        message: "This browser cannot render images off the main thread",
+      });
+      return;
     }
 
     this.worker = new Worker(new URL("./worker/ad.worker.ts", import.meta.url), {
@@ -78,12 +71,8 @@ export class AdController {
     this.worker.onerror = (event) => this.fail(event.message || "Image renderer failed to start");
     this.worker.onmessageerror = () => this.fail("Image renderer sent an unreadable message");
 
-    if (offscreen) {
-      const canvas = this.canvas.transferControlToOffscreen();
-      this.send({ type: "init", epoch: this.epoch, canvas }, [canvas]);
-    } else {
-      this.send({ type: "init", epoch: this.epoch });
-    }
+    const canvas = this.canvas.transferControlToOffscreen();
+    this.send({ type: "init", epoch: this.epoch, canvas }, [canvas]);
     this.unsubscribe = source(pv, (data) => this.handleData(data));
   }
 
@@ -121,7 +110,6 @@ export class AdController {
     this.inFlight = false;
     this.pending = null;
     this.send({ type: "reset", epoch: this.epoch });
-    this.bitmapContext?.transferFromImageBitmap(null);
   }
 
   private handleData(data: PVData | undefined) {
@@ -162,18 +150,13 @@ export class AdController {
   }
 
   private handleMessage(message: WorkerToMain) {
-    if (this.disposed || message.epoch !== this.epoch) {
-      if (message.type === "displayed") message.bitmap?.close();
-      return;
-    }
+    if (this.disposed || message.epoch !== this.epoch) return;
     switch (message.type) {
       case "displayed":
-        this.bitmapContext?.transferFromImageBitmap(message.bitmap ?? null);
         this.setStatus({ kind: "image" });
         this.release();
         break;
       case "rejected":
-        this.bitmapContext?.transferFromImageBitmap(null);
         this.setStatus({ kind: "rejected", code: message.code, message: message.message });
         this.release();
         break;
