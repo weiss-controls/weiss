@@ -3,7 +3,7 @@
 
 import type { NDArrayInfo } from "@src/types/epicsWS";
 import { resolveLayout } from "./worker/imageLayout.ts";
-import { renderFrame } from "./worker/render.ts";
+import { DEFAULT_RENDER_PARAMS, renderFrame } from "./worker/render.ts";
 
 const WIDTH = 256;
 const HEIGHT = 192;
@@ -53,7 +53,7 @@ export function getPreviewImage(): HTMLCanvasElement {
   if (!result.ok) throw new Error(result.message);
 
   const image = new ImageData(WIDTH, HEIGHT);
-  renderFrame(result.pixels, result.layout, { scale: "linear", colorMap: "grayscale" }, image.data);
+  renderFrame(result.pixels, result.layout, DEFAULT_RENDER_PARAMS, image.data);
   const canvas = document.createElement("canvas");
   canvas.width = WIDTH;
   canvas.height = HEIGHT;

@@ -10,7 +10,7 @@ import { pvStoreFrameSource } from "./frameSource";
 import { getPreviewImage } from "./preview";
 import { FIT, type Orientation, type Size, capPixelRatio, toOrientation } from "./viewport";
 import { drawView } from "./worker/draw";
-import { DEFAULT_RENDER_PARAMS } from "./worker/render";
+import { toRenderParams } from "./worker/render";
 
 const FILL = { position: "absolute", inset: 0 } as const;
 
@@ -74,9 +74,20 @@ const AreaDetectorComp: React.FC<WidgetUpdate> = ({ data }) => {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const controllerRef = useRef<AdController | null>(null);
-  // Read when a controller is created; later changes go through setOrientation
+  const autoLimits = p.autoLimits?.value;
+  const min = p.min?.value;
+  const max = p.max?.value;
+  const logIntensity = p.logIntensity?.value;
+  const params = useMemo(
+    () => toRenderParams("grayscale", autoLimits, min, max, logIntensity),
+    [autoLimits, min, max, logIntensity],
+  );
+
+  // Read when a controller is created; later changes go through the setters
   const orientationRef = useRef(orientation);
   orientationRef.current = orientation;
+  const paramsRef = useRef(params);
+  paramsRef.current = params;
   const showReadout = p.showPixelReadout?.value ?? true;
   const showReadoutRef = useRef(showReadout);
   showReadoutRef.current = showReadout;
@@ -88,7 +99,7 @@ const AreaDetectorComp: React.FC<WidgetUpdate> = ({ data }) => {
     if (inEditMode || !visible || !pvName || !container) return;
     const controller = new AdController(container, pvName, pvStoreFrameSource, {
       orientation: orientationRef.current,
-      params: DEFAULT_RENDER_PARAMS,
+      params: paramsRef.current,
       onStatus: setStatus,
     });
     controller.setReadoutEnabled(showReadoutRef.current);
@@ -99,10 +110,14 @@ const AreaDetectorComp: React.FC<WidgetUpdate> = ({ data }) => {
     };
   }, [inEditMode, visible, pvName]);
 
-  // Rules can change the orientation at runtime; the worker is kept
+  // Rules can change these at runtime; the worker is kept
   useEffect(() => {
     controllerRef.current?.setOrientation(orientation);
   }, [orientation]);
+
+  useEffect(() => {
+    controllerRef.current?.setParams(params);
+  }, [params]);
 
   useEffect(() => {
     controllerRef.current?.setReadoutEnabled(showReadout);

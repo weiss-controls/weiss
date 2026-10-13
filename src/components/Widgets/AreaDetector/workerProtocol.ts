@@ -3,7 +3,7 @@
 
 import type { NDArrayInfo, NumericArray } from "@src/types/epicsWS";
 import type { RejectCode } from "./worker/imageLayout.ts";
-import type { Limits, ScaleMode } from "./worker/intensity.ts";
+import type { Limits, LimitsMode, ScaleMode } from "./worker/intensity.ts";
 import type { Orientation, ViewState } from "./viewport.ts";
 import type { RenderParams } from "./worker/render.ts";
 
@@ -45,6 +45,7 @@ export interface FrameStats {
   /** Limits the intensities were mapped over */
   limits: Limits | null;
   scale: ScaleMode;
+  limitsMode: LimitsMode;
   processMs: number;
 }
 
