@@ -5,6 +5,7 @@ import type { NDArrayInfo, NumericArray } from "@src/types/epicsWS";
 import type { RejectCode } from "./worker/imageLayout.ts";
 import type { Limits, ScaleMode } from "./worker/intensity.ts";
 import type { Orientation, ViewState } from "./viewport.ts";
+import type { RenderParams } from "./worker/render.ts";
 
 /** Latest view of the image; sizes are in CSS pixels */
 export interface ViewMessage {
@@ -16,15 +17,22 @@ export interface ViewMessage {
   state: ViewState;
 }
 
+/** Intensity rendering parameters; the retained frame is re-rendered with them */
+export interface ParamsMessage {
+  type: "params";
+  params: RenderParams;
+}
+
 /**
  * Messages between the AreaDetector controller and its worker. Frame-related ones carry the
  * controller's `resetCount`, the number of times the displayed image has been discarded, and
- * messages with an older count are dropped. `view` has none: it never invalidates the image,
- * and the last one received applies.
+ * messages with an older count are dropped. `view` and `params` have none: they never
+ * invalidate the image, and the last one received applies.
  */
 export type MainToWorker =
   | { type: "init"; resetCount: number; canvas: OffscreenCanvas }
   | ViewMessage
+  | ParamsMessage
   /** Discards the image and everything sent for it, e.g. when the PV changes */
   | { type: "reset"; resetCount: number }
   | { type: "frame"; resetCount: number; uniqueId: number; info: NDArrayInfo; value: NumericArray }
@@ -43,6 +51,8 @@ export interface FrameStats {
 export type WorkerToMain =
   /** The frame is on screen; the next frame may be sent */
   | ({ type: "displayed"; resetCount: number } & FrameStats)
+  /** The retained frame was re-rendered after a `params` message; delivery is not affected */
+  | ({ type: "rendered"; resetCount: number } & FrameStats)
   /** The frame was refused; the canvas was cleared and the next frame may be sent */
   | { type: "rejected"; resetCount: number; uniqueId: number; code: RejectCode; message: string }
   | { type: "error"; resetCount: number; message: string };

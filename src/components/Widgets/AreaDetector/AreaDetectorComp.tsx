@@ -10,6 +10,7 @@ import { pvStoreFrameSource } from "./frameSource";
 import { getPreviewImage } from "./preview";
 import { FIT, type Orientation, type Size, capPixelRatio, toOrientation } from "./viewport";
 import { drawView } from "./worker/draw";
+import { DEFAULT_RENDER_PARAMS } from "./worker/render";
 
 const FILL = { position: "absolute", inset: 0 } as const;
 
@@ -85,13 +86,11 @@ const AreaDetectorComp: React.FC<WidgetUpdate> = ({ data }) => {
   useEffect(() => {
     const container = containerRef.current;
     if (inEditMode || !visible || !pvName || !container) return;
-    const controller = new AdController(
-      container,
-      pvName,
-      pvStoreFrameSource,
-      orientationRef.current,
-      setStatus,
-    );
+    const controller = new AdController(container, pvName, pvStoreFrameSource, {
+      orientation: orientationRef.current,
+      params: DEFAULT_RENDER_PARAMS,
+      onStatus: setStatus,
+    });
     controller.setReadoutEnabled(showReadoutRef.current);
     controllerRef.current = controller;
     return () => {

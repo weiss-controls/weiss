@@ -18,6 +18,12 @@ export interface RenderParams {
   colorMap: ColorMapName;
 }
 
+export const DEFAULT_RENDER_PARAMS: RenderParams = { scale: "linear", colorMap: "grayscale" };
+
+export function sameRenderParams(a: RenderParams, b: RenderParams): boolean {
+  return a.scale === b.scale && a.colorMap === b.colorMap;
+}
+
 export interface RenderResult {
   /** Limits the intensities were mapped over; null if the frame has no finite value */
   limits: Limits | null;

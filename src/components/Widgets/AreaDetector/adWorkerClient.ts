@@ -10,6 +10,7 @@ import {
   resolveLayout,
 } from "./worker/imageLayout.ts";
 import type { MainToWorker, WorkerToMain } from "./workerProtocol.ts";
+import { type RenderParams, sameRenderParams } from "./worker/render.ts";
 import {
   FIT,
   type Orientation,
@@ -58,14 +59,20 @@ interface Frame {
   layout: ImageLayout;
 }
 
+export interface AdControllerOptions {
+  orientation: Orientation;
+  params: RenderParams;
+  onStatus: (status: AdStatus) => void;
+}
+
 /**
  * Feeds the frames of one PV to a render worker and shows the result on a canvas it owns.
  *
  * Delivery is bounded: one frame is with the worker at a time and at most one is waiting on
  * this side, so a slow worker makes the display skip frames instead of queueing them.
  * `resetCount` goes up whenever the displayed image is discarded, and replies sent before that
- * are ignored.
- * View changes are sent at most once per animation frame and never discard the image.
+ * are ignored. View and rendering parameter changes are sent at most once per animation frame
+ * and never discard the image.
  */
 export class AdController {
   private readonly canvas: HTMLCanvasElement;
@@ -88,7 +95,10 @@ export class AdController {
   private pixelRatio = 1;
   private orientation: Orientation;
   private state: ViewState = FIT;
-  private viewRequest = 0;
+  private params: RenderParams;
+  private viewChanged = false;
+  private paramsChanged = false;
+  private flushRequest = 0;
   private pointer: Point | null = null;
   private readoutEnabled = true;
 
@@ -96,11 +106,11 @@ export class AdController {
     container: HTMLElement,
     pv: string,
     source: FrameSource,
-    orientation: Orientation,
-    onStatus: (status: AdStatus) => void,
+    options: AdControllerOptions,
   ) {
-    this.onStatus = onStatus;
-    this.orientation = orientation;
+    this.onStatus = options.onStatus;
+    this.orientation = options.orientation;
+    this.params = options.params;
     // A canvas can only be transferred once, so every controller makes its own
     this.canvas = document.createElement("canvas");
     Object.assign(this.canvas.style, { display: "block", width: "100%", height: "100%" });
@@ -129,6 +139,7 @@ export class AdController {
 
     const canvas = this.canvas.transferControlToOffscreen();
     this.send({ type: "init", resetCount: this.resetCount, canvas }, [canvas]);
+    this.send({ type: "params", params: this.params });
     this.detachInput = attachViewportInput(container, {
       onResize: (view, pixelRatio) => this.resize(view, pixelRatio),
       onZoom: (factor, point) =>
@@ -176,6 +187,14 @@ export class AdController {
     this.requestView();
   }
 
+  /** Re-renders the image on screen with the new parameters */
+  setParams(params: RenderParams) {
+    if (sameRenderParams(this.params, params)) return;
+    this.params = params;
+    this.paramsChanged = true;
+    this.requestFlush();
+  }
+
   private send(message: MainToWorker, transfer: Transferable[] = []) {
     this.worker?.postMessage(message, transfer);
   }
@@ -183,8 +202,8 @@ export class AdController {
   private stopInput() {
     this.detachInput?.();
     this.detachInput = null;
-    cancelAnimationFrame(this.viewRequest);
-    this.viewRequest = 0;
+    cancelAnimationFrame(this.flushRequest);
+    this.flushRequest = 0;
   }
 
   private resize(view: Size, pixelRatio: number) {
@@ -210,23 +229,34 @@ export class AdController {
 
   private requestView() {
     this.updateReadout();
-    if (this.viewRequest || !this.worker) return;
-    this.viewRequest = requestAnimationFrame(() => {
-      this.viewRequest = 0;
-      this.sendView();
+    this.viewChanged = true;
+    this.requestFlush();
+  }
+
+  private requestFlush() {
+    if (this.flushRequest || !this.worker) return;
+    this.flushRequest = requestAnimationFrame(() => {
+      this.flushRequest = 0;
+      this.flush();
     });
   }
 
-  private sendView() {
-    cancelAnimationFrame(this.viewRequest);
-    this.viewRequest = 0;
-    this.send({
-      type: "view",
-      ...this.view,
-      pixelRatio: this.pixelRatio,
-      orientation: this.orientation,
-      state: this.state,
-    });
+  /** Sends the pending view and parameter changes */
+  private flush() {
+    cancelAnimationFrame(this.flushRequest);
+    this.flushRequest = 0;
+    if (this.viewChanged) {
+      this.send({
+        type: "view",
+        ...this.view,
+        pixelRatio: this.pixelRatio,
+        orientation: this.orientation,
+        state: this.state,
+      });
+    }
+    if (this.paramsChanged) this.send({ type: "params", params: this.params });
+    this.viewChanged = false;
+    this.paramsChanged = false;
   }
 
   /** Array indices and raw value(s) of the displayed pixel under the pointer */
@@ -301,14 +331,16 @@ export class AdController {
 
   private dispatch(frame: Frame) {
     const { uniqueId, info, value, layout } = frame;
-    // A new image size starts at fit; the view goes first so the frame is drawn with it
+    // A new image size starts at fit
     if (
       this.lastSize &&
       (this.lastSize.width !== layout.width || this.lastSize.height !== layout.height)
     ) {
       this.state = FIT;
-      this.sendView();
+      this.viewChanged = true;
     }
+    // Pending changes go first, so the frame is drawn with them
+    this.flush();
     this.lastSize = { width: layout.width, height: layout.height };
     this.inFlight = frame;
     // Copied rather than transferred: the store's array is shared with other consumers
@@ -330,6 +362,9 @@ export class AdController {
         this.updateReadout();
         this.setStatus({ kind: "image" });
         this.release();
+        break;
+      case "rendered":
+        // A re-render of the frame on screen; delivery is not affected
         break;
       case "rejected":
         this.displayed = null;
