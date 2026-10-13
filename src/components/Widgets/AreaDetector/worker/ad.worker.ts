@@ -9,7 +9,7 @@ import { type RenderParams, renderFrame } from "./render.ts";
 // Intensity controls arrive later; until then every frame uses these defaults
 const PARAMS: RenderParams = { scale: "linear", colorMap: "grayscale" };
 
-let epoch = 0;
+let resetCount = 0;
 let canvas: OffscreenCanvas | null = null;
 let context: OffscreenCanvasRenderingContext2D | null = null;
 let view: ViewMessage | null = null;
@@ -25,7 +25,11 @@ function post(message: WorkerToMain) {
 }
 
 function fail(error: unknown) {
-  post({ type: "error", epoch, message: error instanceof Error ? error.message : String(error) });
+  post({
+    type: "error",
+    resetCount,
+    message: error instanceof Error ? error.message : String(error),
+  });
 }
 
 function present() {
@@ -56,7 +60,7 @@ function handleView(message: ViewMessage) {
 }
 
 function handleFrame(message: Extract<MainToWorker, { type: "frame" }>) {
-  if (message.epoch !== epoch) return;
+  if (message.resetCount !== resetCount) return;
   const start = performance.now();
 
   const result = resolveLayout(message.value, message.info);
@@ -64,7 +68,7 @@ function handleFrame(message: Extract<MainToWorker, { type: "frame" }>) {
     clear();
     post({
       type: "rejected",
-      epoch,
+      resetCount,
       uniqueId: message.uniqueId,
       code: result.code,
       message: result.message,
@@ -94,7 +98,7 @@ function handleFrame(message: Extract<MainToWorker, { type: "frame" }>) {
   imageContext.putImageData(imageData, 0, 0);
   hasImage = true;
   present();
-  post({ type: "displayed", epoch, ...frame, processMs: performance.now() - start });
+  post({ type: "displayed", resetCount, ...frame, processMs: performance.now() - start });
 }
 
 self.onmessage = (event: MessageEvent<MainToWorker>) => {
@@ -102,7 +106,7 @@ self.onmessage = (event: MessageEvent<MainToWorker>) => {
   try {
     switch (message.type) {
       case "init":
-        epoch = message.epoch;
+        resetCount = message.resetCount;
         canvas = message.canvas;
         context = canvas.getContext("2d");
         if (!context) throw new Error("Could not create a 2D context");
@@ -111,7 +115,7 @@ self.onmessage = (event: MessageEvent<MainToWorker>) => {
         handleView(message);
         break;
       case "reset":
-        epoch = message.epoch;
+        resetCount = message.resetCount;
         clear();
         break;
       case "frame":

@@ -62,8 +62,9 @@ interface Frame {
  * Feeds the frames of one PV to a render worker and shows the result on a canvas it owns.
  *
  * Delivery is bounded: one frame is with the worker at a time and at most one is waiting on
- * this side, so a slow worker makes the display skip frames instead of queueing them. Anything
- * from an older epoch is ignored; the epoch changes whenever the displayed image is discarded.
+ * this side, so a slow worker makes the display skip frames instead of queueing them.
+ * `resetCount` goes up whenever the displayed image is discarded, and replies sent before that
+ * are ignored.
  * View changes are sent at most once per animation frame and never discard the image.
  */
 export class AdController {
@@ -73,7 +74,7 @@ export class AdController {
   private worker: Worker | null = null;
   private unsubscribe: Unsubscribe | null = null;
   private detachInput: (() => void) | null = null;
-  private epoch = 1;
+  private resetCount = 1;
   private inFlight: Frame | null = null;
   private pending: Frame | null = null;
   /** The frame on screen, as acknowledged by the worker */
@@ -127,7 +128,7 @@ export class AdController {
     this.worker.onmessageerror = () => this.fail("Image renderer sent an unreadable message");
 
     const canvas = this.canvas.transferControlToOffscreen();
-    this.send({ type: "init", epoch: this.epoch, canvas }, [canvas]);
+    this.send({ type: "init", resetCount: this.resetCount, canvas }, [canvas]);
     this.detachInput = attachViewportInput(container, {
       onResize: (view, pixelRatio) => this.resize(view, pixelRatio),
       onZoom: (factor, point) =>
@@ -261,12 +262,12 @@ export class AdController {
 
   /** Drops the image on screen and everything queued for it */
   private discard() {
-    this.epoch++;
+    this.resetCount++;
     this.inFlight = null;
     this.pending = null;
     this.displayed = null;
     this.updateReadout();
-    this.send({ type: "reset", epoch: this.epoch });
+    this.send({ type: "reset", resetCount: this.resetCount });
   }
 
   private handleData(data: PVData | undefined) {
@@ -311,7 +312,7 @@ export class AdController {
     this.lastSize = { width: layout.width, height: layout.height };
     this.inFlight = frame;
     // Copied rather than transferred: the store's array is shared with other consumers
-    this.send({ type: "frame", epoch: this.epoch, uniqueId, info, value });
+    this.send({ type: "frame", resetCount: this.resetCount, uniqueId, info, value });
   }
 
   private release() {
@@ -322,7 +323,7 @@ export class AdController {
   }
 
   private handleMessage(message: WorkerToMain) {
-    if (this.disposed || message.epoch !== this.epoch) return;
+    if (this.disposed || message.resetCount !== this.resetCount) return;
     switch (message.type) {
       case "displayed":
         this.displayed = this.inFlight;

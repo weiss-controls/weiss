@@ -18,15 +18,16 @@ export interface ViewMessage {
 
 /**
  * Messages between the AreaDetector controller and its worker. Frame-related ones carry the
- * configuration epoch they belong to, and messages from an older epoch are dropped. `view` has
- * no epoch: it never invalidates the image, and the last one received applies.
+ * controller's `resetCount`, the number of times the displayed image has been discarded, and
+ * messages with an older count are dropped. `view` has none: it never invalidates the image,
+ * and the last one received applies.
  */
 export type MainToWorker =
-  | { type: "init"; epoch: number; canvas: OffscreenCanvas }
+  | { type: "init"; resetCount: number; canvas: OffscreenCanvas }
   | ViewMessage
-  /** Starts a new epoch and clears the canvas, e.g. when the PV changes */
-  | { type: "reset"; epoch: number }
-  | { type: "frame"; epoch: number; uniqueId: number; info: NDArrayInfo; value: NumericArray }
+  /** Discards the image and everything sent for it, e.g. when the PV changes */
+  | { type: "reset"; resetCount: number }
+  | { type: "frame"; resetCount: number; uniqueId: number; info: NDArrayInfo; value: NumericArray }
   | { type: "dispose" };
 
 export interface FrameStats {
@@ -41,7 +42,7 @@ export interface FrameStats {
 
 export type WorkerToMain =
   /** The frame is on screen; the next frame may be sent */
-  | ({ type: "displayed"; epoch: number } & FrameStats)
+  | ({ type: "displayed"; resetCount: number } & FrameStats)
   /** The frame was refused; the canvas was cleared and the next frame may be sent */
-  | { type: "rejected"; epoch: number; uniqueId: number; code: RejectCode; message: string }
-  | { type: "error"; epoch: number; message: string };
+  | { type: "rejected"; resetCount: number; uniqueId: number; code: RejectCode; message: string }
+  | { type: "error"; resetCount: number; message: string };
