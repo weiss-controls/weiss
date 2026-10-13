@@ -2,7 +2,7 @@
 // Copyright (C) 2026 André Favoto
 
 import type { NDArrayInfo, NumericArray } from "@src/types/epicsWS";
-import type { RejectCode } from "./worker/imageLayout.ts";
+import type { ImageKind, RejectCode } from "./worker/imageLayout.ts";
 import type { Limits, LimitsMode, ScaleMode } from "./worker/intensity.ts";
 import type { Orientation, ViewState } from "./viewport.ts";
 import type { RenderParams } from "./worker/render.ts";
@@ -40,6 +40,7 @@ export type MainToWorker =
 
 export interface FrameStats {
   uniqueId: number;
+  kind: ImageKind;
   width: number;
   height: number;
   /** Limits the intensities were mapped over */

@@ -130,6 +130,7 @@ export const PROPERTY_SCHEMAS = {
   colorMap:        defineProp({ selType: "select", label: "Colormap", value: "grayscale" as string, options: ["grayscale", "viridis", "inferno", "turbo"], category: "Style" }),
   autoLimits:      defineProp({ selType: "boolean", label: "Automatic limits", value: true as boolean, category: "Layout" }),
   logIntensity:    defineProp({ selType: "boolean", label: "Logarithmic intensity", value: false as boolean, category: "Layout" }),
+  showColorbar:    defineProp({ selType: "boolean", label: "Show colorbar", value: true as boolean, category: "Layout" }),
   showPixelReadout: defineProp({ selType: "boolean", label: "Show pixel readout", value: true as boolean, category: "Layout" }),
   // MultiStateLED
   stateList:       defineProp({ selType: "stateList", label: "States", value: [{ value: "0", color: COLORS.offColor, label: "" }, { value: "1", color: COLORS.onColor, label: "" }, { value: "", color: COLORS.midGray, label: "" }] as StateEntry[], category: "EPICS" }),

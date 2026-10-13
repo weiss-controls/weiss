@@ -32,5 +32,8 @@ export const AreaDetector: WidgetDefinition = {
     min: { ...PROPERTY_SCHEMAS.min, label: "Intensity minimum", category: "Layout" },
     max: { ...PROPERTY_SCHEMAS.max, label: "Intensity maximum", value: 255, category: "Layout" },
     logIntensity: PROPERTY_SCHEMAS.logIntensity,
+    showColorbar: PROPERTY_SCHEMAS.showColorbar,
+    textColor: { ...PROPERTY_SCHEMAS.textColor, value: "white" },
+    fontSize: { ...PROPERTY_SCHEMAS.fontSize, value: 11 },
   },
 };

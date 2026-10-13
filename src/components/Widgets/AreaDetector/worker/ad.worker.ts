@@ -76,6 +76,7 @@ function render(start: number): FrameStats {
   present();
   return {
     uniqueId: frame.uniqueId,
+    kind: layout.kind,
     width: layout.width,
     height: layout.height,
     ...stats,

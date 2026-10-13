@@ -9,7 +9,8 @@ import {
   pixelValue,
   resolveLayout,
 } from "./worker/imageLayout.ts";
-import type { MainToWorker, WorkerToMain } from "./workerProtocol.ts";
+import { formatValue } from "./format.ts";
+import type { FrameStats, MainToWorker, WorkerToMain } from "./workerProtocol.ts";
 import { type RenderParams, sameRenderParams } from "./worker/render.ts";
 import {
   FIT,
@@ -26,7 +27,7 @@ import { attachViewportInput } from "./viewportInput.ts";
 
 export type AdStatus =
   | { kind: "waiting" }
-  | { kind: "image" }
+  | { kind: "image"; color: "mono" | "rgb" }
   | {
       kind: "rejected";
       code: RejectCode | "unsupportedBrowser" | "workerError";
@@ -47,11 +48,6 @@ const READOUT_STYLE = {
   display: "none",
 };
 
-function formatValue(value: number): string {
-  // 64-bit integers arrive as doubles; integral values are shown in full
-  return Number.isInteger(value) ? String(value) : String(Number(value.toPrecision(6)));
-}
-
 interface Frame {
   uniqueId: number;
   info: NDArrayInfo;
@@ -59,10 +55,21 @@ interface Frame {
   layout: ImageLayout;
 }
 
+function sameStatus(a: AdStatus | null, b: AdStatus): boolean {
+  if (!a || a.kind !== b.kind) return false;
+  if (a.kind === "image" && b.kind === "image") return a.color === b.color;
+  if (a.kind === "rejected" && b.kind === "rejected") {
+    return a.code === b.code && a.message === b.message;
+  }
+  return true;
+}
+
 export interface AdControllerOptions {
   orientation: Orientation;
   params: RenderParams;
   onStatus: (status: AdStatus) => void;
+  /** What the image on screen was rendered with; null when there is none */
+  onStats: (stats: FrameStats | null) => void;
 }
 
 /**
@@ -78,6 +85,7 @@ export class AdController {
   private readonly canvas: HTMLCanvasElement;
   private readonly readout: HTMLDivElement;
   private readonly onStatus: (status: AdStatus) => void;
+  private readonly onStats: (stats: FrameStats | null) => void;
   private worker: Worker | null = null;
   private unsubscribe: Unsubscribe | null = null;
   private detachInput: (() => void) | null = null;
@@ -109,6 +117,7 @@ export class AdController {
     options: AdControllerOptions,
   ) {
     this.onStatus = options.onStatus;
+    this.onStats = options.onStats;
     this.orientation = options.orientation;
     this.params = options.params;
     // A canvas can only be transferred once, so every controller makes its own
@@ -276,16 +285,7 @@ export class AdController {
   }
 
   private setStatus(status: AdStatus) {
-    const current = this.status;
-    if (
-      current?.kind === status.kind &&
-      (current.kind !== "rejected" ||
-        (status.kind === "rejected" &&
-          current.code === status.code &&
-          current.message === status.message))
-    ) {
-      return;
-    }
+    if (sameStatus(this.status, status)) return;
     this.status = status;
     this.onStatus(status);
   }
@@ -297,6 +297,7 @@ export class AdController {
     this.pending = null;
     this.displayed = null;
     this.updateReadout();
+    this.onStats(null);
     this.send({ type: "reset", resetCount: this.resetCount });
   }
 
@@ -360,15 +361,18 @@ export class AdController {
       case "displayed":
         this.displayed = this.inFlight;
         this.updateReadout();
-        this.setStatus({ kind: "image" });
+        this.onStats(message);
+        this.setStatus({ kind: "image", color: message.kind === "mono" ? "mono" : "rgb" });
         this.release();
         break;
       case "rendered":
         // A re-render of the frame on screen; delivery is not affected
+        this.onStats(message);
         break;
       case "rejected":
         this.displayed = null;
         this.updateReadout();
+        this.onStats(null);
         this.setStatus({ kind: "rejected", code: message.code, message: message.message });
         this.release();
         break;
@@ -390,6 +394,7 @@ export class AdController {
     this.pending = null;
     this.displayed = null;
     this.updateReadout();
+    this.onStats(null);
     this.canvas.style.visibility = "hidden";
     this.setStatus({ kind: "rejected", code: "workerError", message });
   }

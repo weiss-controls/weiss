@@ -3,12 +3,19 @@
 
 import type { NDArrayInfo } from "@src/types/epicsWS";
 import { resolveLayout } from "./worker/imageLayout.ts";
-import { DEFAULT_RENDER_PARAMS, renderFrame } from "./worker/render.ts";
+import type { ColorMapName } from "./worker/colorMaps.ts";
+import type { ScaleMode } from "./worker/intensity.ts";
+import { type RenderResult, renderFrame } from "./worker/render.ts";
 
 const WIDTH = 256;
 const HEIGHT = 192;
 
-let preview: HTMLCanvasElement | null = null;
+export interface PreviewImage {
+  canvas: HTMLCanvasElement;
+  result: RenderResult;
+}
+
+const previews = new Map<string, PreviewImage>();
 
 // An off-centre spot under an "F" in the top-left corner: no rotation or flip looks the same
 function previewPixels(): Uint8Array {
@@ -28,9 +35,14 @@ function previewPixels(): Uint8Array {
   return value;
 }
 
-/** Deterministic stand-in image for edit mode, produced by the same code that renders live frames */
-export function getPreviewImage(): HTMLCanvasElement {
-  if (preview) return preview;
+/**
+ * Deterministic stand-in image for edit mode, produced by the same code that renders live frames.
+ * Fixed limits are not applied: they belong to the real data, not to this one.
+ */
+export function getPreviewImage(colorMap: ColorMapName, scale: ScaleMode): PreviewImage {
+  const key = `${colorMap} ${scale}`;
+  const cached = previews.get(key);
+  if (cached) return cached;
 
   const value = previewPixels();
   const dimension = (size: number) => ({
@@ -53,13 +65,19 @@ export function getPreviewImage(): HTMLCanvasElement {
   if (!result.ok) throw new Error(result.message);
 
   const image = new ImageData(WIDTH, HEIGHT);
-  renderFrame(result.pixels, result.layout, DEFAULT_RENDER_PARAMS, image.data);
+  const rendered = renderFrame(
+    result.pixels,
+    result.layout,
+    { colorMap, scale, limits: "auto" },
+    image.data,
+  );
   const canvas = document.createElement("canvas");
   canvas.width = WIDTH;
   canvas.height = HEIGHT;
   const context = canvas.getContext("2d");
   if (!context) throw new Error("Could not create a 2D context");
   context.putImageData(image, 0, 0);
-  preview = canvas;
-  return canvas;
+  const preview = { canvas, result: rendered };
+  previews.set(key, preview);
+  return preview;
 }

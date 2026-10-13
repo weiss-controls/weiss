@@ -1,21 +1,28 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { WidgetUpdate } from "@src/types/widgets";
 import { useUIContext } from "@src/context/useUIContext";
 import { Placeholder } from "@components/Widgets/shared/Placeholder";
 import { AdController, type AdStatus } from "./adWorkerClient";
+import { Colorbar, type ColorbarHandle } from "./Colorbar";
 import { pvStoreFrameSource } from "./frameSource";
 import { getPreviewImage } from "./preview";
 import { FIT, type Orientation, type Size, capPixelRatio, toOrientation } from "./viewport";
 import { drawView } from "./worker/draw";
-import { toRenderParams } from "./worker/render";
+import { type RenderParams, type RenderResult, toRenderParams } from "./worker/render";
 
 const FILL = { position: "absolute", inset: 0 } as const;
 
+interface PreviewProps {
+  orientation: Orientation;
+  params: RenderParams;
+  onRendered: (result: RenderResult) => void;
+}
+
 /** Edit-mode stand-in, shown at fit with the configured orientation and no interaction */
-const Preview: React.FC<{ orientation: Orientation }> = ({ orientation }) => {
+const Preview: React.FC<PreviewProps> = ({ orientation, params, onRendered }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [size, setSize] = useState<Size>({ width: 0, height: 0 });
 
@@ -30,6 +37,7 @@ const Preview: React.FC<{ orientation: Orientation }> = ({ orientation }) => {
   }, []);
 
   const { rotation, flipX, flipY } = orientation;
+  const { colorMap, scale } = params;
   useEffect(() => {
     const canvas = canvasRef.current;
     const context = canvas?.getContext("2d");
@@ -37,8 +45,10 @@ const Preview: React.FC<{ orientation: Orientation }> = ({ orientation }) => {
     const ratio = capPixelRatio(size, window.devicePixelRatio);
     canvas.width = Math.round(size.width * ratio);
     canvas.height = Math.round(size.height * ratio);
-    drawView(context, getPreviewImage(), size, { rotation, flipX, flipY }, FIT);
-  }, [size, rotation, flipX, flipY]);
+    const preview = getPreviewImage(colorMap, scale);
+    drawView(context, preview.canvas, size, { rotation, flipX, flipY }, FIT);
+    onRendered(preview.result);
+  }, [size, rotation, flipX, flipY, colorMap, scale, onRendered]);
 
   return (
     <canvas
@@ -94,6 +104,19 @@ const AreaDetectorComp: React.FC<WidgetUpdate> = ({ data }) => {
   showReadoutRef.current = showReadout;
   const [status, setStatus] = useState<AdStatus>({ kind: "waiting" });
 
+  // Kept so a colorbar that appears later starts with the current limits
+  const statsRef = useRef<RenderResult | null>(null);
+  const colorbarRef = useRef<ColorbarHandle>(null);
+  const handleStats = useCallback((stats: RenderResult | null) => {
+    statsRef.current = stats;
+    colorbarRef.current?.update(stats);
+  }, []);
+  const showColorbar =
+    (p.showColorbar?.value ?? true) && !(status.kind === "image" && status.color === "rgb");
+  useEffect(() => {
+    if (showColorbar) colorbarRef.current?.update(statsRef.current);
+  }, [showColorbar]);
+
   // The controller (and its worker) only lives while the widget is shown at runtime
   useEffect(() => {
     const container = containerRef.current;
@@ -102,6 +125,7 @@ const AreaDetectorComp: React.FC<WidgetUpdate> = ({ data }) => {
       orientation: orientationRef.current,
       params: paramsRef.current,
       onStatus: setStatus,
+      onStats: handleStats,
     });
     controller.setReadoutEnabled(showReadoutRef.current);
     controllerRef.current = controller;
@@ -109,7 +133,7 @@ const AreaDetectorComp: React.FC<WidgetUpdate> = ({ data }) => {
       controller.dispose();
       controllerRef.current = null;
     };
-  }, [inEditMode, visible, pvName]);
+  }, [inEditMode, visible, pvName, handleStats]);
 
   // Rules can change these at runtime; the worker is kept
   useEffect(() => {
@@ -144,7 +168,25 @@ const AreaDetectorComp: React.FC<WidgetUpdate> = ({ data }) => {
         overflow: "hidden",
       }}
     >
-      {inEditMode ? <Preview orientation={orientation} /> : <div ref={containerRef} style={FILL} />}
+      {/* The colorbar takes its own strip, so it never covers the image */}
+      <div style={{ display: "flex", width: "100%", height: "100%" }}>
+        <div style={{ position: "relative", flex: 1, minWidth: 0 }}>
+          {inEditMode ? (
+            <Preview orientation={orientation} params={params} onRendered={handleStats} />
+          ) : (
+            <div ref={containerRef} style={FILL} />
+          )}
+        </div>
+        {showColorbar && (
+          <Colorbar
+            ref={colorbarRef}
+            colorMap={params.colorMap}
+            requestedLog={params.scale === "log"}
+            fontSize={p.fontSize?.value ?? 11}
+            textColor={p.textColor?.value ?? "white"}
+          />
+        )}
+      </div>
       {label && (
         <div style={FILL}>
           <Placeholder label={label} />
