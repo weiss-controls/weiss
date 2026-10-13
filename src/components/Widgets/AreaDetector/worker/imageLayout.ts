@@ -141,3 +141,14 @@ export function resolveLayout(value: unknown, info: NDArrayInfo | undefined): La
   }[kind];
   return { ok: true, layout: { kind, width, height, channels, ...strides }, pixels, info };
 }
+
+/** Raw value(s) of pixel (x, y) of a validated frame: one for Mono, three for RGB */
+export function pixelValue(
+  pixels: NumericArray,
+  layout: ImageLayout,
+  x: number,
+  y: number,
+): number[] {
+  const index = y * layout.strideY + x * layout.strideX;
+  return Array.from({ length: layout.channels }, (_, c) => pixels[index + c * layout.strideC]);
+}

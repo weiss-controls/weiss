@@ -26,5 +26,6 @@ export const AreaDetector: WidgetDefinition = {
     imageRotation: PROPERTY_SCHEMAS.imageRotation,
     imageFlipX: PROPERTY_SCHEMAS.imageFlipX,
     imageFlipY: PROPERTY_SCHEMAS.imageFlipY,
+    showPixelReadout: PROPERTY_SCHEMAS.showPixelReadout,
   },
 };

@@ -127,6 +127,7 @@ export const PROPERTY_SCHEMAS = {
   imageRotation:   defineProp({ selType: "select", label: "Rotation (clockwise)", value: "0" as string, options: ["0", "90", "180", "270"], category: "Layout" }),
   imageFlipX:      defineProp({ selType: "boolean", label: "Flip horizontally", value: false as boolean, category: "Layout" }),
   imageFlipY:      defineProp({ selType: "boolean", label: "Flip vertically", value: false as boolean, category: "Layout" }),
+  showPixelReadout: defineProp({ selType: "boolean", label: "Show pixel readout", value: true as boolean, category: "Layout" }),
   // MultiStateLED
   stateList:       defineProp({ selType: "stateList", label: "States", value: [{ value: "0", color: COLORS.offColor, label: "" }, { value: "1", color: COLORS.onColor, label: "" }, { value: "", color: COLORS.midGray, label: "" }] as StateEntry[], category: "EPICS" }),
 };

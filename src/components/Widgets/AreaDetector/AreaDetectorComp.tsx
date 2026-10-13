@@ -76,6 +76,9 @@ const AreaDetectorComp: React.FC<WidgetUpdate> = ({ data }) => {
   // Read when a controller is created; later changes go through setOrientation
   const orientationRef = useRef(orientation);
   orientationRef.current = orientation;
+  const showReadout = p.showPixelReadout?.value ?? true;
+  const showReadoutRef = useRef(showReadout);
+  showReadoutRef.current = showReadout;
   const [status, setStatus] = useState<AdStatus>({ kind: "waiting" });
 
   // The controller (and its worker) only lives while the widget is shown at runtime
@@ -89,6 +92,7 @@ const AreaDetectorComp: React.FC<WidgetUpdate> = ({ data }) => {
       orientationRef.current,
       setStatus,
     );
+    controller.setReadoutEnabled(showReadoutRef.current);
     controllerRef.current = controller;
     return () => {
       controller.dispose();
@@ -100,6 +104,10 @@ const AreaDetectorComp: React.FC<WidgetUpdate> = ({ data }) => {
   useEffect(() => {
     controllerRef.current?.setOrientation(orientation);
   }, [orientation]);
+
+  useEffect(() => {
+    controllerRef.current?.setReadoutEnabled(showReadout);
+  }, [showReadout]);
 
   if (!visible) return null;
 

@@ -3,15 +3,22 @@
 
 import type { NDArrayInfo, NumericArray, PVData } from "@src/types/epicsWS";
 import type { FrameSource, Unsubscribe } from "./frameSource.ts";
-import { type ImageLayout, type RejectCode, resolveLayout } from "./worker/imageLayout.ts";
+import {
+  type ImageLayout,
+  type RejectCode,
+  pixelValue,
+  resolveLayout,
+} from "./worker/imageLayout.ts";
 import type { MainToWorker, WorkerToMain } from "./workerProtocol.ts";
 import {
   FIT,
   type Orientation,
+  type Point,
   type Size,
   type ViewState,
   capPixelRatio,
   panBy,
+  viewToImage,
   zoomAt,
 } from "./viewport.ts";
 import { attachViewportInput } from "./viewportInput.ts";
@@ -24,6 +31,25 @@ export type AdStatus =
       code: RejectCode | "unsupportedBrowser" | "workerError";
       message: string;
     };
+
+const READOUT_STYLE = {
+  position: "absolute",
+  left: "4px",
+  bottom: "4px",
+  padding: "1px 6px",
+  borderRadius: "2px",
+  background: "rgba(0, 0, 0, 0.6)",
+  color: "white",
+  font: "12px monospace",
+  whiteSpace: "nowrap",
+  pointerEvents: "none",
+  display: "none",
+};
+
+function formatValue(value: number): string {
+  // 64-bit integers arrive as doubles; integral values are shown in full
+  return Number.isInteger(value) ? String(value) : String(Number(value.toPrecision(6)));
+}
 
 interface Frame {
   uniqueId: number;
@@ -42,6 +68,7 @@ interface Frame {
  */
 export class AdController {
   private readonly canvas: HTMLCanvasElement;
+  private readonly readout: HTMLDivElement;
   private readonly onStatus: (status: AdStatus) => void;
   private worker: Worker | null = null;
   private unsubscribe: Unsubscribe | null = null;
@@ -61,6 +88,8 @@ export class AdController {
   private orientation: Orientation;
   private state: ViewState = FIT;
   private viewRequest = 0;
+  private pointer: Point | null = null;
+  private readoutEnabled = true;
 
   constructor(
     container: HTMLElement,
@@ -75,6 +104,10 @@ export class AdController {
     this.canvas = document.createElement("canvas");
     Object.assign(this.canvas.style, { display: "block", width: "100%", height: "100%" });
     container.appendChild(this.canvas);
+    // Written directly, so a frame never re-renders React
+    this.readout = document.createElement("div");
+    Object.assign(this.readout.style, READOUT_STYLE);
+    container.appendChild(this.readout);
     this.setStatus({ kind: "waiting" });
 
     if (typeof OffscreenCanvas === "undefined" || !("transferControlToOffscreen" in this.canvas)) {
@@ -104,6 +137,10 @@ export class AdController {
       onPan: (dx, dy) =>
         this.changeView((image) => panBy(this.view, image, this.orientation, this.state, dx, dy)),
       onReset: () => this.changeView(() => FIT),
+      onHover: (point) => {
+        this.pointer = point;
+        this.updateReadout();
+      },
     });
     this.unsubscribe = source(pv, (data) => this.handleData(data));
   }
@@ -116,6 +153,12 @@ export class AdController {
     this.worker?.terminate();
     this.worker = null;
     this.canvas.remove();
+    this.readout.remove();
+  }
+
+  setReadoutEnabled(enabled: boolean) {
+    this.readoutEnabled = enabled;
+    this.updateReadout();
   }
 
   /** The view is kept: its centre refers to the unoriented image */
@@ -165,6 +208,7 @@ export class AdController {
   }
 
   private requestView() {
+    this.updateReadout();
     if (this.viewRequest || !this.worker) return;
     this.viewRequest = requestAnimationFrame(() => {
       this.viewRequest = 0;
@@ -182,6 +226,22 @@ export class AdController {
       orientation: this.orientation,
       state: this.state,
     });
+  }
+
+  /** Array indices and raw value(s) of the displayed pixel under the pointer */
+  private updateReadout() {
+    const frame = this.displayed;
+    const pixel =
+      this.readoutEnabled && frame && this.pointer
+        ? viewToImage(this.view, frame.layout, this.orientation, this.state, this.pointer)
+        : null;
+    if (!frame || !pixel) {
+      this.readout.style.display = "none";
+      return;
+    }
+    const values = pixelValue(frame.value, frame.layout, pixel.x, pixel.y);
+    this.readout.textContent = `x ${pixel.x}, y ${pixel.y}: ${values.map(formatValue).join(", ")}`;
+    this.readout.style.display = "block";
   }
 
   private setStatus(status: AdStatus) {
@@ -205,6 +265,7 @@ export class AdController {
     this.inFlight = null;
     this.pending = null;
     this.displayed = null;
+    this.updateReadout();
     this.send({ type: "reset", epoch: this.epoch });
   }
 
@@ -265,11 +326,13 @@ export class AdController {
     switch (message.type) {
       case "displayed":
         this.displayed = this.inFlight;
+        this.updateReadout();
         this.setStatus({ kind: "image" });
         this.release();
         break;
       case "rejected":
         this.displayed = null;
+        this.updateReadout();
         this.setStatus({ kind: "rejected", code: message.code, message: message.message });
         this.release();
         break;
@@ -290,6 +353,7 @@ export class AdController {
     this.inFlight = null;
     this.pending = null;
     this.displayed = null;
+    this.updateReadout();
     this.canvas.style.visibility = "hidden";
     this.setStatus({ kind: "rejected", code: "workerError", message });
   }
