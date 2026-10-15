@@ -340,6 +340,8 @@ export class AdController {
     let info = frame.ndarray;
     let warning: string | undefined;
     if (!info && shape) {
+      // The size PVs have not delivered yet: keep waiting rather than refuse
+      if (shape.sizeX === undefined || shape.sizeY === undefined) return;
       const waveform = waveformFrame(value, shape, ++this.waveformCount, frame.timeStamp);
       if (!waveform.ok) {
         // Size PVs and frames update separately; right after a size change they can disagree
