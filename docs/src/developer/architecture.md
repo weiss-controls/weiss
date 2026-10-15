@@ -75,9 +75,10 @@ const pvData = usePVStore((state) => state.pvs["MY:PV"]);
 This means each widget re-renders only when its own PV changes, with no re-render propagation
 through React context.
 
-Image frames (NTNDArray updates) never enter `pvStore`: `useEpicsWS` routes them to a separate
-`imageStore`, and `pvStore` only keeps a summary of the PV without its pixels. Large images
-therefore never pass through React props, rules or macros.
+Image frames (NTNDArray updates, and plain array PVs a widget registered as images) never enter
+`pvStore`: `useEpicsWS` routes them to a separate `imageStore`, and `pvStore` only keeps a summary
+of the PV without its pixels. Large images therefore never pass through React props, rules or
+macros.
 
 :::{note}  
 The state management layer is the brains of the application. All global UI states and behaviors pass
@@ -229,8 +230,8 @@ Each client has its own send queue. A client that cannot keep up receives fewer 
 than a backlog: a waiting array frame is replaced by the next one of the same PV. Scalar updates are
 always delivered in order.
 
-Snapshots keep their base64 JSON format for arrays, but never capture image (NTNDArray) PVs: the
-`snapshot` response lists them in `excluded` instead.
+Snapshots keep their base64 JSON format for arrays, but never capture image PVs: NTNDArray PVs and
+the plain image waveforms the client lists in the request are reported in `excluded` instead.
 
 ::: {note}  
 JavaScript has no safe 64-bit integer view, so `int64`/`uint64` arrays are converted to

@@ -81,7 +81,8 @@ routes them to `useImageStore` (`src/services/imageStore.ts`) in the same animat
 the PV store keeps only a summary of the PV (no pixels, an empty value) refreshed on alarm or shape
 changes and at most once per second. So frames never reach React props, rules or macros; consumers
 (the AreaDetector widget) subscribe to the image store imperatively. The image store is cleared when
-the WebSocket closes.
+the WebSocket closes. A plain array PV without NTNDArray metadata takes the same path while a widget
+holds a `registerImagePV(pv)` registration.
 
 #### `useWidgetManager` — mutation discipline
 
@@ -149,6 +150,9 @@ has:
 - `selType` — which editor control renders it (`"text"`, `"number"`, `"boolean"`, `"colorSel"`,
   `"select"`, `"strList"`, `"strRecord"`, `"repoFile"`, `"none"`)
 - `label`, `value`, `category`, optional `options` and `limits`
+- optional `isPV`: the value is a PV name, macro-resolved into `Widget.runtimeAuxPVs` and subscribed
+  like `pvName`, but not bound into `pvData` (the widget reads it from the PV store itself)
+- optional `description`: help text shown as a tooltip on text/number fields
 
 Pre-built reusable sets (import from `widgetProperties.ts`):
 
@@ -246,6 +250,13 @@ that assume dynamically-injected children are not part of the authored tree: `Wi
   local oxlint exception.
 - Widget properties are prefixed (`imageRotation`, `imageFlipX`, ...) because `PROPERTY_SCHEMAS` is
   shared.
+- **Plain waveform mode** (e.g. NDStdArrays over CA): enabled when the `sizeXPV`/`sizeYPV`
+  properties (`isPV`) are set; Mono only. `frameSource.ts` registers the image PV and reads the
+  shape from the PV store; `waveformFrame` (`worker/imageLayout.ts`) builds the frame metadata,
+  reinterprets same-width signedness from the data type PV and warns when the waveform type is
+  narrower. Shape and frames are not atomic: a mismatch within 1 s of a size change is skipped, a
+  lasting one refused. Frames with NTNDArray metadata always use it. Registered image PVs are sent
+  as `exclude` with snapshot requests.
 
 ### OPI File Format
 
