@@ -75,6 +75,10 @@ const pvData = usePVStore((state) => state.pvs["MY:PV"]);
 This means each widget re-renders only when its own PV changes, with no re-render propagation
 through React context.
 
+Image frames (NTNDArray updates) never enter `pvStore`: `useEpicsWS` routes them to a separate
+`imageStore`, and `pvStore` only keeps a summary of the PV without its pixels. Large images
+therefore never pass through React props, rules or macros.
+
 :::{note}  
 The state management layer is the brains of the application. All global UI states and behaviors pass
 through one of the above.  
@@ -93,6 +97,10 @@ through one of the above.
   selector (using `useShallow` for reference equality), then calls `applyWidgetPVData()`
   (`widgetRenderUtils.ts`) to merge PV data, evaluate configured rules, and resolve macros before
   rendering the widget component.
+
+  Image widgets (`AreaDetector`) render off the main thread: each runtime widget owns a web worker
+  that draws on an `OffscreenCanvas`, while zoom, pixel readout and the colorbar stay on the main
+  thread.
 
   Runtime rule semantics are property-oriented: each rule targets one property and contains ordered
   condition rulesets. If multiple rulesets match in the same rule, the last match wins; if multiple
@@ -126,11 +134,14 @@ through one of the above.
 
 - **`WSClient`** - stateful WebSocket class injected into `useEpicsWS`. Manages
   subscribe/unsubscribe/write messaging to the EPICS bridge, auto-reconnects with exponential
-  backoff on unexpected disconnection, and decodes binary array updates into `number[]` values
-  before data reaches `pvStore`.
+  backoff on unexpected disconnection, and decodes binary array updates into typed arrays before
+  data reaches `pvStore`.
 
 - **`pvStore`** - Zustand store for live EPICS PV data. See the
   [State management layer](#state-management-layer) section above for a full description.
+
+- **`imageStore`** - Zustand store holding the latest frame of each image (NTNDArray) PV, read by
+  image widgets. Cleared when the WebSocket closes.
 
 ---
 
@@ -210,9 +221,16 @@ little-endian; `dtype` in the header is the PV's native element type, one of `in
 the usual update fields except `value`; first updates also include metadata. The client exposes the
 array as a zero-copy typed array view over the received buffer (`NumericArray` in
 `src/types/epicsWS.ts`); consumers must use `isNumericArray()` from `src/utils/numericArray.ts`
-instead of `Array.isArray()`. Snapshots keep their base64 JSON format for arrays, but never capture
-image (NTNDArray) PVs: the `snapshot` response lists them in `excluded` instead. Array shape is not
-transmitted; NTNDArray shape/codec support is separate.
+instead of `Array.isArray()`. NTNDArray updates add an `ndarray` header field (dimensions, frame
+`uniqueId`, codec and color mode); other arrays carry no shape. Compressed NTNDArray frames are
+forwarded as-is and not decoded by the client.
+
+Each client has its own send queue. A client that cannot keep up receives fewer array frames rather
+than a backlog: a waiting array frame is replaced by the next one of the same PV. Scalar updates are
+always delivered in order.
+
+Snapshots keep their base64 JSON format for arrays, but never capture image (NTNDArray) PVs: the
+`snapshot` response lists them in `excluded` instead.
 
 ::: {note}  
 JavaScript has no safe 64-bit integer view, so `int64`/`uint64` arrays are converted to

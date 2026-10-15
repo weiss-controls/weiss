@@ -214,6 +214,39 @@ that assume dynamically-injected children are not part of the authored tree: `Wi
 (`childIsEmbedded`), `useWidgetManager.ts` (`ungroupSelected`, `formatWdgToExport`), and
 `WidgetTree.tsx` (`buildLayerItems`).
 
+#### AreaDetector (image) widget
+
+`src/components/Widgets/AreaDetector/` renders NTNDArray image PVs off the main thread. Conventions:
+
+- **Pure core in `worker/`** (`imageLayout.ts`, `intensity.ts`, `colorMaps.ts`, `render.ts`,
+  `draw.ts`) plus `viewport.ts`: no worker globals, so it also runs on the main thread (edit
+  preview, pixel readout). Only `worker/ad.worker.ts` touches `self`/`postMessage`. Modules imported
+  by both sides must type-check under the DOM and WebWorker libs (`tsconfig.worker.json` covers
+  `*.worker.ts`); type canvas contexts structurally, not as `CanvasRenderingContext2D`.
+- **One worker per runtime widget**, owned by `AdController` (`adWorkerClient.ts`); no worker in
+  edit mode. Each controller creates a fresh canvas and transfers it (`transferControlToOffscreen`),
+  so StrictMode's double mount is safe. Browsers without OffscreenCanvas transfer get a status, not
+  a fallback.
+- **Bounded delivery**: one frame in flight, one pending (newer replaces it), released by the
+  worker's `displayed`/`rejected` reply. Frames are structured-cloned to the worker, never
+  transferred (the store's buffer is shared).
+- **Protocol** (`workerProtocol.ts`): frame-related messages carry `resetCount`, incremented
+  whenever the image is discarded (PV change, refusal, disconnect); replies with an older count are
+  ignored. `view` (size, pixel ratio, orientation, zoom/pan) and `params` (colormap, limits, scale)
+  have no `resetCount`: the last one wins, they never discard the image, and they are coalesced per
+  animation frame and flushed before each frame. The worker keeps the last frame and re-renders it
+  for these.
+- **Frames come from `useImageStore`** via `frameSource.ts`, never from props. Pixel readout uses
+  the frame the worker acknowledged as displayed. Per-frame UI (readout, colorbar labels) is written
+  to the DOM directly, not through React state.
+- **Never misinterpret data**: `resolveLayout` validates codec, color mode, dimensions and payload
+  length before anything is treated as pixels; unsupported data (compressed, Bayer, YUV, ambiguous
+  3D) is refused with a status and the image is cleared.
+- Hot loops over typed arrays use indexed `for` loops (about 5x faster than `for...of`), with a
+  local oxlint exception.
+- Widget properties are prefixed (`imageRotation`, `imageFlipX`, ...) because `PROPERTY_SCHEMAS` is
+  shared.
+
 ### OPI File Format
 
 Saved as `.opi.json` — an array of `ExportedWidget`:
@@ -402,6 +435,7 @@ cd backend/api && ruff check .     # ruff
 | EPICS WS hook               | `src/context/useEpicsWS.ts`                       |
 | PV data store (Zustand)     | `src/services/pvStore.ts`                         |
 | Image frame store (Zustand) | `src/services/imageStore.ts`                      |
+| AreaDetector render worker  | `src/components/Widgets/AreaDetector/worker/`     |
 | Per-widget PV rendering     | `src/components/WidgetRenderer/LiveWidget.tsx`    |
 | Generated API client        | `src/services/APIClient/` (do not edit manually)  |
 | Auth service                | `src/services/AuthService/AuthService.ts`         |
