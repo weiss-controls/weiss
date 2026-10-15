@@ -39,6 +39,27 @@ import {
 } from "./widgetHelpers";
 import type { DraggableData, Position, RndDragEvent } from "react-rnd";
 
+/** Macro-resolved values of the widget's PV-valued properties (`isPV`), by property name */
+function resolveAuxPVs(
+  w: Widget,
+  macros: Record<string, string>,
+): Record<string, string> | undefined {
+  let resolved: Record<string, string> | undefined;
+  for (const [name, prop] of Object.entries(w.editableProperties ?? {})) {
+    if (!prop?.isPV || typeof prop.value !== "string" || !prop.value) continue;
+    resolved ??= {};
+    resolved[name] = substituteMacroInStr(prop.value, macros);
+  }
+  return resolved;
+}
+
+function sameRecord(a: Record<string, string> | undefined, b: Record<string, string> | undefined) {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  const keys = Object.keys(a);
+  return keys.length === Object.keys(b).length && keys.every((key) => a[key] === b[key]);
+}
+
 /**
  * Hook to manage the editor's widgets and their state.
  *
@@ -1100,7 +1121,7 @@ export function useWidgetManager() {
   );
 
   /**
-   * Stamps runtimePVName/runtimePVNames directly into editorWidgets whenever
+   * Stamps runtimePVName/runtimePVNames/runtimeAuxPVs directly into editorWidgets whenever
    * macros or PV-name properties change. No save in history.
    */
   useEffect(() => {
@@ -1110,6 +1131,7 @@ export function useWidgetManager() {
 
       const runtimePVName = pvName ? substituteMacroInStr(pvName, globalMacros) : undefined;
       const runtimePVNames = pvNames?.map((name) => substituteMacroInStr(name, globalMacros));
+      const runtimeAuxPVs = resolveAuxPVs(w, globalMacros);
       const wRuntimeChildren = w.children?.map(addRuntimePVs);
 
       const pvNameUnchanged = runtimePVName === w.runtimePVName;
@@ -1119,13 +1141,15 @@ export function useWidgetManager() {
           runtimePVNames?.every((v, i) => v === w.runtimePVNames![i]));
       const childrenUnchanged =
         !wRuntimeChildren || wRuntimeChildren.every((c, i) => c === w.children![i]);
+      const auxPVsUnchanged = sameRecord(runtimeAuxPVs, w.runtimeAuxPVs);
 
-      if (pvNameUnchanged && pvNamesUnchanged && childrenUnchanged) return w;
+      if (pvNameUnchanged && pvNamesUnchanged && childrenUnchanged && auxPVsUnchanged) return w;
 
       return {
         ...w,
         ...(runtimePVName !== undefined ? { runtimePVName } : {}),
         ...(runtimePVNames !== undefined ? { runtimePVNames } : {}),
+        ...(auxPVsUnchanged ? {} : { runtimeAuxPVs }),
         ...(wRuntimeChildren ? { children: wRuntimeChildren } : {}),
       };
     };
@@ -1146,6 +1170,7 @@ export function useWidgetManager() {
       for (const w of widgets) {
         if (w.runtimePVName) pvSet.add(w.runtimePVName);
         if (w.runtimePVNames) for (const pv of w.runtimePVNames) pvSet.add(pv);
+        if (w.runtimeAuxPVs) for (const pv of Object.values(w.runtimeAuxPVs)) pvSet.add(pv);
         for (const rule of w.rules ?? []) {
           for (const pv of collectRulePVNames(rule)) {
             const substituted = substituteMacroInStr(pv, globalMacros);
