@@ -344,9 +344,12 @@ Delivery pipeline (`backend/epicsWS/epicsWS.py`): EPICS thread callbacks are que
 `_enqueue_loop_callback` and dispatched in batches by `_dispatch_queued_loop_callbacks` on the
 `uvloop` event loop; `_send_throttled` applies the per-PV rate limit (`EPICS_MAX_UPDATE_RATE_HZ`,
 latest value wins inside the window, `0` disables); `send_update` serializes once with `orjson` and
-pushes the shared `(payload, is_text)` frame to each client's queue in `send_queues`, consumed by
-one `_writer` task per client. Clients exceeding `EPICS_MAX_CLIENT_QUEUE` are disconnected. Use
-`orjson` (not `json`) and keep `send_update` synchronous.
+pushes the shared `(payload, is_text)` frame to each client's `ClientOutbox` in `send_queues`,
+consumed by one `_writer` task per client. In the outbox a waiting array frame is overwritten by the
+next frame of the same PV (a slow client gets fewer frames, not a backlog); scalars, the first
+(metadata) message of a subscription and disconnect notices are always queued in order. Clients
+exceeding `EPICS_MAX_CLIENT_QUEUE` are disconnected. Use `orjson` (not `json`) and keep
+`send_update` synchronous.
 
 Protocol: prefix `pva://` or `ca://`, or set `EPICS_DEFAULT_PROTOCOL`.
 
