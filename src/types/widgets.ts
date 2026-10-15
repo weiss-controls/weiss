@@ -202,8 +202,6 @@ export type WidgetIconType = React.FC<SvgIconProps>;
  * @property component React component used to render the widget
  * @property category Category for grouping in the palette
  * @property defaultProperties Default property values copied into new instances
- * @property omitPVValue Hand the component its PV data without the value, for widgets that read
- *   large arrays from the PV store themselves (keeps them out of React's dev-mode prop tracking)
  */
 export interface WidgetDefinition {
   widgetName: string;
@@ -212,7 +210,6 @@ export interface WidgetDefinition {
   component: React.ComponentType<WidgetUpdate>;
   category: string;
   defaultProperties: WidgetProperties;
-  omitPVValue?: boolean;
 }
 
 /**
