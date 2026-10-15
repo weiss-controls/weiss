@@ -407,8 +407,9 @@ async def message_handler(ws: ServerConnection):
                     asyncio.create_task(asyncio.to_thread(client.write_to_pv, pv_name, value))
 
             elif msg_type == "snapshot":
-                # Capture current values of all subscribed PVs
+                # Capture current values of all subscribed PVs; image PVs are never stored
                 snapshot_data = {}
+                excluded = []
                 for pv_name in ws_subscriptions.get(ws, set()):
                     protocol, clean_name = parse_protocol(pv_name)
                     client = get_client(protocol)
@@ -419,6 +420,9 @@ async def message_handler(ws: ServerConnection):
                                 parsed = PVParser.pva_update(raw, clean_name)
                             else:
                                 parsed = PVParser.ca_update(raw, clean_name)
+                            if parsed.ndarray is not None:
+                                excluded.append(pv_name)
+                                continue
                             snapshot_data[pv_name] = PVParser.snapshot_update(parsed)
 
                 await ws.send(
@@ -429,6 +433,7 @@ async def message_handler(ws: ServerConnection):
                                 "type": "snapshot",
                                 "pvs": snapshot_data,
                                 "count": len(snapshot_data),
+                                "excluded": excluded,
                             }.items()
                             if v is not None
                         }
