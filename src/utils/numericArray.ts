@@ -14,7 +14,12 @@ export function isLargeArray(value: unknown): boolean {
   return false;
 }
 
+/** A typed array as decoded from a binary update */
+export function isTypedNumericArray(value: unknown): value is NumericArray {
+  return ArrayBuffer.isView(value) && !(value instanceof DataView);
+}
+
 export function isNumericArray(value: unknown): value is NumericArray | number[] {
-  if (ArrayBuffer.isView(value)) return !(value instanceof DataView);
+  if (ArrayBuffer.isView(value)) return isTypedNumericArray(value);
   return Array.isArray(value) && value.every((v) => typeof v === "number");
 }

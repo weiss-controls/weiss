@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
-import type { NDArrayInfo, NumericArray, PVData } from "@src/types/epicsWS";
-import type { FrameSource, Unsubscribe } from "./frameSource.ts";
+import type { NDArrayInfo, NumericArray } from "@src/types/epicsWS";
+import type { FrameEvent, FrameSource, Unsubscribe } from "./frameSource.ts";
 import {
   type ImageLayout,
   type RejectCode,
@@ -163,7 +163,7 @@ export class AdController {
         this.updateReadout();
       },
     });
-    this.unsubscribe = source(pv, (data) => this.handleData(data));
+    this.unsubscribe = source(pv, (event) => this.handleEvent(event));
   }
 
   dispose() {
@@ -301,33 +301,38 @@ export class AdController {
     this.send({ type: "reset", resetCount: this.resetCount });
   }
 
-  private handleData(data: PVData | undefined) {
+  private handleEvent(event: FrameEvent) {
     if (this.disposed || !this.worker) return;
-    if (!data) {
+    if (event.kind !== "frame") {
       this.lastValue = undefined;
       this.discard();
-      this.setStatus({ kind: "waiting" });
+      this.setStatus(
+        event.kind === "notImage"
+          ? { kind: "rejected", code: "notNDArray", message: "PV is not an NTNDArray" }
+          : { kind: "waiting" },
+      );
       return;
     }
-    if (data.value === this.lastValue) return;
-    this.lastValue = data.value;
+    const { frame } = event;
+    if (frame.value === this.lastValue) return;
+    this.lastValue = frame.value;
 
     // Refused frames are not worth copying to the worker
-    const check = resolveLayout(data.value, data.ndarray);
+    const check = resolveLayout(frame.value, frame.ndarray);
     if (!check.ok) {
       if (this.status?.kind !== "rejected") this.discard();
       this.setStatus({ kind: "rejected", code: check.code, message: check.message });
       return;
     }
 
-    const frame = {
+    const accepted = {
       uniqueId: check.info.uniqueId,
       info: check.info,
       value: check.pixels,
       layout: check.layout,
     };
-    if (this.inFlight) this.pending = frame;
-    else this.dispatch(frame);
+    if (this.inFlight) this.pending = accepted;
+    else this.dispatch(accepted);
   }
 
   private dispatch(frame: Frame) {

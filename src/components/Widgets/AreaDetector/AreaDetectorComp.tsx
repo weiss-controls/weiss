@@ -7,7 +7,7 @@ import { useUIContext } from "@src/context/useUIContext";
 import { Placeholder } from "@components/Widgets/shared/Placeholder";
 import { AdController, type AdStatus } from "./adWorkerClient";
 import { Colorbar, type ColorbarHandle } from "./Colorbar";
-import { pvStoreFrameSource } from "./frameSource";
+import { storeFrameSource } from "./frameSource";
 import { getPreviewImage } from "./preview";
 import { FIT, type Orientation, type Size, capPixelRatio, toOrientation } from "./viewport";
 import { drawView } from "./worker/draw";
@@ -121,7 +121,7 @@ const AreaDetectorComp: React.FC<WidgetUpdate> = ({ data }) => {
   useEffect(() => {
     const container = containerRef.current;
     if (inEditMode || !visible || !pvName || !container) return;
-    const controller = new AdController(container, pvName, pvStoreFrameSource, {
+    const controller = new AdController(container, pvName, storeFrameSource, {
       orientation: orientationRef.current,
       params: paramsRef.current,
       onStatus: setStatus,
