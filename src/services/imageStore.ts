@@ -56,6 +56,11 @@ export function isImagePV(pv: string): boolean {
   return imagePVs.has(pv);
 }
 
+/** The plain array PVs currently registered as images (NTNDArray PVs are recognised anyway) */
+export function registeredImagePVs(): string[] {
+  return [...imagePVs.keys()];
+}
+
 /**
  * Treats a plain array PV as an image PV until the returned function is called, so its frames
  * stay out of the PV store and React props like NTNDArray frames. A value already in the PV

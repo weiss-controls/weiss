@@ -407,10 +407,15 @@ async def message_handler(ws: ServerConnection):
                     asyncio.create_task(asyncio.to_thread(client.write_to_pv, pv_name, value))
 
             elif msg_type == "snapshot":
-                # Capture current values of all subscribed PVs; image PVs are never stored
+                # Capture current values of all subscribed PVs; image PVs are never stored. NTNDArray
+                # PVs are recognised here, plain waveform images are listed by the client.
                 snapshot_data = {}
                 excluded = []
+                client_excluded = {parse_protocol(pv)[1] for pv in msg.get("exclude", [])}
                 for pv_name in ws_subscriptions.get(ws, set()):
+                    if pv_name in client_excluded:
+                        excluded.append(pv_name)
+                        continue
                     protocol, clean_name = parse_protocol(pv_name)
                     client = get_client(protocol)
                     if hasattr(client, "_latest_value"):

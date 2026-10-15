@@ -6,7 +6,13 @@ import { WSClient } from "@src/services/WSClient/WSClient";
 import type { Alarm, NDArrayInfo, PVData, PVWriteValue, WSMessage } from "@src/types/epicsWS";
 import { WS_URL } from "@src/constants/constants";
 import { usePVStore } from "@src/services/pvStore";
-import { EMPTY_FRAME, type ImageFrame, isImagePV, useImageStore } from "@src/services/imageStore";
+import {
+  EMPTY_FRAME,
+  type ImageFrame,
+  isImagePV,
+  registeredImagePVs,
+  useImageStore,
+} from "@src/services/imageStore";
 import { pushPVHistory, clearPVHistory } from "@src/utils/historyBuffers";
 import { isTypedNumericArray } from "@src/utils/numericArray";
 
@@ -229,7 +235,8 @@ export default function useEpicsWS(resolvedPVList: string[]) {
   const takeSnapshot = useCallback(async (): Promise<Record<string, unknown> | null> => {
     if (!ws.current) return null;
     try {
-      return await ws.current.requestSnapshot();
+      // Plain waveform images have no NTNDArray metadata for the server to recognise them by
+      return await ws.current.requestSnapshot(registeredImagePVs());
     } catch (e) {
       console.error("Snapshot failed:", e);
       return null;

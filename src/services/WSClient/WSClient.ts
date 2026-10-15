@@ -190,9 +190,10 @@ export class WSClient {
 
   /**
    * Requests a snapshot of all currently subscribed PV values.
+   * @param exclude PVs never to capture (image PVs the server cannot recognise as such)
    * @returns A promise that resolves with the snapshot data.
    */
-  requestSnapshot(): Promise<Record<string, unknown>> {
+  requestSnapshot(exclude: string[] = []): Promise<Record<string, unknown>> {
     return new Promise((resolve, reject) => {
       if (!this.connected) {
         reject(new Error("Not connected"));
@@ -215,7 +216,7 @@ export class WSClient {
         reject(new Error("Snapshot timeout"));
       }, 5000);
 
-      this.socket.send(JSON.stringify({ type: "snapshot" }));
+      this.socket.send(JSON.stringify({ type: "snapshot", exclude }));
     });
   }
 
