@@ -76,6 +76,13 @@ Live PV data is **not** in React context. It lives in a [Zustand](https://zustan
 components consume PV data by calling `usePVStore(selector)` with a PV-specific selector, so they
 re-render only when their own PV changes — not on every update across the system.
 
+Image frames (updates carrying NTNDArray `ndarray` metadata) never enter `usePVStore`: `useEpicsWS`
+routes them to `useImageStore` (`src/services/imageStore.ts`) in the same animation-frame flush, and
+the PV store keeps only a summary of the PV (no pixels, an empty value) refreshed on alarm or shape
+changes and at most once per second. So frames never reach React props, rules or macros; consumers
+(the AreaDetector widget) subscribe to the image store imperatively. The image store is cleared when
+the WebSocket closes.
+
 #### `useWidgetManager` — mutation discipline
 
 - `editorWidgets: Widget[]` — flat list; the grid is always `editorWidgets[0]` with
@@ -394,6 +401,7 @@ cd backend/api && ruff check .     # ruff
 | UI manager hook             | `src/context/useUIManager.ts`                     |
 | EPICS WS hook               | `src/context/useEpicsWS.ts`                       |
 | PV data store (Zustand)     | `src/services/pvStore.ts`                         |
+| Image frame store (Zustand) | `src/services/imageStore.ts`                      |
 | Per-widget PV rendering     | `src/components/WidgetRenderer/LiveWidget.tsx`    |
 | Generated API client        | `src/services/APIClient/` (do not edit manually)  |
 | Auth service                | `src/services/AuthService/AuthService.ts`         |
