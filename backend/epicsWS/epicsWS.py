@@ -41,8 +41,72 @@ subscriptions: Dict[str, Set[ServerConnection]] = {}
 # per-ws inverse index for O(pvs_per_client) disconnect cleanup
 ws_subscriptions: Dict[ServerConnection, Set[str]] = {}
 
-# per-ws queue of messages to send, handled by a dedicated writer task
-send_queues: Dict[ServerConnection, asyncio.Queue] = {}
+
+class _OutboxEntry:
+    __slots__ = ("pv", "frame")
+
+    def __init__(self, pv: Optional[str], frame: Optional[Frame]):
+        self.pv = pv
+        self.frame = frame
+
+
+class ClientOutbox:
+    """Messages waiting to be sent to one client, in order. A replaceable entry (an array frame)
+    is overwritten by the next frame of the same PV while it waits, so a slow client receives fewer
+    frames instead of an ever-growing backlog of old ones."""
+
+    def __init__(self):
+        self._entries: Deque[_OutboxEntry] = deque()
+        # Waiting entries that a newer frame of the same PV may still overwrite
+        self._slots: Dict[str, _OutboxEntry] = {}
+        self._ready = asyncio.Event()
+        self.replaced = 0
+
+    def __len__(self) -> int:
+        return len(self._entries)
+
+    def replace(self, pv: str, frame: Frame) -> bool:
+        """Overwrites the PV's waiting frame, keeping its place; False if it has none."""
+        entry = self._slots.get(pv)
+        if entry is None:
+            return False
+        entry.frame = frame
+        self.replaced += 1
+        return True
+
+    def append(self, frame: Frame, pv: Optional[str] = None, replaceable: bool = False):
+        """Queues a message. A non-replaceable message for a PV (metadata, disconnect) also ends
+        the PV's slot, so no later frame of that PV can overtake it."""
+        entry = _OutboxEntry(pv, frame)
+        if pv is not None:
+            if replaceable:
+                self._slots[pv] = entry
+            else:
+                self._slots.pop(pv, None)
+        self._entries.append(entry)
+        self._ready.set()
+
+    def discard(self, pv: str):
+        """Drops the PV's waiting frame, e.g. after an unsubscribe."""
+        entry = self._slots.pop(pv, None)
+        if entry is not None:
+            entry.frame = None
+
+    async def get(self) -> Frame:
+        while True:
+            while not self._entries:
+                self._ready.clear()
+                await self._ready.wait()
+            entry = self._entries.popleft()
+            # A frame being sent is never overwritten; the next one starts a new slot
+            if entry.pv is not None and self._slots.get(entry.pv) is entry:
+                del self._slots[entry.pv]
+            if entry.frame is not None:
+                return entry.frame
+
+
+# per-ws outbox of messages to send, handled by a dedicated writer task
+send_queues: Dict[ServerConnection, ClientOutbox] = {}
 
 # Clients that already received metadata, per PV name
 metadata_sent_to_clients: Dict[str, Set[ServerConnection]] = {}
@@ -192,22 +256,29 @@ def get_client(protocol: str) -> Union[PVAClient, CAClient]:
     return client
 
 
-def _enqueue(ws: ServerConnection, frame: Frame):
-    queue = send_queues.get(ws)
-    if queue is None:
+def _enqueue(ws: ServerConnection, frame: Frame, pv: Optional[str] = None, latest: bool = False):
+    """Queues a frame for one client. With `latest`, the frame replaces the PV's waiting frame
+    if there is one; `pv` without `latest` marks a message that later frames must not overtake."""
+    outbox = send_queues.get(ws)
+    if outbox is None:
         return
-    if queue.qsize() >= MAX_CLIENT_QUEUE:
-        print(f"[epicsWS]: Client {ws.remote_address} is too slow, closing connection")
+    if latest and pv is not None and outbox.replace(pv, frame):
+        return
+    if len(outbox) >= MAX_CLIENT_QUEUE:
+        print(
+            f"[epicsWS]: Client {ws.remote_address} is too slow, closing connection "
+            f"({outbox.replaced} stale array frames replaced)"
+        )
         del send_queues[ws]
         asyncio.create_task(ws.close(code=1013, reason="Client too slow"))
         return
-    queue.put_nowait(frame)
+    outbox.append(frame, pv, replaceable=latest)
 
 
-async def _writer(ws: ServerConnection, queue: asyncio.Queue):
+async def _writer(ws: ServerConnection, outbox: ClientOutbox):
     try:
         while True:
-            payload, text = await queue.get()
+            payload, text = await outbox.get()
             await ws.send(payload, text=text)
     except Exception:
         print(f"[epicsWS]: Error sending update to {ws}")
@@ -255,18 +326,21 @@ def send_update(pv_name: str, pv_obj, provider: str):
     clients_with_metadata = metadata_sent_to_clients.setdefault(pv_name, set())
     clients_needing_metadata = subscribed_clients - clients_with_metadata
     clients_with_metadata_to_update = subscribed_clients & clients_with_metadata
+    # A slow client gets the latest array frame, not a backlog; scalars all go out (plot history)
+    latest = raw_array is not None
     if clients_with_metadata_to_update:
         data = serialize(base_msg)
         for ws in clients_with_metadata_to_update:
-            _enqueue(ws, data)
+            _enqueue(ws, data, pv_name_with_provider, latest)
     if clients_needing_metadata:
         full_msg = dict(base_msg)
         full_msg.update(asdict(_pv_metadata[pv_name]))
         full_msg["connected"] = True
         data = serialize(full_msg)
         clients_with_metadata |= clients_needing_metadata
+        # Never replaced, so a client always gets the metadata
         for ws in clients_needing_metadata:
-            _enqueue(ws, data)
+            _enqueue(ws, data, pv_name_with_provider)
 
 
 def _send_disconnect(pv_name: str, provider: str):
@@ -275,11 +349,13 @@ def _send_disconnect(pv_name: str, provider: str):
     if not subscribed_clients:
         return
 
-    msg = {"type": "update", "pv": format_pv_name(pv_name, provider), "connected": False}
+    pv_key = format_pv_name(pv_name, provider)
+    msg = {"type": "update", "pv": pv_key, "connected": False}
     data = (orjson.dumps(msg), True)
 
+    # No newer frame of the PV may reach a client before this
     for ws in set(subscribed_clients):
-        _enqueue(ws, data)
+        _enqueue(ws, data, pv_key)
     metadata_sent_to_clients.pop(pv_name, None)
     _pv_metadata.pop(pv_name, None)
 
@@ -288,8 +364,9 @@ async def message_handler(ws: ServerConnection):
     client_id = f"{ws.remote_address[0]}:{ws.remote_address[1]}"
     print(f"New connection from {client_id}")
     ws_subscriptions[ws] = set()
-    send_queues[ws] = asyncio.Queue()
-    writer_task = asyncio.create_task(_writer(ws, send_queues[ws]))
+    outbox = ClientOutbox()
+    send_queues[ws] = outbox
+    writer_task = asyncio.create_task(_writer(ws, outbox))
 
     try:
         async for message in ws:
@@ -319,6 +396,7 @@ async def message_handler(ws: ServerConnection):
                             _cleanup_pv_state(pv_name)
                         asyncio.create_task(asyncio.to_thread(client.unsubscribe, client_id, pv_name))
                     metadata_sent_to_clients.get(pv_name, set()).discard(ws)
+                    outbox.discard(format_pv_name(pv_name, protocol))
 
             elif msg_type == "write":
                 pv = msg.get("pv")
@@ -394,7 +472,7 @@ async def message_handler(ws: ServerConnection):
         print(f"[epicsWS]: Error handling message from {client_id}: {e}")
 
     finally:
-        print(f"[epicsWS]: Client disconnected: {client_id}")
+        print(f"[epicsWS]: Client disconnected: {client_id} ({outbox.replaced} stale array frames replaced)")
         writer_task.cancel()
         send_queues.pop(ws, None)
         # Clean up all subscriptions for this client using the inverse index
