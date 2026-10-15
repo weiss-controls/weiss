@@ -105,6 +105,20 @@ export default function SnapshotDialog({
       const result = await onTakeSnapshot();
       if (result && "pvs" in result) {
         const pvs = result.pvs as Record<string, unknown>;
+        // The server never captures image PVs; say which ones were left out
+        const excluded = Array.isArray(result.excluded)
+          ? result.excluded.filter((pv): pv is string => typeof pv === "string")
+          : [];
+        const notCaptured =
+          excluded.length > 0 ? ` Not captured (image PVs): ${excluded.join(", ")}` : "";
+        if (excluded.length > 0 && Object.keys(pvs).length === 0) {
+          setStatus({
+            message: `Nothing to save: snapshots never store image data.${notCaptured}`,
+            severity: "error",
+          });
+          setLoading(false);
+          return;
+        }
 
         const { data } = await saveSnapshot({
           body: {
@@ -118,8 +132,8 @@ export default function SnapshotDialog({
         if (data) {
           setSnapshotName("");
           setStatus({
-            message: `Saved "${data.name}" with ${String(data.pv_count)} PVs`,
-            severity: "success",
+            message: `Saved "${data.name}" with ${String(data.pv_count)} PVs.${notCaptured}`,
+            severity: excluded.length > 0 ? "info" : "success",
           });
           void fetchSnapshots();
         } else {

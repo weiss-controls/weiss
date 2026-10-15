@@ -210,9 +210,9 @@ little-endian; `dtype` in the header is the PV's native element type, one of `in
 the usual update fields except `value`; first updates also include metadata. The client exposes the
 array as a zero-copy typed array view over the received buffer (`NumericArray` in
 `src/types/epicsWS.ts`); consumers must use `isNumericArray()` from `src/utils/numericArray.ts`
-instead of `Array.isArray()`. Snapshots retain their existing base64 JSON format until further
-improvements are applied on that feature. Array shape is not transmitted; NTNDArray shape/codec
-support is separate.
+instead of `Array.isArray()`. Snapshots keep their base64 JSON format for arrays, but never capture
+image (NTNDArray) PVs: the `snapshot` response lists them in `excluded` instead. Array shape is not
+transmitted; NTNDArray shape/codec support is separate.
 
 ::: {note}  
 JavaScript has no safe 64-bit integer view, so `int64`/`uint64` arrays are converted to
