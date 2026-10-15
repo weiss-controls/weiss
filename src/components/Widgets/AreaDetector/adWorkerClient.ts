@@ -27,6 +27,8 @@ import { attachViewportInput } from "./viewportInput.ts";
 
 export type AdStatus =
   | { kind: "waiting" }
+  /** The WebSocket is down; no image is shown rather than a stale one */
+  | { kind: "disconnected" }
   | { kind: "image"; color: "mono" | "rgb" }
   | {
       kind: "rejected";
@@ -309,7 +311,7 @@ export class AdController {
       this.setStatus(
         event.kind === "notImage"
           ? { kind: "rejected", code: "notNDArray", message: "PV is not an NTNDArray" }
-          : { kind: "waiting" },
+          : { kind: event.kind },
       );
       return;
     }

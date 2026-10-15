@@ -64,6 +64,8 @@ function statusLabel(status: AdStatus): string | null {
       return null;
     case "waiting":
       return "Waiting for image data";
+    case "disconnected":
+      return "Disconnected";
     case "rejected":
       return status.message;
   }
