@@ -2,12 +2,13 @@
 // Copyright (C) 2026 André Favoto
 
 import type { NDArrayInfo, NumericArray } from "@src/types/epicsWS";
-import type { FrameEvent, FrameSource, Unsubscribe } from "./frameSource.ts";
+import type { FrameEvent, FrameSource, ShapePVs, Unsubscribe } from "./frameSource.ts";
 import {
   type ImageLayout,
   type RejectCode,
   pixelValue,
   resolveLayout,
+  waveformFrame,
 } from "./worker/imageLayout.ts";
 import { formatValue } from "./format.ts";
 import type { FrameStats, MainToWorker, WorkerToMain } from "./workerProtocol.ts";
@@ -29,7 +30,8 @@ export type AdStatus =
   | { kind: "waiting" }
   /** The WebSocket is down; no image is shown rather than a stale one */
   | { kind: "disconnected" }
-  | { kind: "image"; color: "mono" | "rgb" }
+  /** `warning`: shown over the image, e.g. a waveform that truncates the detector's values */
+  | { kind: "image"; color: "mono" | "rgb"; warning?: string }
   | {
       kind: "rejected";
       code: RejectCode | "unsupportedBrowser" | "workerError";
@@ -55,11 +57,17 @@ interface Frame {
   info: NDArrayInfo;
   value: NumericArray;
   layout: ImageLayout;
+  warning?: string;
 }
+
+/** A waveform whose length disagrees with a shape that changed this recently is skipped, not refused */
+const SHAPE_SETTLE_MS = 1000;
 
 function sameStatus(a: AdStatus | null, b: AdStatus): boolean {
   if (!a || a.kind !== b.kind) return false;
-  if (a.kind === "image" && b.kind === "image") return a.color === b.color;
+  if (a.kind === "image" && b.kind === "image") {
+    return a.color === b.color && a.warning === b.warning;
+  }
   if (a.kind === "rejected" && b.kind === "rejected") {
     return a.code === b.code && a.message === b.message;
   }
@@ -69,6 +77,8 @@ function sameStatus(a: AdStatus | null, b: AdStatus): boolean {
 export interface AdControllerOptions {
   orientation: Orientation;
   params: RenderParams;
+  /** Shape of a plain waveform image; unused for NTNDArray PVs */
+  shapePVs: ShapePVs;
   onStatus: (status: AdStatus) => void;
   /** What the image on screen was rendered with; null when there is none */
   onStats: (stats: FrameStats | null) => void;
@@ -99,6 +109,8 @@ export class AdController {
   private lastSize: Size | null = null;
   // Store updates that do not carry a new frame keep the same array
   private lastValue: unknown;
+  // Plain waveforms carry no frame counter
+  private waveformCount = 0;
   private status: AdStatus | null = null;
   private disposed = false;
   private view: Size = { width: 0, height: 0 };
@@ -165,7 +177,7 @@ export class AdController {
         this.updateReadout();
       },
     });
-    this.unsubscribe = source(pv, (event) => this.handleEvent(event));
+    this.unsubscribe = source(pv, options.shapePVs, (event) => this.handleEvent(event));
   }
 
   dispose() {
@@ -310,17 +322,38 @@ export class AdController {
       this.discard();
       this.setStatus(
         event.kind === "notImage"
-          ? { kind: "rejected", code: "notNDArray", message: "PV is not an NTNDArray" }
+          ? {
+              kind: "rejected",
+              code: "notNDArray",
+              message: "PV is not an NTNDArray (set the size PVs to show a plain waveform)",
+            }
           : { kind: event.kind },
       );
       return;
     }
-    const { frame } = event;
+    const { frame, shape } = event;
     if (frame.value === this.lastValue) return;
     this.lastValue = frame.value;
 
+    // NTNDArray frames carry their shape; a plain waveform gets it from the size PVs
+    let { value } = frame;
+    let info = frame.ndarray;
+    let warning: string | undefined;
+    if (!info && shape) {
+      const waveform = waveformFrame(value, shape, ++this.waveformCount, frame.timeStamp);
+      if (!waveform.ok) {
+        // Size PVs and frames update separately; right after a size change they can disagree
+        const settling = performance.now() - shape.changedAt < SHAPE_SETTLE_MS;
+        if (waveform.code === "shapeMismatch" && settling) return;
+        if (this.status?.kind !== "rejected") this.discard();
+        this.setStatus({ kind: "rejected", code: waveform.code, message: waveform.message });
+        return;
+      }
+      ({ pixels: value, info, warning } = waveform);
+    }
+
     // Refused frames are not worth copying to the worker
-    const check = resolveLayout(frame.value, frame.ndarray);
+    const check = resolveLayout(value, info);
     if (!check.ok) {
       if (this.status?.kind !== "rejected") this.discard();
       this.setStatus({ kind: "rejected", code: check.code, message: check.message });
@@ -332,6 +365,7 @@ export class AdController {
       info: check.info,
       value: check.pixels,
       layout: check.layout,
+      warning,
     };
     if (this.inFlight) this.pending = accepted;
     else this.dispatch(accepted);
@@ -369,7 +403,11 @@ export class AdController {
         this.displayed = this.inFlight;
         this.updateReadout();
         this.onStats(message);
-        this.setStatus({ kind: "image", color: message.kind === "mono" ? "mono" : "rgb" });
+        this.setStatus({
+          kind: "image",
+          color: message.kind === "mono" ? "mono" : "rgb",
+          warning: this.displayed?.warning,
+        });
         this.release();
         break;
       case "rendered":

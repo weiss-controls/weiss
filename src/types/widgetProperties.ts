@@ -124,6 +124,9 @@ export const PROPERTY_SCHEMAS = {
   tabOrientation:  defineProp({ selType: "select", label: "Tab Orientation", value: "horizontal" as string, options: ["horizontal", "vertical"], category: "Layout" }),
   target:          defineProp({ selType: "text", label: "Target", value: "" as string, category: "General" }),
   // AreaDetector
+  sizeXPV:         defineProp({ selType: "text", label: "Size X PV (waveform only)", value: "" as string, category: "EPICS", isPV: true, description: "Only needed for plain waveform image PVs (CA-style, non-NTNDArray, e.g. NDStdArrays image1:ArrayData); NTNDArray PVs carry their own shape. Waveform mode shows Mono images only. Usually <prefix>image1:ArraySize0_RBV." }),
+  sizeYPV:         defineProp({ selType: "text", label: "Size Y PV (waveform only)", value: "" as string, category: "EPICS", isPV: true, description: "Only needed for plain waveform image PVs (CA-style, non-NTNDArray, e.g. NDStdArrays image1:ArrayData); NTNDArray PVs carry their own shape. Waveform mode shows Mono images only. Usually <prefix>image1:ArraySize1_RBV." }),
+  dataTypePV:      defineProp({ selType: "text", label: "Data type PV (waveform only)", value: "" as string, category: "EPICS", isPV: true, description: "Only needed for plain waveform image PVs (CA-style, non-NTNDArray, e.g. NDStdArrays image1:ArrayData); NTNDArray PVs carry their own shape. Waveform mode shows Mono images only. Optional: usually <prefix>image1:DataType_RBV; reads signed/unsigned values correctly and warns when the waveform truncates them." }),
   imageRotation:   defineProp({ selType: "select", label: "Rotation (clockwise)", value: "0" as string, options: ["0", "90", "180", "270"], category: "Layout" }),
   imageFlipX:      defineProp({ selType: "boolean", label: "Flip horizontally", value: false as boolean, category: "Layout" }),
   imageFlipY:      defineProp({ selType: "boolean", label: "Flip vertically", value: false as boolean, category: "Layout" }),

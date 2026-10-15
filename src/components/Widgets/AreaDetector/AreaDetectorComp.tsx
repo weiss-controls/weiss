@@ -15,6 +15,22 @@ import { type RenderParams, type RenderResult, toRenderParams } from "./worker/r
 
 const FILL = { position: "absolute", inset: 0 } as const;
 
+const WARNING_STYLE = {
+  position: "absolute",
+  top: 4,
+  left: 4,
+  right: 4,
+  padding: "2px 6px",
+  borderRadius: 2,
+  background: "rgba(120, 80, 0, 0.85)",
+  color: "white",
+  font: "12px sans-serif",
+  pointerEvents: "none",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+} as const;
+
 interface PreviewProps {
   orientation: Orientation;
   params: RenderParams;
@@ -84,6 +100,11 @@ const AreaDetectorComp: React.FC<WidgetUpdate> = ({ data }) => {
     [rotation, flipX, flipY],
   );
 
+  // Resolved shape PVs of a plain waveform image (see the size PV properties)
+  const sizeXPV = data.runtimeAuxPVs?.sizeXPV;
+  const sizeYPV = data.runtimeAuxPVs?.sizeYPV;
+  const dataTypePV = data.runtimeAuxPVs?.dataTypePV;
+
   const containerRef = useRef<HTMLDivElement>(null);
   const controllerRef = useRef<AdController | null>(null);
   const colorMap = p.colorMap?.value;
@@ -126,6 +147,7 @@ const AreaDetectorComp: React.FC<WidgetUpdate> = ({ data }) => {
     const controller = new AdController(container, pvName, storeFrameSource, {
       orientation: orientationRef.current,
       params: paramsRef.current,
+      shapePVs: { sizeX: sizeXPV, sizeY: sizeYPV, dataType: dataTypePV },
       onStatus: setStatus,
       onStats: handleStats,
     });
@@ -135,7 +157,7 @@ const AreaDetectorComp: React.FC<WidgetUpdate> = ({ data }) => {
       controller.dispose();
       controllerRef.current = null;
     };
-  }, [inEditMode, visible, pvName, handleStats]);
+  }, [inEditMode, visible, pvName, sizeXPV, sizeYPV, dataTypePV, handleStats]);
 
   // Rules can change these at runtime; the worker is kept
   useEffect(() => {
@@ -192,6 +214,11 @@ const AreaDetectorComp: React.FC<WidgetUpdate> = ({ data }) => {
       {label && (
         <div style={FILL}>
           <Placeholder label={label} />
+        </div>
+      )}
+      {!inEditMode && status.kind === "image" && status.warning && (
+        <div style={WARNING_STYLE} title={status.warning}>
+          {status.warning}
         </div>
       )}
     </div>
