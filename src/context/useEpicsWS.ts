@@ -6,19 +6,19 @@ import { WSClient } from "@src/services/WSClient/WSClient";
 import type { Alarm, NDArrayInfo, PVData, PVWriteValue, WSMessage } from "@src/types/epicsWS";
 import { WS_URL } from "@src/constants/constants";
 import { usePVStore } from "@src/services/pvStore";
-import { type ImageFrame, useImageStore } from "@src/services/imageStore";
+import { EMPTY_FRAME, type ImageFrame, isImagePV, useImageStore } from "@src/services/imageStore";
 import { pushPVHistory, clearPVHistory } from "@src/utils/historyBuffers";
 import { isTypedNumericArray } from "@src/utils/numericArray";
-
-const EMPTY_FRAME = new Uint8Array(0);
 
 /** An image PV's summary in the PV store is refreshed at least this often, for its timestamp */
 const IMAGE_SUMMARY_INTERVAL_MS = 1000;
 
 /** What an image PV's summary shows besides its timestamp; a change is written at once */
-function imageSummaryKey(ndarray: NDArrayInfo, alarm: Alarm | undefined): string {
+function imageSummaryKey(ndarray: NDArrayInfo | undefined, alarm: Alarm | undefined): string {
+  const alarmKey = `${alarm?.severity} ${alarm?.status}`;
+  if (!ndarray) return alarmKey;
   const sizes = ndarray.dimension.map((d) => d.size).join("x");
-  return `${alarm?.severity} ${alarm?.status} ${sizes} ${ndarray.colorMode} ${ndarray.codec.name} ${ndarray.codec.dtype}`;
+  return `${alarmKey} ${sizes} ${ndarray.colorMode} ${ndarray.codec.name} ${ndarray.codec.dtype}`;
 }
 
 /**
@@ -82,7 +82,8 @@ export default function useEpicsWS(resolvedPVList: string[]) {
    * the history is always up to date even if the widget is not re-rendering.
    * On disconnect, the PV's cached data and history are purged immediately
    * instead of merged, so widgets fall back to their "no data" state.
-   * Image frames (messages with `ndarray`) go to the image store, so a frame never
+   * Image frames (messages with `ndarray`, or of a PV registered as an image) go to the
+   * image store, so a frame never
    * reaches the PV store or React props; the PV store only gets a summary of the PV
    * without its pixels, written when it changes and at most once per second otherwise.
    */
@@ -100,7 +101,8 @@ export default function useEpicsWS(resolvedPVList: string[]) {
       clearPVHistory([msg.pv]);
       return;
     }
-    if (msg.ndarray) {
+    // Plain array PVs registered as images (no ndarray) take the same path
+    if (msg.ndarray || isImagePV(msg.pv)) {
       pendingFramesRef.current[msg.pv] = {
         value: isTypedNumericArray(msg.value) ? msg.value : EMPTY_FRAME,
         ndarray: msg.ndarray,
