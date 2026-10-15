@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 André Favoto
 
-import type { NDArrayInfo, NumericArray } from "@src/types/epicsWS";
+import type { NDArrayInfo, NumericArray, TimeStamp } from "@src/types/epicsWS";
 
 // Provisional resource limits, to be tuned against real detectors
 export const MAX_DIMENSION = 16384;
@@ -31,7 +31,9 @@ export type RejectCode =
   | "ambiguousColorMode"
   | "badLayout"
   | "badPayload"
-  | "tooLarge";
+  | "tooLarge"
+  /** A plain waveform whose length disagrees with its size PVs */
+  | "shapeMismatch";
 
 export type LayoutResult =
   | { ok: true; layout: ImageLayout; pixels: NumericArray; info: NDArrayInfo }
@@ -151,4 +153,127 @@ export function pixelValue(
 ): number[] {
   const index = y * layout.strideY + x * layout.strideX;
   return Array.from({ length: layout.channels }, (_, c) => pixels[index + c * layout.strideC]);
+}
+
+/** Shape of a plain waveform image, from separately configured PVs (Mono only) */
+export interface WaveformShape {
+  sizeX: number | undefined;
+  sizeY: number | undefined;
+  /** areaDetector NDDataType_t name (e.g. "UInt16"), if a data type PV is configured */
+  dataType: string | undefined;
+}
+
+export type WaveformResult =
+  | { ok: true; info: NDArrayInfo; pixels: NumericArray; warning?: string }
+  | { ok: false; code: RejectCode; message: string };
+
+type TypedArrayConstructor = new (
+  buffer: ArrayBufferLike,
+  byteOffset: number,
+  length: number,
+) => NumericArray;
+
+interface ElementType {
+  name: string;
+  bytes: number;
+  float: boolean;
+  /** Integer view of this width and signedness, for reinterpreting */
+  view?: TypedArrayConstructor;
+}
+
+// areaDetector NDDataType_t
+const DATA_TYPES: Record<string, ElementType> = {
+  Int8: { name: "int8", bytes: 1, float: false, view: Int8Array },
+  UInt8: { name: "uint8", bytes: 1, float: false, view: Uint8Array },
+  Int16: { name: "int16", bytes: 2, float: false, view: Int16Array },
+  UInt16: { name: "uint16", bytes: 2, float: false, view: Uint16Array },
+  Int32: { name: "int32", bytes: 4, float: false, view: Int32Array },
+  UInt32: { name: "uint32", bytes: 4, float: false, view: Uint32Array },
+  Int64: { name: "int64", bytes: 8, float: false },
+  UInt64: { name: "uint64", bytes: 8, float: false },
+  Float32: { name: "float32", bytes: 4, float: true },
+  Float64: { name: "float64", bytes: 8, float: true },
+};
+
+// Element types as decoded by the client; 64-bit integers arrive as Float64Array
+const RECEIVED_TYPES: [new (length: number) => NumericArray, string][] = [
+  [Int8Array, "int8"],
+  [Uint8Array, "uint8"],
+  [Int16Array, "int16"],
+  [Uint16Array, "uint16"],
+  [Int32Array, "int32"],
+  [Uint32Array, "uint32"],
+  [Float32Array, "float32"],
+  [Float64Array, "float64"],
+];
+
+function receivedType(value: NumericArray): ElementType {
+  const name = RECEIVED_TYPES.find(([type]) => value instanceof type)?.[1] ?? "unknown";
+  return { name, bytes: value.BYTES_PER_ELEMENT, float: name.startsWith("float") };
+}
+
+const ZERO_TIME: TimeStamp = { secondsPastEpoch: 0, nanoseconds: 0, userTag: 0 };
+
+/**
+ * Turns a plain waveform into a Mono frame using its configured shape. Same-width integers of
+ * the other signedness are reinterpreted without copying (CA, for example, has no unsigned
+ * char); a waveform type narrower than the data type is shown, with a warning, because the
+ * values were truncated before they were sent. The result still goes through `resolveLayout`.
+ */
+export function waveformFrame(
+  value: NumericArray,
+  shape: WaveformShape,
+  uniqueId: number,
+  timeStamp: TimeStamp = ZERO_TIME,
+): WaveformResult {
+  const { sizeX, sizeY } = shape;
+  const valid = (size: number | undefined): size is number =>
+    size !== undefined && Number.isInteger(size) && size >= 1;
+  if (!valid(sizeX) || !valid(sizeY)) {
+    return { ok: false, code: "badLayout", message: "The size PVs give no valid image size" };
+  }
+  if (value.length !== sizeX * sizeY) {
+    return {
+      ok: false,
+      code: "shapeMismatch",
+      message: `Frame has ${value.length} values but the size PVs give ${sizeX}x${sizeY}`,
+    };
+  }
+
+  let pixels = value;
+  let warning: string | undefined;
+  const wanted = shape.dataType === undefined ? undefined : DATA_TYPES[shape.dataType];
+  if (wanted) {
+    const received = receivedType(value);
+    if (received.bytes < wanted.bytes || (wanted.float && !received.float)) {
+      warning = `Waveform elements (${received.name}) are narrower than the data type (${shape.dataType}); values are truncated`;
+    } else if (!received.float && !wanted.float && received.bytes === wanted.bytes && wanted.view) {
+      if (received.name !== wanted.name) {
+        pixels = new wanted.view(value.buffer, value.byteOffset, value.length);
+      }
+    }
+  }
+
+  const dimension = (size: number) => ({
+    size,
+    offset: 0,
+    fullSize: size,
+    binning: 1,
+    reverse: false,
+  });
+  const bytes = pixels.length * pixels.BYTES_PER_ELEMENT;
+  return {
+    ok: true,
+    info: {
+      dimension: [dimension(sizeX), dimension(sizeY)],
+      uniqueId,
+      codec: { name: "" },
+      compressedSize: bytes,
+      uncompressedSize: bytes,
+      dataTimeStamp: timeStamp,
+      colorMode: 0,
+    },
+    pixels,
+    warning,
+  };
 }
