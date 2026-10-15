@@ -24,7 +24,7 @@ interface ColorbarProps {
 const BAR_WIDTH = 12;
 const GAP = 4;
 // Wide enough for formatValue's longest usual output; fixed so changing labels never resize the image
-const LABEL_CHARS = 10;
+const LABEL_CHARS = 7;
 
 /** Fixed-width strip beside the image: the colormap from the maximum (top) to the minimum */
 export const Colorbar: React.FC<ColorbarProps> = ({
