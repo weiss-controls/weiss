@@ -57,7 +57,8 @@ class CAClient:
         # Outside the lock, since waiting for the connection blocks
         if first_sub:
             try:
-                channel = epics.get_pv(pv_name, connection_callback=self._on_connection)
+                # pyepics does not monitor arrays above 65536 elements unless asked (e.g. images)
+                channel = epics.get_pv(pv_name, connection_callback=self._on_connection, auto_monitor=True)
                 if not channel.wait_for_connection():
                     print(f"[CAClient]: {pv_name} not connected after {channel.connection_timeout}s, still waiting")
                 # add_callback fetches the control variables once, if connected
