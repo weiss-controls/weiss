@@ -4,14 +4,14 @@
 import { PROPERTY_SCHEMAS, COMMON_PROPS } from "@src/types/widgetProperties";
 import type { WidgetDefinition } from "@src/types/widgets";
 import { AreaDetectorComp } from "./AreaDetectorComp";
-import CameraAltIcon from "@mui/icons-material/CameraAlt";
+import GradientIcon from "@mui/icons-material/Gradient";
 
 const { alarmBorder, ...FILTERED_COMMON_PROPS } = COMMON_PROPS;
 
 export const AreaDetector: WidgetDefinition = {
   component: AreaDetectorComp,
   widgetName: "AreaDetector",
-  widgetIcon: CameraAltIcon,
+  widgetIcon: GradientIcon,
   widgetLabel: "Area Detector",
   category: "Monitoring",
   defaultProperties: {
