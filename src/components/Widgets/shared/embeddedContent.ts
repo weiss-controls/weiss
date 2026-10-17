@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 André Favoto
+// Copyright (C) 2026 WEISS Contributors
 
 import { v4 as uuidv4 } from "uuid";
 import { getDeployedRepoFile, getStagingRepoFile } from "@src/services/APIClient";

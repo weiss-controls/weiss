@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 André Favoto
+// Copyright (C) 2026 WEISS Contributors
 
 import type { CreateClientConfig } from "./services/APIClient/client.gen";
 import { authService } from "@src/services/AuthService/AuthService";

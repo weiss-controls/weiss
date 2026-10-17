@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WEISS Contributors
 // GraphXY widget for WEISS
-// Contributed by Elmaddin Guliyev
 
 import { GraphXYComp } from "./GraphXYComp";
 import {

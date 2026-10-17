@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 André Favoto
+// Copyright (C) 2026 WEISS Contributors
 
 import { createContext, useContext } from "react";
 import type useEpicsWS from "./useEpicsWS";

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 André Favoto
+// Copyright (C) 2026 WEISS Contributors
 
 import { ROUNDING_CONST } from "@src/constants/constants";
 import { PROPERTY_SCHEMAS } from "@src/types/widgetProperties";

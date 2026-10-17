@@ -1,4 +1,4 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 Marco Montevechi
+// Copyright (C) 2026 WEISS Contributors
 
 export { Spinner } from "./Spinner";

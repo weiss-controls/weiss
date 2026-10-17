@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WEISS Contributors
 // Snapshot Save/Restore for WEISS — backend-persisted version
-// Contributed by Elmaddin Guliyev
 
 import { useState, useCallback, useEffect } from "react";
 import Dialog from "@mui/material/Dialog";

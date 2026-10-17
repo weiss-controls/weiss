@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright (C) 2026 Guilherme de Freitas, André Favoto
+# Copyright (C) 2026 WEISS Contributors
 
 import secrets
 from datetime import datetime, timedelta, timezone
