@@ -22,7 +22,7 @@ COPY --from=build /venv/ /venv/
 COPY --from=build /app/ /app/
 
 ENV PATH=/venv/bin:$PATH
-# ENV does not carry over from the build stage; without this, prints only appear in blocks
+
 ENV PYTHONUNBUFFERED=1
 
 ENV EPICS_DEFAULT_PROTOCOL=pva

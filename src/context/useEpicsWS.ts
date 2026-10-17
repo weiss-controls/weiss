@@ -3,10 +3,29 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { WSClient } from "@src/services/WSClient/WSClient";
-import type { PVData, PVWriteValue, WSMessage } from "@src/types/epicsWS";
+import type { Alarm, NDArrayInfo, PVData, PVWriteValue, WSMessage } from "@src/types/epicsWS";
 import { WS_URL } from "@src/constants/constants";
 import { usePVStore } from "@src/services/pvStore";
+import {
+  EMPTY_FRAME,
+  type ImageFrame,
+  isImagePV,
+  registeredImagePVs,
+  useImageStore,
+} from "@src/services/imageStore";
 import { pushPVHistory, clearPVHistory } from "@src/utils/historyBuffers";
+import { isTypedNumericArray } from "@src/utils/numericArray";
+
+/** Maximum age of an image PV's summary in the PV store (keeps its timestamp current) */
+const IMAGE_SUMMARY_INTERVAL_MS = 1000;
+
+/** Summary fields of an image PV other than its timestamp; a change is written immediately */
+function imageSummaryKey(ndarray: NDArrayInfo | undefined, alarm: Alarm | undefined): string {
+  const alarmKey = `${alarm?.severity} ${alarm?.status}`;
+  if (!ndarray) return alarmKey;
+  const sizes = ndarray.dimension.map((d) => d.size).join("x");
+  return `${alarmKey} ${sizes} ${ndarray.colorMode} ${ndarray.codec.name} ${ndarray.codec.dtype}`;
+}
 
 /**
  * Hook that manages a WebSocket session to the PV WebSocket.
@@ -30,36 +49,40 @@ export default function useEpicsWS(resolvedPVList: string[]) {
    * fast the WebSocket server sends messages.
    */
   const pendingPVsRef = useRef<Record<string, PVData>>({});
+  /** Image frames waiting for the image store, latest per PV */
+  const pendingFramesRef = useRef<Record<string, ImageFrame>>({});
+  /** Last summary written to the PV store per image PV, and when */
+  const imageSummariesRef = useRef<Record<string, { key: string; time: number }>>({});
   const rafHandleRef = useRef<number | null>(null);
 
-  /** Merge a WSMessage into the pending accumulator (sticky metadata fields). */
+  /**
+   * Merge a WSMessage into the pending accumulator (sticky metadata fields).
+   * `ndarray` belongs to its frame and is not carried over; an image frame without pixel data
+   * gets an empty value.
+   */
   function buildPVData(msg: WSMessage): PVData {
     const prev: Partial<PVData> =
       pendingPVsRef.current[msg.pv] ?? usePVStore.getState().pvs[msg.pv] ?? {};
     return {
       pv: msg.pv,
-      value: msg.value ?? prev.value,
+      value: msg.value ?? (msg.ndarray ? EMPTY_FRAME : prev.value),
       enumChoices: msg.enumChoices ?? prev.enumChoices,
       alarm: msg.alarm ?? prev.alarm,
       timeStamp: msg.timeStamp ?? prev.timeStamp,
       display: prev.display ?? msg.display,
       control: prev.control ?? msg.control,
       valueAlarm: prev.valueAlarm ?? msg.valueAlarm,
+      ndarray: msg.ndarray,
     };
   }
 
   /**
    * Handles incoming WebSocket messages.
-   *
-   * Merges partial/sticky metadata fields into the per-frame accumulator.
-   * The actual Zustand store write is deferred to the next animation frame so
-   * that multiple messages arriving in the same frame are batched into one
-   * React re-render cycle.
-   * In case of scalar PVs that have been registered for buffering (plots), push
-   * the sample into the history buffer independently of rAF batching so that
-   * the history is always up to date even if the widget is not re-rendering.
-   * On disconnect, the PV's cached data and history are purged immediately
-   * instead of merged, so widgets fall back to their "no data" state.
+   * Updates are batched and written to the stores once per animation frame;
+   * Scalar samples go to the plot history buffers.
+   * A disconnect removes the PV's data and history.
+   * Image frames (with `ndarray`, or of a registered image PV) go to the dedicated image store, and
+   * the PV store gets a summary of the PV without its pixels.
    */
   const onMessage = useCallback((msg: WSMessage) => {
     if (!subscribedRef.current.has(msg.pv)) {
@@ -68,19 +91,42 @@ export default function useEpicsWS(resolvedPVList: string[]) {
     }
     if (msg.connected === false) {
       delete pendingPVsRef.current[msg.pv];
+      delete pendingFramesRef.current[msg.pv];
+      delete imageSummariesRef.current[msg.pv];
       usePVStore.getState().removePVs([msg.pv]);
+      useImageStore.getState().removeFrames([msg.pv]);
       clearPVHistory([msg.pv]);
       return;
     }
-    if (typeof msg.value === "number" && msg.timeStamp) {
-      pushPVHistory(msg.pv, msg.timeStamp, msg.value);
+    // Includes plain array PVs registered as images (no ndarray)
+    if (msg.ndarray || isImagePV(msg.pv)) {
+      pendingFramesRef.current[msg.pv] = {
+        value: isTypedNumericArray(msg.value) ? msg.value : EMPTY_FRAME,
+        ndarray: msg.ndarray,
+        timeStamp: msg.timeStamp,
+        alarm: msg.alarm,
+      };
+      const key = imageSummaryKey(msg.ndarray, msg.alarm);
+      const now = performance.now();
+      const last = imageSummariesRef.current[msg.pv];
+      if (!last || last.key !== key || now - last.time >= IMAGE_SUMMARY_INTERVAL_MS) {
+        imageSummariesRef.current[msg.pv] = { key, time: now };
+        pendingPVsRef.current[msg.pv] = { ...buildPVData(msg), value: EMPTY_FRAME };
+      }
+    } else {
+      if (typeof msg.value === "number" && msg.timeStamp) {
+        pushPVHistory(msg.pv, msg.timeStamp, msg.value);
+      }
+      pendingPVsRef.current[msg.pv] = buildPVData(msg);
     }
-    pendingPVsRef.current[msg.pv] = buildPVData(msg);
     rafHandleRef.current ??= requestAnimationFrame(() => {
       rafHandleRef.current = null;
       const updates = pendingPVsRef.current;
+      const frames = pendingFramesRef.current;
       pendingPVsRef.current = {};
-      usePVStore.getState().setPVs(updates);
+      pendingFramesRef.current = {};
+      if (Object.keys(updates).length > 0) usePVStore.getState().setPVs(updates);
+      if (Object.keys(frames).length > 0) useImageStore.getState().setFrames(frames);
     });
   }, []);
 
@@ -95,6 +141,11 @@ export default function useEpicsWS(resolvedPVList: string[]) {
   const handleConnect = useCallback(
     (connected: boolean) => {
       setWSConnected(connected);
+      if (!connected) {
+        pendingFramesRef.current = {};
+        imageSummariesRef.current = {};
+      }
+      useImageStore.getState().setConnected(connected);
     },
     [setWSConnected],
   );
@@ -118,7 +169,12 @@ export default function useEpicsWS(resolvedPVList: string[]) {
     if (toAdd.length > 0) ws.current.subscribe(toAdd);
     if (toRemove.length > 0) {
       ws.current.unsubscribe(toRemove);
+      for (const pv of toRemove) {
+        delete pendingFramesRef.current[pv];
+        delete imageSummariesRef.current[pv];
+      }
       usePVStore.getState().removePVs(toRemove);
+      useImageStore.getState().removeFrames(toRemove);
       clearPVHistory(toRemove);
     }
     subscribedRef.current = current;
@@ -137,8 +193,11 @@ export default function useEpicsWS(resolvedPVList: string[]) {
       rafHandleRef.current = null;
     }
     pendingPVsRef.current = {};
+    pendingFramesRef.current = {};
+    imageSummariesRef.current = {};
     setWSConnected(false);
     usePVStore.getState().clearPVs();
+    useImageStore.getState().setConnected(false);
     clearPVHistory();
   }, [setWSConnected]);
 
@@ -166,7 +225,8 @@ export default function useEpicsWS(resolvedPVList: string[]) {
   const takeSnapshot = useCallback(async (): Promise<Record<string, unknown> | null> => {
     if (!ws.current) return null;
     try {
-      return await ws.current.requestSnapshot();
+      // The server cannot detect plain waveform images (no NTNDArray metadata)
+      return await ws.current.requestSnapshot(registeredImagePVs());
     } catch (e) {
       console.error("Snapshot failed:", e);
       return null;

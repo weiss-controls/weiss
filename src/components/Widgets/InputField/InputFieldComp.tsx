@@ -8,6 +8,7 @@ import AlarmBorder from "@components/AlarmBorder/AlarmBorder";
 import { useUIContext } from "@src/context/useUIContext";
 import { useWSActionsContext } from "@src/context/useEpicsWSContext";
 import { formatDisplayValue } from "@src/utils/displayFormat";
+import { isLargeArray } from "@src/utils/numericArray";
 
 const InputFieldComp: React.FC<WidgetUpdate> = ({ data }) => {
   const { writePVValue } = useWSActionsContext();
@@ -71,7 +72,11 @@ const InputFieldComp: React.FC<WidgetUpdate> = ({ data }) => {
                 : inputValue
           }
           onFocus={() => {
-            setInputValue(pvData?.value !== undefined ? String(pvData.value) : "");
+            setInputValue(
+              pvData?.value !== undefined && !isLargeArray(pvData.value)
+                ? String(pvData.value)
+                : "",
+            );
             setIsFocused(true);
           }}
           onBlur={() => {

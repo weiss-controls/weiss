@@ -101,6 +101,66 @@ export interface ValueAlarm {
   highAlarmSeverity?: number;
   hysteresis?: number;
 }
+
+/** Element type names of numeric arrays as sent by the server */
+export type NumericDtype =
+  | "int8"
+  | "uint8"
+  | "int16"
+  | "uint16"
+  | "int32"
+  | "uint32"
+  | "int64"
+  | "uint64"
+  | "float32"
+  | "float64";
+
+/**
+ * NTNDArray dimension_t. Dimensions are ordered fastest-varying first.
+ * @property size - Number of elements in the (binned, ROI-cropped) data
+ * @property offset - Start of the ROI in the full detector frame
+ * @property fullSize - Size of the full frame along this axis
+ * @property binning - Binning factor
+ * @property reverse - Whether the axis is reversed
+ */
+export interface NDArrayDimension {
+  size: number;
+  offset: number;
+  fullSize: number;
+  binning: number;
+  reverse: boolean;
+}
+
+/**
+ * NTNDArray codec_t.
+ * @property name - Codec name; empty when the value holds raw pixels
+ * @property dtype - Decoded element type (areaDetector stores it in codec.parameters)
+ */
+export interface NDArrayCodec {
+  name: string;
+  dtype?: NumericDtype;
+}
+
+/**
+ * Metadata of one NTNDArray frame; it belongs to the frame it arrived with.
+ * @property dimension - Dimensions, fastest axis first (Mono [x, y], RGB1 [3, x, y], RGB2 [x, 3, y], RGB3 [x, y, 3])
+ * @property uniqueId - Frame counter
+ * @property codec - Compression of the value; when `codec.name` is set the value holds compressed bytes
+ * @property compressedSize - Payload size in bytes as reported by the source (unreliable when uncompressed)
+ * @property uncompressedSize - Decoded size in bytes as reported by the source
+ * @property dataTimeStamp - Acquisition time of the data
+ * @property colorMode - areaDetector ColorMode attribute (NDColorMode_t), absent if the source did not send it
+ */
+export interface NDArrayInfo {
+  dimension: NDArrayDimension[];
+  uniqueId: number;
+  codec: NDArrayCodec;
+  compressedSize: number;
+  uncompressedSize: number;
+  dataTimeStamp: TimeStamp;
+  colorMode?: number;
+}
+
 /**
  * Processed PV data ready for client-side consumption
  * @property pv - Name of the PV
@@ -111,6 +171,7 @@ export interface ValueAlarm {
  * @property display - Optional EPICS NT display structure
  * @property control - Optional EPICS NT control structure
  * @property valueAlarm - Optional EPICS NT valueAlarm structure
+ * @property ndarray - Metadata of the current frame, only for NTNDArray PVs
  */
 export interface PVData {
   pv: string;
@@ -121,6 +182,7 @@ export interface PVData {
   display?: Display;
   control?: Control;
   valueAlarm?: ValueAlarm;
+  ndarray?: NDArrayInfo;
 }
 
 /**

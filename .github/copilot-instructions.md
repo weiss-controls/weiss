@@ -76,6 +76,14 @@ Live PV data is **not** in React context. It lives in a [Zustand](https://zustan
 components consume PV data by calling `usePVStore(selector)` with a PV-specific selector, so they
 re-render only when their own PV changes — not on every update across the system.
 
+Image frames (updates carrying NTNDArray `ndarray` metadata) never enter `usePVStore`: `useEpicsWS`
+routes them to `useImageStore` (`src/services/imageStore.ts`) in the same animation-frame flush, and
+the PV store keeps only a summary of the PV (no pixels, an empty value) refreshed on alarm or shape
+changes and at most once per second. So frames never reach React props, rules or macros; consumers
+(the AreaDetector widget) subscribe to the image store imperatively. The image store is cleared when
+the WebSocket closes. A plain array PV without NTNDArray metadata takes the same path while a widget
+holds a `registerImagePV(pv)` registration.
+
 #### `useWidgetManager` — mutation discipline
 
 - `editorWidgets: Widget[]` — flat list; the grid is always `editorWidgets[0]` with
@@ -142,6 +150,9 @@ has:
 - `selType` — which editor control renders it (`"text"`, `"number"`, `"boolean"`, `"colorSel"`,
   `"select"`, `"strList"`, `"strRecord"`, `"repoFile"`, `"none"`)
 - `label`, `value`, `category`, optional `options` and `limits`
+- optional `isPV`: the value is a PV name, macro-resolved into `Widget.runtimeAuxPVs` and subscribed
+  like `pvName`, but not bound into `pvData` (the widget reads it from the PV store itself)
+- optional `description`: help text shown as a tooltip on text/number fields
 
 Pre-built reusable sets (import from `widgetProperties.ts`):
 
@@ -206,6 +217,46 @@ widget following this pattern must be special-cased (alongside `EmbeddedDisplay`
 that assume dynamically-injected children are not part of the authored tree: `WidgetRenderer.tsx`
 (`childIsEmbedded`), `useWidgetManager.ts` (`ungroupSelected`, `formatWdgToExport`), and
 `WidgetTree.tsx` (`buildLayerItems`).
+
+#### AreaDetector (image) widget
+
+`src/components/Widgets/AreaDetector/` renders NTNDArray image PVs off the main thread. Conventions:
+
+- **Pure core in `worker/`** (`imageLayout.ts`, `intensity.ts`, `colorMaps.ts`, `render.ts`,
+  `draw.ts`) plus `viewport.ts`: no worker globals, so it also runs on the main thread (edit
+  preview, pixel readout). Only `worker/ad.worker.ts` touches `self`/`postMessage`. Modules imported
+  by both sides must type-check under the DOM and WebWorker libs (`tsconfig.worker.json` covers
+  `*.worker.ts`); type canvas contexts structurally, not as `CanvasRenderingContext2D`.
+- **One worker per runtime widget**, owned by `AdController` (`adWorkerClient.ts`); no worker in
+  edit mode. Each controller creates a fresh canvas and transfers it (`transferControlToOffscreen`),
+  so StrictMode's double mount is safe. Browsers without OffscreenCanvas transfer get a status, not
+  a fallback.
+- **Bounded delivery**: one frame in flight, one pending (newer replaces it), released by the
+  worker's `displayed`/`rejected` reply. Frames are structured-cloned to the worker, never
+  transferred (the store's buffer is shared).
+- **Protocol** (`workerProtocol.ts`): frame-related messages carry `resetCount`, incremented
+  whenever the image is discarded (PV change, refusal, disconnect); replies with an older count are
+  ignored. `view` (size, pixel ratio, orientation, zoom/pan) and `params` (colormap, limits, scale)
+  have no `resetCount`: the last one wins, they never discard the image, and they are coalesced per
+  animation frame and flushed before each frame. The worker keeps the last frame and re-renders it
+  for these.
+- **Frames come from `useImageStore`** via `frameSource.ts`, never from props. Pixel readout uses
+  the frame the worker acknowledged as displayed. Per-frame UI (readout, colorbar labels) is written
+  to the DOM directly, not through React state.
+- **Never misinterpret data**: `resolveLayout` validates codec, color mode, dimensions and payload
+  length before anything is treated as pixels; unsupported data (compressed, Bayer, YUV, ambiguous
+  3D) is refused with a status and the image is cleared.
+- Hot loops over typed arrays use indexed `for` loops (about 5x faster than `for...of`), with a
+  local oxlint exception.
+- Widget properties are prefixed (`imageRotation`, `imageFlipX`, ...) because `PROPERTY_SCHEMAS` is
+  shared.
+- **Plain waveform mode** (e.g. NDStdArrays over CA): enabled when the `sizeXPV`/`sizeYPV`
+  properties (`isPV`) are set; Mono only. `frameSource.ts` registers the image PV and reads the
+  shape from the PV store; `waveformFrame` (`worker/imageLayout.ts`) builds the frame metadata,
+  reinterprets same-width signedness from the data type PV and warns when the waveform type is
+  narrower. Shape and frames are not atomic: a mismatch within 1 s of a size change is skipped, a
+  lasting one refused. Frames with NTNDArray metadata always use it. Registered image PVs are sent
+  as `exclude` with snapshot requests.
 
 ### OPI File Format
 
@@ -344,9 +395,12 @@ Delivery pipeline (`backend/epicsWS/epicsWS.py`): EPICS thread callbacks are que
 `_enqueue_loop_callback` and dispatched in batches by `_dispatch_queued_loop_callbacks` on the
 `uvloop` event loop; `_send_throttled` applies the per-PV rate limit (`EPICS_MAX_UPDATE_RATE_HZ`,
 latest value wins inside the window, `0` disables); `send_update` serializes once with `orjson` and
-pushes the shared `(payload, is_text)` frame to each client's queue in `send_queues`, consumed by
-one `_writer` task per client. Clients exceeding `EPICS_MAX_CLIENT_QUEUE` are disconnected. Use
-`orjson` (not `json`) and keep `send_update` synchronous.
+pushes the shared `(payload, is_text)` frame to each client's `ClientSendQueue` in `send_queues`,
+consumed by one `_writer` task per client. In that queue a waiting array frame is overwritten by the
+next frame of the same PV (a slow client gets fewer frames, not a backlog); scalars, the first
+(metadata) message of a subscription and disconnect notices are always queued in order. Clients
+exceeding `EPICS_MAX_CLIENT_QUEUE` are disconnected. Use `orjson` (not `json`) and keep
+`send_update` synchronous.
 
 Protocol: prefix `pva://` or `ca://`, or set `EPICS_DEFAULT_PROTOCOL`.
 
@@ -391,6 +445,8 @@ cd backend/api && ruff check .     # ruff
 | UI manager hook             | `src/context/useUIManager.ts`                     |
 | EPICS WS hook               | `src/context/useEpicsWS.ts`                       |
 | PV data store (Zustand)     | `src/services/pvStore.ts`                         |
+| Image frame store (Zustand) | `src/services/imageStore.ts`                      |
+| AreaDetector render worker  | `src/components/Widgets/AreaDetector/worker/`     |
 | Per-widget PV rendering     | `src/components/WidgetRenderer/LiveWidget.tsx`    |
 | Generated API client        | `src/services/APIClient/` (do not edit manually)  |
 | Auth service                | `src/services/AuthService/AuthService.ts`         |

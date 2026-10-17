@@ -3,6 +3,7 @@
 
 import type { PVWriteValue, WSMessage } from "@src/types/epicsWS";
 import { decodeBinaryUpdate } from "./binaryArray.ts";
+import { parseNDArrayInfo } from "./ndarrayInfo.ts";
 
 type ConnectionHandler = (connected: boolean) => void;
 type MessageHandler = (message: WSMessage) => void;
@@ -95,6 +96,14 @@ export class WSClient {
       console.error("Received invalid message:", message);
       return;
     }
+    if ("ndarray" in uncheckedMessage) {
+      try {
+        uncheckedMessage.ndarray = parseNDArrayInfo(uncheckedMessage.ndarray);
+      } catch (error) {
+        console.error(`Invalid NDArray metadata for ${uncheckedMessage.pv}:`, error);
+        return;
+      }
+    }
     // narrowed down to WSMessage type
     this.message_handler(uncheckedMessage);
   }
@@ -181,9 +190,10 @@ export class WSClient {
 
   /**
    * Requests a snapshot of all currently subscribed PV values.
+   * @param exclude PVs not to capture;
    * @returns A promise that resolves with the snapshot data.
    */
-  requestSnapshot(): Promise<Record<string, unknown>> {
+  requestSnapshot(exclude: string[] = []): Promise<Record<string, unknown>> {
     return new Promise((resolve, reject) => {
       if (!this.connected) {
         reject(new Error("Not connected"));
@@ -206,7 +216,7 @@ export class WSClient {
         reject(new Error("Snapshot timeout"));
       }, 5000);
 
-      this.socket.send(JSON.stringify({ type: "snapshot" }));
+      this.socket.send(JSON.stringify({ type: "snapshot", exclude }));
     });
   }
 

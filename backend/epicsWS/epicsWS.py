@@ -41,8 +41,69 @@ subscriptions: Dict[str, Set[ServerConnection]] = {}
 # per-ws inverse index for O(pvs_per_client) disconnect cleanup
 ws_subscriptions: Dict[ServerConnection, Set[str]] = {}
 
+
+class _QueueEntry:
+    __slots__ = ("pv", "frame")
+
+    def __init__(self, pv: Optional[str], frame: Optional[Frame]):
+        self.pv = pv
+        self.frame = frame
+
+
+class ClientSendQueue:
+    """Messages waiting to be sent to one client, in order. A waiting array frame is replaced by
+    the next frame of the same PV if its client has not consumed it yet."""
+
+    def __init__(self):
+        self._entries: Deque[_QueueEntry] = deque()
+        # Waiting array frames that a newer frame of the same PV can still replace
+        self._replaceable: Dict[str, _QueueEntry] = {}
+        self._ready = asyncio.Event()
+        self.replaced = 0
+
+    def __len__(self) -> int:
+        return len(self._entries)
+
+    def replace(self, pv: str, frame: Frame) -> bool:
+        """Overwrites the PV's waiting frame, keeping its place; False if it has none."""
+        entry = self._replaceable.get(pv)
+        if entry is None:
+            return False
+        entry.frame = frame
+        self.replaced += 1
+        return True
+
+    def append(self, frame: Frame, pv: Optional[str] = None, replaceable: bool = False):
+        """Queues a message. If replaceable is True, the latest message takes over if it is not consumed yet."""
+        entry = _QueueEntry(pv, frame)
+        if pv is not None:
+            if replaceable:
+                self._replaceable[pv] = entry
+            else:
+                self._replaceable.pop(pv, None)
+        self._entries.append(entry)
+        self._ready.set()
+
+    def discard(self, pv: str):
+        """Drops the PV's waiting frame, e.g. after an unsubscribe."""
+        entry = self._replaceable.pop(pv, None)
+        if entry is not None:
+            entry.frame = None
+
+    async def get(self) -> Frame:
+        while True:
+            while not self._entries:
+                self._ready.clear()
+                await self._ready.wait()
+            entry = self._entries.popleft()
+            if entry.pv is not None and self._replaceable.get(entry.pv) is entry:
+                del self._replaceable[entry.pv]
+            if entry.frame is not None:
+                return entry.frame
+
+
 # per-ws queue of messages to send, handled by a dedicated writer task
-send_queues: Dict[ServerConnection, asyncio.Queue] = {}
+send_queues: Dict[ServerConnection, ClientSendQueue] = {}
 
 # Clients that already received metadata, per PV name
 metadata_sent_to_clients: Dict[str, Set[ServerConnection]] = {}
@@ -192,19 +253,26 @@ def get_client(protocol: str) -> Union[PVAClient, CAClient]:
     return client
 
 
-def _enqueue(ws: ServerConnection, frame: Frame):
+def _enqueue(ws: ServerConnection, frame: Frame, pv: Optional[str] = None, latest: bool = False):
+    """Queues a frame for one client. With `latest`, it replaces the PV's waiting frame, if any;
+    with `pv` only, the PV's waiting frame can no longer be replaced."""
     queue = send_queues.get(ws)
     if queue is None:
         return
-    if queue.qsize() >= MAX_CLIENT_QUEUE:
-        print(f"[epicsWS]: Client {ws.remote_address} is too slow, closing connection")
+    if latest and pv is not None and queue.replace(pv, frame):
+        return
+    if len(queue) >= MAX_CLIENT_QUEUE:
+        print(
+            f"[epicsWS]: Client {ws.remote_address} is too slow, closing connection "
+            f"({queue.replaced} stale array frames replaced)"
+        )
         del send_queues[ws]
         asyncio.create_task(ws.close(code=1013, reason="Client too slow"))
         return
-    queue.put_nowait(frame)
+    queue.append(frame, pv, replaceable=latest)
 
 
-async def _writer(ws: ServerConnection, queue: asyncio.Queue):
+async def _writer(ws: ServerConnection, queue: ClientSendQueue):
     try:
         while True:
             payload, text = await queue.get()
@@ -249,22 +317,27 @@ def send_update(pv_name: str, pv_obj, provider: str):
         base_msg["value"] = update.value
     if update.enumChoices is not None:
         base_msg["enumChoices"] = update.enumChoices
+    if update.ndarray is not None:
+        base_msg["ndarray"] = update.ndarray
 
     clients_with_metadata = metadata_sent_to_clients.setdefault(pv_name, set())
     clients_needing_metadata = subscribed_clients - clients_with_metadata
     clients_with_metadata_to_update = subscribed_clients & clients_with_metadata
+    # Array frames can be dropped for a slow client; scalars are always sent (plot history)
+    latest = raw_array is not None
     if clients_with_metadata_to_update:
         data = serialize(base_msg)
         for ws in clients_with_metadata_to_update:
-            _enqueue(ws, data)
+            _enqueue(ws, data, pv_name_with_provider, latest)
     if clients_needing_metadata:
         full_msg = dict(base_msg)
         full_msg.update(asdict(_pv_metadata[pv_name]))
         full_msg["connected"] = True
         data = serialize(full_msg)
         clients_with_metadata |= clients_needing_metadata
+        # Metadata messages are not replaceable
         for ws in clients_needing_metadata:
-            _enqueue(ws, data)
+            _enqueue(ws, data, pv_name_with_provider)
 
 
 def _send_disconnect(pv_name: str, provider: str):
@@ -273,11 +346,12 @@ def _send_disconnect(pv_name: str, provider: str):
     if not subscribed_clients:
         return
 
-    msg = {"type": "update", "pv": format_pv_name(pv_name, provider), "connected": False}
+    pv_key = format_pv_name(pv_name, provider)
+    msg = {"type": "update", "pv": pv_key, "connected": False}
     data = (orjson.dumps(msg), True)
 
     for ws in set(subscribed_clients):
-        _enqueue(ws, data)
+        _enqueue(ws, data, pv_key)
     metadata_sent_to_clients.pop(pv_name, None)
     _pv_metadata.pop(pv_name, None)
 
@@ -286,8 +360,9 @@ async def message_handler(ws: ServerConnection):
     client_id = f"{ws.remote_address[0]}:{ws.remote_address[1]}"
     print(f"New connection from {client_id}")
     ws_subscriptions[ws] = set()
-    send_queues[ws] = asyncio.Queue()
-    writer_task = asyncio.create_task(_writer(ws, send_queues[ws]))
+    queue = ClientSendQueue()
+    send_queues[ws] = queue
+    writer_task = asyncio.create_task(_writer(ws, queue))
 
     try:
         async for message in ws:
@@ -317,6 +392,7 @@ async def message_handler(ws: ServerConnection):
                             _cleanup_pv_state(pv_name)
                         asyncio.create_task(asyncio.to_thread(client.unsubscribe, client_id, pv_name))
                     metadata_sent_to_clients.get(pv_name, set()).discard(ws)
+                    queue.discard(format_pv_name(pv_name, protocol))
 
             elif msg_type == "write":
                 pv = msg.get("pv")
@@ -327,9 +403,15 @@ async def message_handler(ws: ServerConnection):
                     asyncio.create_task(asyncio.to_thread(client.write_to_pv, pv_name, value))
 
             elif msg_type == "snapshot":
-                # Capture current values of all subscribed PVs
+                # Image PVs are not saved: NTNDArray PVs are detected here, plain waveform images
+                # are flagged by the client
                 snapshot_data = {}
+                excluded = []
+                client_excluded = {parse_protocol(pv)[1] for pv in msg.get("exclude", [])}
                 for pv_name in ws_subscriptions.get(ws, set()):
+                    if pv_name in client_excluded:
+                        excluded.append(pv_name)
+                        continue
                     protocol, clean_name = parse_protocol(pv_name)
                     client = get_client(protocol)
                     if hasattr(client, "_latest_value"):
@@ -339,6 +421,9 @@ async def message_handler(ws: ServerConnection):
                                 parsed = PVParser.pva_update(raw, clean_name)
                             else:
                                 parsed = PVParser.ca_update(raw, clean_name)
+                            if parsed.ndarray is not None:
+                                excluded.append(pv_name)
+                                continue
                             snapshot_data[pv_name] = PVParser.snapshot_update(parsed)
 
                 await ws.send(
@@ -349,6 +434,7 @@ async def message_handler(ws: ServerConnection):
                                 "type": "snapshot",
                                 "pvs": snapshot_data,
                                 "count": len(snapshot_data),
+                                "excluded": excluded,
                             }.items()
                             if v is not None
                         }
@@ -392,7 +478,7 @@ async def message_handler(ws: ServerConnection):
         print(f"[epicsWS]: Error handling message from {client_id}: {e}")
 
     finally:
-        print(f"[epicsWS]: Client disconnected: {client_id}")
+        print(f"[epicsWS]: Client disconnected: {client_id} ({queue.replaced} stale array frames replaced)")
         writer_task.cancel()
         send_queues.pop(ws, None)
         # Clean up all subscriptions for this client using the inverse index

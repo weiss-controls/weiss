@@ -36,7 +36,7 @@ RUN mkdir -p /app/storage \
 # copy the virtual environment from the build stage and put it in PATH
 COPY --from=build /venv/ /venv/
 ENV PATH=/venv/bin:$PATH
-# ENV does not carry over from the build stage; without this, prints only appear in blocks
+
 ENV PYTHONUNBUFFERED=1
 
 USER $APP_UID

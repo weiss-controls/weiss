@@ -2,7 +2,7 @@
 // Copyright (C) 2026 André Favoto
 
 import React, { useEffect, useRef } from "react";
-import { TextField, ListItem } from "@mui/material";
+import { TextField, ListItem, Tooltip } from "@mui/material";
 import type { PropertyKey, PropertyLimits, PropertyValue } from "@src/types/widgets";
 import LocalValueWrapper from "./propUtils/LocalValueWrapper";
 
@@ -13,11 +13,13 @@ interface TextFieldPropertyProps {
   selType: "text" | "number";
   limits?: PropertyLimits;
   category: string;
+  /** Shown as a tooltip on the field */
+  description?: string;
   onChange: (propName: PropertyKey, newValue: PropertyValue) => void;
 }
 
 const TextFieldProperty: React.FC<TextFieldPropertyProps> = (props) => {
-  const { propName, label, value, selType, limits, onChange } = props;
+  const { propName, label, value, selType, limits, description, onChange } = props;
 
   // Track latest props/local value so the unmount commit below always sees fresh data
   const latestRef = useRef({ propName, value, selType, onChange, localVal: value });
@@ -52,7 +54,7 @@ const TextFieldProperty: React.FC<TextFieldPropertyProps> = (props) => {
         initial={value}
         render={(localVal, setLocalVal) => {
           latestRef.current.localVal = localVal;
-          return (
+          const field = (
             <TextField
               fullWidth
               label={label}
@@ -98,6 +100,13 @@ const TextFieldProperty: React.FC<TextFieldPropertyProps> = (props) => {
                 if (localVal !== value) onChange(propName, localVal);
               }}
             />
+          );
+          return description ? (
+            <Tooltip title={description} placement="top" arrow disableInteractive>
+              {field}
+            </Tooltip>
+          ) : (
+            field
           );
         }}
       />

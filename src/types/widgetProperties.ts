@@ -123,6 +123,18 @@ export const PROPERTY_SCHEMAS = {
   activeTabColor:   defineProp({ selType: "colorSel", label: "Active tab color", value: COLORS.midDarkBlue, category: "Style" }),
   tabOrientation:  defineProp({ selType: "select", label: "Tab Orientation", value: "horizontal" as string, options: ["horizontal", "vertical"], category: "Layout" }),
   target:          defineProp({ selType: "text", label: "Target", value: "" as string, category: "General" }),
+  // AreaDetector
+  sizeXPV:         defineProp({ selType: "text", label: "Size X PV (waveform only)", value: "" as string, category: "EPICS", isPV: true, description: "Only needed for plain waveform image PVs (CA-style, non-NTNDArray)." }),
+  sizeYPV:         defineProp({ selType: "text", label: "Size Y PV (waveform only)", value: "" as string, category: "EPICS", isPV: true, description: "Only needed for plain waveform image PVs (CA-style, non-NTNDArray)." }),
+  dataTypePV:      defineProp({ selType: "text", label: "Data type PV (waveform only)", value: "" as string, category: "EPICS", isPV: true, description: "Only needed for plain waveform image PVs (CA-style, non-NTNDArray)." }),
+  imageRotation:   defineProp({ selType: "select", label: "Rotation (clockwise)", value: "0" as string, options: ["0", "90", "180", "270"], category: "Layout" }),
+  imageFlipX:      defineProp({ selType: "boolean", label: "Flip horizontally", value: false as boolean, category: "Layout" }),
+  imageFlipY:      defineProp({ selType: "boolean", label: "Flip vertically", value: false as boolean, category: "Layout" }),
+  colorMap:        defineProp({ selType: "select", label: "Colormap", value: "grayscale" as string, options: ["grayscale", "viridis", "inferno", "turbo"], category: "Style" }),
+  autoLimits:      defineProp({ selType: "boolean", label: "Automatic limits", value: true as boolean, category: "Layout" }),
+  logIntensity:    defineProp({ selType: "boolean", label: "Logarithmic intensity", value: false as boolean, category: "Layout" }),
+  showColorbar:    defineProp({ selType: "boolean", label: "Show colorbar", value: true as boolean, category: "Layout" }),
+  showPixelReadout: defineProp({ selType: "boolean", label: "Show pixel readout", value: true as boolean, category: "Layout" }),
   // MultiStateLED
   stateList:       defineProp({ selType: "stateList", label: "States", value: [{ value: "0", color: COLORS.offColor, label: "" }, { value: "1", color: COLORS.onColor, label: "" }, { value: "", color: COLORS.midGray, label: "" }] as StateEntry[], category: "EPICS" }),
 };

@@ -67,6 +67,33 @@ class PVMetadata:
     valueAlarm: ValueAlarm
 
 
+# NTNDArray (epics:nt/NTNDArray:1.x); field names follow the normative type definition
+@dataclass
+class NDDimension:
+    size: int
+    offset: int
+    fullSize: int
+    binning: int
+    reverse: bool
+
+
+@dataclass
+class NDCodec:
+    name: str = ""  # empty when the value holds raw pixels
+    dtype: Optional[str] = None  # decoded dtype, from codec.parameters (areaDetector convention)
+
+
+@dataclass
+class NDArrayInfo:
+    dimension: List[NDDimension]
+    uniqueId: int
+    codec: NDCodec
+    compressedSize: int
+    uncompressedSize: int
+    dataTimeStamp: TimeStamp
+    colorMode: Optional[int] = None  # areaDetector "ColorMode" attribute (NDColorMode_t), if present
+
+
 @dataclass
 class PVData:
     pv: Optional[str]
@@ -80,6 +107,24 @@ class PVData:
     connected: Optional[bool] = False
     rawArray: Optional[memoryview] = None
     dtype: Optional[str] = None
+    ndarray: Optional[NDArrayInfo] = None
+
+
+NDARRAY_TYPE_ID_PREFIX = "epics:nt/NTNDArray:1."
+
+# pvData ScalarType codes, as areaDetector stores the original dtype in codec.parameters
+PVDATA_SCALAR_DTYPES = {
+    1: "int8",
+    2: "int16",
+    3: "int32",
+    4: "int64",
+    5: "uint8",
+    6: "uint16",
+    7: "uint32",
+    8: "uint64",
+    9: "float32",
+    10: "float64",
+}
 
 
 ARRAY_DTYPES = frozenset(
@@ -141,13 +186,55 @@ def _pva_timestamp(pv_obj) -> TimeStamp:
         return TimeStamp(data.get("secondsPastEpoch", 0), data.get("nanoseconds", 0), data.get("userTag", 0))
 
 
+def _is_ndarray(pv_obj) -> bool:
+    return isinstance(pv_obj, p4pValue) and pv_obj.getID().startswith(NDARRAY_TYPE_ID_PREFIX)
+
+
+def _is_int(value) -> bool:
+    return isinstance(value, (int, np.integer)) and not isinstance(value, bool)
+
+
+def _ndarray_info(pv_obj) -> NDArrayInfo:
+    color_mode = None
+    for attribute in pv_obj["attribute"]:
+        if attribute["name"] == "ColorMode":
+            if _is_int(attribute["value"]):
+                color_mode = int(attribute["value"])
+            break
+
+    parameters = pv_obj["codec.parameters"]
+    data_timestamp = pv_obj["dataTimeStamp"]
+    return NDArrayInfo(
+        dimension=[
+            NDDimension(dim["size"], dim["offset"], dim["fullSize"], dim["binning"], dim["reverse"])
+            for dim in pv_obj["dimension"]
+        ],
+        uniqueId=pv_obj["uniqueId"],
+        codec=NDCodec(
+            name=pv_obj["codec.name"],
+            dtype=PVDATA_SCALAR_DTYPES.get(int(parameters)) if _is_int(parameters) else None,
+        ),
+        compressedSize=pv_obj["compressedSize"],
+        uncompressedSize=pv_obj["uncompressedSize"],
+        dataTimeStamp=TimeStamp(
+            data_timestamp["secondsPastEpoch"], data_timestamp["nanoseconds"], data_timestamp["userTag"]
+        ),
+        colorMode=color_mode,
+    )
+
+
 class PVParser:
     @staticmethod
     def pva_update(pv_obj, pv_name: Optional[str] = None) -> PVData:
         value_field = pv_obj.get("value")
-        value = enum_choices = raw_array = dtype = None
+        value = enum_choices = raw_array = dtype = ndarray = None
 
-        if isinstance(value_field, (int, float, str)):
+        if _is_ndarray(pv_obj):
+            ndarray = _ndarray_info(pv_obj)
+            # Avoid converting image data to a list
+            if isinstance(value_field, np.ndarray):
+                raw_array, dtype = encode_array_raw(value_field)
+        elif isinstance(value_field, (int, float, str)):
             value = value_field
         elif isinstance(value_field, p4pValue) and value_field.has("index") and value_field.has("choices"):
             value = value_field.get("index")
@@ -165,6 +252,7 @@ class PVParser:
             timeStamp=_pva_timestamp(pv_obj),
             rawArray=raw_array,
             dtype=dtype,
+            ndarray=ndarray,
         )
 
     @staticmethod

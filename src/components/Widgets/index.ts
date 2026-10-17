@@ -15,6 +15,7 @@ export { MultiStateLED } from "./MultiStateLED";
 export { MultiBitIndicator } from "./MultiBitIndicator";
 export { TextUpdate } from "./TextUpdate";
 export { ProgressBar } from "./ProgressBar";
+export { AreaDetector } from "./AreaDetector";
 // Plots
 export { GraphY } from "./GraphY";
 export { GraphXY } from "./GraphXY";

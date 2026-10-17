@@ -77,7 +77,7 @@ const PropertyGroups: React.FC<PropertyGroupsProps> = ({
                 }}
               >
                 {Object.entries(props).map(([propName, prop]) => {
-                  const { selType, label, value, options, limits, category } = prop;
+                  const { selType, label, value, options, limits, category, description } = prop;
 
                   const commonProps = {
                     propName: propName as PropertyKey,
@@ -94,7 +94,14 @@ const PropertyGroups: React.FC<PropertyGroupsProps> = ({
                   switch (selType) {
                     case "text":
                     case "number":
-                      return <TextFieldProperty key={key} {...commonProps} selType={selType} />;
+                      return (
+                        <TextFieldProperty
+                          key={key}
+                          {...commonProps}
+                          selType={selType}
+                          description={description}
+                        />
+                      );
 
                     case "strList":
                       return <StrListProperty key={key} {...commonProps} />;
