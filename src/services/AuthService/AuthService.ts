@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 André Favoto
+// Copyright (C) 2026 WEISS Contributors
 
 import { notifyUser } from "@src/services/Notifications/Notification";
 import { authGetAuthUrl, authCallback, authMe, authLogout } from "@src/services/APIClient";

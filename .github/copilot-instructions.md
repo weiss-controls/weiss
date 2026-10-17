@@ -12,7 +12,7 @@ browser, store them in Git repositories, and serve them with real-time EPICS PV 
 
 ```
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 <Author(s) name(s)>
+// Copyright (C) 2026 WEISS Contributors
 ```
 
 ---

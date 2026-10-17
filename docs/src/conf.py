@@ -7,7 +7,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "WEISS"
-copyright = "2026, André Favoto"
+copyright = "2026, WEISS Contributors"
 author = "André Favoto"
 release = "2.0.0"
 

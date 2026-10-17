@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 André Favoto
+// Copyright (C) 2026 WEISS Contributors
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { WSClient } from "@src/services/WSClient/WSClient";

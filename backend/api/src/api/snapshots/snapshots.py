@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 WEISS Contributors
 # Snapshot save/restore backend API for WEISS
-# Contributed by Elmaddin Guliyev
 
 import json
 import os

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 André Favoto
+// Copyright (C) 2026 WEISS Contributors
 
 import * as React from "react";
 import { WIDGET_CATEGORY_ORDER, WIDGET_SELECTOR_WIDTH } from "@src/constants/constants";

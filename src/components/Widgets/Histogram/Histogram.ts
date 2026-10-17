@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WEISS Contributors
 // Histogram widget for WEISS
-// Contributed by Elmaddin Guliyev
 
 import { HistogramComp } from "./HistogramComp";
 import { COMMON_PROPS, PROPERTY_SCHEMAS, TEXT_PROPS } from "@src/types/widgetProperties";

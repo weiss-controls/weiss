@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 André Favoto
+// Copyright (C) 2026 WEISS Contributors
 
 import type { NDArrayInfo } from "@src/types/epicsWS";
 import { resolveLayout } from "./worker/imageLayout.ts";

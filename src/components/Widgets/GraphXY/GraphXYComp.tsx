@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WEISS Contributors
 // GraphXY widget — X vs Y scatter/line plot for WEISS
-// Contributed by Elmaddin Guliyev
 
 import React, { useEffect, useMemo } from "react";
 import type { WidgetUpdate } from "@src/types/widgets";

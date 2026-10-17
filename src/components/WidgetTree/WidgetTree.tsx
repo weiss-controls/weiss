@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 André Favoto
+// Copyright (C) 2026 WEISS Contributors
 
 import { useMemo, useState, useCallback } from "react";
 import { RichTreeView } from "@mui/x-tree-view/RichTreeView";

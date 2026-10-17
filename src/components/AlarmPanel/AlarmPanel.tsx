@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WEISS Contributors
 // Alarm summary panel for WEISS
-// Contributed by Elmaddin Guliyev
 
 import { useState, useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";

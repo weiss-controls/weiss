@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 Marco Montevechi, André Favoto
+// Copyright (C) 2026 WEISS Contributors
 
 import { SpinnerComp } from "./SpinnerComp";
 import { COLORS } from "@src/constants/constants";
