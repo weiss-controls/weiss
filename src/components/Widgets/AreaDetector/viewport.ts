@@ -12,7 +12,7 @@ export interface Orientation {
 
 /**
  * Zoom is relative to fit (1 = fit). The centre is the image point shown in the middle of the
- * view, normalised to 0..1 over the original image, so one state applies to any image size.
+ * view, normalised to 0..1 over the original image (independent of the image size).
  */
 export interface ViewState {
   zoom: number;
@@ -219,7 +219,7 @@ export function viewToImage(
   return { x: Math.floor(x), y: Math.floor(y) };
 }
 
-/** Lowers a device pixel ratio so the view's canvas stays within browser limits */
+/** Device pixel ratio, capped to keep the view's canvas within browser limits */
 export function capPixelRatio(view: Size, ratio: number): number {
   if (!(view.width > 0 && view.height > 0)) return ratio;
   return Math.min(

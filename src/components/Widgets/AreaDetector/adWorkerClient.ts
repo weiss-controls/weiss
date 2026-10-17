@@ -28,7 +28,7 @@ import { attachViewportInput } from "./viewportInput.ts";
 
 export type AdStatus =
   | { kind: "waiting" }
-  /** The WebSocket is down; no image is shown rather than a stale one */
+  /** The WebSocket is down; the image is cleared */
   | { kind: "disconnected" }
   /** `warning`: shown over the image, e.g. a waveform that truncates the detector's values */
   | { kind: "image"; color: "mono" | "rgb"; warning?: string }
@@ -60,7 +60,7 @@ interface Frame {
   warning?: string;
 }
 
-/** A waveform whose length disagrees with a shape that changed this recently is skipped, not refused */
+/** After a size PV change, a waveform of the wrong length is skipped for this long before it is refused */
 const SHAPE_SETTLE_MS = 1000;
 
 function sameStatus(a: AdStatus | null, b: AdStatus): boolean {
@@ -85,13 +85,10 @@ export interface AdControllerOptions {
 }
 
 /**
- * Feeds the frames of one PV to a render worker and shows the result on a canvas it owns.
- *
- * Delivery is bounded: one frame is with the worker at a time and at most one is waiting on
- * this side, so a slow worker makes the display skip frames instead of queueing them.
- * `resetCount` goes up whenever the displayed image is discarded, and replies sent before that
- * are ignored. View and rendering parameter changes are sent at most once per animation frame
- * and never discard the image.
+ * Feeds the frames of one PV to a render worker, which draws them on a canvas owned by the
+ * controller. At most one frame is with the worker and one waits here; a newer frame replaces
+ * the waiting one. `resetCount` increases when the image is discarded, and replies with an older
+ * count are ignored. View and rendering parameter changes are sent once per animation frame.
  */
 export class AdController {
   private readonly canvas: HTMLCanvasElement;
@@ -134,11 +131,11 @@ export class AdController {
     this.onStats = options.onStats;
     this.orientation = options.orientation;
     this.params = options.params;
-    // A canvas can only be transferred once, so every controller makes its own
+    // A canvas can only be transferred once; each controller creates its own
     this.canvas = document.createElement("canvas");
     Object.assign(this.canvas.style, { display: "block", width: "100%", height: "100%" });
     container.appendChild(this.canvas);
-    // Written directly, so a frame never re-renders React
+    // Updated directly in the DOM, not through React
     this.readout = document.createElement("div");
     Object.assign(this.readout.style, READOUT_STYLE);
     container.appendChild(this.readout);
@@ -340,7 +337,7 @@ export class AdController {
     let info = frame.ndarray;
     let warning: string | undefined;
     if (!info && shape) {
-      // The size PVs have not delivered yet: keep waiting rather than refuse
+      // Size PVs not received yet
       if (shape.sizeX === undefined || shape.sizeY === undefined) return;
       const waveform = waveformFrame(value, shape, ++this.waveformCount, frame.timeStamp);
       if (!waveform.ok) {
@@ -383,11 +380,11 @@ export class AdController {
       this.state = FIT;
       this.viewChanged = true;
     }
-    // Pending changes go first, so the frame is drawn with them
+    // Pending view and parameter changes are sent before the frame
     this.flush();
     this.lastSize = { width: layout.width, height: layout.height };
     this.inFlight = frame;
-    // Copied rather than transferred: the store's array is shared with other consumers
+    // Copied, not transferred: other consumers share the store's array
     this.send({ type: "frame", resetCount: this.resetCount, uniqueId, info, value });
   }
 
@@ -429,7 +426,7 @@ export class AdController {
     }
   }
 
-  /** Stops for good; a canvas handed to the worker cannot be cleared from here, so it is hidden */
+  /** Stops permanently and hides the canvas (a transferred canvas cannot be cleared from here) */
   private fail(message: string) {
     if (this.disposed || !this.worker) return;
     this.worker.terminate();

@@ -190,7 +190,7 @@ export class WSClient {
 
   /**
    * Requests a snapshot of all currently subscribed PV values.
-   * @param exclude PVs never to capture (image PVs the server cannot recognise as such)
+   * @param exclude PVs not to capture;
    * @returns A promise that resolves with the snapshot data.
    */
   requestSnapshot(exclude: string[] = []): Promise<Record<string, unknown>> {

@@ -29,9 +29,10 @@ interface ImageStoreState {
 }
 
 /**
- * Latest frame of every image (NTNDArray) PV. Frames are kept out of `usePVStore`, which only
- * holds a summary of these PVs, so they never reach React props, rules or macros. Consumers
- * subscribe imperatively (`useImageStore.subscribe`) rather than through a React selector.
+ * Dedicated store for image PVs (AreaDetector).
+ * Holds the latest frame of every image PV.
+ * Standard `usePVStore` only holds a summary of these PVs, without the pixels,
+ * which keeps frames out of React props, rules and macros for performance reasons.
  */
 export const useImageStore = create<ImageStoreState>((set) => ({
   frames: {},
@@ -47,8 +48,7 @@ export const useImageStore = create<ImageStoreState>((set) => ({
   setConnected: (connected) => set(connected ? { connected } : { connected, frames: {} }),
 }));
 
-// Plain array PVs (no NTNDArray metadata) that some widget shows as an image, with a count of
-// registrations
+// Registration count per plain array PV (no NTNDArray metadata) shown as an image
 const imagePVs = new Map<string, number>();
 
 /** Whether updates of a plain array PV go to the image store instead of the PV store */
@@ -56,15 +56,14 @@ export function isImagePV(pv: string): boolean {
   return imagePVs.has(pv);
 }
 
-/** The plain array PVs currently registered as images (NTNDArray PVs are recognised anyway) */
+/** Plain array PVs currently registered as images */
 export function registeredImagePVs(): string[] {
   return [...imagePVs.keys()];
 }
 
 /**
- * Treats a plain array PV as an image PV until the returned function is called, so its frames
- * stay out of the PV store and React props like NTNDArray frames. A value already in the PV
- * store moves to the image store.
+ * Treats a plain array PV as an image PV until the returned function is called: its frames go
+ * to the image store, like NTNDArray frames. A value already in the PV store is moved there.
  */
 export function registerImagePV(pv: string): () => void {
   const count = imagePVs.get(pv) ?? 0;

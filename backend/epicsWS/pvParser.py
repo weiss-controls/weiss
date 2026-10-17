@@ -231,7 +231,7 @@ class PVParser:
 
         if _is_ndarray(pv_obj):
             ndarray = _ndarray_info(pv_obj)
-            # Image data must never fall back to a list/JSON conversion
+            # Avoid converting image data to a list
             if isinstance(value_field, np.ndarray):
                 raw_array, dtype = encode_array_raw(value_field)
         elif isinstance(value_field, (int, float, str)):

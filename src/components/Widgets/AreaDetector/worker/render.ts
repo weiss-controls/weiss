@@ -74,8 +74,7 @@ function lookupRange(value: NumericArray): { offset: number; size: number } | un
 const colorLut = new Uint32Array(65536);
 const levelLut = new Uint8Array(65536);
 
-// What colorLut currently holds. It covers the whole type range, so a fixed mapping is built once
-// and no entry is left over from a previous frame's range.
+// Mapping and colormap colorLut was built for; it covers the whole type range
 let colorLutKey = "";
 
 function resultOf(mapping: Mapping, hasRange: boolean): RenderResult {

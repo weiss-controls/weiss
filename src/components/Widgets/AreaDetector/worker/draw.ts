@@ -3,7 +3,7 @@
 
 import { type Orientation, type Size, type ViewState, resolveView } from "../viewport.ts";
 
-// Shared by the worker and the main thread, so only interfaces both type libraries define
+// Only interfaces defined by both the DOM and the WebWorker type libraries
 type DrawContext = CanvasDrawImage &
   CanvasImageSmoothing &
   CanvasRect &

@@ -61,7 +61,7 @@ function sameEvent(a: FrameEvent, b: FrameEvent): boolean {
 /** Frames from the image store; the PV store gives the waveform shape and tells non-images apart */
 export const storeFrameSource: FrameSource = (pv, shapePVs, onEvent) => {
   const waveform = isWaveformMode(shapePVs);
-  // Keeps a plain waveform's frames out of the PV store (NTNDArray PVs need no registration)
+  // Plain waveforms are registered as image PVs; NTNDArray PVs are detected by their metadata
   const unregister = waveform ? registerImagePV(pv) : undefined;
 
   let shape: TrackedShape | undefined;

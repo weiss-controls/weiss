@@ -37,7 +37,7 @@ function previewPixels(): Uint8Array {
 
 /**
  * Deterministic stand-in image for edit mode, produced by the same code that renders live frames.
- * Fixed limits are not applied: they belong to the real data, not to this one.
+ * Fixed limits are not applied (they refer to the real data).
  */
 export function getPreviewImage(colorMap: ColorMapName, scale: ScaleMode): PreviewImage {
   const key = `${colorMap} ${scale}`;

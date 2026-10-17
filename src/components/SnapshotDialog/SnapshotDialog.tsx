@@ -105,7 +105,7 @@ export default function SnapshotDialog({
       const result = await onTakeSnapshot();
       if (result && "pvs" in result) {
         const pvs = result.pvs as Record<string, unknown>;
-        // The server never captures image PVs; say which ones were left out
+        // Image PVs left out by the server
         const excluded = Array.isArray(result.excluded)
           ? result.excluded.filter((pv): pv is string => typeof pv === "string")
           : [];

@@ -24,10 +24,9 @@ export interface ParamsMessage {
 }
 
 /**
- * Messages between the AreaDetector controller and its worker. Frame-related ones carry the
- * controller's `resetCount`, the number of times the displayed image has been discarded, and
- * messages with an older count are dropped. `view` and `params` have none: they never
- * invalidate the image, and the last one received applies.
+ * Messages between the AreaDetector controller and its worker. Frame-related messages carry
+ * `resetCount`, the number of times the displayed image was discarded; messages with an older
+ * count are dropped. `view` and `params` carry none: the latest one applies.
  */
 export type MainToWorker =
   | { type: "init"; resetCount: number; canvas: OffscreenCanvas }

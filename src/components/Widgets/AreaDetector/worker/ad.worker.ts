@@ -48,7 +48,7 @@ function present() {
   }
 }
 
-/** Forgets the image and its frame too, so a later change cannot bring them back */
+/** Clears the canvas and drops the retained image and frame */
 function clear() {
   hasImage = false;
   frame = null;

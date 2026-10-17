@@ -51,14 +51,13 @@ class _QueueEntry:
 
 
 class ClientSendQueue:
-    """Messages waiting to be sent to one client, in order. A replaceable entry (an array frame)
-    is overwritten by the next frame of the same PV while it waits, so a slow client receives fewer
-    frames instead of an ever-growing backlog of old ones."""
+    """Messages waiting to be sent to one client, in order. A waiting array frame is replaced by
+    the next frame of the same PV if its client has not consumed it yet."""
 
     def __init__(self):
         self._entries: Deque[_QueueEntry] = deque()
-        # Waiting entries that a newer frame of the same PV may still overwrite
-        self._slots: Dict[str, _QueueEntry] = {}
+        # Waiting array frames that a newer frame of the same PV can still replace
+        self._replaceable: Dict[str, _QueueEntry] = {}
         self._ready = asyncio.Event()
         self.replaced = 0
 
@@ -67,7 +66,7 @@ class ClientSendQueue:
 
     def replace(self, pv: str, frame: Frame) -> bool:
         """Overwrites the PV's waiting frame, keeping its place; False if it has none."""
-        entry = self._slots.get(pv)
+        entry = self._replaceable.get(pv)
         if entry is None:
             return False
         entry.frame = frame
@@ -75,20 +74,19 @@ class ClientSendQueue:
         return True
 
     def append(self, frame: Frame, pv: Optional[str] = None, replaceable: bool = False):
-        """Queues a message. A non-replaceable message for a PV (metadata, disconnect) also ends
-        the PV's slot, so no later frame of that PV can overtake it."""
+        """Queues a message. If replaceable is True, the latest message takes over if it is not consumed yet."""
         entry = _QueueEntry(pv, frame)
         if pv is not None:
             if replaceable:
-                self._slots[pv] = entry
+                self._replaceable[pv] = entry
             else:
-                self._slots.pop(pv, None)
+                self._replaceable.pop(pv, None)
         self._entries.append(entry)
         self._ready.set()
 
     def discard(self, pv: str):
         """Drops the PV's waiting frame, e.g. after an unsubscribe."""
-        entry = self._slots.pop(pv, None)
+        entry = self._replaceable.pop(pv, None)
         if entry is not None:
             entry.frame = None
 
@@ -98,9 +96,8 @@ class ClientSendQueue:
                 self._ready.clear()
                 await self._ready.wait()
             entry = self._entries.popleft()
-            # A frame being sent is never overwritten; the next one starts a new slot
-            if entry.pv is not None and self._slots.get(entry.pv) is entry:
-                del self._slots[entry.pv]
+            if entry.pv is not None and self._replaceable.get(entry.pv) is entry:
+                del self._replaceable[entry.pv]
             if entry.frame is not None:
                 return entry.frame
 
@@ -257,8 +254,8 @@ def get_client(protocol: str) -> Union[PVAClient, CAClient]:
 
 
 def _enqueue(ws: ServerConnection, frame: Frame, pv: Optional[str] = None, latest: bool = False):
-    """Queues a frame for one client. With `latest`, the frame replaces the PV's waiting frame
-    if there is one; `pv` without `latest` marks a message that later frames must not overtake."""
+    """Queues a frame for one client. With `latest`, it replaces the PV's waiting frame, if any;
+    with `pv` only, the PV's waiting frame can no longer be replaced."""
     queue = send_queues.get(ws)
     if queue is None:
         return
@@ -326,7 +323,7 @@ def send_update(pv_name: str, pv_obj, provider: str):
     clients_with_metadata = metadata_sent_to_clients.setdefault(pv_name, set())
     clients_needing_metadata = subscribed_clients - clients_with_metadata
     clients_with_metadata_to_update = subscribed_clients & clients_with_metadata
-    # A slow client gets the latest array frame, not a backlog; scalars all go out (plot history)
+    # Array frames can be dropped for a slow client; scalars are always sent (plot history)
     latest = raw_array is not None
     if clients_with_metadata_to_update:
         data = serialize(base_msg)
@@ -338,7 +335,7 @@ def send_update(pv_name: str, pv_obj, provider: str):
         full_msg["connected"] = True
         data = serialize(full_msg)
         clients_with_metadata |= clients_needing_metadata
-        # Never replaced, so a client always gets the metadata
+        # Metadata messages are not replaceable
         for ws in clients_needing_metadata:
             _enqueue(ws, data, pv_name_with_provider)
 
@@ -353,7 +350,6 @@ def _send_disconnect(pv_name: str, provider: str):
     msg = {"type": "update", "pv": pv_key, "connected": False}
     data = (orjson.dumps(msg), True)
 
-    # No newer frame of the PV may reach a client before this
     for ws in set(subscribed_clients):
         _enqueue(ws, data, pv_key)
     metadata_sent_to_clients.pop(pv_name, None)
@@ -407,8 +403,8 @@ async def message_handler(ws: ServerConnection):
                     asyncio.create_task(asyncio.to_thread(client.write_to_pv, pv_name, value))
 
             elif msg_type == "snapshot":
-                # Capture current values of all subscribed PVs; image PVs are never stored. NTNDArray
-                # PVs are recognised here, plain waveform images are listed by the client.
+                # Image PVs are not saved: NTNDArray PVs are detected here, plain waveform images
+                # are flagged by the client
                 snapshot_data = {}
                 excluded = []
                 client_excluded = {parse_protocol(pv)[1] for pv in msg.get("exclude", [])}

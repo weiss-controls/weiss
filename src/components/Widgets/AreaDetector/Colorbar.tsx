@@ -7,14 +7,14 @@ import { type ColorMapName, getColorTable } from "./worker/colorMaps";
 import { LEVELS } from "./worker/intensity";
 import type { RenderResult } from "./worker/render";
 
-/** Label updates go straight to the DOM, so frames never re-render React */
+/** Updates the labels directly in the DOM, without a React render */
 export interface ColorbarHandle {
   update: (result: RenderResult | null) => void;
 }
 
 interface ColorbarProps {
   colorMap: ColorMapName;
-  /** Log was asked for; shown when the image fell back to linear */
+  /** Log scale requested; marked on the colorbar when linear was used instead */
   requestedLog: boolean;
   fontSize: number;
   textColor: string;
@@ -23,7 +23,7 @@ interface ColorbarProps {
 
 const BAR_WIDTH = 12;
 const GAP = 4;
-// Wide enough for formatValue's longest usual output; fixed so changing labels never resize the image
+// Label column width in characters, independent of the label text
 const LABEL_CHARS = 7;
 
 /** Fixed-width strip beside the image: the colormap from the maximum (top) to the minimum */

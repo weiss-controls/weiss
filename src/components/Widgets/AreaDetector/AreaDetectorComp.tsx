@@ -127,7 +127,7 @@ const AreaDetectorComp: React.FC<WidgetUpdate> = ({ data }) => {
   showReadoutRef.current = showReadout;
   const [status, setStatus] = useState<AdStatus>({ kind: "waiting" });
 
-  // Kept so a colorbar that appears later starts with the current limits
+  // Latest stats, for a colorbar mounted later
   const statsRef = useRef<RenderResult | null>(null);
   const colorbarRef = useRef<ColorbarHandle>(null);
   const handleStats = useCallback((stats: RenderResult | null) => {
@@ -159,7 +159,7 @@ const AreaDetectorComp: React.FC<WidgetUpdate> = ({ data }) => {
     };
   }, [inEditMode, visible, pvName, sizeXPV, sizeYPV, dataTypePV, handleStats]);
 
-  // Rules can change these at runtime; the worker is kept
+  // Passed to the running controller (rules can change them at runtime)
   useEffect(() => {
     controllerRef.current?.setOrientation(orientation);
   }, [orientation]);
@@ -192,7 +192,7 @@ const AreaDetectorComp: React.FC<WidgetUpdate> = ({ data }) => {
         overflow: "hidden",
       }}
     >
-      {/* The colorbar takes its own strip, so it never covers the image */}
+      {/* The colorbar has its own strip beside the image */}
       <div style={{ display: "flex", width: "100%", height: "100%" }}>
         <div style={{ position: "relative", flex: 1, minWidth: 0 }}>
           {inEditMode ? (

@@ -3,7 +3,7 @@
 
 import type { NDArrayInfo, NumericArray, TimeStamp } from "@src/types/epicsWS";
 
-// Provisional resource limits, to be tuned against real detectors
+// Resource limits for one frame
 export const MAX_DIMENSION = 16384;
 export const MAX_PIXELS = 32 * 1024 * 1024;
 
@@ -61,8 +61,7 @@ function reject(code: RejectCode, message: string): LayoutResult {
 /**
  * Validates a frame and works out its pixel layout without touching the pixels.
  * Dimension sizes are ordered fastest axis first: Mono [x, y], RGB1 [3, x, y],
- * RGB2 [x, 3, y], RGB3 [x, y, 3]. A frame is never interpreted unless every
- * check passes, so unsupported data cannot be mistaken for pixels.
+ * RGB2 [x, 3, y], RGB3 [x, y, 3].
  */
 export function resolveLayout(value: unknown, info: NDArrayInfo | undefined): LayoutResult {
   if (!info) return reject("notNDArray", "PV is not an NTNDArray");
@@ -215,10 +214,10 @@ function receivedType(value: NumericArray): ElementType {
 const ZERO_TIME: TimeStamp = { secondsPastEpoch: 0, nanoseconds: 0, userTag: 0 };
 
 /**
- * Turns a plain waveform into a Mono frame using its configured shape. Same-width integers of
- * the other signedness are reinterpreted without copying (CA, for example, has no unsigned
- * char); a waveform type narrower than the data type is shown, with a warning, because the
- * values were truncated before they were sent. The result still goes through `resolveLayout`.
+ * Turns a plain waveform into a Mono frame using its configured shape. Integers of the same
+ * width but the other signedness are reinterpreted without copying. A waveform type narrower
+ * than the data type gets a warning: its values were truncated by the IOC. The result is then
+ * validated by `resolveLayout`.
  */
 export function waveformFrame(
   value: NumericArray,

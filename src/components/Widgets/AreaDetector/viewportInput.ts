@@ -19,10 +19,9 @@ const LINE_PIXELS = 16;
 
 /**
  * Turns pointer and wheel input over `element` into view changes and reports its size and
- * display scale. The wheel always zooms the image and never reaches the grid; left-drag pans,
- * double-click resets. The middle button, Alt+left-drag (both grid pan) and right-click are left
- * alone. The grid zooms with a CSS transform, which no resize event reports, so the scale is also
- * re-measured whenever the pointer enters.
+ * display scale. The wheel zooms the image (not the grid), left-drag pans, double-click resets;
+ * the middle button, Alt+left-drag (grid pan) and right-click are left to the grid. The scale is
+ * also measured on pointer enter, since the grid zoom (a CSS transform) fires no resize event.
  */
 export function attachViewportInput(element: HTMLElement, handlers: ViewportHandlers): () => void {
   let zoom = 1;
@@ -53,7 +52,7 @@ export function attachViewportInput(element: HTMLElement, handlers: ViewportHand
   };
 
   const onWheel = (event: WheelEvent) => {
-    // Neither the grid nor the browser zoom while over the image
+    // Over the image, the wheel zooms only the image
     event.preventDefault();
     event.stopPropagation();
     const unit =

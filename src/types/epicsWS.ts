@@ -142,8 +142,7 @@ export interface NDArrayCodec {
 }
 
 /**
- * Metadata of one NTNDArray frame. It belongs to the frame it arrived with and must
- * never be carried over to another frame.
+ * Metadata of one NTNDArray frame; it belongs to the frame it arrived with.
  * @property dimension - Dimensions, fastest axis first (Mono [x, y], RGB1 [3, x, y], RGB2 [x, 3, y], RGB3 [x, y, 3])
  * @property uniqueId - Frame counter
  * @property codec - Compression of the value; when `codec.name` is set the value holds compressed bytes
