@@ -4,9 +4,8 @@ Displays areaDetector images: NTNDArray PVs (PVA), or plain waveform PVs such as
 or PVA) with their shape taken from separate PVs. Pixel processing and drawing run in a web worker
 per widget; interaction, pixel readout and the colorbar stay on the main thread.
 
-For the conventions to follow when changing this code, see the "AreaDetector (image) widget" section
-of [`.github/copilot-instructions.md`](../../../../.github/copilot-instructions.md); for how image
-data travels from epicsWS, see
+For the conventions to follow when changing this code, see [Conventions](#conventions); for how
+image data travels from epicsWS, see
 [`docs/src/developer/architecture.md`](../../../../docs/src/developer/architecture.md).
 
 ## Data flow
@@ -84,3 +83,21 @@ also run on the main thread:
 | Overlays    | `showPixelReadout`, `showColorbar`, `textColor` and `fontSize` (colorbar labels) |
 
 Common layout and style properties apply as for other widgets.
+
+## Conventions
+
+- Only `worker/ad.worker.ts` touches `self`/`postMessage`. Modules imported by both sides must
+  type-check under the DOM and WebWorker libs (`tsconfig.worker.json`): type canvas contexts
+  structurally, not as `CanvasRenderingContext2D`.
+- Browsers without OffscreenCanvas transfer get a status, not a fallback. A fresh canvas per
+  controller keeps StrictMode's double mount safe.
+- Frames are structured-cloned to the worker, never transferred: the image store's buffer is shared.
+  Pixel readout uses the frame the worker acknowledged as displayed.
+- Per-frame UI (readout, colorbar labels) is written to the DOM directly, not through React state.
+- `resolveLayout` validates codec, color mode, dimensions and payload length before any data is
+  treated as pixels; unsupported data is refused with a status and the image is cleared.
+- Hot loops over typed arrays use indexed `for` loops (about 5x faster than `for...of`), with a
+  local oxlint exception.
+- Properties are prefixed (`imageRotation`, ...) because `PROPERTY_SCHEMAS` is shared by all
+  widgets.
+- Registered image PVs are sent as `exclude` with snapshot requests.
