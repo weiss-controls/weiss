@@ -22,7 +22,7 @@ import UnfoldLessOutlined from "@mui/icons-material/UnfoldLessOutlined";
 import UnfoldMoreOutlined from "@mui/icons-material/UnfoldMoreOutlined";
 import { type TreeNode, uploadStagingRepoFile } from "@src/services/APIClient";
 import { useUIContext } from "@src/context/useUIContext";
-import { useInEditMode } from "@src/stores/uiStore";
+import { useUIStore } from "@src/stores/uiStore";
 import { notifyUser } from "@src/services/Notifications/Notification";
 
 const IMAGE_EXTENSIONS = new Set([".svg", ".png", ".jpg", ".jpeg"]);
@@ -90,7 +90,7 @@ const RepoFileBrowserDialog: React.FC<RepoFileBrowserDialogProps> = ({
   onPick,
 }) => {
   const { reposTreeInfo, selectedFile, setReposTreeInfo, isDeveloper } = useUIContext();
-  const inEditMode = useInEditMode();
+  const inEditMode = useUIStore((s) => s.inEditMode);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 

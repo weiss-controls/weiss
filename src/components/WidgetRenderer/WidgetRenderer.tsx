@@ -7,7 +7,7 @@ import type { DOMRectLike, Widget } from "@src/types/widgets";
 import { Rnd, type DraggableData, type Position, type RndDragEvent } from "react-rnd";
 import { GRID_ID } from "@src/constants/constants";
 import "./WidgetRenderer.css";
-import { useInEditMode, useUIStore } from "@src/stores/uiStore";
+import { useUIStore } from "@src/stores/uiStore";
 import { useWidgetContext } from "@src/context/useWidgetContext";
 import { hasSelectedDescendant } from "./widgetRenderUtils";
 import LiveWidget from "./LiveWidget";
@@ -132,7 +132,7 @@ const WidgetItem = memo(function WidgetItem({
   ...shared
 }: WidgetItemProps) {
   const { scale, gridSize, snapToGrid, globalMacros, handlers } = shared;
-  const inEditMode = useInEditMode();
+  const inEditMode = useUIStore((s) => s.inEditMode);
   const isTextEditing = useUIStore((s) => s.textEditingId === w.id);
 
   const x = w.editableProperties.x!.value - parentX;
@@ -212,7 +212,7 @@ const SelectionGroup = memo(function SelectionGroup({
   globalMacros,
   handlers,
 }: SelectionGroupProps) {
-  const inEditMode = useInEditMode();
+  const inEditMode = useUIStore((s) => s.inEditMode);
   const { dragGrid, resizeGrid } = getGrids(scale, gridSize, snapToGrid);
 
   const renderRecursive = (w: Widget, parentX: number, parentY: number): ReactNode => {
@@ -264,7 +264,7 @@ const SelectionGroup = memo(function SelectionGroup({
 const WidgetRenderer: React.FC<RendererProps> = ({ scale }) => {
   const ctx = useWidgetContext();
   const { editorWidgets, selectedWidgetIDs, selectionBounds, selectedWidgets } = ctx;
-  const inEditMode = useInEditMode();
+  const inEditMode = useUIStore((s) => s.inEditMode);
 
   // Latest context for the stable handlers below
   const ctxRef = useRef(ctx);

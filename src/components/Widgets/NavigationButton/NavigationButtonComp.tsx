@@ -6,13 +6,13 @@ import { Button } from "@mui/material";
 import type { WidgetUpdate } from "@src/types/widgets";
 import { FLEX_ALIGN_MAP } from "@src/constants/constants";
 import { useUIContext } from "@src/context/useUIContext";
-import { useInEditMode } from "@src/stores/uiStore";
+import { useUIStore } from "@src/stores/uiStore";
 import { resolveRepoPath } from "@src/utils/repoPath";
 import { useWidgetContext } from "@src/context/useWidgetContext";
 
 const NavigationButtonComp: React.FC<WidgetUpdate> = ({ data }) => {
   const { selectedFile, setSelectedFile } = useUIContext();
-  const inEditMode = useInEditMode();
+  const inEditMode = useUIStore((s) => s.inEditMode);
   const { forwardNavigationMacros } = useWidgetContext();
   const p = data.editableProperties;
   const clicked = React.useRef(false);

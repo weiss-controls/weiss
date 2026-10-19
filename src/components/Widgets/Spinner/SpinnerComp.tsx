@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from "react";
 import type { WidgetUpdate } from "@src/types/widgets";
 import AlarmBorder from "@components/AlarmBorder/AlarmBorder";
-import { useInEditMode } from "@src/stores/uiStore";
+import { useUIStore } from "@src/stores/uiStore";
 import { NumberField as BaseNumberField } from "@base-ui/react/number-field";
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
@@ -20,7 +20,7 @@ import { FLEX_ALIGN_MAP } from "@src/constants/constants";
 
 const SpinnerComp: React.FC<WidgetUpdate> = ({ data }) => {
   const { writePVValue } = useWSActionsContext();
-  const inEditMode = useInEditMode();
+  const inEditMode = useUIStore((s) => s.inEditMode);
   const [editValue, setEditValue] = useState<number | null>(null);
   const [isFocused, setIsFocused] = useState(false);
   const id = React.useId();

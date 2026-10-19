@@ -22,7 +22,7 @@ import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import Tooltip from "@mui/material/Tooltip";
 import { useWidgetContext } from "@src/context/useWidgetContext";
-import { useInEditMode, useUIStore } from "@src/stores/uiStore";
+import { useUIStore } from "@src/stores/uiStore";
 
 const openedMixin = (theme: Theme): CSSObject => ({
   width: WIDGET_SELECTOR_WIDTH,
@@ -134,7 +134,7 @@ const DraggableItem: React.FC<DraggableItemProps> = ({ item, open }) => {
  * WidgetPicker renders the sidebar containing all available widgets for the editor.
  */
 const WidgetPicker: React.FC = () => {
-  const inEditMode = useInEditMode();
+  const inEditMode = useUIStore((s) => s.inEditMode);
   const wdgPickerOpen = useUIStore((s) => s.wdgPickerOpen);
   const toggleWdgPicker = useUIStore((s) => s.toggleWdgPicker);
   const palette: Record<string, WidgetDefinition> = React.useMemo(

@@ -3,7 +3,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { WidgetUpdate } from "@src/types/widgets";
-import { useInEditMode } from "@src/stores/uiStore";
+import { useUIStore } from "@src/stores/uiStore";
 import { Placeholder } from "@components/Widgets/shared/Placeholder";
 import { AdController, type AdStatus } from "./adWorkerClient";
 import { Colorbar, type ColorbarHandle } from "./Colorbar";
@@ -88,7 +88,7 @@ function statusLabel(status: AdStatus): string | null {
 }
 
 const AreaDetectorComp: React.FC<WidgetUpdate> = ({ data }) => {
-  const inEditMode = useInEditMode();
+  const inEditMode = useUIStore((s) => s.inEditMode);
   const p = data.editableProperties;
   const visible = p.visible?.value;
   const pvName = data.pvData?.pv ?? data.runtimePVName ?? "";

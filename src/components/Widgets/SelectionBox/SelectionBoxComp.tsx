@@ -6,12 +6,12 @@ import { FormControl, InputLabel, MenuItem, Select, type SelectChangeEvent } fro
 import type { WidgetUpdate } from "@src/types/widgets";
 import AlarmBorder from "@components/AlarmBorder/AlarmBorder";
 import { useWSActionsContext } from "@src/context/useEpicsWSContext";
-import { useInEditMode } from "@src/stores/uiStore";
+import { useUIStore } from "@src/stores/uiStore";
 import { FLEX_ALIGN_MAP } from "@src/constants/constants";
 
 const SelectionBoxComp: React.FC<WidgetUpdate> = ({ data }) => {
   const { writePVValue } = useWSActionsContext();
-  const inEditMode = useInEditMode();
+  const inEditMode = useUIStore((s) => s.inEditMode);
   const p = data.editableProperties;
   const pvData = data.pvData;
 

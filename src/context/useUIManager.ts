@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { EDIT_MODE, RUNTIME_MODE, type Mode } from "@src/constants/constants";
-import { useInEditMode, useUIStore } from "@src/stores/uiStore";
+import { useUIStore } from "@src/stores/uiStore";
 import { useWidgetManager } from "./useWidgetManager";
 import type { ExportedWidget } from "@src/types/widgets";
 import {
@@ -88,7 +88,7 @@ export default function useUIManager(
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [imageName, setImageName] = useState<string | null>(null);
   const [tokenStatus, setTokenStatus] = useState<TokenStatus | null>(null);
-  const inEditMode = useInEditMode();
+  const inEditMode = useUIStore((s) => s.inEditMode);
   const RECONNECT_TIMEOUT = 3000;
   const isDemo = import.meta.env.VITE_DEMO_MODE === "true";
   const isDeveloper = user?.role === Roles.DEVELOPER;

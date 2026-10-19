@@ -57,8 +57,8 @@ Starting by these will naturally guide you through the other related files.
   cross-cutting interactions such as switching mode (`updateMode`) and loading or saving a file.
 - **`uiStore`** (`src/stores/uiStore.ts`, Zustand) - owns UI-only state: the current mode (edit vs.
   runtime), panning, canvas text editing, and the widget picker and editor sidebar state. Widgets
-  read the mode with `useInEditMode()`. Shared state is moving from contexts to stores in
-  `src/stores/` (see its README).
+  read the mode with `useUIStore((s) => s.inEditMode)`. Shared state is moving from contexts to
+  stores in `src/stores/` (see its README).
 - **`EpicsWSContext`** (`useEpicsWS`) - exposes the WebSocket connection state and lifecycle methods
   (`wsConnected`, `startNewSession`, `stopSession`). It does **not** carry live PV data — PV values
   are served by the Zustand `pvStore` described below.

@@ -22,7 +22,7 @@ import { notifyUser } from "@src/services/Notifications/Notification";
 import type { SelectedPathInfo } from "@src/context/useUIManager";
 import { confirmDialog } from "@src/services/Dialog/Dialog";
 import { useUIContext } from "@src/context/useUIContext";
-import { useInEditMode } from "@src/stores/uiStore";
+import { useUIStore } from "@src/stores/uiStore";
 
 interface FileToolbarProps {
   repoId: string;
@@ -67,7 +67,7 @@ export default function FileToolbar({
 }: FileToolbarProps) {
   const iconSx = { fontSize: 18 };
   const { isDeveloper, selectedFile, setSelectedFile } = useUIContext();
-  const inEditMode = useInEditMode();
+  const inEditMode = useUIStore((s) => s.inEditMode);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function createPath(repo_id: string, path: string, type: "file" | "directory") {

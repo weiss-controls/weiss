@@ -36,7 +36,7 @@ import { usePVStore } from "@src/services/pvStore";
 import { notifyUser } from "@src/services/Notifications/Notification.ts";
 import { useWidgetContext } from "@src/context/useWidgetContext.tsx";
 import { useUIContext } from "@src/context/useUIContext.tsx";
-import { useInEditMode, useUIStore } from "@src/stores/uiStore";
+import { useUIStore } from "@src/stores/uiStore";
 import { parsePhoebus, convertDisplay } from "@src/utils/bob2json";
 import { confirmDialog } from "@src/services/Dialog/Dialog";
 interface StyledAppBarProps extends MuiAppBarProps {
@@ -137,7 +137,7 @@ function AlarmButtonAndPanel({ inEditMode }: { inEditMode: boolean }) {
 
 export default function NavBar() {
   const { downloadWidgets, importWidgets } = useWidgetContext();
-  const inEditMode = useInEditMode();
+  const inEditMode = useUIStore((s) => s.inEditMode);
   const wdgPickerOpen = useUIStore((s) => s.wdgPickerOpen);
   const toggleWdgPicker = useUIStore((s) => s.toggleWdgPicker);
   const { updateMode, user, isAuthenticated, logout, isDeveloper, selectedFile } = useUIContext();

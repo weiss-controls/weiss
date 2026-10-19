@@ -26,7 +26,7 @@ import PropertyNavigator from "./PropertiesTab/PropertiesTab";
 import ProjectsTab from "./ProjectsTab/ProjectsTab";
 import WidgetTree from "@components/WidgetTree";
 import { useUIContext } from "@src/context/useUIContext";
-import { useInEditMode, useUIStore } from "@src/stores/uiStore";
+import { useUIStore } from "@src/stores/uiStore";
 import { useWidgetContext } from "@src/context/useWidgetContext";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 
@@ -75,7 +75,7 @@ type EditorTab = (typeof EditorTab)[keyof typeof EditorTab];
 const EditorSidebar: React.FC = () => {
   const { selectedWidgetIDs, editingWidgets } = useWidgetContext();
   const { isAuthenticated } = useUIContext();
-  const inEditMode = useInEditMode();
+  const inEditMode = useUIStore((s) => s.inEditMode);
   const open = useUIStore((s) => s.editorSidebarOpen);
   const pinned = useUIStore((s) => s.editorSidebarPinned);
   const drawerWidth = useUIStore((s) => s.editorSidebarWidth);

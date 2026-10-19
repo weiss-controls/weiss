@@ -14,6 +14,7 @@ interface SidebarSnapshot {
 
 interface UIStoreState {
   mode: Mode;
+  inEditMode: boolean;
   isPanning: boolean;
   /** Id of the TextLabel whose text is being edited on the canvas */
   textEditingId: string | null;
@@ -41,6 +42,7 @@ export const useUIStore = create<UIStoreState>()(
   devtools(
     (set, get) => ({
       mode: EDIT_MODE,
+      inEditMode: true,
       isPanning: false,
       textEditingId: null,
       wdgPickerOpen: false,
@@ -56,6 +58,7 @@ export const useUIStore = create<UIStoreState>()(
           const restored = s.preRuntimeSidebar;
           set({
             mode,
+            inEditMode: true,
             preRuntimeSidebar: null,
             ...(restored
               ? { editorSidebarOpen: restored.open, editorSidebarPinned: restored.pinned }
@@ -64,6 +67,7 @@ export const useUIStore = create<UIStoreState>()(
         } else {
           set({
             mode,
+            inEditMode: false,
             wdgPickerOpen: false,
             textEditingId: null,
             preRuntimeSidebar: { open: s.editorSidebarOpen, pinned: s.editorSidebarPinned },
@@ -85,5 +89,3 @@ export const useUIStore = create<UIStoreState>()(
     { name: "uiStore", enabled: import.meta.env.DEV },
   ),
 );
-
-export const useInEditMode = () => useUIStore((s) => s.mode === EDIT_MODE);

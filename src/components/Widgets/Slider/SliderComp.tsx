@@ -6,12 +6,12 @@ import { Slider } from "@mui/material";
 import type { WidgetUpdate } from "@src/types/widgets";
 import AlarmBorder from "@components/AlarmBorder/AlarmBorder";
 import { useWSActionsContext } from "@src/context/useEpicsWSContext";
-import { useInEditMode } from "@src/stores/uiStore";
+import { useUIStore } from "@src/stores/uiStore";
 import { formatDisplayValue } from "@src/utils/displayFormat";
 
 const SliderComp: React.FC<WidgetUpdate> = ({ data }) => {
   const { writePVValue } = useWSActionsContext();
-  const inEditMode = useInEditMode();
+  const inEditMode = useUIStore((s) => s.inEditMode);
   const p = data.editableProperties;
   const runtimePVName = data.runtimePVName;
   const pvData = data.pvData;

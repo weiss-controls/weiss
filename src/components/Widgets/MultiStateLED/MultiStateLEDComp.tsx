@@ -4,7 +4,7 @@
 import React from "react";
 import type { StateEntry, WidgetUpdate } from "@src/types/widgets";
 import AlarmBorder from "@components/AlarmBorder/AlarmBorder";
-import { useInEditMode } from "@src/stores/uiStore";
+import { useUIStore } from "@src/stores/uiStore";
 
 function matchState(pvValue: unknown, states: StateEntry[]): number {
   const numericPV = parseFloat(String(pvValue));
@@ -22,7 +22,7 @@ function matchState(pvValue: unknown, states: StateEntry[]): number {
 const MultiStateLEDComp: React.FC<WidgetUpdate> = ({ data }) => {
   const p = data.editableProperties;
   const pvData = data.pvData;
-  const inEditMode = useInEditMode();
+  const inEditMode = useUIStore((s) => s.inEditMode);
 
   if (!p.visible?.value) return null;
 

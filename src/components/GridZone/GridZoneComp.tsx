@@ -17,7 +17,7 @@ import SelectionManager from "./SelectionManager/SelectionManager";
 import { Box, CircularProgress, Fade } from "@mui/material";
 import { useWidgetContext } from "@src/context/useWidgetContext";
 import { useUIContext } from "@src/context/useUIContext";
-import { useInEditMode, useUIStore } from "@src/stores/uiStore";
+import { useUIStore } from "@src/stores/uiStore";
 
 /**
  * GridZoneComp renders the main editor canvas where widgets are displayed, moved, and interacted with.
@@ -39,8 +39,7 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
   const props = data.editableProperties;
 
   const { selectedFile, isDeveloper, isReposLoading } = useUIContext();
-  const mode = useUIStore((s) => s.mode);
-  const inEditMode = useInEditMode();
+  const inEditMode = useUIStore((s) => s.inEditMode);
   const isPanning = useUIStore((s) => s.isPanning);
   const setIsPanning = useUIStore((s) => s.setIsPanning);
   const editorSidebarOpen = useUIStore((s) => s.editorSidebarOpen);
@@ -112,7 +111,7 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
         setShouldCenterPan(false);
       }
     }
-  }, [shouldCenterPan, zoom, mode]);
+  }, [shouldCenterPan, zoom, inEditMode]);
 
   useEffect(() => {
     const handleCtrlZoom = (e: WheelEvent) => {
@@ -325,7 +324,7 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
     setIsPanning,
     pan,
     zoom,
-    mode,
+    inEditMode,
     isPlacementMode,
     pickedWidget,
     setDragPreview,

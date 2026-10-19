@@ -4,11 +4,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import type { WidgetUpdate } from "@src/types/widgets";
 import type { CSSProperties } from "@mui/material";
-import { useInEditMode, useUIStore } from "@src/stores/uiStore";
+import { useUIStore } from "@src/stores/uiStore";
 import { useWidgetContext } from "@src/context/useWidgetContext";
 
 const TextLabelComp: React.FC<WidgetUpdate> = ({ data }) => {
-  const inEditMode = useInEditMode();
+  const inEditMode = useUIStore((s) => s.inEditMode);
   const { updateWidgetProperties } = useWidgetContext();
   const p = data.editableProperties;
 

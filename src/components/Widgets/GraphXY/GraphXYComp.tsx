@@ -7,7 +7,7 @@ import type { WidgetUpdate } from "@src/types/widgets";
 import { COLORS } from "@src/constants/constants";
 import { getPVHistory, registerPVHistory } from "@src/utils/historyBuffers";
 import AlarmBorder from "@src/components/AlarmBorder/AlarmBorder";
-import { useInEditMode } from "@src/stores/uiStore";
+import { useUIStore } from "@src/stores/uiStore";
 import ReactEChartsCore from "echarts-for-react/lib/core";
 import { echarts, type ECOption } from "@src/utils/eChartsMinified";
 import { isNumericArray } from "@src/utils/numericArray";
@@ -22,7 +22,7 @@ type ScalarPoint = [number, number];
  * and each subsequent PV is a separate Y trace.
  */
 const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
-  const inEditMode = useInEditMode();
+  const inEditMode = useUIStore((s) => s.inEditMode);
   const p = data.editableProperties;
   const pvData = data.multiPvData ?? {};
   const alarmData = Object.values(pvData)
