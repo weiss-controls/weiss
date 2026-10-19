@@ -4,12 +4,12 @@
 import React from "react";
 import type { WidgetUpdate } from "@src/types/widgets";
 import AlarmBorder from "@components/AlarmBorder/AlarmBorder";
-import { useUIContext } from "@src/context/useUIContext";
+import { useUIStore } from "@src/stores/uiStore";
 
 const MultiBitIndicatorComp: React.FC<WidgetUpdate> = ({ data }) => {
   const p = data.editableProperties;
   const pvData = data.pvData;
-  const { inEditMode } = useUIContext();
+  const inEditMode = useUIStore((s) => s.inEditMode);
 
   if (!p.visible?.value) return null;
 

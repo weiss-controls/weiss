@@ -24,12 +24,12 @@ Docs (read the relevant one before working in an area):
 pnpm dev                                   # frontend only, :5173
 docker compose -f docker-compose-dev.yml up --build   # full stack (needs roles.toml from backend/api/roles.example.toml)
 pnpm lint && pnpm format-check             # oxlint (type-aware) + prettier
-pnpm exec tsc -b                           # type-check; `pnpm typecheck` (tsc --noEmit) checks nothing
+pnpm typecheck                             # tsc -b
 ruff check backend/api backend/epicsWS && ruff format --check backend/api backend/epicsWS
 pnpm exec openapi-ts                       # regenerate src/services/APIClient (API running on :8000)
 ```
 
-There are no automated tests. Run the checks above after changes (CI runs all but `tsc -b`).
+There are no automated tests. Run the checks above after changes; CI runs the same ones.
 
 ## Frontend
 
@@ -37,6 +37,9 @@ There are no automated tests. Run the checks above after changes (CI runs all bu
 - Live PV data lives in Zustand (`src/services/pvStore.ts`), never in React context. Components read
   it with a PV-specific selector. Image frames go to `src/services/imageStore.ts` instead and never
   reach props, rules or macros.
+- UI-only state (mode, panning, sidebar, widget picker) is in `src/stores/uiStore.ts`. Read the mode
+  with `useUIStore((s) => s.inEditMode)`, not from a context. Switch mode with `updateMode`
+  (`UIContext`), which also starts/stops the WS session. Store conventions: `src/stores/README.md`.
 - `WSActionsContext` exposes only `writePVValue` and must stay stable (no deps).
 - PV array values are `NumericArray` typed-array views: use `isNumericArray()`
   (`src/utils/numericArray.ts`), not `Array.isArray()`, and avoid copying them.

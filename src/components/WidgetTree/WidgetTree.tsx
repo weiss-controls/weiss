@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 WEISS Contributors
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useRef } from "react";
 import { RichTreeView } from "@mui/x-tree-view/RichTreeView";
 import { useWidgetContext } from "@src/context/useWidgetContext";
 import { GRID_ID } from "@src/constants/constants";
@@ -69,10 +69,10 @@ const WidgetTree: React.FC = () => {
     [editorWidgets],
   );
 
-  const treeItems = useMemo<WidgetLayerItem[]>(
-    () => buildLayerItems([...topLevelWidgets].reverse(), null),
-    [topLevelWidgets],
-  );
+  // RichTreeView rebuilds every item when `items` changes identity. Keyed by content, the items
+  // change only with ids, labels or nesting, not on moves or other property edits.
+  const treeItemsKey = JSON.stringify(buildLayerItems([...topLevelWidgets].reverse(), null));
+  const treeItems = useMemo(() => JSON.parse(treeItemsKey) as WidgetLayerItem[], [treeItemsKey]);
 
   const defaultExpandedIds = useMemo(
     () => topLevelWidgets.filter((w) => w.children?.length).map((w) => w.id),
@@ -158,15 +158,40 @@ const WidgetTree: React.FC = () => {
     ],
   );
 
-  const dndCtx: WidgetTreeDndCtx = {
-    draggedItemId,
-    draggedGroupId,
-    dropTarget,
-    onDragStart: handleDragStart,
-    onDragEnd: handleDragEnd,
-    onDragOver: handleDragOver,
-    onDrop: handleDrop,
-  };
+  // Latest handlers for the stable callbacks below
+  const handleDropRef = useRef(handleDrop);
+  handleDropRef.current = handleDrop;
+  const updateWidgetPropertiesRef = useRef(updateWidgetProperties);
+  updateWidgetPropertiesRef.current = updateWidgetProperties;
+
+  const stableDrop = useCallback<WidgetTreeDndCtx["onDrop"]>(
+    (...args) => handleDropRef.current(...args),
+    [],
+  );
+  const handleItemLabelChange = useCallback((itemId: string, newLabel: string) => {
+    updateWidgetPropertiesRef.current(itemId, { alias: newLabel });
+  }, []);
+
+  const dndCtx = useMemo<WidgetTreeDndCtx>(
+    () => ({
+      draggedItemId,
+      draggedGroupId,
+      dropTarget,
+      onDragStart: handleDragStart,
+      onDragEnd: handleDragEnd,
+      onDragOver: handleDragOver,
+      onDrop: stableDrop,
+    }),
+    [
+      draggedItemId,
+      draggedGroupId,
+      dropTarget,
+      handleDragStart,
+      handleDragEnd,
+      handleDragOver,
+      stableDrop,
+    ],
+  );
 
   const handleSelectionChange = useCallback(
     (_e: React.SyntheticEvent | null, ids: string[]) => {
@@ -183,9 +208,7 @@ const WidgetTree: React.FC = () => {
         onSelectedItemsChange={handleSelectionChange}
         multiSelect
         isItemEditable={(item) => item.id !== GRID_ID}
-        onItemLabelChange={(itemId, newLabel) =>
-          updateWidgetProperties(itemId, { alias: newLabel })
-        }
+        onItemLabelChange={handleItemLabelChange}
         defaultExpandedItems={defaultExpandedIds}
         slots={{ item: WidgetTreeItem }}
         sx={{ p: 1 }}

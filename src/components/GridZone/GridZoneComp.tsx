@@ -17,6 +17,7 @@ import SelectionManager from "./SelectionManager/SelectionManager";
 import { Box, CircularProgress, Fade } from "@mui/material";
 import { useWidgetContext } from "@src/context/useWidgetContext";
 import { useUIContext } from "@src/context/useUIContext";
+import { useUIStore } from "@src/stores/uiStore";
 
 /**
  * GridZoneComp renders the main editor canvas where widgets are displayed, moved, and interacted with.
@@ -37,17 +38,12 @@ import { useUIContext } from "@src/context/useUIContext";
 const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
   const props = data.editableProperties;
 
-  const {
-    mode,
-    isPanning,
-    setIsPanning,
-    inEditMode,
-    selectedFile,
-    isDeveloper,
-    isReposLoading,
-    editorSidebarOpen,
-    editorSidebarWidth,
-  } = useUIContext();
+  const { selectedFile, isDeveloper, isReposLoading } = useUIContext();
+  const inEditMode = useUIStore((s) => s.inEditMode);
+  const isPanning = useUIStore((s) => s.isPanning);
+  const setIsPanning = useUIStore((s) => s.setIsPanning);
+  const editorSidebarOpen = useUIStore((s) => s.editorSidebarOpen);
+  const editorSidebarWidth = useUIStore((s) => s.editorSidebarWidth);
 
   const {
     addWidget,
@@ -68,14 +64,10 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
     ungroupSelected,
     moveSelected,
     widgetIdMap,
-    setGridSize,
-    setSnapToGrid,
     gridSize,
     snapToGrid,
   } = useWidgetContext();
 
-  setGridSize(props.gridSize!.value);
-  setSnapToGrid(props.snapToGrid!.value);
   const gridRef = useRef<HTMLDivElement>(null);
   const lastPosRef = useRef<GridPosition>({ x: 0, y: 0 });
   const mousePosRef = useRef<GridPosition>({ x: 0, y: 0 });
@@ -119,7 +111,7 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
         setShouldCenterPan(false);
       }
     }
-  }, [shouldCenterPan, zoom, mode]);
+  }, [shouldCenterPan, zoom, inEditMode]);
 
   useEffect(() => {
     const handleCtrlZoom = (e: WheelEvent) => {
@@ -332,7 +324,7 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
     setIsPanning,
     pan,
     zoom,
-    mode,
+    inEditMode,
     isPlacementMode,
     pickedWidget,
     setDragPreview,
@@ -470,7 +462,7 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
     >
       <div
         id="centerRef"
-        className={`centerRef ${inEditMode && props.centerVisible?.value ? "centerMark" : ""}`}
+        className={`centerRef ${inEditMode && props.centerVisible?.value ? "centerMark" : ""} ${isPanning ? "panning" : ""}`}
         style={{
           transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
         }}

@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { EDIT_MODE, RUNTIME_MODE, type Mode } from "@src/constants/constants";
+import { useUIStore } from "@src/stores/uiStore";
 import { useWidgetManager } from "./useWidgetManager";
 import type { ExportedWidget } from "@src/types/widgets";
 import {
@@ -76,12 +77,6 @@ export default function useUIManager(
   const restoredRef = useRef(false);
   const lastSavedRef = useRef<ExportedWidget[] | null>(null);
   const saveTimeoutRef = useRef<number | null>(null);
-  const [isTextEditing, setIsTextEditing] = useState(false);
-  const [wdgPickerOpen, setWdgPickerOpen] = useState(false);
-  const [mode, setMode] = useState<Mode>(EDIT_MODE);
-  const [isPanning, setIsPanning] = useState(false);
-  const [editorSidebarOpen, setEditorSidebarOpen] = useState(window.innerWidth >= 1024);
-  const [editorSidebarWidth, setEditorSidebarWidth] = useState(360);
   const [user, setUser] = useState<User | null>(() => authService.getUser());
   const [authChecked, setAuthChecked] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -93,7 +88,7 @@ export default function useUIManager(
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [imageName, setImageName] = useState<string | null>(null);
   const [tokenStatus, setTokenStatus] = useState<TokenStatus | null>(null);
-  const inEditMode = mode === EDIT_MODE;
+  const inEditMode = useUIStore((s) => s.inEditMode);
   const RECONNECT_TIMEOUT = 3000;
   const isDemo = import.meta.env.VITE_DEMO_MODE === "true";
   const isDeveloper = user?.role === Roles.DEVELOPER;
@@ -151,10 +146,9 @@ export default function useUIManager(
         resetRuntimeMacros();
         snapshotEditModeMacros();
         setSelectedWidgetIDs([]);
-        setWdgPickerOpen(false);
         startNewSession();
       }
-      setMode(newMode);
+      useUIStore.getState().setMode(newMode);
     },
     [
       setSelectedWidgetIDs,
@@ -344,19 +338,7 @@ export default function useUIManager(
 
   return useMemo(
     () => ({
-      isTextEditing,
-      setIsTextEditing,
-      mode,
       updateMode,
-      wdgPickerOpen,
-      setWdgPickerOpen,
-      inEditMode,
-      isPanning,
-      setIsPanning,
-      editorSidebarOpen,
-      setEditorSidebarOpen,
-      editorSidebarWidth,
-      setEditorSidebarWidth,
       isDemo,
       user,
       isDeveloper,
@@ -380,13 +362,6 @@ export default function useUIManager(
     // Listing only the reactive state values.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
-      isTextEditing,
-      wdgPickerOpen,
-      mode,
-      inEditMode,
-      isPanning,
-      editorSidebarOpen,
-      editorSidebarWidth,
       user,
       isDeveloper,
       authChecked,

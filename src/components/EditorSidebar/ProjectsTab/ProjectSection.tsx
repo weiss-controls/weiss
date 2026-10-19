@@ -54,6 +54,7 @@ import { notifyUser } from "@src/services/Notifications/Notification";
 import FileToolbar from "./FileToolbar";
 import FileContextMenu from "./FileContextMenu";
 import { useUIContext } from "@src/context/useUIContext";
+import { useUIStore } from "@src/stores/uiStore";
 import GitCommitDialog from "@src/components/GitCommitDialog/GitCommitDialog";
 import { confirmDialog } from "@src/services/Dialog/Dialog";
 import { COLORS } from "@src/constants/constants";
@@ -96,8 +97,9 @@ export default function ProjectSection({
   defaultSelectedPath,
 }: ProjectSectionProps) {
   const REF_MAX_DISPLAY_SIZE = 7;
-  const { isDeveloper, inEditMode, selectedFile, setSelectedFile, setIsReposLoading, tokenStatus } =
+  const { isDeveloper, selectedFile, setSelectedFile, setIsReposLoading, tokenStatus } =
     useUIContext();
+  const inEditMode = useUIStore((s) => s.inEditMode);
   // helper for type checking
   const isStagingTree = useCallback(
     (repo: StagingTreeInfo | DeploymentTreeInfo): repo is StagingTreeInfo => {

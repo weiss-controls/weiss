@@ -7,11 +7,11 @@ import type { WidgetUpdate } from "@src/types/widgets";
 import { FLEX_ALIGN_MAP } from "@src/constants/constants";
 import AlarmBorder from "@components/AlarmBorder/AlarmBorder";
 import { useWSActionsContext } from "@src/context/useEpicsWSContext";
-import { useUIContext } from "@src/context/useUIContext";
+import { useUIStore } from "@src/stores/uiStore";
 
 const ToggleButtonComp: React.FC<WidgetUpdate> = ({ data }) => {
   const { writePVValue } = useWSActionsContext();
-  const { inEditMode } = useUIContext();
+  const inEditMode = useUIStore((s) => s.inEditMode);
   const p = data.editableProperties;
   const runtimePVName = data.runtimePVName;
   const pvData = data.pvData;

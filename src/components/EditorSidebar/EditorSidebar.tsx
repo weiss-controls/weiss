@@ -26,6 +26,7 @@ import PropertyNavigator from "./PropertiesTab/PropertiesTab";
 import ProjectsTab from "./ProjectsTab/ProjectsTab";
 import WidgetTree from "@components/WidgetTree";
 import { useUIContext } from "@src/context/useUIContext";
+import { useUIStore } from "@src/stores/uiStore";
 import { useWidgetContext } from "@src/context/useWidgetContext";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 
@@ -73,45 +74,28 @@ type EditorTab = (typeof EditorTab)[keyof typeof EditorTab];
 
 const EditorSidebar: React.FC = () => {
   const { selectedWidgetIDs, editingWidgets } = useWidgetContext();
-  const { inEditMode, isAuthenticated, setEditorSidebarOpen, setEditorSidebarWidth } =
-    useUIContext();
-  const DEFAULT_WIDTH = 360;
+  const { isAuthenticated } = useUIContext();
+  const inEditMode = useUIStore((s) => s.inEditMode);
+  const open = useUIStore((s) => s.editorSidebarOpen);
+  const pinned = useUIStore((s) => s.editorSidebarPinned);
+  const drawerWidth = useUIStore((s) => s.editorSidebarWidth);
+  const {
+    setEditorSidebarOpen,
+    setEditorSidebarWidth,
+    toggleEditorSidebar: toggleDrawer,
+    toggleEditorSidebarPinned: togglePin,
+  } = useUIStore.getState();
   const MIN_WIDTH = 300;
   const MAX_WIDTH = 700;
 
-  const isSmallScreen = window.innerWidth < 1024;
-
-  const [open, setOpen] = useState(!isSmallScreen);
-  const [pinned, setPinned] = useState(!isSmallScreen);
-  const [drawerWidth, setDrawerWidth] = useState(DEFAULT_WIDTH);
   const [tabIndex, setTabIndex] = useState<EditorTab>(EditorTab.NAVIGATE);
 
   const paperRef = useRef<HTMLDivElement | null>(null);
   const widthRef = useRef(drawerWidth);
-  const preRuntimeDrawerState = useRef<{ pinned: boolean; open: boolean } | null>(null);
 
   useEffect(() => {
     widthRef.current = drawerWidth;
   }, [drawerWidth]);
-
-  useEffect(() => {
-    if (!inEditMode) {
-      // Save current state so it can be restored when returning to edit mode
-      preRuntimeDrawerState.current = { pinned, open };
-      setPinned(false);
-      setOpen(false);
-    } else if (preRuntimeDrawerState.current) {
-      setPinned(preRuntimeDrawerState.current.pinned);
-      setOpen(preRuntimeDrawerState.current.open);
-      preRuntimeDrawerState.current = null;
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inEditMode]);
-
-  useEffect(() => {
-    setEditorSidebarOpen(open);
-    setEditorSidebarWidth(drawerWidth);
-  }, [open, drawerWidth, setEditorSidebarOpen, setEditorSidebarWidth]);
 
   useEffect(() => {
     if (isAuthenticated && !inEditMode) {
@@ -122,14 +106,11 @@ const EditorSidebar: React.FC = () => {
   useEffect(() => {
     if (selectedWidgetIDs.length > 0) {
       setTabIndex((prev) => (prev === EditorTab.LAYERS ? EditorTab.LAYERS : EditorTab.EDIT));
-      setOpen(true);
+      setEditorSidebarOpen(true);
     } else if (!pinned) {
-      setOpen(false);
+      setEditorSidebarOpen(false);
     }
-  }, [selectedWidgetIDs.length, pinned]);
-
-  const toggleDrawer = () => setOpen((prev) => !prev);
-  const togglePin = () => setPinned((prev) => !prev);
+  }, [selectedWidgetIDs.length, pinned, setEditorSidebarOpen]);
 
   const startResize = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -165,7 +146,7 @@ const EditorSidebar: React.FC = () => {
     const onUp = () => {
       paper.style.transition = "";
       document.body.removeChild(movingHandle);
-      setDrawerWidth(widthRef.current);
+      setEditorSidebarWidth(widthRef.current);
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };

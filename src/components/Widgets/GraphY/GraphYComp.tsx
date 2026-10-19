@@ -6,13 +6,13 @@ import type { WidgetUpdate } from "@src/types/widgets";
 import { COLORS } from "@src/constants/constants";
 import { getPVHistory, registerPVHistory } from "@src/utils/historyBuffers";
 import AlarmBorder from "@src/components/AlarmBorder/AlarmBorder";
-import { useUIContext } from "@src/context/useUIContext";
+import { useUIStore } from "@src/stores/uiStore";
 import ReactEChartsCore from "echarts-for-react/lib/core";
 import { echarts, type ECOption } from "@src/utils/eChartsMinified";
 import { isNumericArray } from "@src/utils/numericArray";
 
 const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
-  const { inEditMode } = useUIContext();
+  const inEditMode = useUIStore((s) => s.inEditMode);
   const p = data.editableProperties;
   const pvData = useMemo(() => data.multiPvData ?? {}, [data.multiPvData]);
   const alarmData = Object.values(pvData)
@@ -192,8 +192,8 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
           height: 25,
         },
         {
-          show: !inEditMode,
           type: "inside",
+          disabled: inEditMode,
           realtime: true,
           showDetail: true,
         },

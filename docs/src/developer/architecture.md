@@ -53,9 +53,12 @@ Starting by these will naturally guide you through the other related files.
 - **`WidgetContext`** (`useWidgetManager`) - owns the canonical list of widgets on the canvas. It
   handles selection, undo/redo history, clipboard, grouping, and serialisation/deserialisation of
   OPI files.
-- **`UIContext`** (`useUIManager`) - owns global UI state: the current mode (edit vs. runtime), the
-  open file, repository and authentication state, and any cross-cutting user interactions such as
-  loading or saving a file.
+- **`UIContext`** (`useUIManager`) - owns the open file, repository and authentication state, and
+  cross-cutting interactions such as switching mode (`updateMode`) and loading or saving a file.
+- **`uiStore`** (`src/stores/uiStore.ts`, Zustand) - owns UI-only state: the current mode (edit vs.
+  runtime), panning, canvas text editing, and the widget picker and editor sidebar state. Widgets
+  read the mode with `useUIStore((s) => s.inEditMode)`. Shared state is moving from contexts to
+  stores in `src/stores/` (see its README).
 - **`EpicsWSContext`** (`useEpicsWS`) - exposes the WebSocket connection state and lifecycle methods
   (`wsConnected`, `startNewSession`, `stopSession`). It does **not** carry live PV data — PV values
   are served by the Zustand `pvStore` described below.
@@ -91,9 +94,11 @@ through one of the above.
   zooming, and keyboard shortcuts. It is itself registered as a widget so that its editable
   properties (background, grid size, macros, …) are managed through the same widget pipeline as
   every other widget.
-- **`WidgetRenderer`** - iterates the widget list and renders each widget inside a resizable and
-  draggable container (`react-rnd`). It either renders the static component directly (editMode), or
-  delegates it to `LiveWidget` if in runtime.
+- **`WidgetRenderer`** - iterates the widget list and renders each widget as a memoized `WidgetItem`
+  inside a resizable and draggable container (`react-rnd`); a multi-selection is rendered by
+  `SelectionGroup`. Unchanged widgets keep their object reference and are skipped by the memo. A
+  widget either renders the static component directly (edit mode), or delegates it to `LiveWidget`
+  in runtime.
 - **`LiveWidget`** - operates in runtime mode only. Subscribes to `usePVStore` with a PV-specific
   selector (using `useShallow` for reference equality), then calls `applyWidgetPVData()`
   (`widgetRenderUtils.ts`) to merge PV data, evaluate configured rules, and resolve macros before
@@ -152,7 +157,7 @@ through one of the above.
 
 The FastAPI back-end exposes three route groups:
 
-- **Developer routes** (`/repos/staging`): developer-only endpoints (enforced by
+- **Developer routes** (`/api/v1/repos/staging`): developer-only endpoints (enforced by
   `require_developer`) that manage per-user editable copies of OPI repositories. Each registered
   repository is cloned as a bare Git repository; every developer who opens it gets an isolated **git
   worktree** created automatically for their user ID. This means concurrent edits from different
@@ -160,10 +165,10 @@ The FastAPI back-end exposes three route groups:
   through these worktrees via their respective endpoints. For interaction with remote, the Technical
   Account Token is used. See [Git Interaction](../production/git_interaction.md) for more details.
 
-- **Operator routes** (`/repos/deployed`): read-only endpoints used by the frontend to serve the
-  currently deployed OPI snapshot to "operator" users.
+- **Operator routes** (`/api/v1/repos/runtime`): read-only endpoints used by the frontend to serve
+  the currently deployed OPI snapshot to "operator" users.
 
-- **Snapshot routes** (`/repos/snapshot`): provides **storage interaction** with PV snapshots
+- **Snapshot routes** (`/api/v1/snapshots`): provides **storage interaction** with PV snapshots
   (saving to disk, fetching values, etc.). These endpoints **DO NOT** communicate to PVs in any
   form, i.e., you need to provide the data to be saved, and for restoring, you need to restore it
   yourself (WEISS frontend does that). This will change as the snapshot feature becomes a standalone
@@ -171,8 +176,8 @@ The FastAPI back-end exposes three route groups:
 
 #### Authentication
 
-Authentication is based on OAuth 2.0 / OpenID Connect and is available through the `/auth` route
-group. The backend loads the configured non-demo provider from `api.auth.providers` using
+Authentication is based on OAuth 2.0 / OpenID Connect and is available through the `/api/v1/auth`
+route group. The backend loads the configured non-demo provider from `api.auth.providers` using
 `AUTH_IDENTITY_PROVIDER` (default `oauth`) and also supports a dedicated `demo` provider when
 `DEMO_MODE=true`. See [Organization credentials](../production/org_credentials.md) for more details.
 
