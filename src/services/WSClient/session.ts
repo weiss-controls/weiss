@@ -135,6 +135,7 @@ function syncSubscriptions() {
   if (toRemove.length > 0) {
     ws.unsubscribe(toRemove);
     for (const pv of toRemove) {
+      delete pendingPVs[pv];
       delete pendingFrames[pv];
       delete imageSummaries[pv];
     }
