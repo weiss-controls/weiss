@@ -38,3 +38,8 @@
   left: 0;
   z-index: var(--front-ui-zidx);
 }
+
+/* Widgets ignore the pointer while the grid is panned */
+.centerRef.panning * {
+  pointer-events: none !important;
+}

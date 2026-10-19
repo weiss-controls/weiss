@@ -463,7 +463,7 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
     >
       <div
         id="centerRef"
-        className={`centerRef ${inEditMode && props.centerVisible?.value ? "centerMark" : ""}`}
+        className={`centerRef ${inEditMode && props.centerVisible?.value ? "centerMark" : ""} ${isPanning ? "panning" : ""}`}
         style={{
           transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
         }}
