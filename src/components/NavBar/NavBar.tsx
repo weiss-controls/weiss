@@ -37,6 +37,7 @@ import { notifyUser } from "@src/services/Notifications/Notification.ts";
 import { useEditorStore } from "@src/stores/editorStore";
 import { useUIContext } from "@src/context/useUIContext.tsx";
 import { useUIStore } from "@src/stores/uiStore";
+import { updateMode } from "@src/stores/actions";
 import { parsePhoebus, convertDisplay } from "@src/utils/bob2json";
 import { confirmDialog } from "@src/services/Dialog/Dialog";
 interface StyledAppBarProps extends MuiAppBarProps {
@@ -140,7 +141,7 @@ export default function NavBar() {
   const inEditMode = useUIStore((s) => s.inEditMode);
   const wdgPickerOpen = useUIStore((s) => s.wdgPickerOpen);
   const toggleWdgPicker = useUIStore((s) => s.toggleWdgPicker);
-  const { updateMode, user, isAuthenticated, logout, isDeveloper, selectedFile } = useUIContext();
+  const { user, isAuthenticated, logout, isDeveloper, selectedFile } = useUIContext();
   const [snapshotOpen, setSnapshotOpen] = useState(false);
   const drawerWidth = WIDGET_SELECTOR_WIDTH;
   const [importMenuAnchor, setImportMenuAnchor] = useState<null | HTMLElement>(null);

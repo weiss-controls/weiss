@@ -39,7 +39,8 @@ There are no automated tests. Run the checks above after changes; CI runs the sa
   reach props, rules or macros.
 - UI-only state (mode, panning, sidebar, widget picker) is in `src/stores/uiStore.ts`. Read the mode
   with `useUIStore((s) => s.inEditMode)`, not from a context. Switch mode with `updateMode`
-  (`UIContext`), which also starts/stops the WS session. Store conventions: `src/stores/README.md`.
+  (`src/stores/actions.ts`, where actions spanning several stores live), which also starts/stops the
+  WS session and the rule-macro sync. Store conventions: `src/stores/README.md`.
 - The PV WebSocket session is a module (`src/services/WSClient/session.ts`): import `writePVValue`,
   `takeSnapshot`, etc. directly. Its connection state is in `src/stores/wsStore.ts`.
 - PV array values are `NumericArray` typed-array views: use `isNumericArray()`

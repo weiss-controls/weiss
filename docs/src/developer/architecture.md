@@ -55,17 +55,18 @@ Starting by these will naturally guide you through the other related files.
   serialisation/deserialisation of OPI files. Derived values (widget index, selection bounds,
   runtime macros, resolved PV list) are computed by its actions and stored.
 - **`UIContext`** (`useUIManager`) - owns the open file, repository and authentication state, and
-  cross-cutting interactions such as switching mode (`updateMode`) and loading or saving a file.
+  cross-cutting interactions such as loading or saving a file.
 - **`uiStore`** (`src/stores/uiStore.ts`, Zustand) - owns UI-only state: the current mode (edit vs.
   runtime), panning, canvas text editing, and the widget picker and editor sidebar state. Widgets
   read the mode with `useUIStore((s) => s.inEditMode)`. Shared state is moving from contexts to
-  stores in `src/stores/` (see its README).
+  stores in `src/stores/` (see its README). Actions spanning several stores (`updateMode`) and
+  store-to-store reactions live in `src/stores/actions.ts`.
 - **WebSocket session** (`src/services/WSClient/session.ts`) - a module, not a context. It owns the
   `WSClient` instance and exports `startNewSession`, `stopSession`, `setSubscribedPVs`,
   `writePVValue`, `takeSnapshot` and `restoreFromSnapshot`, which components import directly. The
-  connection state is in `wsStore` (`src/stores/wsStore.ts`). `ContextProvider` passes the resolved
-  PV list to `setSubscribedPVs`; the session subscribes the difference, and the whole list again
-  after each (re)connect.
+  connection state is in `wsStore` (`src/stores/wsStore.ts`). A subscription in
+  `src/stores/actions.ts` passes `editorStore.resolvedPVList` to `setSubscribedPVs`; the session
+  subscribes the difference, and the whole list again after each (re)connect.
 
 Live PV data is stored in a [Zustand](https://zustand.pmnd.rs/) module-level store (`usePVStore`,
 `src/services/pvStore.ts`). The WebSocket session collects incoming WebSocket messages in a buffer

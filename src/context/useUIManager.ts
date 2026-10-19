@@ -2,10 +2,11 @@
 // Copyright (C) 2026 WEISS Contributors
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { EDIT_MODE, RUNTIME_MODE, type Mode } from "@src/constants/constants";
+import { RUNTIME_MODE } from "@src/constants/constants";
 import { useUIStore } from "@src/stores/uiStore";
 import { useWSStore } from "@src/stores/wsStore";
-import { startNewSession, stopSession } from "@src/services/WSClient/session";
+import { startNewSession } from "@src/services/WSClient/session";
+import { updateMode } from "@src/stores/actions";
 import { formatWdgToExport, useEditorStore } from "@src/stores/editorStore";
 import type { ExportedWidget } from "@src/types/widgets";
 import {
@@ -28,8 +29,6 @@ import {
   type TokenStatus,
   type User,
 } from "@src/services/APIClient";
-import { usePVStore } from "@src/services/pvStore";
-import { collectGlobalMacroOverrides } from "@src/utils/macros";
 
 const IMAGE_EXTENSIONS = new Set([".svg", ".png", ".jpg", ".jpeg"]);
 const MIME_MAP: Record<string, string> = {
@@ -62,7 +61,6 @@ export default function useUIManager() {
   const editorWidgets = useEditorStore((s) => s.editorWidgets);
   const fileLoadedTrig = useEditorStore((s) => s.fileLoadedTrig);
   const fileImportedTrig = useEditorStore((s) => s.fileImportedTrig);
-  const runtimeBaseMacros = useEditorStore((s) => s.runtimeBaseMacros);
   const hasFileChanged = useRef(true);
   const restoredRef = useRef(false);
   const lastSavedRef = useRef<ExportedWidget[] | null>(null);
@@ -126,27 +124,6 @@ export default function useUIManager() {
     hasFileChanged.current = false;
   }, [fileImportedTrig]);
 
-  const updateMode = useCallback((newMode: Mode) => {
-    const isEdit = newMode === EDIT_MODE;
-    const {
-      resetRuntimeMacros,
-      restoreEditModeMacros,
-      snapshotEditModeMacros,
-      setSelectedWidgetIDs,
-    } = useEditorStore.getState();
-    if (isEdit) {
-      resetRuntimeMacros();
-      restoreEditModeMacros();
-      stopSession();
-    } else {
-      resetRuntimeMacros();
-      snapshotEditModeMacros();
-      setSelectedWidgetIDs([]);
-      startNewSession();
-    }
-    useUIStore.getState().setMode(newMode);
-  }, []);
-
   useEffect(() => {
     const authHandlers = {
       onAuthStatusChange(status: AuthStatus, user: User | null) {
@@ -165,7 +142,7 @@ export default function useUIManager() {
 
     const unsubscribe = authService.subscribe(authHandlers);
     return unsubscribe;
-  }, [updateMode]);
+  }, []);
 
   const login = useCallback(
     async (provider: OAuthProvider, demoProfile?: Roles) => {
@@ -307,25 +284,8 @@ export default function useUIManager() {
       }
     };
   }, [editorWidgets, selectedFile, isDeveloper, inEditMode, setReposTreeInfo]);
-  const prevRuleMacrosJsonRef = useRef<string>("");
-
-  // Keep the rule-specific runtime override layer in sync with live PV data.
-  useEffect(() => {
-    if (inEditMode) return;
-    const unsubscribe = usePVStore.subscribe((state) => {
-      const overrides = collectGlobalMacroOverrides(editorWidgets, state.pvs, runtimeBaseMacros);
-      const json = JSON.stringify(overrides);
-      if (json !== prevRuleMacrosJsonRef.current) {
-        prevRuleMacrosJsonRef.current = json;
-        useEditorStore.getState().setRuleMacroOverrides(overrides);
-      }
-    });
-    return unsubscribe;
-  }, [editorWidgets, runtimeBaseMacros, inEditMode]);
-
   return useMemo(
     () => ({
-      updateMode,
       isDemo,
       user,
       isDeveloper,
