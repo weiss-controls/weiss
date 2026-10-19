@@ -34,7 +34,7 @@ import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import { restoreFromSnapshot, takeSnapshot } from "@src/services/WSClient/session";
 import { usePVStore } from "@src/services/pvStore";
 import { notifyUser } from "@src/services/Notifications/Notification.ts";
-import { useWidgetContext } from "@src/context/useWidgetContext.tsx";
+import { useEditorStore } from "@src/stores/editorStore";
 import { useUIContext } from "@src/context/useUIContext.tsx";
 import { useUIStore } from "@src/stores/uiStore";
 import { parsePhoebus, convertDisplay } from "@src/utils/bob2json";
@@ -136,7 +136,7 @@ function AlarmButtonAndPanel({ inEditMode }: { inEditMode: boolean }) {
 }
 
 export default function NavBar() {
-  const { downloadWidgets, importWidgets } = useWidgetContext();
+  const { downloadWidgets, importWidgets } = useEditorStore.getState();
   const inEditMode = useUIStore((s) => s.inEditMode);
   const wdgPickerOpen = useUIStore((s) => s.wdgPickerOpen);
   const toggleWdgPicker = useUIStore((s) => s.toggleWdgPicker);

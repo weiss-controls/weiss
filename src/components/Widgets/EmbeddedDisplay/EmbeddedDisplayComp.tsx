@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import type { WidgetUpdate } from "@src/types/widgets";
 import { useUIContext } from "@src/context/useUIContext";
 import { useUIStore } from "@src/stores/uiStore";
-import { useWidgetContext } from "@src/context/useWidgetContext";
+import { useEditorStore } from "@src/stores/editorStore";
 import { resolveRepoPath } from "@src/utils/repoPath";
 import {
   applyDisplayLayout,
@@ -19,7 +19,8 @@ import { Placeholder } from "@components/Widgets/shared/Placeholder";
 const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
   const { isDeveloper, selectedFile } = useUIContext();
   const inEditMode = useUIStore((s) => s.inEditMode);
-  const { updateWidgetChildren, fileLoadedTrig, globalMacros } = useWidgetContext();
+  const fileLoadedTrig = useEditorStore((s) => s.fileLoadedTrig);
+  const globalMacros = useEditorStore((s) => s.globalMacros);
   const p = data.editableProperties;
 
   const repoId = selectedFile?.repo_id ?? "";
@@ -32,13 +33,6 @@ const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
   const y = p.y?.value ?? 0;
   const targetW = p.width?.value ?? 100;
   const targetH = p.height?.value ?? 70;
-
-  // Stable ref so effects never need to add this directly to their dependency
-  // array. `updateWidgetChildren` changes identity on every widget-state
-  // update (transitively dependent on `editorWidgets` through `getWidget`),
-  // so including it directly would cause infinite re-fetch/re-layout loops.
-  const updateChildrenRef = useRef(updateWidgetChildren);
-  updateChildrenRef.current = updateWidgetChildren;
 
   // Per-instance cache of the last successfully parsed & bounds-computed
   // content. Allocated fresh per component instance (per useRef semantics),
@@ -80,7 +74,7 @@ const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
       { x, y, width: targetW, height: targetH },
       macrosRef.current,
     );
-    updateChildrenRef.current(data.id, withMacros, false);
+    useEditorStore.getState().updateWidgetChildren(data.id, withMacros, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.id, x, y, targetW, targetH]);
 
@@ -92,7 +86,7 @@ const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
     if (!repoId || !resolvedPath) {
       rawContentRef.current = null;
       lastAppliedLayoutKeyRef.current = "";
-      updateChildrenRef.current(data.id, [], false);
+      useEditorStore.getState().updateWidgetChildren(data.id, [], false);
       return;
     }
 
@@ -115,7 +109,7 @@ const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
         if (!cancelled) {
           rawContentRef.current = null;
           lastAppliedLayoutKeyRef.current = "";
-          updateChildrenRef.current(data.id, [], false);
+          useEditorStore.getState().updateWidgetChildren(data.id, [], false);
         }
       }
     };

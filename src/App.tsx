@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 WEISS Contributors
 
-import React, { useMemo } from "react";
+import React from "react";
 import "./App.css";
 import { GridZone } from "./components/GridZone";
 import WidgetPicker from "./components/WidgetPicker/WidgetPicker";
@@ -9,14 +9,10 @@ import EditorSidebar from "./components/EditorSidebar/EditorSidebar";
 import NavBar from "./components/NavBar/NavBar";
 import { GRID_ID } from "./constants/constants";
 import { ScreenGuard } from "./components/ScreenGuard/ScreenGuard";
-import { useWidgetContext } from "./context/useWidgetContext";
+import { useEditorStore } from "@src/stores/editorStore";
 
 const App: React.FC = () => {
-  const { editorWidgets } = useWidgetContext();
-  const gridProperties = useMemo(
-    () => editorWidgets.find((w) => w.id === GRID_ID),
-    [editorWidgets],
-  );
+  const gridProperties = useEditorStore((s) => s.editorWidgets.find((w) => w.id === GRID_ID));
   return (
     <div className="app">
       <ScreenGuard />

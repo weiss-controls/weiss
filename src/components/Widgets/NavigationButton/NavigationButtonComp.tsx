@@ -8,12 +8,12 @@ import { FLEX_ALIGN_MAP } from "@src/constants/constants";
 import { useUIContext } from "@src/context/useUIContext";
 import { useUIStore } from "@src/stores/uiStore";
 import { resolveRepoPath } from "@src/utils/repoPath";
-import { useWidgetContext } from "@src/context/useWidgetContext";
+import { useEditorStore } from "@src/stores/editorStore";
 
 const NavigationButtonComp: React.FC<WidgetUpdate> = ({ data }) => {
   const { selectedFile, setSelectedFile } = useUIContext();
   const inEditMode = useUIStore((s) => s.inEditMode);
-  const { forwardNavigationMacros } = useWidgetContext();
+  const { forwardNavigationMacros } = useEditorStore.getState();
   const p = data.editableProperties;
   const clicked = React.useRef(false);
 

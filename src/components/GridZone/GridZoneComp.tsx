@@ -15,7 +15,7 @@ import ToolbarButtons from "@components/Toolbar/Toolbar.tsx";
 import { v4 as uuidv4 } from "uuid";
 import SelectionManager from "./SelectionManager/SelectionManager";
 import { Box, CircularProgress, Fade } from "@mui/material";
-import { useWidgetContext } from "@src/context/useWidgetContext";
+import { useEditorStore } from "@src/stores/editorStore";
 import { useUIContext } from "@src/context/useUIContext";
 import { useUIStore } from "@src/stores/uiStore";
 
@@ -45,9 +45,12 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
   const editorSidebarOpen = useUIStore((s) => s.editorSidebarOpen);
   const editorSidebarWidth = useUIStore((s) => s.editorSidebarWidth);
 
+  const pickedWidget = useEditorStore((s) => s.pickedWidget);
+  const isPlacementMode = useEditorStore((s) => s.isPlacementMode);
+  const gridSize = useEditorStore((s) => s.gridSize);
+  const snapToGrid = useEditorStore((s) => s.snapToGrid);
   const {
     addWidget,
-    selectedWidgetIDs,
     setSelectedWidgetIDs,
     handleRedo,
     handleUndo,
@@ -55,18 +58,12 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
     pasteWidget,
     downloadWidgets,
     deleteWidget,
-    allWidgetIDs,
-    pickedWidget,
     setPickedWidget,
-    isPlacementMode,
     setIsPlacementMode,
     groupSelected,
     ungroupSelected,
     moveSelected,
-    widgetIdMap,
-    gridSize,
-    snapToGrid,
-  } = useWidgetContext();
+  } = useEditorStore.getState();
 
   const gridRef = useRef<HTMLDivElement>(null);
   const lastPosRef = useRef<GridPosition>({ x: 0, y: 0 });
@@ -265,7 +262,7 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
       let foundPVName: string | null = null;
       let foundPVData: PVData | null = null;
       while (el && el !== document.body) {
-        const widget = widgetIdMap.get(el.id);
+        const widget = useEditorStore.getState().widgetIdMap.get(el.id);
         if (widget) {
           const runtimePVName = widget.runtimePVName ?? widget.editableProperties.pvName?.value;
           if (runtimePVName) {
@@ -366,7 +363,10 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
         });
         return;
       }
-      if (e.key.toLowerCase() === "delete" && selectedWidgetIDs.length > 0) {
+      if (
+        e.key.toLowerCase() === "delete" &&
+        useEditorStore.getState().selectedWidgetIDs.length > 0
+      ) {
         e.preventDefault();
         deleteWidget();
         return;
@@ -396,7 +396,7 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
       }
       if (e.ctrlKey && e.key.toLowerCase() === "a") {
         e.preventDefault();
-        setSelectedWidgetIDs(allWidgetIDs);
+        setSelectedWidgetIDs(useEditorStore.getState().allWidgetIDs);
         return;
       }
       if (e.ctrlKey && e.key.toLowerCase() === "g") {

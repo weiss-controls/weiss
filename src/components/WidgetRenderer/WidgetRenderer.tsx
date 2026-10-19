@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 WEISS Contributors
 
-import React, { memo, useMemo, useRef, type ReactNode } from "react";
+import React, { memo, type ReactNode } from "react";
+import { useShallow } from "zustand/react/shallow";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
-import type { DOMRectLike, Widget } from "@src/types/widgets";
-import { Rnd, type DraggableData, type Position, type RndDragEvent } from "react-rnd";
-import { GRID_ID } from "@src/constants/constants";
+import type { Widget } from "@src/types/widgets";
+import { Rnd, type RndDragEvent } from "react-rnd";
 import "./WidgetRenderer.css";
 import { useUIStore } from "@src/stores/uiStore";
-import { useWidgetContext } from "@src/context/useWidgetContext";
+import { useEditorStore } from "@src/stores/editorStore";
 import { hasSelectedDescendant } from "./widgetRenderUtils";
 import LiveWidget from "./LiveWidget";
 
@@ -16,42 +16,26 @@ interface RendererProps {
   scale: number;
 }
 
-/** Stable callbacks shared by every rendered widget */
-interface WidgetHandlers {
-  /** Return false to cancel the drag or resize: alt+drag pans the grid instead */
-  onDragStart: (e: RndDragEvent) => false | void;
-  onResizeStart: (e: React.MouseEvent | React.TouchEvent) => false | void;
-  onDragging: () => void;
-  onDragStop: (e: RndDragEvent, d: DraggableData, w: Widget) => void;
-  onResizeStop: (ref: HTMLElement, position: Position, w: Widget) => void;
-  onSelect: (id: string, toggle: boolean) => void;
-  onSelGroupDragStop: (dx: number, dy: number) => void;
-  onSelGroupResizeStop: (ref: HTMLElement, bounds: DOMRectLike, widgets: Widget[]) => void;
-}
-
-/** Props shared by all widgets of one renderer */
-interface SharedProps {
+interface WidgetItemProps {
+  id: string;
   scale: number;
-  gridSize: number;
-  snapToGrid: boolean;
-  /** Runtime macros; undefined in edit mode */
-  globalMacros: Record<string, string> | undefined;
-  handlers: WidgetHandlers;
+  parentX?: number;
+  parentY?: number;
+  isChild?: boolean;
+  isEmbedded?: boolean;
 }
 
-interface WidgetItemProps extends SharedProps {
-  w: Widget;
-  parentX: number;
-  parentY: number;
-  isChild: boolean;
-  isEmbedded: boolean;
-  isSelected: boolean;
-  groupHasSelectedChild: boolean;
-  /** Selection ids, passed only to groups with a selected descendant */
-  selectedIDs?: string[];
+// Rnd start handlers return false to cancel: alt+drag pans the grid instead
+function handleDragStart(e: RndDragEvent) {
+  if (e.altKey || useUIStore.getState().isPanning) return false;
 }
-
-const startsPan = (e: { altKey: boolean }) => e.altKey || useUIStore.getState().isPanning;
+function handleResizeStart(e: React.MouseEvent | React.TouchEvent) {
+  if (e.altKey || useUIStore.getState().isPanning) return false;
+  useEditorStore.getState().setIsDragging(true);
+}
+function handleDragging() {
+  useEditorStore.getState().setIsDragging(true);
+}
 
 /** Resize handle size is 10% of the widget size, clamped between 6px and 24px. */
 function getResizeHandlesSize(width: number, height: number) {
@@ -70,9 +54,11 @@ function getResizeHandlesSize(width: number, height: number) {
   };
 }
 
-function getGrids(scale: number, gridSize: number, snapToGrid: boolean) {
+/** Rnd snapping grids; the drag grid does not follow the scale, so it is scaled here */
+function useGrids(scale: number) {
+  const gridSize = useEditorStore((s) => s.gridSize);
+  const snapToGrid = useEditorStore((s) => s.snapToGrid);
   if (!snapToGrid) return { dragGrid: undefined, resizeGrid: undefined };
-  // dragGrid does not follow the scale - scale it manually
   const scaled = gridSize * scale;
   return {
     dragGrid: [scaled, scaled] as [number, number],
@@ -87,53 +73,38 @@ function renderWidgetContent(w: Widget, globalMacros: Record<string, string> | u
   return Comp ? <Comp data={w} /> : null;
 }
 
-function renderWidgetItems(
-  widgets: Widget[],
-  selectedIDs: string[],
-  shared: SharedProps,
+// Children render through the memoized `WidgetItem`. In a named function expression passed to
+// memo(), the function's own name would refer to the unmemoized function.
+const WidgetItem = memo(WidgetItemBase);
+
+function WidgetItemBase({
+  id,
+  scale,
   parentX = 0,
   parentY = 0,
   isChild = false,
   isEmbedded = false,
-): ReactNode[] {
-  return widgets.map((w) => {
-    if (w.id === GRID_ID) return null;
-    const isSelected = selectedIDs.includes(w.id);
-    // multi-selected widgets are rendered inside the selection group
-    if (isSelected && selectedIDs.length > 1) return null;
-    const groupHasSelectedChild =
-      !!w.children?.length && !isSelected && hasSelectedDescendant(w, selectedIDs);
+}: WidgetItemProps) {
+  const w = useEditorStore((s) => s.widgetIdMap.get(id));
+  const isSelected = useEditorStore((s) => s.selectedWidgetIDs.includes(id));
+  // multi-selected widgets are rendered inside the selection group
+  const inSelectionGroup = useEditorStore(
+    (s) => s.selectedWidgetIDs.length > 1 && s.selectedWidgetIDs.includes(id),
+  );
+  const groupHasSelectedChild = useEditorStore((s) => {
+    const group = s.widgetIdMap.get(id);
     return (
-      <WidgetItem
-        key={w.id}
-        {...shared}
-        w={w}
-        parentX={parentX}
-        parentY={parentY}
-        isChild={isChild}
-        isEmbedded={isEmbedded}
-        isSelected={isSelected}
-        groupHasSelectedChild={groupHasSelectedChild}
-        selectedIDs={groupHasSelectedChild ? selectedIDs : undefined}
-      />
+      !!group?.children?.length &&
+      !s.selectedWidgetIDs.includes(id) &&
+      hasSelectedDescendant(group, s.selectedWidgetIDs)
     );
   });
-}
-
-const WidgetItem = memo(function WidgetItem({
-  w,
-  parentX,
-  parentY,
-  isChild,
-  isEmbedded,
-  isSelected,
-  groupHasSelectedChild,
-  selectedIDs,
-  ...shared
-}: WidgetItemProps) {
-  const { scale, gridSize, snapToGrid, globalMacros, handlers } = shared;
   const inEditMode = useUIStore((s) => s.inEditMode);
-  const isTextEditing = useUIStore((s) => s.textEditingId === w.id);
+  const isTextEditing = useUIStore((s) => s.textEditingId === id);
+  const globalMacros = useEditorStore((s) => (inEditMode ? undefined : s.globalMacros));
+  const { dragGrid, resizeGrid } = useGrids(scale);
+
+  if (!w || inSelectionGroup) return null;
 
   const x = w.editableProperties.x!.value - parentX;
   const y = w.editableProperties.y!.value - parentY;
@@ -145,12 +116,14 @@ const WidgetItem = memo(function WidgetItem({
   const isGroup = !!w.children?.length;
   const childIsEmbedded =
     isEmbedded || w.widgetName === "EmbeddedDisplay" || w.widgetName === "NavigationTabs";
-  const { dragGrid, resizeGrid } = getGrids(scale, gridSize, snapToGrid);
 
   const handleMouseDownCapture = (e: React.MouseEvent) => {
     if (!inEditMode || isTextEditing || useUIStore.getState().isPanning) return;
     if (e.button !== 0 || e.altKey) return;
-    handlers.onSelect(w.id, e.ctrlKey);
+    const { toggleWidgetSelectionImmediate, selectSingleWidgetImmediate } =
+      useEditorStore.getState();
+    if (e.ctrlKey) toggleWidgetSelectionImmediate(id);
+    else selectSingleWidgetImmediate(id);
   };
 
   let editModeClass = "";
@@ -163,7 +136,7 @@ const WidgetItem = memo(function WidgetItem({
 
   return (
     <Rnd
-      id={w.id}
+      id={id}
       bounds="window"
       scale={scale}
       dragGrid={dragGrid}
@@ -176,44 +149,39 @@ const WidgetItem = memo(function WidgetItem({
       className={editModeClass}
       style={isEmbedded && inEditMode ? { pointerEvents: "none" } : undefined}
       onMouseDownCapture={handleMouseDownCapture}
-      onDragStart={handlers.onDragStart}
-      onDrag={handlers.onDragging}
-      onDragStop={(e, d) => handlers.onDragStop(e, d, w)}
-      onResizeStart={handlers.onResizeStart}
-      onResizeStop={(_e, _dir, ref, _delta, pos) => handlers.onResizeStop(ref, pos, w)}
+      onDragStart={handleDragStart}
+      onDrag={handleDragging}
+      onDragStop={(e, d) => useEditorStore.getState().handleDragStop(e, d, w)}
+      onResizeStart={handleResizeStart}
+      onResizeStop={(_e, _dir, ref, _delta, pos) =>
+        useEditorStore.getState().handleResizeStop(ref, pos, w)
+      }
     >
       {renderWidgetContent(w, globalMacros)}
-      {w.children &&
-        renderWidgetItems(
-          w.children,
-          selectedIDs ?? [],
-          shared,
-          w.editableProperties.x!.value,
-          w.editableProperties.y!.value,
-          true,
-          childIsEmbedded,
-        )}
+      {w.children?.map((child) => (
+        <WidgetItem
+          key={child.id}
+          id={child.id}
+          scale={scale}
+          parentX={w.editableProperties.x!.value}
+          parentY={w.editableProperties.y!.value}
+          isChild
+          isEmbedded={childIsEmbedded}
+        />
+      ))}
     </Rnd>
   );
-});
-
-interface SelectionGroupProps extends SharedProps {
-  bounds: DOMRectLike;
-  widgets: Widget[];
 }
 
 /** Multi-selection: the selected widgets moved and resized together inside one Rnd */
-const SelectionGroup = memo(function SelectionGroup({
-  bounds,
-  widgets,
-  scale,
-  gridSize,
-  snapToGrid,
-  globalMacros,
-  handlers,
-}: SelectionGroupProps) {
+const SelectionGroup = memo(function SelectionGroup({ scale }: RendererProps) {
+  const bounds = useEditorStore((s) => (s.selectedWidgetIDs.length > 1 ? s.selectionBounds : null));
+  const widgets = useEditorStore(useShallow((s) => s.selectedWidgets));
   const inEditMode = useUIStore((s) => s.inEditMode);
-  const { dragGrid, resizeGrid } = getGrids(scale, gridSize, snapToGrid);
+  const globalMacros = useEditorStore((s) => (inEditMode ? undefined : s.globalMacros));
+  const { dragGrid, resizeGrid } = useGrids(scale);
+
+  if (!bounds) return null;
 
   const renderRecursive = (w: Widget, parentX: number, parentY: number): ReactNode => {
     const x = w.editableProperties.x!.value - parentX;
@@ -250,11 +218,15 @@ const SelectionGroup = memo(function SelectionGroup({
       enableResizing={inEditMode}
       disableDragging={!inEditMode}
       resizeHandleStyles={getResizeHandlesSize(bounds.width, bounds.height)}
-      onDragStart={handlers.onDragStart}
-      onDrag={handlers.onDragging}
-      onDragStop={(_e, d) => handlers.onSelGroupDragStop(d.x - bounds.x, d.y - bounds.y)}
-      onResizeStart={handlers.onResizeStart}
-      onResizeStop={(_e, _dir, ref) => handlers.onSelGroupResizeStop(ref, bounds, widgets)}
+      onDragStart={handleDragStart}
+      onDrag={handleDragging}
+      onDragStop={(_e, d) =>
+        useEditorStore.getState().handleSelGroupDragStop(d.x - bounds.x, d.y - bounds.y)
+      }
+      onResizeStart={handleResizeStart}
+      onResizeStop={(_e, _dir, ref) =>
+        useEditorStore.getState().handleSelGroupResizeStop(ref, bounds, widgets)
+      }
     >
       {widgets.map((w) => renderRecursive(w, bounds.x, bounds.y))}
     </Rnd>
@@ -262,51 +234,13 @@ const SelectionGroup = memo(function SelectionGroup({
 });
 
 const WidgetRenderer: React.FC<RendererProps> = ({ scale }) => {
-  const ctx = useWidgetContext();
-  const { editorWidgets, selectedWidgetIDs, selectionBounds, selectedWidgets } = ctx;
-  const inEditMode = useUIStore((s) => s.inEditMode);
-
-  // Latest context for the stable handlers below
-  const ctxRef = useRef(ctx);
-  ctxRef.current = ctx;
-
-  const handlers = useMemo<WidgetHandlers>(
-    () => ({
-      onDragStart: (e) => {
-        if (startsPan(e)) return false;
-      },
-      onResizeStart: (e) => {
-        if (startsPan(e)) return false;
-        ctxRef.current.setIsDragging(true);
-      },
-      onDragging: () => ctxRef.current.setIsDragging(true),
-      onDragStop: (e, d, w) => ctxRef.current.handleDragStop(e, d, w),
-      onResizeStop: (ref, pos, w) => ctxRef.current.handleResizeStop(ref, pos, w),
-      onSelect: (id, toggle) => {
-        if (toggle) ctxRef.current.toggleWidgetSelectionImmediate(id);
-        else ctxRef.current.selectSingleWidgetImmediate(id);
-      },
-      onSelGroupDragStop: (dx, dy) => ctxRef.current.handleSelGroupDragStop(dx, dy),
-      onSelGroupResizeStop: (ref, bounds, widgets) =>
-        ctxRef.current.handleSelGroupResizeStop(ref, bounds, widgets),
-    }),
-    [],
-  );
-
-  const shared: SharedProps = {
-    scale,
-    gridSize: ctx.gridSize,
-    snapToGrid: ctx.snapToGrid,
-    globalMacros: inEditMode ? undefined : ctx.globalMacros,
-    handlers,
-  };
-
+  const ids = useEditorStore(useShallow((s) => s.allWidgetIDs));
   return (
     <>
-      {renderWidgetItems(editorWidgets, selectedWidgetIDs, shared)}
-      {selectionBounds && selectedWidgetIDs.length > 1 && (
-        <SelectionGroup {...shared} bounds={selectionBounds} widgets={selectedWidgets} />
-      )}
+      {ids.map((id) => (
+        <WidgetItem key={id} id={id} scale={scale} />
+      ))}
+      <SelectionGroup scale={scale} />
     </>
   );
 };

@@ -21,7 +21,7 @@ import WidgetsIcon from "@mui/icons-material/Widgets";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import Tooltip from "@mui/material/Tooltip";
-import { useWidgetContext } from "@src/context/useWidgetContext";
+import { useEditorStore } from "@src/stores/editorStore";
 import { useUIStore } from "@src/stores/uiStore";
 
 const openedMixin = (theme: Theme): CSSObject => ({
@@ -76,7 +76,9 @@ interface DraggableItemProps {
 }
 
 const DraggableItem: React.FC<DraggableItemProps> = ({ item, open }) => {
-  const { setPickedWidget, pickedWidget, isPlacementMode, setIsPlacementMode } = useWidgetContext();
+  const pickedWidget = useEditorStore((s) => s.pickedWidget);
+  const isPlacementMode = useEditorStore((s) => s.isPlacementMode);
+  const { setPickedWidget, setIsPlacementMode } = useEditorStore.getState();
 
   const isActive = isPlacementMode && pickedWidget?.widgetName === item.widgetName;
 

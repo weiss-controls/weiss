@@ -26,26 +26,26 @@ import ExpandIcon from "@mui/icons-material/Expand";
 import { Rnd } from "react-rnd";
 import { grey } from "@mui/material/colors";
 import "./Toolbar.css";
-import { useWidgetContext } from "@src/context/useWidgetContext";
+import { useEditorStore } from "@src/stores/editorStore";
 import { useUIStore } from "@src/stores/uiStore";
 
 const ToolbarButtons: React.FC = () => {
   const inEditMode = useUIStore((s) => s.inEditMode);
+  const selectedCount = useEditorStore((s) => s.selectedWidgetIDs.length);
+  const hasGroupSelected = useEditorStore((s) =>
+    s.selectedWidgets.some((w) => w.widgetName === "Group"),
+  );
+  const nothingToUndo = useEditorStore((s) => s.undoStack.length === 0);
+  const nothingToRedo = useEditorStore((s) => s.redoStack.length === 0);
   const {
-    selectedWidgetIDs,
-    selectedWidgets,
-    handleUndo,
-    undoStack,
-    handleRedo,
-    redoStack,
     bringToFront,
     sendToBack,
     alignTop,
     alignBottom,
-    alignHorizontalCenter,
     alignLeft,
     alignRight,
     alignVerticalCenter,
+    alignHorizontalCenter,
     distributeHorizontal,
     distributeVertical,
     matchWidth,
@@ -55,16 +55,15 @@ const ToolbarButtons: React.FC = () => {
     ungroupSelected,
     stepForward,
     stepBackwards,
-  } = useWidgetContext();
+    handleUndo,
+    handleRedo,
+  } = useEditorStore.getState();
 
   if (!inEditMode) return null;
 
-  const noneSelected = selectedWidgetIDs.length === 0;
-  const lessThanTwoSelected = selectedWidgetIDs.length < 2;
-  const lessThanThreeSelected = selectedWidgetIDs.length < 3;
-  const hasGroupSelected = selectedWidgets.some((w) => w.widgetName === "Group");
-  const nothingToRedo = redoStack.length === 0;
-  const nothingToUndo = undoStack.length === 0;
+  const noneSelected = selectedCount === 0;
+  const lessThanTwoSelected = selectedCount < 2;
+  const lessThanThreeSelected = selectedCount < 3;
 
   const iconSx = {
     color: grey[600],

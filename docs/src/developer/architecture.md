@@ -95,11 +95,11 @@ through one of the above.
   zooming, and keyboard shortcuts. It is itself registered as a widget so that its editable
   properties (background, grid size, macros, …) are managed through the same widget pipeline as
   every other widget.
-- **`WidgetRenderer`** - iterates the widget list and renders each widget as a memoized `WidgetItem`
-  inside a resizable and draggable container (`react-rnd`); a multi-selection is rendered by
-  `SelectionGroup`. Unchanged widgets keep their object reference and are skipped by the memo. A
-  widget either renders the static component directly (edit mode), or delegates it to `LiveWidget`
-  in runtime.
+- **`WidgetRenderer`** - renders each top-level widget as a memoized `WidgetItem` inside a resizable
+  and draggable container (`react-rnd`); a multi-selection is rendered by `SelectionGroup`. A
+  `WidgetItem` selects its own widget (by id, from `editorStore.widgetIdMap`) and selection state,
+  so a selection change re-renders only the widgets whose selection state changed. A widget either
+  renders the static component directly (edit mode), or delegates it to `LiveWidget` in runtime.
 - **`LiveWidget`** - operates in runtime mode only. Subscribes to `usePVStore` with a PV-specific
   selector (using `useShallow` for reference equality), then calls `applyWidgetPVData()`
   (`widgetRenderUtils.ts`) to merge PV data, evaluate configured rules, and resolve macros before
