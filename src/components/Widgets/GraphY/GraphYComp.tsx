@@ -192,8 +192,8 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
           height: 25,
         },
         {
-          show: !inEditMode,
           type: "inside",
+          disabled: inEditMode,
           realtime: true,
           showDetail: true,
         },
