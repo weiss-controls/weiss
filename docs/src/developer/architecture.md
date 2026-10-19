@@ -152,7 +152,7 @@ through one of the above.
 
 The FastAPI back-end exposes three route groups:
 
-- **Developer routes** (`/repos/staging`): developer-only endpoints (enforced by
+- **Developer routes** (`/api/v1/repos/staging`): developer-only endpoints (enforced by
   `require_developer`) that manage per-user editable copies of OPI repositories. Each registered
   repository is cloned as a bare Git repository; every developer who opens it gets an isolated **git
   worktree** created automatically for their user ID. This means concurrent edits from different
@@ -160,10 +160,10 @@ The FastAPI back-end exposes three route groups:
   through these worktrees via their respective endpoints. For interaction with remote, the Technical
   Account Token is used. See [Git Interaction](../production/git_interaction.md) for more details.
 
-- **Operator routes** (`/repos/deployed`): read-only endpoints used by the frontend to serve the
-  currently deployed OPI snapshot to "operator" users.
+- **Operator routes** (`/api/v1/repos/runtime`): read-only endpoints used by the frontend to serve
+  the currently deployed OPI snapshot to "operator" users.
 
-- **Snapshot routes** (`/repos/snapshot`): provides **storage interaction** with PV snapshots
+- **Snapshot routes** (`/api/v1/snapshots`): provides **storage interaction** with PV snapshots
   (saving to disk, fetching values, etc.). These endpoints **DO NOT** communicate to PVs in any
   form, i.e., you need to provide the data to be saved, and for restoring, you need to restore it
   yourself (WEISS frontend does that). This will change as the snapshot feature becomes a standalone
@@ -171,8 +171,8 @@ The FastAPI back-end exposes three route groups:
 
 #### Authentication
 
-Authentication is based on OAuth 2.0 / OpenID Connect and is available through the `/auth` route
-group. The backend loads the configured non-demo provider from `api.auth.providers` using
+Authentication is based on OAuth 2.0 / OpenID Connect and is available through the `/api/v1/auth`
+route group. The backend loads the configured non-demo provider from `api.auth.providers` using
 `AUTH_IDENTITY_PROVIDER` (default `oauth`) and also supports a dedicated `demo` provider when
 `DEMO_MODE=true`. See [Organization credentials](../production/org_credentials.md) for more details.
 

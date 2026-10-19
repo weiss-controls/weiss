@@ -24,12 +24,12 @@ Docs (read the relevant one before working in an area):
 pnpm dev                                   # frontend only, :5173
 docker compose -f docker-compose-dev.yml up --build   # full stack (needs roles.toml from backend/api/roles.example.toml)
 pnpm lint && pnpm format-check             # oxlint (type-aware) + prettier
-pnpm exec tsc -b                           # type-check; `pnpm typecheck` (tsc --noEmit) checks nothing
+pnpm typecheck                             # tsc -b
 ruff check backend/api backend/epicsWS && ruff format --check backend/api backend/epicsWS
 pnpm exec openapi-ts                       # regenerate src/services/APIClient (API running on :8000)
 ```
 
-There are no automated tests. Run the checks above after changes (CI runs all but `tsc -b`).
+There are no automated tests. Run the checks above after changes; CI runs the same ones.
 
 ## Frontend
 
