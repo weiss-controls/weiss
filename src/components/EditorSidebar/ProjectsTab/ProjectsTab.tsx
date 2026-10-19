@@ -8,21 +8,18 @@ import { Box, Button, Paper, Skeleton, Typography } from "@mui/material";
 import GitImportDialog from "@src/components/GitImportDialog/GitImportDialog";
 import CustomGitIcon from "@src/components/CustomIcons/GitIcon";
 import { COLORS } from "@src/constants/constants";
-import { useUIContext } from "@src/context/useUIContext";
+import { useSessionStore } from "@src/stores/sessionStore";
+import { useRepoStore } from "@src/stores/repoStore";
 import { useUIStore } from "@src/stores/uiStore";
 
 export default function ProjectsTab() {
-  const {
-    isDeveloper,
-    reposTreeInfo,
-    setReposTreeInfo,
-    isReposLoading,
-    setSelectedFile,
-    selectedFile,
-    imageSrc,
-    imageName,
-    reloadSelectedFile,
-  } = useUIContext();
+  const isDeveloper = useSessionStore((s) => s.isDeveloper);
+  const reposTreeInfo = useRepoStore((s) => s.reposTreeInfo);
+  const isReposLoading = useRepoStore((s) => s.isReposLoading);
+  const selectedFile = useRepoStore((s) => s.selectedFile);
+  const imageSrc = useRepoStore((s) => s.imageSrc);
+  const imageName = useRepoStore((s) => s.imageName);
+  const { setReposTreeInfo, setSelectedFile, reloadSelectedFile } = useRepoStore.getState();
   const inEditMode = useUIStore((s) => s.inEditMode);
   const [GitImportOpen, setGitImportOpen] = useState(false);
 

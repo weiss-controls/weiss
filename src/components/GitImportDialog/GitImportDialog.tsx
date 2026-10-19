@@ -19,7 +19,8 @@ import CustomGitIcon from "@src/components/CustomIcons/GitIcon";
 import type { RepoCreateRequest } from "@src/services/APIClient/types.gen";
 import { registerRepo } from "@src/services/APIClient/sdk.gen";
 import { notifyUser } from "@src/services/Notifications/Notification";
-import { useUIContext } from "@src/context/useUIContext";
+import { useSessionStore } from "@src/stores/sessionStore";
+import { useRepoStore } from "@src/stores/repoStore";
 import { COLORS } from "@src/constants/constants";
 
 function isHttpsGitUrl(url: string): boolean {
@@ -39,7 +40,8 @@ interface GitImportDialogProps {
 }
 
 export default function GitImportDialog({ open, onClose }: GitImportDialogProps) {
-  const { setReposTreeInfo, isDemo } = useUIContext();
+  const isDemo = useSessionStore((s) => s.isDemo);
+  const { setReposTreeInfo } = useRepoStore.getState();
   const [alias, setAlias] = useState("");
   const [gitUrl, setGitUrl] = useState(
     isDemo ? "https://github.com/weiss-controls/weiss-demo-opis.git" : "",

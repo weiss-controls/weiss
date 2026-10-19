@@ -37,9 +37,8 @@ traffic is injected.
 
 ### Core shared frontend components:
 
-For both modes, the operation and state management of the editor is handled through a combination of
-React context providers and custom hooks. For pv state update handling,
-[Zustand](https://zustand.site/en/) is used.
+For both modes, the state of the editor is held in [Zustand](https://zustand.pmnd.rs/) stores in
+`src/stores/`; there are no React context providers for app state.
 
 :::{important}  
 These are not all the shared elements of the frontend composition, but the more important ones.
@@ -50,17 +49,25 @@ Starting by these will naturally guide you through the other related files.
 
 #### State management layer
 
-- **`editorStore`** (`src/stores/editorStore.ts`, Zustand) - owns the canonical list of widgets on
-  the canvas. It handles selection, undo/redo history, clipboard, grouping, macros, and
-  serialisation/deserialisation of OPI files. Derived values (widget index, selection bounds,
-  runtime macros, resolved PV list) are computed by its actions and stored.
-- **`UIContext`** (`useUIManager`) - owns the open file, repository and authentication state, and
-  cross-cutting interactions such as loading or saving a file.
-- **`uiStore`** (`src/stores/uiStore.ts`, Zustand) - owns UI-only state: the current mode (edit vs.
-  runtime), panning, canvas text editing, and the widget picker and editor sidebar state. Widgets
-  read the mode with `useUIStore((s) => s.inEditMode)`. Shared state is moving from contexts to
-  stores in `src/stores/` (see its README). Actions spanning several stores (`updateMode`) and
-  store-to-store reactions live in `src/stores/actions.ts`.
+Stores live in `src/stores/` (conventions in its `README.md`). Components subscribe with a selector
+for the slice they need, and call actions through `useXStore.getState()` in event handlers.
+
+- **`editorStore`** - owns the canonical list of widgets on the canvas. It handles selection,
+  undo/redo history, clipboard, grouping, macros, and serialisation/deserialisation of OPI files.
+  Derived values (widget index, selection bounds, runtime macros, resolved PV list) are computed by
+  its actions and stored.
+- **`uiStore`** - UI-only state: the current mode (edit vs. runtime), panning, canvas text editing,
+  and the widget picker and editor sidebar state. Widgets read the mode with
+  `useUIStore((s) => s.inEditMode)`.
+- **`sessionStore`** - the authenticated user, role and git token status, `login` and `logout`.
+- **`repoStore`** - repository trees and the selected file (or image preview).
+- **`actions.ts`** - actions spanning several stores (`updateMode`) and store-to-store reactions:
+  the resolved PV list sent to the WebSocket session, the rule-driven macro sync in runtime, and the
+  debounced auto-save of the edited file (flushed on file or mode switch).
+- **`AppEffects`** (`src/AppEffects.tsx`) - headless component mounted once in `main.tsx` for
+  effects tied to the React lifecycle: session restore and auth subscription, repository tree and
+  token status fetch, loading the selected file, restoring the last opened file, and the WebSocket
+  reconnect notifications.
 - **WebSocket session** (`src/services/WSClient/session.ts`) - a module, not a context. It owns the
   `WSClient` instance and exports `startNewSession`, `stopSession`, `setSubscribedPVs`,
   `writePVValue`, `takeSnapshot` and `restoreFromSnapshot`, which components import directly. The
@@ -127,7 +134,7 @@ through one of the above.
 
 - **`AuthService`** - singleton (`authService`) that drives the full OAuth login lifecycle. Handles
   provider redirect, code exchange, session restoration on page load (`restoreSession()`), and
-  logout. Broadcasts auth state changes to React via a callback observer consumed by `useUIManager`.
+  logout. Broadcasts auth state changes via a callback observer consumed by `AppEffects`.
 
 - **`Dialog`** - imperative confirmation dialog. Call `confirmDialog(options)` from anywhere in the
   app to open a modal; it returns a `Promise<boolean>` resolved when the user confirms or cancels.

@@ -6,7 +6,8 @@ import Box from "@mui/material/Box";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import type { TabEntry, WidgetUpdate } from "@src/types/widgets";
-import { useUIContext } from "@src/context/useUIContext";
+import { useSessionStore } from "@src/stores/sessionStore";
+import { useRepoStore } from "@src/stores/repoStore";
 import { useEditorStore } from "@src/stores/editorStore";
 import { resolveRepoPath } from "@src/utils/repoPath";
 import {
@@ -26,7 +27,8 @@ function normalizeTabs(raw: unknown): TabEntry[] {
 }
 
 const NavigationTabsComp: React.FC<WidgetUpdate> = ({ data }) => {
-  const { isDeveloper, selectedFile } = useUIContext();
+  const isDeveloper = useSessionStore((s) => s.isDeveloper);
+  const selectedFile = useRepoStore((s) => s.selectedFile);
   const fileLoadedTrig = useEditorStore((s) => s.fileLoadedTrig);
   const globalMacros = useEditorStore((s) => s.globalMacros);
   const p = data.editableProperties;

@@ -3,7 +3,8 @@
 
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import type { WidgetUpdate } from "@src/types/widgets";
-import { useUIContext } from "@src/context/useUIContext";
+import { useSessionStore } from "@src/stores/sessionStore";
+import { useRepoStore } from "@src/stores/repoStore";
 import { useUIStore } from "@src/stores/uiStore";
 import { useEditorStore } from "@src/stores/editorStore";
 import { resolveRepoPath } from "@src/utils/repoPath";
@@ -17,7 +18,8 @@ import {
 import { Placeholder } from "@components/Widgets/shared/Placeholder";
 
 const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
-  const { isDeveloper, selectedFile } = useUIContext();
+  const isDeveloper = useSessionStore((s) => s.isDeveloper);
+  const selectedFile = useRepoStore((s) => s.selectedFile);
   const inEditMode = useUIStore((s) => s.inEditMode);
   const fileLoadedTrig = useEditorStore((s) => s.fileLoadedTrig);
   const globalMacros = useEditorStore((s) => s.globalMacros);

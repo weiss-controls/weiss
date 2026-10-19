@@ -5,7 +5,7 @@ import React, { useEffect, useRef, useState } from "react";
 import type { GridPosition, WidgetDefinition, WidgetUpdate } from "@src/types/widgets";
 import type { PVData } from "@src/types/epicsWS";
 import { usePVStore } from "@src/services/pvStore";
-import { createWidgetInstance, ensureGridCoordinate } from "@src/context/widgetHelpers";
+import { createWidgetInstance, ensureGridCoordinate } from "@src/stores/widgetHelpers";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import { FRONT_UI_ZIDX, GRID_ID, MAX_ZOOM, MIN_ZOOM } from "@src/constants/constants";
 import ContextMenu from "@components/ContextMenu/ContextMenu";
@@ -16,7 +16,8 @@ import { v4 as uuidv4 } from "uuid";
 import SelectionManager from "./SelectionManager/SelectionManager";
 import { Box, CircularProgress, Fade } from "@mui/material";
 import { useEditorStore } from "@src/stores/editorStore";
-import { useUIContext } from "@src/context/useUIContext";
+import { useSessionStore } from "@src/stores/sessionStore";
+import { useRepoStore } from "@src/stores/repoStore";
 import { useUIStore } from "@src/stores/uiStore";
 
 /**
@@ -38,7 +39,9 @@ import { useUIStore } from "@src/stores/uiStore";
 const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
   const props = data.editableProperties;
 
-  const { selectedFile, isDeveloper, isReposLoading } = useUIContext();
+  const selectedFile = useRepoStore((s) => s.selectedFile);
+  const isDeveloper = useSessionStore((s) => s.isDeveloper);
+  const isReposLoading = useRepoStore((s) => s.isReposLoading);
   const inEditMode = useUIStore((s) => s.inEditMode);
   const isPanning = useUIStore((s) => s.isPanning);
   const setIsPanning = useUIStore((s) => s.setIsPanning);

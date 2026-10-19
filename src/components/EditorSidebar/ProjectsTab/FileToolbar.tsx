@@ -19,9 +19,10 @@ import {
   type StagingTreeInfo,
 } from "@src/services/APIClient";
 import { notifyUser } from "@src/services/Notifications/Notification";
-import type { SelectedPathInfo } from "@src/context/useUIManager";
+import type { SelectedPathInfo } from "@src/stores/repoStore";
 import { confirmDialog } from "@src/services/Dialog/Dialog";
-import { useUIContext } from "@src/context/useUIContext";
+import { useSessionStore } from "@src/stores/sessionStore";
+import { useRepoStore } from "@src/stores/repoStore";
 import { useUIStore } from "@src/stores/uiStore";
 
 interface FileToolbarProps {
@@ -66,7 +67,9 @@ export default function FileToolbar({
   onStartRename,
 }: FileToolbarProps) {
   const iconSx = { fontSize: 18 };
-  const { isDeveloper, selectedFile, setSelectedFile } = useUIContext();
+  const isDeveloper = useSessionStore((s) => s.isDeveloper);
+  const selectedFile = useRepoStore((s) => s.selectedFile);
+  const { setSelectedFile } = useRepoStore.getState();
   const inEditMode = useUIStore((s) => s.inEditMode);
   const fileInputRef = useRef<HTMLInputElement>(null);
 

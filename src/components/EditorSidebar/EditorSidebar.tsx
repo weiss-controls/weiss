@@ -25,7 +25,7 @@ import { COLORS, FRONT_UI_ZIDX } from "@src/constants/constants";
 import PropertyNavigator from "./PropertiesTab/PropertiesTab";
 import ProjectsTab from "./ProjectsTab/ProjectsTab";
 import WidgetTree from "@components/WidgetTree";
-import { useUIContext } from "@src/context/useUIContext";
+import { useSessionStore } from "@src/stores/sessionStore";
 import { useUIStore } from "@src/stores/uiStore";
 import { useEditorStore } from "@src/stores/editorStore";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
@@ -78,7 +78,7 @@ const EditorSidebar: React.FC = () => {
   const selectedCount = useEditorStore((s) => s.selectedWidgetIDs.length);
   const editingCount = useEditorStore((s) => s.editingWidgets.length);
   const editingName = useEditorStore((s) => s.editingWidgets[0].widgetName);
-  const { isAuthenticated } = useUIContext();
+  const isAuthenticated = useSessionStore((s) => s.isAuthenticated);
   const inEditMode = useUIStore((s) => s.inEditMode);
   const open = useUIStore((s) => s.editorSidebarOpen);
   const pinned = useUIStore((s) => s.editorSidebarPinned);

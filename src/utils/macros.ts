@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 WEISS Contributors
 
-import { flattenWidgetTree } from "@src/context/widgetHelpers";
+import { flattenWidgetTree } from "@src/stores/widgetHelpers";
 import type { PVData } from "@src/types/epicsWS";
 import type { PropertyKey, Widget, WidgetProperties, WidgetProperty } from "@src/types/widgets";
 import { evaluateRules } from "./ruleEngine";

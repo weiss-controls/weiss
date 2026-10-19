@@ -35,7 +35,8 @@ import { restoreFromSnapshot, takeSnapshot } from "@src/services/WSClient/sessio
 import { usePVStore } from "@src/services/pvStore";
 import { notifyUser } from "@src/services/Notifications/Notification.ts";
 import { useEditorStore } from "@src/stores/editorStore";
-import { useUIContext } from "@src/context/useUIContext.tsx";
+import { useSessionStore } from "@src/stores/sessionStore";
+import { useRepoStore } from "@src/stores/repoStore";
 import { useUIStore } from "@src/stores/uiStore";
 import { updateMode } from "@src/stores/actions";
 import { parsePhoebus, convertDisplay } from "@src/utils/bob2json";
@@ -141,7 +142,11 @@ export default function NavBar() {
   const inEditMode = useUIStore((s) => s.inEditMode);
   const wdgPickerOpen = useUIStore((s) => s.wdgPickerOpen);
   const toggleWdgPicker = useUIStore((s) => s.toggleWdgPicker);
-  const { user, isAuthenticated, logout, isDeveloper, selectedFile } = useUIContext();
+  const user = useSessionStore((s) => s.user);
+  const isAuthenticated = useSessionStore((s) => s.isAuthenticated);
+  const isDeveloper = useSessionStore((s) => s.isDeveloper);
+  const selectedFile = useRepoStore((s) => s.selectedFile);
+  const { logout } = useSessionStore.getState();
   const [snapshotOpen, setSnapshotOpen] = useState(false);
   const drawerWidth = WIDGET_SELECTOR_WIDTH;
   const [importMenuAnchor, setImportMenuAnchor] = useState<null | HTMLElement>(null);

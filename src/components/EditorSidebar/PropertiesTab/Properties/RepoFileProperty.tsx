@@ -5,7 +5,7 @@ import React, { useMemo, useState } from "react";
 import { IconButton, InputAdornment, ListItem, TextField, Tooltip } from "@mui/material";
 import FolderOpenIcon from "@mui/icons-material/FolderOpen";
 import type { PropertyKey, PropertyValue } from "@src/types/widgets";
-import { useUIContext } from "@src/context/useUIContext";
+import { useRepoStore } from "@src/stores/repoStore";
 import { resolveRepoPath } from "@src/utils/repoPath";
 import RepoFileBrowserDialog from "./RepoFileBrowserDialog";
 
@@ -28,7 +28,7 @@ const RepoFileProperty: React.FC<RepoFilePropertyProps> = ({
   accept,
   onChange,
 }) => {
-  const { selectedFile } = useUIContext();
+  const selectedFile = useRepoStore((s) => s.selectedFile);
   const [open, setOpen] = useState(false);
 
   const opiPath = selectedFile?.path ?? "";

@@ -11,10 +11,13 @@ import { useNavigate } from "react-router-dom";
 import { APP_SRC_URL, APP_VERSION, COLORS } from "@src/constants/constants";
 import GitHubIcon from "@mui/icons-material/GitHub";
 import IconButton from "@mui/material/IconButton";
-import { useUIContext } from "@src/context/useUIContext";
+import { useSessionStore } from "@src/stores/sessionStore";
 
 export default function LoginPage() {
-  const { login, isAuthenticated, user, isDemo } = useUIContext();
+  const isAuthenticated = useSessionStore((s) => s.isAuthenticated);
+  const user = useSessionStore((s) => s.user);
+  const isDemo = useSessionStore((s) => s.isDemo);
+  const { login } = useSessionStore.getState();
   const navigate = useNavigate();
 
   const configuredProvider =

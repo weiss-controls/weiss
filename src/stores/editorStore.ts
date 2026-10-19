@@ -37,7 +37,7 @@ import {
   getSelectedWidgets,
   getWidgetNested,
   updateWidgets,
-} from "@src/context/widgetHelpers";
+} from "@src/stores/widgetHelpers";
 
 type Macros = Record<string, string>;
 
@@ -166,7 +166,12 @@ function pushHistory(stack: Widget[][], widgets: Widget[]): Widget[][] {
   return updated.length > MAX_HISTORY ? updated.slice(1) : updated;
 }
 
-export function formatWdgToExport(widget: Widget): ExportedWidget {
+/** File content of a widget list, as saved and downloaded */
+export function serializeWidgets(widgets: Widget[]): string {
+  return JSON.stringify(widgets.map(formatWdgToExport), null, 2);
+}
+
+function formatWdgToExport(widget: Widget): ExportedWidget {
   // EmbeddedDisplay/NavigationTabs children are injected at runtime and not exported
   const exportChildren =
     widget.widgetName === "EmbeddedDisplay" || widget.widgetName === "NavigationTabs"
@@ -223,8 +228,8 @@ interface EditorState {
   isDragging: boolean;
   /** Incremented on every file load */
   fileLoadedTrig: number;
-  /** Incremented on every local file import */
-  fileImportedTrig: number;
+  /** Exported content last loaded or saved; auto-save skips identical content. null after an import. */
+  savedContent: string | null;
   /** Macros forwarded by navigation actions (runtime only) */
   navMacroOverrides: Macros;
   /** Macros set by rules from live PV data (runtime only) */
@@ -298,6 +303,7 @@ interface EditorState {
   loadWidgets: (widgetsData: string | ExportedWidget[]) => void;
   /** Loads widgets from a local file, also triggering the backend auto-save. */
   importWidgets: (widgetsData: string | ExportedWidget[]) => void;
+  setSavedContent: (content: string) => void;
   setPickedWidget: (widget: WidgetDefinition | null) => void;
   setIsPlacementMode: (isPlacementMode: boolean) => void;
   setIsDragging: (isDragging: boolean) => void;
@@ -394,7 +400,7 @@ function commit(
 }
 
 // GridZone imports GridZoneComp, which imports this store: this module has to be evaluated
-// first (main.tsx imports ContextProvider, which reaches it, before App).
+// first (main.tsx imports AppEffects, which reaches it, before App).
 const initialState = commit([createWidgetInstance(GridZone, GRID_ID)], {
   navMacroOverrides: NO_MACROS,
   ruleMacroOverrides: NO_MACROS,
@@ -509,7 +515,7 @@ export const useEditorStore = create<EditorState>()((set, get) => {
     isPlacementMode: false,
     isDragging: false,
     fileLoadedTrig: 0,
-    fileImportedTrig: 0,
+    savedContent: null,
     ...initialState,
 
     updateEditorWidgetList: (newWidgets, keepHistory = true) => {
@@ -831,8 +837,7 @@ export const useEditorStore = create<EditorState>()((set, get) => {
 
     downloadWidgets: async (suggestedName) => {
       const defaultName = suggestedName ?? "weiss.opi.json";
-      const simplified = get().editorWidgets.map(formatWdgToExport);
-      const dataStr = JSON.stringify(simplified, null, 2) + "\n"; // end data with empty line
+      const dataStr = serializeWidgets(get().editorWidgets) + "\n"; // end data with empty line
       const blob = new Blob([dataStr], { type: "application/json" });
 
       // File System Access API, not in the standard Window type
@@ -922,6 +927,7 @@ export const useEditorStore = create<EditorState>()((set, get) => {
         set({
           ...commit(imported, { ...s, selectedWidgetIDs: [] }),
           selectedWidgetIDs: [],
+          savedContent: serializeWidgets(imported),
           fileLoadedTrig: s.fileLoadedTrig + 1,
           undoStack: [],
           redoStack: [],
@@ -941,8 +947,10 @@ export const useEditorStore = create<EditorState>()((set, get) => {
 
     importWidgets: (widgetsData) => {
       get().loadWidgets(widgetsData);
-      set((s) => ({ fileImportedTrig: s.fileImportedTrig + 1 }));
+      set({ savedContent: null });
     },
+
+    setSavedContent: (savedContent) => set({ savedContent }),
 
     setPickedWidget: (pickedWidget) => set({ pickedWidget }),
     setIsPlacementMode: (isPlacementMode) => set({ isPlacementMode }),
