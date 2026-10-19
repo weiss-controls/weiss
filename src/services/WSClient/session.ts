@@ -11,14 +11,14 @@
 import { WSClient } from "./WSClient";
 import type { Alarm, NDArrayInfo, PVData, PVWriteValue, WSMessage } from "@src/types/epicsWS";
 import { WS_URL } from "@src/constants/constants";
-import { usePVStore } from "@src/services/pvStore";
+import { usePVStore } from "@src/stores/pvStore";
 import {
   EMPTY_FRAME,
   type ImageFrame,
   isImagePV,
   registeredImagePVs,
   useImageStore,
-} from "@src/services/imageStore";
+} from "@src/stores/imageStore";
 import { useWSStore } from "@src/stores/wsStore";
 import { pushPVHistory, clearPVHistory } from "@src/utils/historyBuffers";
 import { isTypedNumericArray } from "@src/utils/numericArray";

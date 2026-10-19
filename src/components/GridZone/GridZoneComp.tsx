@@ -4,7 +4,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import type { GridPosition, WidgetDefinition, WidgetUpdate } from "@src/types/widgets";
 import type { PVData } from "@src/types/epicsWS";
-import { usePVStore } from "@src/services/pvStore";
+import { usePVStore } from "@src/stores/pvStore";
 import { createWidgetInstance, ensureGridCoordinate } from "@src/stores/widgetHelpers";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import { FRONT_UI_ZIDX, GRID_ID, MAX_ZOOM, MIN_ZOOM } from "@src/constants/constants";

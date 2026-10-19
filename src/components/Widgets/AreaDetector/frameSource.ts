@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 WEISS Contributors
 
-import { type ImageFrame, registerImagePV, useImageStore } from "@src/services/imageStore";
-import { usePVStore } from "@src/services/pvStore";
+import { type ImageFrame, registerImagePV, useImageStore } from "@src/stores/imageStore";
+import { usePVStore } from "@src/stores/pvStore";
 import type { PVData } from "@src/types/epicsWS";
 import type { WaveformShape } from "./worker/imageLayout.ts";
 

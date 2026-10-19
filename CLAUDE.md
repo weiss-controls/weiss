@@ -34,8 +34,8 @@ There are no automated tests. Run the checks above after changes; CI runs the sa
 ## Frontend
 
 - Aliases: `@src` → `src/`, `@components` → `src/components/`.
-- Live PV data lives in Zustand (`src/services/pvStore.ts`), never in React context. Components read
-  it with a PV-specific selector. Image frames go to `src/services/imageStore.ts` instead and never
+- Live PV data lives in Zustand (`src/stores/pvStore.ts`), never in React context. Components read
+  it with a PV-specific selector. Image frames go to `src/stores/imageStore.ts` instead and never
   reach props, rules or macros.
 - UI-only state (mode, panning, sidebar, widget picker) is in `src/stores/uiStore.ts`. Read the mode
   with `useUIStore((s) => s.inEditMode)`, not from a context. Switch mode with `updateMode`

@@ -3,7 +3,7 @@
 
 import { create } from "zustand";
 import type { Alarm, NDArrayInfo, NumericArray, TimeStamp } from "@src/types/epicsWS";
-import { usePVStore } from "@src/services/pvStore";
+import { usePVStore } from "@src/stores/pvStore";
 import { isTypedNumericArray } from "@src/utils/numericArray";
 
 /** Value of an image PV's summary in the PV store, and of a frame without pixels */

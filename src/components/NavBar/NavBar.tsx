@@ -32,7 +32,7 @@ import AlarmPanel from "@components/AlarmPanel/AlarmPanel.tsx";
 import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import { restoreFromSnapshot, takeSnapshot } from "@src/services/WSClient/session";
-import { usePVStore } from "@src/services/pvStore";
+import { usePVStore } from "@src/stores/pvStore";
 import { notifyUser } from "@src/services/Notifications/Notification.ts";
 import { useEditorStore } from "@src/stores/editorStore";
 import { useSessionStore } from "@src/stores/sessionStore";

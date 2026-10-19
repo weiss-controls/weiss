@@ -6,7 +6,7 @@
 import { EDIT_MODE, type Mode } from "@src/constants/constants";
 import { updateStagingRepoFile } from "@src/services/APIClient";
 import { notifyUser } from "@src/services/Notifications/Notification";
-import { usePVStore } from "@src/services/pvStore";
+import { usePVStore } from "@src/stores/pvStore";
 import { setSubscribedPVs, startNewSession, stopSession } from "@src/services/WSClient/session";
 import { collectGlobalMacroOverrides } from "@src/utils/macros";
 import { serializeWidgets, useEditorStore } from "./editorStore";

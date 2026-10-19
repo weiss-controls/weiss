@@ -6,7 +6,7 @@ import { useShallow } from "zustand/react/shallow";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import type { Widget } from "@src/types/widgets";
 import type { PVData } from "@src/types/epicsWS";
-import { usePVStore } from "@src/services/pvStore";
+import { usePVStore } from "@src/stores/pvStore";
 import { substituteMacroInStr } from "@src/utils/macros";
 import { applyWidgetPVData } from "./widgetRenderUtils";
 

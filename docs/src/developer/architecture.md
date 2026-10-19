@@ -76,8 +76,8 @@ for the slice they need, and call actions through `useXStore.getState()` in even
   subscribes the difference, and the whole list again after each (re)connect.
 
 Live PV data is stored in a [Zustand](https://zustand.pmnd.rs/) module-level store (`usePVStore`,
-`src/services/pvStore.ts`). The WebSocket session collects incoming WebSocket messages in a buffer
-and flushes them into the store via `requestAnimationFrame`, capping updates at the user's monitor
+`src/stores/pvStore.ts`). The WebSocket session collects incoming WebSocket messages in a buffer and
+flushes them into the store via `requestAnimationFrame`, capping updates at the user's monitor
 update rate. Widget components subscribe with a PV-specific selector:
 
 ```ts
