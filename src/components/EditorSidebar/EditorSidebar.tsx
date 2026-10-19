@@ -42,7 +42,9 @@ const Drawer = styled(MuiDrawer)(({ theme }) => ({
   },
 }));
 
-const ToggleButton = styled(IconButton)<{
+const ToggleButton = styled(IconButton, {
+  shouldForwardProp: (prop) => prop !== "open" && prop !== "drawerWidth",
+})<{
   open: boolean;
   drawerWidth: number;
 }>(({ theme, open, drawerWidth }) => ({
