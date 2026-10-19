@@ -65,14 +65,10 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
     ungroupSelected,
     moveSelected,
     widgetIdMap,
-    setGridSize,
-    setSnapToGrid,
     gridSize,
     snapToGrid,
   } = useWidgetContext();
 
-  setGridSize(props.gridSize!.value);
-  setSnapToGrid(props.snapToGrid!.value);
   const gridRef = useRef<HTMLDivElement>(null);
   const lastPosRef = useRef<GridPosition>({ x: 0, y: 0 });
   const mousePosRef = useRef<GridPosition>({ x: 0, y: 0 });

@@ -86,9 +86,11 @@ export function useWidgetManager() {
   const [fileImportedTrig, setFileImportedTrig] = useState(0);
   const [navMacroOverrides, setNavMacroOverrides] = useState<Record<string, string>>({});
   const [ruleMacroOverrides, setRuleMacroOverrides] = useState<Record<string, string>>({});
-  const [gridSize, setGridSize] = useState<number>(1);
-  const [snapToGrid, setSnapToGrid] = useState<boolean>(true);
   const DRAG_END_DELAY = 80; //ms
+
+  const gridProps = editorWidgets.find((w) => w.id === GRID_ID)?.editableProperties;
+  const gridSize = gridProps?.gridSize?.value ?? 1;
+  const snapToGrid = gridProps?.snapToGrid?.value ?? true;
 
   const clipboard = useRef<Widget[]>([]);
   const copiedSelectionBounds = useRef({ x: 0, y: 0, width: 0, height: 0 });
@@ -1277,8 +1279,6 @@ export function useWidgetManager() {
       handleResizeStop,
       handleSelGroupDragStop,
       handleSelGroupResizeStop,
-      setGridSize,
-      setSnapToGrid,
       gridSize,
       snapToGrid,
       isDragging,
