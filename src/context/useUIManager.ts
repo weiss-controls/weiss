@@ -4,6 +4,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { EDIT_MODE, RUNTIME_MODE, type Mode } from "@src/constants/constants";
 import { useUIStore } from "@src/stores/uiStore";
+import { useWSStore } from "@src/stores/wsStore";
+import { startNewSession, stopSession } from "@src/services/WSClient/session";
 import { useWidgetManager } from "./useWidgetManager";
 import type { ExportedWidget } from "@src/types/widgets";
 import {
@@ -57,9 +59,6 @@ export interface SelectedPathInfo {
  * Hook that manages global UI state for WEISS.
  */
 export default function useUIManager(
-  wsConnected: boolean,
-  startNewSession: () => void,
-  stopSession: () => void,
   setSelectedWidgetIDs: ReturnType<typeof useWidgetManager>["setSelectedWidgetIDs"],
   editorWidgets: ReturnType<typeof useWidgetManager>["editorWidgets"],
   formatWdgToExport: ReturnType<typeof useWidgetManager>["formatWdgToExport"],
@@ -89,6 +88,7 @@ export default function useUIManager(
   const [imageName, setImageName] = useState<string | null>(null);
   const [tokenStatus, setTokenStatus] = useState<TokenStatus | null>(null);
   const inEditMode = useUIStore((s) => s.inEditMode);
+  const wsConnected = useWSStore((s) => s.wsConnected);
   const RECONNECT_TIMEOUT = 3000;
   const isDemo = import.meta.env.VITE_DEMO_MODE === "true";
   const isDeveloper = user?.role === Roles.DEVELOPER;
@@ -150,14 +150,7 @@ export default function useUIManager(
       }
       useUIStore.getState().setMode(newMode);
     },
-    [
-      setSelectedWidgetIDs,
-      startNewSession,
-      stopSession,
-      snapshotEditModeMacros,
-      restoreEditModeMacros,
-      resetRuntimeMacros,
-    ],
+    [setSelectedWidgetIDs, snapshotEditModeMacros, restoreEditModeMacros, resetRuntimeMacros],
   );
 
   useEffect(() => {
@@ -215,7 +208,7 @@ export default function useUIManager(
         notifyUser("Reconnected to server.", "success");
       }
     };
-  }, [inEditMode, wsConnected, startNewSession]);
+  }, [inEditMode, wsConnected]);
 
   // Fetch and load file whenever selectedFile changes.
   useEffect(() => {

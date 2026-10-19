@@ -31,7 +31,7 @@ import SnapshotDialog from "@components/SnapshotDialog/SnapshotDialog.tsx";
 import AlarmPanel from "@components/AlarmPanel/AlarmPanel.tsx";
 import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
-import { useEpicsWSContext } from "@src/context/useEpicsWSContext.tsx";
+import { restoreFromSnapshot, takeSnapshot } from "@src/services/WSClient/session";
 import { usePVStore } from "@src/services/pvStore";
 import { notifyUser } from "@src/services/Notifications/Notification.ts";
 import { useWidgetContext } from "@src/context/useWidgetContext.tsx";
@@ -141,7 +141,6 @@ export default function NavBar() {
   const wdgPickerOpen = useUIStore((s) => s.wdgPickerOpen);
   const toggleWdgPicker = useUIStore((s) => s.toggleWdgPicker);
   const { updateMode, user, isAuthenticated, logout, isDeveloper, selectedFile } = useUIContext();
-  const { takeSnapshot, restoreFromSnapshot } = useEpicsWSContext();
   const [snapshotOpen, setSnapshotOpen] = useState(false);
   const drawerWidth = WIDGET_SELECTOR_WIDTH;
   const [importMenuAnchor, setImportMenuAnchor] = useState<null | HTMLElement>(null);

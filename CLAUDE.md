@@ -40,7 +40,8 @@ There are no automated tests. Run the checks above after changes; CI runs the sa
 - UI-only state (mode, panning, sidebar, widget picker) is in `src/stores/uiStore.ts`. Read the mode
   with `useUIStore((s) => s.inEditMode)`, not from a context. Switch mode with `updateMode`
   (`UIContext`), which also starts/stops the WS session. Store conventions: `src/stores/README.md`.
-- `WSActionsContext` exposes only `writePVValue` and must stay stable (no deps).
+- The PV WebSocket session is a module (`src/services/WSClient/session.ts`): import `writePVValue`,
+  `takeSnapshot`, etc. directly. Its connection state is in `src/stores/wsStore.ts`.
 - PV array values are `NumericArray` typed-array views: use `isNumericArray()`
   (`src/utils/numericArray.ts`), not `Array.isArray()`, and avoid copying them.
 - `useWidgetManager`: `editorWidgets` is a flat list with the grid at index 0 (`GRID_ID`). Every

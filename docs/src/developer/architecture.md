@@ -59,16 +59,16 @@ Starting by these will naturally guide you through the other related files.
   runtime), panning, canvas text editing, and the widget picker and editor sidebar state. Widgets
   read the mode with `useUIStore((s) => s.inEditMode)`. Shared state is moving from contexts to
   stores in `src/stores/` (see its README).
-- **`EpicsWSContext`** (`useEpicsWS`) - exposes the WebSocket connection state and lifecycle methods
-  (`wsConnected`, `startNewSession`, `stopSession`). It does **not** carry live PV data — PV values
-  are served by the Zustand `pvStore` described below.
-- **`WSActionsContext`** (`useEpicsWS`) - exposes only `writePVValue`. Backed by the same
-  `useEpicsWS` hook but kept as a separate context so write-only widgets do not re-render on
-  connection state changes.
+- **WebSocket session** (`src/services/WSClient/session.ts`) - a module, not a context. It owns the
+  `WSClient` instance and exports `startNewSession`, `stopSession`, `setSubscribedPVs`,
+  `writePVValue`, `takeSnapshot` and `restoreFromSnapshot`, which components import directly. The
+  connection state is in `wsStore` (`src/stores/wsStore.ts`). `ContextProvider` passes the resolved
+  PV list to `setSubscribedPVs`; the session subscribes the difference, and the whole list again
+  after each (re)connect.
 
 Live PV data is stored in a [Zustand](https://zustand.pmnd.rs/) module-level store (`usePVStore`,
-`src/services/pvStore.ts`). `useEpicsWS` collects incoming WebSocket messages in a buffer and
-flushes them into the store via `requestAnimationFrame`, capping updates at the user's monitor
+`src/services/pvStore.ts`). The WebSocket session collects incoming WebSocket messages in a buffer
+and flushes them into the store via `requestAnimationFrame`, capping updates at the user's monitor
 update rate. Widget components subscribe with a PV-specific selector:
 
 ```ts
@@ -79,9 +79,9 @@ This means each widget re-renders only when its own PV changes, with no re-rende
 through React context.
 
 Image frames (NTNDArray updates, and plain array PVs a widget registered as images) never enter
-`pvStore`: `useEpicsWS` routes them to a separate `imageStore`, and `pvStore` only keeps a summary
-of the PV without its pixels. Large images therefore never pass through React props, rules or
-macros.
+`pvStore`: the WebSocket session routes them to a separate `imageStore`, and `pvStore` only keeps a
+summary of the PV without its pixels. Large images therefore never pass through React props, rules
+or macros.
 
 :::{note}  
 The state management layer is the brains of the application. All global UI states and behaviors pass
@@ -138,7 +138,7 @@ through one of the above.
   to display a 4-second auto-dismiss snackbar. Accepted severity values: `"success"`, `"info"`,
   `"warning"`, `"error"`.
 
-- **`WSClient`** - stateful WebSocket class injected into `useEpicsWS`. Manages
+- **`WSClient`** - stateful WebSocket class used by the WebSocket session (`session.ts`). Manages
   subscribe/unsubscribe/write messaging to the EPICS bridge, auto-reconnects with exponential
   backoff on unexpected disconnection, and decodes binary array updates into typed arrays before
   data reaches `pvStore`.
