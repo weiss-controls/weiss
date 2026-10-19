@@ -109,12 +109,11 @@ export class WSClient {
   }
 
   /**
-   * Handles WebSocket errors and closes the connection.
+   * Logs WebSocket errors. The close event that follows schedules the reconnection.
    * @param event The error event.
    */
   private handleError(event: Event): void {
     console.error("WebSocket error:", event);
-    this.close();
   }
 
   /**
@@ -260,7 +259,9 @@ export class WSClient {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
-    if (!this.connected) return;
+    // Also aborts a connection attempt still in progress
+    if (this.socket.readyState === WebSocket.CLOSING || this.socket.readyState === WebSocket.CLOSED)
+      return;
     this.socket.close(1000, "Client closing connection normally");
   }
 }

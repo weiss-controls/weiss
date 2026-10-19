@@ -152,10 +152,14 @@ function handleConnect(connected: boolean) {
   if (connected) {
     syncSubscriptions();
   } else {
-    // the server drops all subscriptions with the connection
+    // The server drops all subscriptions with the connection; widgets show the PVs as
+    // disconnected until the client reconnects and resubscribes
     subscribedPVs = new Set();
+    pendingPVs = {};
     pendingFrames = {};
     imageSummaries = {};
+    usePVStore.getState().clearPVs();
+    clearPVHistory();
   }
 }
 

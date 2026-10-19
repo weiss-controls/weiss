@@ -5,7 +5,6 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { RUNTIME_MODE } from "@src/constants/constants";
 import { useUIStore } from "@src/stores/uiStore";
 import { useWSStore } from "@src/stores/wsStore";
-import { startNewSession } from "@src/services/WSClient/session";
 import { updateMode } from "@src/stores/actions";
 import { formatWdgToExport, useEditorStore } from "@src/stores/editorStore";
 import type { ExportedWidget } from "@src/types/widgets";
@@ -78,7 +77,7 @@ export default function useUIManager() {
   const [tokenStatus, setTokenStatus] = useState<TokenStatus | null>(null);
   const inEditMode = useUIStore((s) => s.inEditMode);
   const wsConnected = useWSStore((s) => s.wsConnected);
-  const RECONNECT_TIMEOUT = 3000;
+  const RECONNECT_NOTICE_DELAY = 3000;
   const isDemo = import.meta.env.VITE_DEMO_MODE === "true";
   const isDeveloper = user?.role === Roles.DEVELOPER;
 
@@ -156,28 +155,18 @@ export default function useUIManager() {
     void authService.logout();
   }, []);
 
-  /**
-   * Handles WS reconnection when needed
-   */
+  // WSClient reconnects with backoff; this only notifies when the connection stays lost
   useEffect(() => {
     if (inEditMode || wsConnected) return;
-
-    let triedReconnect = false;
-
-    const intervalId = setInterval(() => {
-      if (!inEditMode && !wsConnected) {
-        triedReconnect = true;
-        console.warn("Socket disconnected. Attempting reconnection...");
-        notifyUser("Connection lost. Attempting to reconnect...", "warning");
-        startNewSession();
-      }
-    }, RECONNECT_TIMEOUT);
-
+    let notified = false;
+    const timeoutId = setTimeout(() => {
+      notified = true;
+      console.warn("Socket disconnected. Attempting reconnection...");
+      notifyUser("Connection lost. Attempting to reconnect...", "warning");
+    }, RECONNECT_NOTICE_DELAY);
     return () => {
-      clearInterval(intervalId);
-      if (triedReconnect) {
-        notifyUser("Reconnected to server.", "success");
-      }
+      clearTimeout(timeoutId);
+      if (notified) notifyUser("Reconnected to server.", "success");
     };
   }, [inEditMode, wsConnected]);
 
