@@ -224,12 +224,12 @@ export interface WidgetDefinition {
  * @property editableProperties Current editable property values
  * @property children Optional child widgets (for group widgets)
  * @property runtimePVName Runtime-only: macro-resolved form of editableProperties.pvName.value.
- *   Set by useWidgetManager; never serialized.
+ *   Set by editorStore; never serialized.
  * @property runtimePVNames Runtime-only: macro-resolved parallel array for editableProperties.pvNames.value.
- *   Set by useWidgetManager; never serialized.
+ *   Set by editorStore; never serialized.
  * @property runtimeAuxPVs Runtime-only: macro-resolved values of the other properties flagged `isPV`,
  *   by property name. Subscribed, but not bound into pvData; widgets read them from the PV store.
- *   Set by useWidgetManager; never serialized.
+ *   Set by editorStore; never serialized.
  * @property pvData Optional PV data, merged at render time only
  * @property multiPvData Optional multi-PV data, merged at render time only
  */

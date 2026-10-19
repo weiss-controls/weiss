@@ -50,9 +50,10 @@ Starting by these will naturally guide you through the other related files.
 
 #### State management layer
 
-- **`WidgetContext`** (`useWidgetManager`) - owns the canonical list of widgets on the canvas. It
-  handles selection, undo/redo history, clipboard, grouping, and serialisation/deserialisation of
-  OPI files.
+- **`editorStore`** (`src/stores/editorStore.ts`, Zustand) - owns the canonical list of widgets on
+  the canvas. It handles selection, undo/redo history, clipboard, grouping, macros, and
+  serialisation/deserialisation of OPI files. Derived values (widget index, selection bounds,
+  runtime macros, resolved PV list) are computed by its actions and stored.
 - **`UIContext`** (`useUIManager`) - owns the open file, repository and authentication state, and
   cross-cutting interactions such as switching mode (`updateMode`) and loading or saving a file.
 - **`uiStore`** (`src/stores/uiStore.ts`, Zustand) - owns UI-only state: the current mode (edit vs.

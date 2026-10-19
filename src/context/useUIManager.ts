@@ -6,7 +6,7 @@ import { EDIT_MODE, RUNTIME_MODE, type Mode } from "@src/constants/constants";
 import { useUIStore } from "@src/stores/uiStore";
 import { useWSStore } from "@src/stores/wsStore";
 import { startNewSession, stopSession } from "@src/services/WSClient/session";
-import { useWidgetManager } from "./useWidgetManager";
+import { formatWdgToExport, useEditorStore } from "@src/stores/editorStore";
 import type { ExportedWidget } from "@src/types/widgets";
 import {
   authService,
@@ -58,20 +58,11 @@ export interface SelectedPathInfo {
 /**
  * Hook that manages global UI state for WEISS.
  */
-export default function useUIManager(
-  setSelectedWidgetIDs: ReturnType<typeof useWidgetManager>["setSelectedWidgetIDs"],
-  editorWidgets: ReturnType<typeof useWidgetManager>["editorWidgets"],
-  formatWdgToExport: ReturnType<typeof useWidgetManager>["formatWdgToExport"],
-  fileLoadedTrig: ReturnType<typeof useWidgetManager>["fileLoadedTrig"],
-  fileImportedTrig: ReturnType<typeof useWidgetManager>["fileImportedTrig"],
-  clearAllWidgets: ReturnType<typeof useWidgetManager>["clearAllWidgets"],
-  loadWidgets: ReturnType<typeof useWidgetManager>["loadWidgets"],
-  snapshotEditModeMacros: ReturnType<typeof useWidgetManager>["snapshotEditModeMacros"],
-  restoreEditModeMacros: ReturnType<typeof useWidgetManager>["restoreEditModeMacros"],
-  runtimeBaseMacros: ReturnType<typeof useWidgetManager>["runtimeBaseMacros"],
-  setRuleMacroOverrides: ReturnType<typeof useWidgetManager>["setRuleMacroOverrides"],
-  resetRuntimeMacros: ReturnType<typeof useWidgetManager>["resetRuntimeMacros"],
-) {
+export default function useUIManager() {
+  const editorWidgets = useEditorStore((s) => s.editorWidgets);
+  const fileLoadedTrig = useEditorStore((s) => s.fileLoadedTrig);
+  const fileImportedTrig = useEditorStore((s) => s.fileImportedTrig);
+  const runtimeBaseMacros = useEditorStore((s) => s.runtimeBaseMacros);
   const hasFileChanged = useRef(true);
   const restoredRef = useRef(false);
   const lastSavedRef = useRef<ExportedWidget[] | null>(null);
@@ -135,23 +126,26 @@ export default function useUIManager(
     hasFileChanged.current = false;
   }, [fileImportedTrig]);
 
-  const updateMode = useCallback(
-    (newMode: Mode) => {
-      const isEdit = newMode === EDIT_MODE;
-      if (isEdit) {
-        resetRuntimeMacros();
-        restoreEditModeMacros();
-        stopSession();
-      } else {
-        resetRuntimeMacros();
-        snapshotEditModeMacros();
-        setSelectedWidgetIDs([]);
-        startNewSession();
-      }
-      useUIStore.getState().setMode(newMode);
-    },
-    [setSelectedWidgetIDs, snapshotEditModeMacros, restoreEditModeMacros, resetRuntimeMacros],
-  );
+  const updateMode = useCallback((newMode: Mode) => {
+    const isEdit = newMode === EDIT_MODE;
+    const {
+      resetRuntimeMacros,
+      restoreEditModeMacros,
+      snapshotEditModeMacros,
+      setSelectedWidgetIDs,
+    } = useEditorStore.getState();
+    if (isEdit) {
+      resetRuntimeMacros();
+      restoreEditModeMacros();
+      stopSession();
+    } else {
+      resetRuntimeMacros();
+      snapshotEditModeMacros();
+      setSelectedWidgetIDs([]);
+      startNewSession();
+    }
+    useUIStore.getState().setMode(newMode);
+  }, []);
 
   useEffect(() => {
     const authHandlers = {
@@ -213,7 +207,7 @@ export default function useUIManager(
   // Fetch and load file whenever selectedFile changes.
   useEffect(() => {
     if (!selectedFile) {
-      clearAllWidgets();
+      useEditorStore.getState().clearAllWidgets();
       setImageSrc(null);
       setImageName(null);
       return;
@@ -238,7 +232,7 @@ export default function useUIManager(
         } else {
           setImageSrc(null);
           setImageName(null);
-          loadWidgets(res.data.content);
+          useEditorStore.getState().loadWidgets(res.data.content);
           localStorage.setItem("lastLoadedFile", JSON.stringify(selectedFile));
         }
       } catch (err) {
@@ -249,7 +243,7 @@ export default function useUIManager(
     return () => {
       cancelled = true;
     };
-  }, [selectedFile, isDeveloper, clearAllWidgets, loadWidgets]);
+  }, [selectedFile, isDeveloper]);
 
   // Restore the last opened file on first load once repos are available.
   useEffect(() => {
@@ -312,7 +306,7 @@ export default function useUIManager(
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [editorWidgets, selectedFile, isDeveloper, inEditMode, formatWdgToExport, setReposTreeInfo]);
+  }, [editorWidgets, selectedFile, isDeveloper, inEditMode, setReposTreeInfo]);
   const prevRuleMacrosJsonRef = useRef<string>("");
 
   // Keep the rule-specific runtime override layer in sync with live PV data.
@@ -323,11 +317,11 @@ export default function useUIManager(
       const json = JSON.stringify(overrides);
       if (json !== prevRuleMacrosJsonRef.current) {
         prevRuleMacrosJsonRef.current = json;
-        setRuleMacroOverrides(overrides);
+        useEditorStore.getState().setRuleMacroOverrides(overrides);
       }
     });
     return unsubscribe;
-  }, [editorWidgets, runtimeBaseMacros, inEditMode, setRuleMacroOverrides]);
+  }, [editorWidgets, runtimeBaseMacros, inEditMode]);
 
   return useMemo(
     () => ({

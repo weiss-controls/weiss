@@ -44,9 +44,12 @@ There are no automated tests. Run the checks above after changes; CI runs the sa
   `takeSnapshot`, etc. directly. Its connection state is in `src/stores/wsStore.ts`.
 - PV array values are `NumericArray` typed-array views: use `isNumericArray()`
   (`src/utils/numericArray.ts`), not `Array.isArray()`, and avoid copying them.
-- `useWidgetManager`: `editorWidgets` is a flat list with the grid at index 0 (`GRID_ID`). Every
-  mutation goes through `updateEditorWidgetList` (or its wrappers `updateWidgetProperties` /
-  `batchWidgetUpdate`), which also records undo history.
+- `editorStore` (`src/stores/editorStore.ts`): `editorWidgets` is a flat list with the grid at index
+  0 (`GRID_ID`). Every change of the list or of the macro overrides goes through `commit()`, which
+  stamps runtime PV names and recomputes the derived fields (`widgetIdMap`, selection, macros,
+  `resolvedPVList`); widget edits use `updateEditorWidgetList` (or its wrappers
+  `updateWidgetProperties` / `batchWidgetUpdate`), which also records undo history. Selection
+  changes go through `setSelectedWidgetIDs`.
 - All widget properties are defined once in `PROPERTY_SCHEMAS` (`src/types/widgetProperties.ts`) and
   shared by every widget; prefix widget-specific names (e.g. `imageRotation`). `isPV: true` marks a
   property whose value is a PV name to subscribe, resolved into `Widget.runtimeAuxPVs`.
@@ -54,7 +57,7 @@ There are no automated tests. Run the checks above after changes; CI runs the sa
   action-map rules are converted on import (`src/utils/ruleCompatibility.ts`).
 - Widgets that load another `.opi.json` at render time (`EmbeddedDisplay`, `NavigationTabs`) inject
   it as `data.children`. Reuse `src/components/Widgets/shared/` for this, and special-case new ones
-  wherever `EmbeddedDisplay` is: `WidgetRenderer.tsx` (`childIsEmbedded`), `useWidgetManager.ts`
+  wherever `EmbeddedDisplay` is: `WidgetRenderer.tsx` (`childIsEmbedded`), `editorStore.ts`
   (`ungroupSelected`, `formatWdgToExport`), `WidgetTree.tsx` (`buildLayerItems`).
 - `src/services/APIClient/` is generated: never edit it by hand.
 - `src/utils/bob2json/` converts Phoebus `.bob` files (see its README). Widgets and properties
