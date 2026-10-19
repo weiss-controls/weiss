@@ -22,7 +22,7 @@ import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import Tooltip from "@mui/material/Tooltip";
 import { useWidgetContext } from "@src/context/useWidgetContext";
-import { useUIContext } from "@src/context/useUIContext";
+import { useInEditMode, useUIStore } from "@src/stores/uiStore";
 
 const openedMixin = (theme: Theme): CSSObject => ({
   width: WIDGET_SELECTOR_WIDTH,
@@ -134,7 +134,9 @@ const DraggableItem: React.FC<DraggableItemProps> = ({ item, open }) => {
  * WidgetPicker renders the sidebar containing all available widgets for the editor.
  */
 const WidgetPicker: React.FC = () => {
-  const { inEditMode, wdgPickerOpen, setWdgPickerOpen } = useUIContext();
+  const inEditMode = useInEditMode();
+  const wdgPickerOpen = useUIStore((s) => s.wdgPickerOpen);
+  const toggleWdgPicker = useUIStore((s) => s.toggleWdgPicker);
   const palette: Record<string, WidgetDefinition> = React.useMemo(
     () =>
       Object.fromEntries(Object.values(WidgetRegistry).map((w) => [w.widgetName, w])) as Record<
@@ -167,7 +169,7 @@ const WidgetPicker: React.FC = () => {
     <Box sx={{ display: "flex" }}>
       <Drawer variant="permanent" open={wdgPickerOpen} onClick={(e) => e.stopPropagation()}>
         <DrawerHeader>
-          <IconButton onClick={() => setWdgPickerOpen((o) => !o)}>
+          <IconButton onClick={toggleWdgPicker}>
             {wdgPickerOpen ? <ChevronLeftIcon /> : <ChevronRightIcon />}
           </IconButton>
         </DrawerHeader>

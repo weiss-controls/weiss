@@ -37,6 +37,9 @@ There are no automated tests. Run the checks above after changes; CI runs the sa
 - Live PV data lives in Zustand (`src/services/pvStore.ts`), never in React context. Components read
   it with a PV-specific selector. Image frames go to `src/services/imageStore.ts` instead and never
   reach props, rules or macros.
+- UI-only state (mode, panning, sidebar, widget picker) is in `src/stores/uiStore.ts`. Read the mode
+  with `useInEditMode()`, not from a context. Switch mode with `updateMode` (`UIContext`), which
+  also starts/stops the WS session. Store conventions: `src/stores/README.md`.
 - `WSActionsContext` exposes only `writePVValue` and must stay stable (no deps).
 - PV array values are `NumericArray` typed-array views: use `isNumericArray()`
   (`src/utils/numericArray.ts`), not `Array.isArray()`, and avoid copying them.

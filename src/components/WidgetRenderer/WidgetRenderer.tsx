@@ -7,7 +7,7 @@ import type { Widget } from "@src/types/widgets";
 import { Rnd } from "react-rnd";
 import { GRID_ID } from "@src/constants/constants";
 import "./WidgetRenderer.css";
-import { useUIContext } from "@src/context/useUIContext";
+import { useInEditMode, useUIStore } from "@src/stores/uiStore";
 import { useWidgetContext } from "@src/context/useWidgetContext";
 import { hasSelectedDescendant } from "./widgetRenderUtils";
 import LiveWidget from "./LiveWidget";
@@ -16,7 +16,9 @@ interface RendererProps {
 }
 
 const WidgetRenderer: React.FC<RendererProps> = ({ scale }) => {
-  const { inEditMode, isPanning, isTextEditing } = useUIContext();
+  const inEditMode = useInEditMode();
+  const isPanning = useUIStore((s) => s.isPanning);
+  const isTextEditing = useUIStore((s) => s.textEditingId !== null);
   const {
     editorWidgets,
     selectedWidgetIDs,

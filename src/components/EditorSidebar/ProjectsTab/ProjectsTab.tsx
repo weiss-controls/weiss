@@ -9,6 +9,7 @@ import GitImportDialog from "@src/components/GitImportDialog/GitImportDialog";
 import CustomGitIcon from "@src/components/CustomIcons/GitIcon";
 import { COLORS } from "@src/constants/constants";
 import { useUIContext } from "@src/context/useUIContext";
+import { useInEditMode } from "@src/stores/uiStore";
 
 export default function ProjectsTab() {
   const {
@@ -16,13 +17,13 @@ export default function ProjectsTab() {
     reposTreeInfo,
     setReposTreeInfo,
     isReposLoading,
-    inEditMode,
     setSelectedFile,
     selectedFile,
     imageSrc,
     imageName,
     reloadSelectedFile,
   } = useUIContext();
+  const inEditMode = useInEditMode();
   const [GitImportOpen, setGitImportOpen] = useState(false);
 
   const refreshRepoTree = (updt: StagingTreeInfo | DeploymentTreeInfo) => {

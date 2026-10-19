@@ -27,10 +27,10 @@ import { Rnd } from "react-rnd";
 import { grey } from "@mui/material/colors";
 import "./Toolbar.css";
 import { useWidgetContext } from "@src/context/useWidgetContext";
-import { useUIContext } from "@src/context/useUIContext";
+import { useInEditMode } from "@src/stores/uiStore";
 
 const ToolbarButtons: React.FC = () => {
-  const { inEditMode } = useUIContext();
+  const inEditMode = useInEditMode();
   const {
     selectedWidgetIDs,
     selectedWidgets,

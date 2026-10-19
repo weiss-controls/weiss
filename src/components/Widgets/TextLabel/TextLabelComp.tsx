@@ -4,11 +4,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import type { WidgetUpdate } from "@src/types/widgets";
 import type { CSSProperties } from "@mui/material";
-import { useUIContext } from "@src/context/useUIContext";
+import { useInEditMode, useUIStore } from "@src/stores/uiStore";
 import { useWidgetContext } from "@src/context/useWidgetContext";
 
 const TextLabelComp: React.FC<WidgetUpdate> = ({ data }) => {
-  const { inEditMode, setIsTextEditing } = useUIContext();
+  const inEditMode = useInEditMode();
   const { updateWidgetProperties } = useWidgetContext();
   const p = data.editableProperties;
 
@@ -16,12 +16,15 @@ const TextLabelComp: React.FC<WidgetUpdate> = ({ data }) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (editing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-    setIsTextEditing(editing);
-  }, [editing, setIsTextEditing]);
+    if (!editing) return;
+    inputRef.current?.focus();
+    inputRef.current?.select();
+    const { setTextEditingId } = useUIStore.getState();
+    setTextEditingId(data.id);
+    return () => {
+      if (useUIStore.getState().textEditingId === data.id) setTextEditingId(null);
+    };
+  }, [editing, data.id]);
 
   if (!p.visible?.value) return null;
 

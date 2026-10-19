@@ -4,7 +4,7 @@
 import * as React from "react";
 import type { GridPosition } from "@src/types/widgets";
 import type { PVData } from "@src/types/epicsWS";
-import { useUIContext } from "@src/context/useUIContext";
+import { useInEditMode } from "@src/stores/uiStore";
 import EditContextMenu from "./EditContextMenu";
 import RuntimeContextMenu from "./RuntimeContextMenu";
 
@@ -25,7 +25,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
   pvName = null,
   pvData = null,
 }) => {
-  const { inEditMode } = useUIContext();
+  const inEditMode = useInEditMode();
 
   if (inEditMode) {
     return <EditContextMenu pos={pos} mousePos={mousePos} visible={visible} onClose={onClose} />;

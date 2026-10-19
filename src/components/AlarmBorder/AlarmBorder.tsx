@@ -5,7 +5,7 @@ import React from "react";
 import type { ReactNode, CSSProperties } from "react";
 import type { Alarm } from "@src/types/epicsWS";
 import { COLORS } from "@src/constants/constants";
-import { useUIContext } from "@src/context/useUIContext";
+import { useInEditMode } from "@src/stores/uiStore";
 
 interface AlarmBorderProps {
   alarmData?: Alarm | Alarm[];
@@ -14,7 +14,7 @@ interface AlarmBorderProps {
 }
 
 const AlarmBorder: React.FC<AlarmBorderProps> = ({ alarmData, children, enable }) => {
-  const { inEditMode } = useUIContext();
+  const inEditMode = useInEditMode();
 
   const getWorstSeverity = (a: Alarm | Alarm[] | undefined): number | undefined => {
     if (!a) return undefined;
