@@ -31,7 +31,7 @@ interface SessionStoreState {
 /** Authenticated user and session state, updated from AuthService callbacks */
 export const useSessionStore = create<SessionStoreState>()(
   devtools(
-    (set, get) => {
+    (set) => {
       const user = authService.getUser();
       return {
         user,
@@ -40,24 +40,29 @@ export const useSessionStore = create<SessionStoreState>()(
         isAuthenticated: false,
         tokenStatus: null,
         isDemo: import.meta.env.VITE_DEMO_MODE === "true",
-        setAuthStatus: (status, user) =>
-          set({
-            user,
-            isDeveloper: user?.role === Roles.DEVELOPER,
-            isAuthenticated: status === AuthStatuses.AUTHENTICATED,
-          }),
+        setAuthStatus,
         setAuthChecked: (authChecked) => set({ authChecked }),
         setTokenStatus: (tokenStatus) => set({ tokenStatus }),
-        login: async (provider, demoProfile) => {
-          if (get().isAuthenticated) return;
-          await authService.login(provider, demoProfile);
-        },
+        login,
         logout: () => void authService.logout(),
       };
     },
     { name: "sessionStore", enabled: import.meta.env.DEV },
   ),
 );
+
+function setAuthStatus(status: AuthStatus, user: User | null) {
+  useSessionStore.setState({
+    user,
+    isDeveloper: user?.role === Roles.DEVELOPER,
+    isAuthenticated: status === AuthStatuses.AUTHENTICATED,
+  });
+}
+
+async function login(provider: OAuthProvider, demoProfile?: Roles) {
+  if (useSessionStore.getState().isAuthenticated) return;
+  await authService.login(provider, demoProfile);
+}
 
 // Auth state follows AuthService; the session cookie is checked once on page load
 authService.subscribe({

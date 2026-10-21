@@ -71,24 +71,26 @@ export const useRepoStore = create<RepoStoreState>()(
       reloadSelectedFile: () =>
         set((s) => ({ selectedFile: s.selectedFile ? { ...s.selectedFile } : null })),
       setImage: (imageSrc, imageName) => set({ imageSrc, imageName }),
-      updateReposTreeInfo: async () => {
-        const { isAuthenticated, isDeveloper } = useSessionStore.getState();
-        if (!isAuthenticated) return;
-        set({ isReposLoading: true });
-        try {
-          const response = isDeveloper ? await getAllReposTree() : await getAllDeployedReposTree();
-          set({ reposTreeInfo: response.data.length > 0 ? response.data : null });
-        } catch (error) {
-          notifyUser(`Failed to fetch repositories: ${String(error)}`, "error");
-        } finally {
-          set({ isReposLoading: false });
-        }
-      },
+      updateReposTreeInfo,
       reset: () => set({ reposTreeInfo: null, selectedFile: null, isReposLoading: false }),
     }),
     { name: "repoStore", enabled: import.meta.env.DEV },
   ),
 );
+
+async function updateReposTreeInfo() {
+  const { isAuthenticated, isDeveloper } = useSessionStore.getState();
+  if (!isAuthenticated) return;
+  useRepoStore.setState({ isReposLoading: true });
+  try {
+    const response = isDeveloper ? await getAllReposTree() : await getAllDeployedReposTree();
+    useRepoStore.setState({ reposTreeInfo: response.data.length > 0 ? response.data : null });
+  } catch (error) {
+    notifyUser(`Failed to fetch repositories: ${String(error)}`, "error");
+  } finally {
+    useRepoStore.setState({ isReposLoading: false });
+  }
+}
 
 // Repository trees follow the login and role; logging out clears them
 useSessionStore.subscribe((state, prev) => {

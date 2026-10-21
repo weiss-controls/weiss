@@ -40,7 +40,7 @@ const largeScreen = window.innerWidth >= 1024;
 
 export const useUIStore = create<UIStoreState>()(
   devtools(
-    (set, get) => ({
+    (set) => ({
       mode: EDIT_MODE,
       inEditMode: true,
       isPanning: false,
@@ -51,31 +51,7 @@ export const useUIStore = create<UIStoreState>()(
       editorSidebarWidth: EDITOR_SIDEBAR_DEFAULT_WIDTH,
       preRuntimeSidebar: null,
 
-      setMode: (mode) => {
-        const s = get();
-        if (mode === s.mode) return;
-        if (mode === EDIT_MODE) {
-          const restored = s.preRuntimeSidebar;
-          set({
-            mode,
-            inEditMode: true,
-            preRuntimeSidebar: null,
-            ...(restored
-              ? { editorSidebarOpen: restored.open, editorSidebarPinned: restored.pinned }
-              : {}),
-          });
-        } else {
-          set({
-            mode,
-            inEditMode: false,
-            wdgPickerOpen: false,
-            textEditingId: null,
-            preRuntimeSidebar: { open: s.editorSidebarOpen, pinned: s.editorSidebarPinned },
-            editorSidebarOpen: false,
-            editorSidebarPinned: false,
-          });
-        }
-      },
+      setMode,
       setIsPanning: (isPanning) => set({ isPanning }),
       setTextEditingId: (textEditingId) => set({ textEditingId }),
       setWdgPickerOpen: (wdgPickerOpen) => set({ wdgPickerOpen }),
@@ -89,3 +65,29 @@ export const useUIStore = create<UIStoreState>()(
     { name: "uiStore", enabled: import.meta.env.DEV },
   ),
 );
+
+function setMode(mode: Mode) {
+  const s = useUIStore.getState();
+  if (mode === s.mode) return;
+  if (mode === EDIT_MODE) {
+    const restored = s.preRuntimeSidebar;
+    useUIStore.setState({
+      mode,
+      inEditMode: true,
+      preRuntimeSidebar: null,
+      ...(restored
+        ? { editorSidebarOpen: restored.open, editorSidebarPinned: restored.pinned }
+        : {}),
+    });
+  } else {
+    useUIStore.setState({
+      mode,
+      inEditMode: false,
+      wdgPickerOpen: false,
+      textEditingId: null,
+      preRuntimeSidebar: { open: s.editorSidebarOpen, pinned: s.editorSidebarPinned },
+      editorSidebarOpen: false,
+      editorSidebarPinned: false,
+    });
+  }
+}
