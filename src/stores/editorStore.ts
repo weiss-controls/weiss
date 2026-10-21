@@ -400,7 +400,7 @@ function commit(
 }
 
 // GridZone imports GridZoneComp, which imports this store: this module has to be evaluated
-// first (main.tsx imports AppEffects, which reaches it, before App).
+// first (main.tsx imports stores/actions, which reaches it, before App).
 const initialState = commit([createWidgetInstance(GridZone, GRID_ID)], {
   navMacroOverrides: NO_MACROS,
   ruleMacroOverrides: NO_MACROS,

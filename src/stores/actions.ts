@@ -3,7 +3,8 @@
 
 /** Actions and reactions that span several stores and the WebSocket session. */
 
-import { EDIT_MODE, type Mode } from "@src/constants/constants";
+import { EDIT_MODE, RUNTIME_MODE, type Mode } from "@src/constants/constants";
+import { Roles } from "@src/services/AuthService/AuthService";
 import { updateStagingRepoFile } from "@src/services/APIClient";
 import { notifyUser } from "@src/services/Notifications/Notification";
 import { usePVStore } from "@src/stores/pvStore";
@@ -97,6 +98,11 @@ export function updateMode(mode: Mode) {
   }
   useUIStore.getState().setMode(mode);
 }
+
+// Operators only use runtime mode
+useSessionStore.subscribe((state, prev) => {
+  if (state.user !== prev.user && state.user?.role === Roles.OPERATOR) updateMode(RUNTIME_MODE);
+});
 
 useEditorStore.subscribe((state, prev) => {
   if (state.editorWidgets !== prev.editorWidgets || state.savedContent !== prev.savedContent)

@@ -41,9 +41,11 @@ There are no automated tests. Run the checks above after changes; CI runs the sa
   with `useUIStore((s) => s.inEditMode)`, not from a context. Switch mode with `updateMode`
   (`src/stores/actions.ts`, where actions spanning several stores live), which also starts/stops the
   WS session and the rule-macro sync. Store conventions: `src/stores/README.md`.
-- Auth state is in `sessionStore`, repositories and the selected file in `repoStore`. Effects tied
-  to the React lifecycle are in `src/AppEffects.tsx`; store reactions (PV subscriptions, rule
-  macros, auto-save) in `src/stores/actions.ts`. There are no React contexts for app state.
+- Auth state is in `sessionStore`, repositories and the selected file in `repoStore`. Side effects
+  are store subscriptions at the bottom of the store that owns them (auth and token status in
+  `sessionStore`, repo trees and file loading in `repoStore`); those spanning several stores (PV
+  subscriptions, rule macros, auto-save, operator mode) are in `src/stores/actions.ts`. There are no
+  React contexts or app-wide React effects for app state.
 - The PV WebSocket session is a module (`src/services/WSClient/session.ts`): import `writePVValue`,
   `takeSnapshot`, etc. directly. Its connection state is in `src/stores/wsStore.ts`.
 - PV array values are `NumericArray` typed-array views: use `isNumericArray()`

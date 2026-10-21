@@ -10,7 +10,7 @@ import {
   type AuthStatus,
   type OAuthProvider,
 } from "@src/services/AuthService/AuthService";
-import type { TokenStatus, User } from "@src/services/APIClient";
+import { getTokenStatus, type TokenStatus, type User } from "@src/services/APIClient";
 
 interface SessionStoreState {
   user: User | null;
@@ -28,7 +28,7 @@ interface SessionStoreState {
   logout: () => void;
 }
 
-/** Authenticated user and session state, updated from AuthService callbacks (see AppEffects) */
+/** Authenticated user and session state, updated from AuthService callbacks */
 export const useSessionStore = create<SessionStoreState>()(
   devtools(
     (set, get) => {
@@ -58,3 +58,20 @@ export const useSessionStore = create<SessionStoreState>()(
     { name: "sessionStore", enabled: import.meta.env.DEV },
   ),
 );
+
+// Auth state follows AuthService; the session cookie is checked once on page load
+authService.subscribe({
+  onAuthStatusChange: (status, user) => useSessionStore.getState().setAuthStatus(status, user),
+});
+void authService.restoreSession().finally(() => useSessionStore.getState().setAuthChecked(true));
+
+// Git token status of a logged-in developer
+useSessionStore.subscribe((state, prev) => {
+  if (state.isDeveloper === prev.isDeveloper && state.isAuthenticated === prev.isAuthenticated)
+    return;
+  if (!state.isDeveloper || !state.isAuthenticated) {
+    state.setTokenStatus(null);
+    return;
+  }
+  void getTokenStatus().then((r) => useSessionStore.getState().setTokenStatus(r.data));
+});

@@ -20,6 +20,7 @@ import {
   useImageStore,
 } from "@src/stores/imageStore";
 import { useWSStore } from "@src/stores/wsStore";
+import { notifyUser } from "@src/services/Notifications/Notification";
 import { pushPVHistory, clearPVHistory } from "@src/utils/historyBuffers";
 import { isTypedNumericArray } from "@src/utils/numericArray";
 
@@ -41,6 +42,27 @@ let pendingFrames: Record<string, ImageFrame> = {};
 /** Last summary written to the PV store per image PV, and when */
 let imageSummaries: Record<string, { key: string; time: number }> = {};
 let rafHandle: number | null = null;
+
+/** Delay before telling the user the connection is lost; WSClient keeps reconnecting meanwhile */
+const LOST_NOTICE_DELAY = 3000; //ms
+let lostNoticeTimer: ReturnType<typeof setTimeout> | null = null;
+let lostNoticeShown = false;
+
+function armLostNotice() {
+  if (lostNoticeTimer !== null || lostNoticeShown) return;
+  lostNoticeTimer = setTimeout(() => {
+    lostNoticeTimer = null;
+    lostNoticeShown = true;
+    console.warn("Socket disconnected. Attempting reconnection...");
+    notifyUser("Connection lost. Attempting to reconnect...", "warning");
+  }, LOST_NOTICE_DELAY);
+}
+
+function clearLostNotice() {
+  if (lostNoticeTimer !== null) clearTimeout(lostNoticeTimer);
+  lostNoticeTimer = null;
+  lostNoticeShown = false;
+}
 
 /** Summary fields of an image PV other than its timestamp; a change is written immediately */
 function imageSummaryKey(ndarray: NDArrayInfo | undefined, alarm: Alarm | undefined): string {
@@ -150,8 +172,11 @@ function handleConnect(connected: boolean) {
   useWSStore.getState().setWSConnected(connected);
   useImageStore.getState().setConnected(connected);
   if (connected) {
+    if (lostNoticeShown) notifyUser("Reconnected to server.", "success");
+    clearLostNotice();
     syncSubscriptions();
   } else {
+    armLostNotice();
     // The server drops all subscriptions with the connection; widgets show the PVs as
     // disconnected until the client reconnects and resubscribes
     subscribedPVs = new Set();
@@ -187,6 +212,7 @@ export function stopSession() {
   usePVStore.getState().clearPVs();
   useImageStore.getState().setConnected(false);
   clearPVHistory();
+  clearLostNotice();
 }
 
 /** Starts a new WebSocket session, stopping the current one. */
@@ -204,6 +230,7 @@ export function startNewSession() {
   );
   ws = client;
   client.open();
+  armLostNotice();
 }
 
 /** Writes a new value to a PV. */

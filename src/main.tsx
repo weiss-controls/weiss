@@ -4,7 +4,8 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "@src/index.css";
-import AppEffects from "@src/AppEffects";
+// Store reactions (and the stores themselves) load before App
+import "@src/stores/actions";
 import App from "@src/App.jsx";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import AuthCallback from "@src/routes/AuthCallback.tsx";
@@ -18,7 +19,6 @@ createRoot(document.getElementById("root")!).render(
     <BrowserRouter>
       <NotificationService />
       <DialogService />
-      <AppEffects />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
