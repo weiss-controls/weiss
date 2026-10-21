@@ -6,7 +6,6 @@ import type {
   Widget,
   WidgetDefinition,
   PropertyUpdates,
-  PropertyKey,
   MultiWidgetPropertyUpdates,
   GridPosition,
   ExportedWidget,
@@ -25,7 +24,6 @@ import {
   resolveMacroRecord,
   stampRuntimePVs,
 } from "@src/utils/macros";
-import { parseSerializedRules } from "@src/utils/ruleCompatibility";
 import {
   createGroupWidget,
   createWidgetInstance,
@@ -41,6 +39,7 @@ import {
   computeGroupBounds,
   serializeWidgets,
 } from "@src/stores/widgetHelpers";
+import { restoreWidgets } from "@src/stores/restoreWidgets";
 
 type Macros = Record<string, string>;
 
@@ -792,44 +791,7 @@ function loadWidgets(widgetsData: string | ExportedWidget[]) {
     const parsed: ExportedWidget[] =
       typeof widgetsData === "string" ? JSON.parse(widgetsData) : widgetsData;
 
-    const restoreWidget = (raw: ExportedWidget, idx?: number): Widget | null => {
-      let instance: Widget;
-      if (idx === 0 && raw.widgetName === "GridZone") {
-        instance = createWidgetInstance(GridZone, GRID_ID);
-      } else if (raw.widgetName === "Group") {
-        instance = createGroupWidget(uuidv4());
-      } else {
-        const baseWdg = WidgetRegistry[raw.widgetName];
-        if (!baseWdg) {
-          warnings.push(`Unknown widget type "${raw.widgetName}" — skipped`);
-          return null;
-        }
-        instance = createWidgetInstance(baseWdg, `${raw.widgetName}-${uuidv4()}`);
-      }
-
-      if (raw.children && raw.children.length > 0) {
-        instance.children = raw.children
-          .map((child) => restoreWidget(child))
-          .filter((c): c is Widget => c !== null);
-      }
-
-      for (const [key, val] of Object.entries(raw.properties ?? {})) {
-        const propName = key as PropertyKey;
-        if (instance.editableProperties[propName]) {
-          instance.editableProperties[propName].value = val;
-        } else {
-          warnings.push(`Unknown property "${key}" on widget "${raw.widgetName}" — ignored`);
-        }
-      }
-
-      // Rebuild runtime-only rule fields stripped from the export
-      if (raw.rules?.length) instance.rules = parseSerializedRules(raw.rules);
-      return instance;
-    };
-
-    const imported = parsed
-      .map((raw, idx) => restoreWidget(raw, idx))
-      .filter((w): w is Widget => w !== null);
+    const imported = restoreWidgets(parsed, warnings);
 
     editModeMacros = imported.find((w) => w.id === GRID_ID)?.editableProperties.macros?.value ?? {};
 

@@ -39,8 +39,7 @@ import { useSessionStore } from "@src/stores/sessionStore";
 import { useRepoStore } from "@src/stores/repoStore";
 import { useUIStore } from "@src/stores/uiStore";
 import { updateMode } from "@src/stores/actions";
-import { parsePhoebus, convertDisplay } from "@src/utils/bob2json";
-import { confirmDialog } from "@src/services/Dialog/Dialog";
+import PhoebusImportDialog from "@components/PhoebusImportDialog/PhoebusImportDialog.tsx";
 interface StyledAppBarProps extends MuiAppBarProps {
   open?: boolean;
   drawerWidth: number;
@@ -152,6 +151,7 @@ export default function NavBar() {
   const [importMenuAnchor, setImportMenuAnchor] = useState<null | HTMLElement>(null);
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
   const [gitImportOpen, setGitImportOpen] = useState(false);
+  const [phoebusImportOpen, setPhoebusImportOpen] = useState(false);
   const handleImportMenuOpen = (event: React.MouseEvent<HTMLButtonElement>) => {
     setImportMenuAnchor(event.currentTarget);
   };
@@ -203,41 +203,7 @@ export default function NavBar() {
 
   const handleImportPhoebusFile = () => {
     handleImportMenuClose();
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".bob";
-    input.onchange = async (event) => {
-      const file = (event.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-      await confirmDialog({
-        title: "WARNING: Importing Phoebus file",
-        message:
-          "Please note that OPI imports may not work out of the box. Make sure to validate your display before using it in production.",
-        confirmText: "OK",
-        requiresConfirmation: false,
-      });
-      try {
-        const xml = await file.text();
-        const display = parsePhoebus(xml);
-        const { widgets, warnings } = convertDisplay(display);
-
-        importWidgets(widgets);
-
-        if (warnings.length > 0) {
-          notifyUser(
-            `Phoebus import completed with ${warnings.length} warning(s):\n ${warnings.join("\n ")}`,
-            "warning",
-          );
-        }
-      } catch (err) {
-        console.error("Phoebus import failed:", err);
-        notifyUser(
-          `Phoebus import failed: ${err instanceof Error ? err.message : String(err)}`,
-          "error",
-        );
-      }
-    };
-    input.click();
+    setPhoebusImportOpen(true);
   };
 
   const handleLogout = () => {
@@ -417,6 +383,10 @@ export default function NavBar() {
             )}
           </Box>
           <GitImportDialog open={gitImportOpen} onClose={() => setGitImportOpen(false)} />
+          <PhoebusImportDialog
+            open={phoebusImportOpen}
+            onClose={() => setPhoebusImportOpen(false)}
+          />
         </Toolbar>
       </StyledAppBar>
     </Box>
