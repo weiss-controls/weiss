@@ -64,7 +64,8 @@ There are no automated tests. Run the checks above after changes; CI runs the sa
 - Widgets that load another `.opi.json` at render time (`EmbeddedDisplay`, `NavigationTabs`) inject
   it as `data.children`. Reuse `src/components/Widgets/shared/` for this, and special-case new ones
   wherever `EmbeddedDisplay` is: `WidgetRenderer.tsx` (`childIsEmbedded`), `editorStore.ts`
-  (`ungroupSelected`, `formatWdgToExport`), `WidgetTree.tsx` (`buildLayerItems`).
+  (`ungroupSelected`), `widgetHelpers.ts` (`formatWdgToExport`), `WidgetTree.tsx`
+  (`buildLayerItems`).
 - `src/services/APIClient/` is generated: never edit it by hand.
 - `src/utils/bob2json/` converts Phoebus `.bob` files (see its README). Widgets and properties
   missing from `mapping.ts` are dropped on import.

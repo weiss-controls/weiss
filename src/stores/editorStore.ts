@@ -10,7 +10,6 @@ import type {
   MultiWidgetPropertyUpdates,
   GridPosition,
   ExportedWidget,
-  ExportedRule,
   DOMRectLike,
   Rule,
 } from "@src/types/widgets";
@@ -21,11 +20,12 @@ import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import { GRID_ID, MAX_HISTORY } from "@src/constants/constants";
 import { notifyUser } from "@src/services/Notifications/Notification";
 import {
+  collectResolvedPVs,
   composeForwardNavigationMacros,
   resolveMacroRecord,
-  substituteMacroInStr,
+  stampRuntimePVs,
 } from "@src/utils/macros";
-import { collectRulePVNames, parseSerializedRules } from "@src/utils/ruleCompatibility";
+import { parseSerializedRules } from "@src/utils/ruleCompatibility";
 import {
   createGroupWidget,
   createWidgetInstance,
@@ -37,6 +37,9 @@ import {
   getSelectedWidgets,
   getWidgetNested,
   updateWidgets,
+  buildWidgetIdMap,
+  computeGroupBounds,
+  serializeWidgets,
 } from "@src/stores/widgetHelpers";
 
 type Macros = Record<string, string>;
@@ -54,147 +57,9 @@ let copiedSelectionBounds: DOMRectLike = { x: 0, y: 0, width: 0, height: 0 };
  */
 let editModeMacros: Macros = {};
 
-/** Macro-resolved values of the widget's PV-valued properties (`isPV`), by property name */
-function resolveAuxPVs(w: Widget, macros: Macros): Macros | undefined {
-  let resolved: Macros | undefined;
-  for (const [name, prop] of Object.entries(w.editableProperties ?? {})) {
-    if (!prop?.isPV || typeof prop.value !== "string" || !prop.value) continue;
-    resolved ??= {};
-    resolved[name] = substituteMacroInStr(prop.value, macros);
-  }
-  return resolved;
-}
-
-function sameRecord(a: Macros | undefined, b: Macros | undefined) {
-  if (a === b) return true;
-  if (!a || !b) return false;
-  const keys = Object.keys(a);
-  return keys.length === Object.keys(b).length && keys.every((key) => a[key] === b[key]);
-}
-
-/** Stamps runtimePVName/runtimePVNames/runtimeAuxPVs; unchanged widgets keep their reference. */
-function stampRuntimePVs(w: Widget, macros: Macros): Widget {
-  const pvName = w.editableProperties?.pvName?.value;
-  const pvNames = w.editableProperties?.pvNames?.value;
-
-  const runtimePVName = pvName ? substituteMacroInStr(pvName, macros) : undefined;
-  const runtimePVNames = pvNames?.map((name) => substituteMacroInStr(name, macros));
-  const runtimeAuxPVs = resolveAuxPVs(w, macros);
-  const children = w.children?.map((c) => stampRuntimePVs(c, macros));
-
-  const pvNameUnchanged = runtimePVName === w.runtimePVName;
-  const pvNamesUnchanged =
-    (!runtimePVNames && !w.runtimePVNames) ||
-    (runtimePVNames?.length === w.runtimePVNames?.length &&
-      runtimePVNames?.every((v, i) => v === w.runtimePVNames![i]));
-  const childrenUnchanged = !children || children.every((c, i) => c === w.children![i]);
-  const auxPVsUnchanged = sameRecord(runtimeAuxPVs, w.runtimeAuxPVs);
-
-  if (pvNameUnchanged && pvNamesUnchanged && childrenUnchanged && auxPVsUnchanged) return w;
-
-  return {
-    ...w,
-    ...(runtimePVName !== undefined ? { runtimePVName } : {}),
-    ...(runtimePVNames !== undefined ? { runtimePVNames } : {}),
-    ...(auxPVsUnchanged ? {} : { runtimeAuxPVs }),
-    ...(children ? { children } : {}),
-  };
-}
-
-/**
- * Flat deduplicated list of all resolved PV names that need WebSocket subscriptions:
- * widget runtime PV names plus rule condition/action PV targets.
- */
-function collectResolvedPVs(widgets: Widget[], macros: Macros): string[] {
-  const pvSet = new Set<string>();
-  const addResolved = (pv: unknown) => {
-    if (typeof pv !== "string" || !pv) return;
-    const substituted = substituteMacroInStr(pv, macros);
-    if (substituted) pvSet.add(substituted);
-  };
-  const collect = (list: Widget[]) => {
-    for (const w of list) {
-      if (w.runtimePVName) pvSet.add(w.runtimePVName);
-      if (w.runtimePVNames) for (const pv of w.runtimePVNames) pvSet.add(pv);
-      if (w.runtimeAuxPVs) for (const pv of Object.values(w.runtimeAuxPVs)) pvSet.add(pv);
-      for (const rule of w.rules ?? []) {
-        for (const pv of collectRulePVNames(rule)) addResolved(pv);
-        // Pre-subscribe PV targets when a rule can switch pvName/pvNames
-        if (rule.targetProperty === "pvName") {
-          for (const ruleset of rule.rulesets) addResolved(ruleset.value);
-        }
-        if (rule.targetProperty === "pvNames") {
-          for (const ruleset of rule.rulesets) {
-            if (Array.isArray(ruleset.value)) ruleset.value.forEach(addResolved);
-          }
-        }
-      }
-      if (w.children?.length) collect(w.children);
-    }
-  };
-  collect(widgets);
-  return [...pvSet];
-}
-
-function buildWidgetIdMap(widgets: Widget[]): Map<string, Widget> {
-  const map = new Map<string, Widget>();
-  const traverse = (list: Widget[]) => {
-    for (const w of list) {
-      if (w.id !== GRID_ID) map.set(w.id, w);
-      if (w.children) traverse(w.children);
-    }
-  };
-  traverse(widgets);
-  return map;
-}
-
-function computeGroupBounds(widgets: Widget[]): DOMRectLike | null {
-  if (!widgets.length) return null;
-  const xs = widgets.map((w) => w.editableProperties.x!.value);
-  const ys = widgets.map((w) => w.editableProperties.y!.value);
-  const ws = widgets.map((w) => w.editableProperties.width!.value);
-  const hs = widgets.map((w) => w.editableProperties.height!.value);
-  const minX = Math.min(...xs);
-  const minY = Math.min(...ys);
-  const maxX = Math.max(...xs.map((x, i) => x + ws[i]));
-  const maxY = Math.max(...ys.map((y, i) => y + hs[i]));
-  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
-}
-
 function pushHistory(stack: Widget[][], widgets: Widget[]): Widget[][] {
   const updated = [...stack, deepCloneWidgetList(widgets)];
   return updated.length > MAX_HISTORY ? updated.slice(1) : updated;
-}
-
-/** File content of a widget list, as saved and downloaded */
-export function serializeWidgets(widgets: Widget[]): string {
-  return JSON.stringify(widgets.map(formatWdgToExport), null, 2);
-}
-
-function formatWdgToExport(widget: Widget): ExportedWidget {
-  // EmbeddedDisplay/NavigationTabs children are injected at runtime and not exported
-  const exportChildren =
-    widget.widgetName === "EmbeddedDisplay" || widget.widgetName === "NavigationTabs"
-      ? undefined
-      : widget.children?.map(formatWdgToExport);
-  return {
-    widgetName: widget.widgetName,
-    properties: Object.fromEntries(
-      Object.entries(widget.editableProperties).map(([key, def]) => [key, def.value]),
-    ),
-    ...(widget.rules?.length
-      ? {
-          rules: widget.rules.map(({ id: _id, rulesets, ...rest }): ExportedRule => ({
-            ...rest,
-            rulesets: rulesets.map(
-              ({ id: _rulesetId, pvNames: _pvNames, conditionLogic, ...ruleset }) =>
-                conditionLogic === "OR" ? { conditionLogic, ...ruleset } : ruleset,
-            ),
-          })),
-        }
-      : {}),
-    children: exportChildren,
-  };
 }
 
 /** Fields computed by `commit` */

@@ -5,6 +5,7 @@ import { flattenWidgetTree } from "@src/stores/widgetHelpers";
 import type { PVData } from "@src/types/epicsWS";
 import type { PropertyKey, Widget, WidgetProperties, WidgetProperty } from "@src/types/widgets";
 import { evaluateRules } from "./ruleEngine";
+import { collectRulePVNames } from "./ruleCompatibility";
 
 const MACRO_TOKEN_PATTERN = /^\$\([^)]+\)$/;
 
@@ -320,4 +321,89 @@ export function collectGlobalMacroOverrides(
     }
   }
   return overrides;
+}
+
+/** Macro-resolved values of the widget's PV-valued properties (`isPV`), by property name */
+function resolveAuxPVs(
+  w: Widget,
+  macros: Record<string, string>,
+): Record<string, string> | undefined {
+  let resolved: Record<string, string> | undefined;
+  for (const [name, prop] of Object.entries(w.editableProperties ?? {})) {
+    if (!prop?.isPV || typeof prop.value !== "string" || !prop.value) continue;
+    resolved ??= {};
+    resolved[name] = substituteMacroInStr(prop.value, macros);
+  }
+  return resolved;
+}
+
+function sameRecord(a: Record<string, string> | undefined, b: Record<string, string> | undefined) {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  const keys = Object.keys(a);
+  return keys.length === Object.keys(b).length && keys.every((key) => a[key] === b[key]);
+}
+
+/** Stamps runtimePVName/runtimePVNames/runtimeAuxPVs; unchanged widgets keep their reference. */
+export function stampRuntimePVs(w: Widget, macros: Record<string, string>): Widget {
+  const pvName = w.editableProperties?.pvName?.value;
+  const pvNames = w.editableProperties?.pvNames?.value;
+
+  const runtimePVName = pvName ? substituteMacroInStr(pvName, macros) : undefined;
+  const runtimePVNames = pvNames?.map((name) => substituteMacroInStr(name, macros));
+  const runtimeAuxPVs = resolveAuxPVs(w, macros);
+  const children = w.children?.map((c) => stampRuntimePVs(c, macros));
+
+  const pvNameUnchanged = runtimePVName === w.runtimePVName;
+  const pvNamesUnchanged =
+    (!runtimePVNames && !w.runtimePVNames) ||
+    (runtimePVNames?.length === w.runtimePVNames?.length &&
+      runtimePVNames?.every((v, i) => v === w.runtimePVNames![i]));
+  const childrenUnchanged = !children || children.every((c, i) => c === w.children![i]);
+  const auxPVsUnchanged = sameRecord(runtimeAuxPVs, w.runtimeAuxPVs);
+
+  if (pvNameUnchanged && pvNamesUnchanged && childrenUnchanged && auxPVsUnchanged) return w;
+
+  return {
+    ...w,
+    ...(runtimePVName !== undefined ? { runtimePVName } : {}),
+    ...(runtimePVNames !== undefined ? { runtimePVNames } : {}),
+    ...(auxPVsUnchanged ? {} : { runtimeAuxPVs }),
+    ...(children ? { children } : {}),
+  };
+}
+
+/**
+ * Flat deduplicated list of all resolved PV names that need WebSocket subscriptions:
+ * widget runtime PV names plus rule condition/action PV targets.
+ */
+export function collectResolvedPVs(widgets: Widget[], macros: Record<string, string>): string[] {
+  const pvSet = new Set<string>();
+  const addResolved = (pv: unknown) => {
+    if (typeof pv !== "string" || !pv) return;
+    const substituted = substituteMacroInStr(pv, macros);
+    if (substituted) pvSet.add(substituted);
+  };
+  const collect = (list: Widget[]) => {
+    for (const w of list) {
+      if (w.runtimePVName) pvSet.add(w.runtimePVName);
+      if (w.runtimePVNames) for (const pv of w.runtimePVNames) pvSet.add(pv);
+      if (w.runtimeAuxPVs) for (const pv of Object.values(w.runtimeAuxPVs)) pvSet.add(pv);
+      for (const rule of w.rules ?? []) {
+        for (const pv of collectRulePVNames(rule)) addResolved(pv);
+        // Pre-subscribe PV targets when a rule can switch pvName/pvNames
+        if (rule.targetProperty === "pvName") {
+          for (const ruleset of rule.rulesets) addResolved(ruleset.value);
+        }
+        if (rule.targetProperty === "pvNames") {
+          for (const ruleset of rule.rulesets) {
+            if (Array.isArray(ruleset.value)) ruleset.value.forEach(addResolved);
+          }
+        }
+      }
+      if (w.children?.length) collect(w.children);
+    }
+  };
+  collect(widgets);
+  return [...pvSet];
 }

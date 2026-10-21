@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 WEISS Contributors
 
-import { ROUNDING_CONST } from "@src/constants/constants";
+import { GRID_ID, ROUNDING_CONST } from "@src/constants/constants";
 import { PROPERTY_SCHEMAS } from "@src/types/widgetProperties";
 import type {
   MultiWidgetPropertyUpdates,
@@ -12,6 +12,8 @@ import type {
   PropertyKey,
   DOMRectLike,
   PropertyValue,
+  ExportedWidget,
+  ExportedRule,
 } from "@src/types/widgets";
 
 /** Make sure the given coordinate is aligned with grid if snapToGrid.
@@ -234,4 +236,60 @@ export function flattenWidgetTree(widgets: Widget[]): Widget[] {
     }
   }
   return result;
+}
+
+export function buildWidgetIdMap(widgets: Widget[]): Map<string, Widget> {
+  const map = new Map<string, Widget>();
+  const traverse = (list: Widget[]) => {
+    for (const w of list) {
+      if (w.id !== GRID_ID) map.set(w.id, w);
+      if (w.children) traverse(w.children);
+    }
+  };
+  traverse(widgets);
+  return map;
+}
+
+export function computeGroupBounds(widgets: Widget[]): DOMRectLike | null {
+  if (!widgets.length) return null;
+  const xs = widgets.map((w) => w.editableProperties.x!.value);
+  const ys = widgets.map((w) => w.editableProperties.y!.value);
+  const ws = widgets.map((w) => w.editableProperties.width!.value);
+  const hs = widgets.map((w) => w.editableProperties.height!.value);
+  const minX = Math.min(...xs);
+  const minY = Math.min(...ys);
+  const maxX = Math.max(...xs.map((x, i) => x + ws[i]));
+  const maxY = Math.max(...ys.map((y, i) => y + hs[i]));
+  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+}
+
+/** File content of a widget list, as saved and downloaded */
+export function serializeWidgets(widgets: Widget[]): string {
+  return JSON.stringify(widgets.map(formatWdgToExport), null, 2);
+}
+
+export function formatWdgToExport(widget: Widget): ExportedWidget {
+  // EmbeddedDisplay/NavigationTabs children are injected at runtime and not exported
+  const exportChildren =
+    widget.widgetName === "EmbeddedDisplay" || widget.widgetName === "NavigationTabs"
+      ? undefined
+      : widget.children?.map(formatWdgToExport);
+  return {
+    widgetName: widget.widgetName,
+    properties: Object.fromEntries(
+      Object.entries(widget.editableProperties).map(([key, def]) => [key, def.value]),
+    ),
+    ...(widget.rules?.length
+      ? {
+          rules: widget.rules.map(({ id: _id, rulesets, ...rest }): ExportedRule => ({
+            ...rest,
+            rulesets: rulesets.map(
+              ({ id: _rulesetId, pvNames: _pvNames, conditionLogic, ...ruleset }) =>
+                conditionLogic === "OR" ? { conditionLogic, ...ruleset } : ruleset,
+            ),
+          })),
+        }
+      : {}),
+    children: exportChildren,
+  };
 }
