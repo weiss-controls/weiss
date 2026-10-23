@@ -48,8 +48,11 @@ displays, at the same relative paths. Pictures elsewhere can be selected or drop
 dialog, or uploaded later to the repository. Make sure the paths used by the imported `Image`
 widgets match the paths of the uploaded files.
 
-Paths to embedded displays are converted from `.bob` to `.opi.json`. Importing the folder that holds
-the main display and the displays it references keeps these paths valid.
+Paths to embedded displays are converted from `.bob` to `.opi.json`. Relative paths to pictures and
+displays (embedded displays, navigation tabs and buttons) are resolved against the folder of the
+imported display and saved as repository paths. Importing the folder that holds the main display and
+the files it references keeps these paths valid. Absolute paths, URLs and paths starting with a
+macro are kept as they are, with a warning.
 
 :::{important} Not all Phoebus widgets and features are supported. The unsupported widgets will be
 substituted by a dashed outline as placeholder, and a warning will be shown. Check next section for

@@ -120,9 +120,12 @@ export function phoebusImportDest(targetDir: string, relPath: string): string {
   return targetDir ? `${targetDir}/${path}` : path;
 }
 
-/** Converts a `.bob` file to `.opi.json` content, adding conversion messages to `warnings`. */
-async function convertBobFile(file: File, warnings: string[]): Promise<string> {
-  const converted = convertDisplay(parsePhoebus(await file.text()));
+/**
+ * Converts a `.bob` file to `.opi.json` content saved at `dest`, adding conversion messages to
+ * `warnings`.
+ */
+async function convertBobFile(file: File, dest: string, warnings: string[]): Promise<string> {
+  const converted = convertDisplay(parsePhoebus(await file.text()), dest);
   warnings.push(...converted.warnings);
   return serializeWidgets(restoreWidgets(converted.widgets, warnings)) + "\n";
 }
@@ -148,7 +151,7 @@ export async function importPhoebusFiles(repoId: string, items: PhoebusImportIte
     try {
       const warnings: string[] = [];
       const body = BOB_EXTENSION.test(file.name)
-        ? new Blob([await convertBobFile(file, warnings)], { type: "application/json" })
+        ? new Blob([await convertBobFile(file, dest, warnings)], { type: "application/json" })
         : file;
       tree = (
         await uploadStagingRepoFile({
