@@ -6,8 +6,9 @@ import Box from "@mui/material/Box";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import type { TabEntry, WidgetUpdate } from "@src/types/widgets";
-import { useUIContext } from "@src/context/useUIContext";
-import { useWidgetContext } from "@src/context/useWidgetContext";
+import { useSessionStore } from "@src/stores/sessionStore";
+import { useRepoStore } from "@src/stores/repoStore";
+import { useEditorStore } from "@src/stores/editorStore";
 import { resolveRepoPath } from "@src/utils/repoPath";
 import {
   applyDisplayLayout,
@@ -26,8 +27,10 @@ function normalizeTabs(raw: unknown): TabEntry[] {
 }
 
 const NavigationTabsComp: React.FC<WidgetUpdate> = ({ data }) => {
-  const { isDeveloper, selectedFile } = useUIContext();
-  const { updateWidgetChildren, fileLoadedTrig, globalMacros } = useWidgetContext();
+  const isDeveloper = useSessionStore((s) => s.isDeveloper);
+  const selectedFile = useRepoStore((s) => s.selectedFile);
+  const fileLoadedTrig = useEditorStore((s) => s.fileLoadedTrig);
+  const globalMacros = useEditorStore((s) => s.globalMacros);
   const p = data.editableProperties;
 
   const tabs = useMemo(() => normalizeTabs(p.tabs?.value), [p.tabs?.value]);
@@ -102,11 +105,6 @@ const NavigationTabsComp: React.FC<WidgetUpdate> = ({ data }) => {
   );
   const resolvedMacroKey = useMemo(() => macrosToKey(resolvedMacros), [resolvedMacros]);
 
-  // Stable ref so effects never need `updateWidgetChildren` directly in their
-  // dependency array (see EmbeddedDisplayComp for the same pattern/rationale).
-  const updateChildrenRef = useRef(updateWidgetChildren);
-  updateChildrenRef.current = updateWidgetChildren;
-
   const rawContentRef = useRef<DisplayContent | null>(null);
   const lastAppliedLayoutKeyRef = useRef<string>("");
   const macrosRef = useRef<Record<string, string>>({});
@@ -122,7 +120,7 @@ const NavigationTabsComp: React.FC<WidgetUpdate> = ({ data }) => {
 
     lastAppliedLayoutKeyRef.current = layoutKey;
     const withMacros = applyDisplayLayout(cached, contentBox, macrosRef.current);
-    updateChildrenRef.current(data.id, withMacros, false);
+    useEditorStore.getState().updateWidgetChildren(data.id, withMacros, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.id, contentBox.x, contentBox.y, contentBox.width, contentBox.height]);
 
@@ -132,7 +130,7 @@ const NavigationTabsComp: React.FC<WidgetUpdate> = ({ data }) => {
     if (!repoId || !resolvedPath) {
       rawContentRef.current = null;
       lastAppliedLayoutKeyRef.current = "";
-      updateChildrenRef.current(data.id, [], false);
+      useEditorStore.getState().updateWidgetChildren(data.id, [], false);
       return;
     }
 
@@ -155,7 +153,7 @@ const NavigationTabsComp: React.FC<WidgetUpdate> = ({ data }) => {
         if (!cancelled) {
           rawContentRef.current = null;
           lastAppliedLayoutKeyRef.current = "";
-          updateChildrenRef.current(data.id, [], false);
+          useEditorStore.getState().updateWidgetChildren(data.id, [], false);
         }
       }
     };

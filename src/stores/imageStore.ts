@@ -3,7 +3,7 @@
 
 import { create } from "zustand";
 import type { Alarm, NDArrayInfo, NumericArray, TimeStamp } from "@src/types/epicsWS";
-import { usePVStore } from "@src/services/pvStore";
+import { usePVStore } from "@src/stores/pvStore";
 import { isTypedNumericArray } from "@src/utils/numericArray";
 
 /** Value of an image PV's summary in the PV store, and of a frame without pixels */
@@ -38,15 +38,16 @@ export const useImageStore = create<ImageStoreState>((set) => ({
   frames: {},
   connected: false,
   setFrames: (updates) => set((state) => ({ frames: { ...state.frames, ...updates } })),
-  removeFrames: (pvNames) =>
-    set((state) => {
-      const next = { ...state.frames };
-      for (const pv of pvNames) delete next[pv];
-      return { frames: next };
-    }),
+  removeFrames,
   clearFrames: () => set({ frames: {} }),
   setConnected: (connected) => set(connected ? { connected } : { connected, frames: {} }),
 }));
+
+function removeFrames(pvNames: string[]) {
+  const next = { ...useImageStore.getState().frames };
+  for (const pv of pvNames) delete next[pv];
+  useImageStore.setState({ frames: next });
+}
 
 // Registration count per plain array PV (no NTNDArray metadata) shown as an image
 const imagePVs = new Map<string, number>();

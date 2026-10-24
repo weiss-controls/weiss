@@ -153,6 +153,22 @@ The `PVData` type is heavily based on the
 For details and available fields, see `src/types/epicsWS.ts`.  
 :::
 
+### Mode and PV writes
+
+Read the mode and other app state from the Zustand stores in `src/stores/`, selecting only the field
+you need. Writable widgets import `writePVValue` from the WebSocket session and write to the
+macro-resolved PV name:
+
+```tsx
+import { useUIStore } from "@src/stores/uiStore";
+import { writePVValue } from "@src/services/WSClient/session";
+
+const inEditMode = useUIStore((s) => s.inEditMode);
+const handleChange = (value: number) => {
+  if (!inEditMode && data.runtimePVName) writePVValue(data.runtimePVName, value);
+};
+```
+
 ### General notes
 
 - **Layout:** It's recommended to use `width: 100%` and `height: 100%` on the root element of your

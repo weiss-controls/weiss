@@ -3,7 +3,8 @@
 
 import React, { useEffect, useState } from "react";
 import type { WidgetUpdate } from "@src/types/widgets";
-import { useUIContext } from "@src/context/useUIContext";
+import { useSessionStore } from "@src/stores/sessionStore";
+import { useRepoStore } from "@src/stores/repoStore";
 import { getDeployedRepoFile, getStagingRepoFile } from "@src/services/APIClient";
 import { resolveRepoPath } from "@src/utils/repoPath";
 
@@ -57,7 +58,8 @@ const Placeholder: React.FC<{ label?: string }> = ({ label }) => (
 );
 
 const ImageComp: React.FC<WidgetUpdate> = ({ data }) => {
-  const { isDeveloper, selectedFile } = useUIContext();
+  const isDeveloper = useSessionStore((s) => s.isDeveloper);
+  const selectedFile = useRepoStore((s) => s.selectedFile);
   const p = data.editableProperties;
 
   const repoId = selectedFile?.repo_id ?? "";

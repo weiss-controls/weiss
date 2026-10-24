@@ -2,7 +2,7 @@
 // Copyright (C) 2026 WEISS Contributors
 
 import { FRONT_UI_ZIDX, GRID_ID } from "@src/constants/constants";
-import { useWidgetContext } from "@src/context/useWidgetContext";
+import { useEditorStore } from "@src/stores/editorStore";
 import React, { useRef, useState, useEffect } from "react";
 
 interface SelectionManagerProps {
@@ -21,8 +21,10 @@ const SelectionManager: React.FC<SelectionManagerProps> = ({
   pan,
   guidesVisible,
 }) => {
-  const { editorWidgets, setSelectedWidgetIDs, selectedWidgetIDs, isDragging, selectionBounds } =
-    useWidgetContext();
+  const selectedWidgetIDs = useEditorStore((s) => s.selectedWidgetIDs);
+  const isDragging = useEditorStore((s) => s.isDragging);
+  const selectionBounds = useEditorStore((s) => s.selectionBounds);
+  const { setSelectedWidgetIDs } = useEditorStore.getState();
   const [selectionArea, setSelectionArea] = useState<{
     start?: { x: number; y: number };
     end?: { x: number; y: number };
@@ -173,8 +175,9 @@ const SelectionManager: React.FC<SelectionManagerProps> = ({
       const selW = Math.abs(xEnd - start.x);
       const selH = Math.abs(yEnd - start.y);
 
-      const selectedIds = editorWidgets
-        .filter((w) => {
+      const selectedIds = useEditorStore
+        .getState()
+        .editorWidgets.filter((w) => {
           if (w.id === GRID_ID) return false;
           const { x, y, width, height } = {
             x: w.editableProperties.x!.value,
@@ -198,16 +201,7 @@ const SelectionManager: React.FC<SelectionManagerProps> = ({
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [
-    zoom,
-    pan,
-    gridRef,
-    editorWidgets,
-    setSelectedWidgetIDs,
-    selectionArea,
-    isDragging,
-    selectedWidgetIDs,
-  ]);
+  }, [zoom, pan, gridRef, setSelectedWidgetIDs, selectionArea, isDragging, selectedWidgetIDs]);
 
   const hasSelectionArea = isSelecting && !!selectionArea.end;
   const showDragGuides = Boolean(guidesVisible && isDragging && selectionBounds);

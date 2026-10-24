@@ -12,12 +12,12 @@ import type {
 } from "@src/types/widgets";
 import { CATEGORY_DISPLAY_ORDER } from "@src/types/widgetProperties";
 import PropertyGroups from "./PropertyGroups";
-import { useWidgetContext } from "@src/context/useWidgetContext";
+import { useEditorStore } from "@src/stores/editorStore";
+import { useShallow } from "zustand/react/shallow";
 import { Box, Button, Tooltip } from "@mui/material";
 import RuleIcon from "@mui/icons-material/Rule";
 import { RulesDialog } from "@components/RulesDialog";
 import { COLORS } from "@src/constants/constants";
-import { GRID_ID } from "@src/constants/constants";
 
 const getGroupedProperties = (properties: WidgetProperties) => {
   const groups: Record<string, Record<string, WidgetProperty>> = {};
@@ -56,8 +56,9 @@ const getGroupedProperties = (properties: WidgetProperties) => {
 };
 
 const PropertiesTab: React.FC = () => {
-  const { editingWidgets, batchWidgetUpdate, batchUpdateWidgetRules, editorWidgets } =
-    useWidgetContext();
+  const editingWidgets = useEditorStore(useShallow((s) => s.editingWidgets));
+  const globalMacros = useEditorStore((s) => s.baseGlobalMacros);
+  const { batchWidgetUpdate, batchUpdateWidgetRules } = useEditorStore.getState();
 
   const singleWidget = editingWidgets.length === 1;
   const [rulesDialogOpen, setRulesDialogOpen] = useState(false);
@@ -114,11 +115,6 @@ const PropertiesTab: React.FC = () => {
   const ruleCount = primaryWidget?.rules?.length ?? 0;
   const multiWidgetEdit = editingWidgets.length > 1;
 
-  const globalMacros = useMemo(
-    () => editorWidgets.find((w) => w.id === GRID_ID)?.editableProperties.macros?.value ?? {},
-    [editorWidgets],
-  );
-
   return (
     <>
       <PropertyGroups
@@ -167,4 +163,4 @@ const PropertiesTab: React.FC = () => {
   );
 };
 
-export default PropertiesTab;
+export default React.memo(PropertiesTab);

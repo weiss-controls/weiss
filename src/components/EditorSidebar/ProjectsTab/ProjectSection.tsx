@@ -53,7 +53,8 @@ import CustomTreeItem, {
 import { notifyUser } from "@src/services/Notifications/Notification";
 import FileToolbar from "./FileToolbar";
 import FileContextMenu from "./FileContextMenu";
-import { useUIContext } from "@src/context/useUIContext";
+import { useSessionStore } from "@src/stores/sessionStore";
+import { useRepoStore } from "@src/stores/repoStore";
 import { useUIStore } from "@src/stores/uiStore";
 import GitCommitDialog from "@src/components/GitCommitDialog/GitCommitDialog";
 import { confirmDialog } from "@src/services/Dialog/Dialog";
@@ -97,8 +98,10 @@ export default function ProjectSection({
   defaultSelectedPath,
 }: ProjectSectionProps) {
   const REF_MAX_DISPLAY_SIZE = 7;
-  const { isDeveloper, selectedFile, setSelectedFile, setIsReposLoading, tokenStatus } =
-    useUIContext();
+  const isDeveloper = useSessionStore((s) => s.isDeveloper);
+  const selectedFile = useRepoStore((s) => s.selectedFile);
+  const tokenStatus = useSessionStore((s) => s.tokenStatus);
+  const { setSelectedFile, setIsReposLoading } = useRepoStore.getState();
   const inEditMode = useUIStore((s) => s.inEditMode);
   // helper for type checking
   const isStagingTree = useCallback(

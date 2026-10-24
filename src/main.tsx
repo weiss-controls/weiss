@@ -4,7 +4,8 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "@src/index.css";
-import { ContextProvider } from "@src/context/ContextProvider.tsx";
+// Store reactions (and the stores themselves) load before App
+import "@src/stores/actions";
 import App from "@src/App.jsx";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import AuthCallback from "@src/routes/AuthCallback.tsx";
@@ -18,20 +19,18 @@ createRoot(document.getElementById("root")!).render(
     <BrowserRouter>
       <NotificationService />
       <DialogService />
-      <ContextProvider>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/auth/callback" element={<AuthCallback />} />
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <App />
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
-      </ContextProvider>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <App />
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
     </BrowserRouter>
   </StrictMode>,
 );

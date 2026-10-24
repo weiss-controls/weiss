@@ -25,9 +25,9 @@ import { COLORS, FRONT_UI_ZIDX } from "@src/constants/constants";
 import PropertyNavigator from "./PropertiesTab/PropertiesTab";
 import ProjectsTab from "./ProjectsTab/ProjectsTab";
 import WidgetTree from "@components/WidgetTree";
-import { useUIContext } from "@src/context/useUIContext";
+import { useSessionStore } from "@src/stores/sessionStore";
 import { useUIStore } from "@src/stores/uiStore";
-import { useWidgetContext } from "@src/context/useWidgetContext";
+import { useEditorStore } from "@src/stores/editorStore";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 
 const Drawer = styled(MuiDrawer)(({ theme }) => ({
@@ -42,7 +42,9 @@ const Drawer = styled(MuiDrawer)(({ theme }) => ({
   },
 }));
 
-const ToggleButton = styled(IconButton)<{
+const ToggleButton = styled(IconButton, {
+  shouldForwardProp: (prop) => prop !== "open" && prop !== "drawerWidth",
+})<{
   open: boolean;
   drawerWidth: number;
 }>(({ theme, open, drawerWidth }) => ({
@@ -73,8 +75,10 @@ const EditorTab = {
 type EditorTab = (typeof EditorTab)[keyof typeof EditorTab];
 
 const EditorSidebar: React.FC = () => {
-  const { selectedWidgetIDs, editingWidgets } = useWidgetContext();
-  const { isAuthenticated } = useUIContext();
+  const selectedCount = useEditorStore((s) => s.selectedWidgetIDs.length);
+  const editingCount = useEditorStore((s) => s.editingWidgets.length);
+  const editingName = useEditorStore((s) => s.editingWidgets[0].widgetName);
+  const isAuthenticated = useSessionStore((s) => s.isAuthenticated);
   const inEditMode = useUIStore((s) => s.inEditMode);
   const open = useUIStore((s) => s.editorSidebarOpen);
   const pinned = useUIStore((s) => s.editorSidebarPinned);
@@ -104,13 +108,13 @@ const EditorSidebar: React.FC = () => {
   }, [isAuthenticated, inEditMode]);
 
   useEffect(() => {
-    if (selectedWidgetIDs.length > 0) {
+    if (selectedCount > 0) {
       setTabIndex((prev) => (prev === EditorTab.LAYERS ? EditorTab.LAYERS : EditorTab.EDIT));
       setEditorSidebarOpen(true);
     } else if (!pinned) {
       setEditorSidebarOpen(false);
     }
-  }, [selectedWidgetIDs.length, pinned, setEditorSidebarOpen]);
+  }, [selectedCount, pinned, setEditorSidebarOpen]);
 
   const startResize = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -159,8 +163,8 @@ const EditorSidebar: React.FC = () => {
 
   const header =
     tabIndex === EditorTab.EDIT
-      ? editingWidgets.length === 1
-        ? `${WidgetRegistry[editingWidgets[0].widgetName]?.widgetLabel ?? editingWidgets[0].widgetName} properties`
+      ? editingCount === 1
+        ? `${WidgetRegistry[editingName]?.widgetLabel ?? editingName} properties`
         : "Common properties in selection"
       : tabIndex === EditorTab.LAYERS
         ? "Widget layers"

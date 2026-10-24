@@ -14,7 +14,10 @@ Shared app state, one [Zustand](https://zustand.pmnd.rs/) store per concern. Com
   primitive or a reference stored in the state; arrays and objects built inside a selector need
   `useShallow` (Zustand 5 loops on a new snapshot per call).
 - Event handlers read actions and current values with `useXStore.getState()` and do not subscribe.
+- Actions longer than one line are named functions below `create()`, listed by name in the store and
+  using `useXStore.getState()`/`setState()`. One-line actions stay inline.
 - Derived state is computed inside actions and stored, not recomputed in hooks.
 - Actions that touch several stores live in `actions.ts` as plain functions.
-- Effects that need the React lifecycle (auth subscription, file fetch, auto-save, WS reconnect)
-  live in `<AppEffects />`. Store-to-store reactions use `store.subscribe` next to the store.
+- Side effects are subscriptions at the bottom of the store that owns their result (e.g. file
+  loading in `repoStore`), reacting to services and other stores. Those spanning several stores live
+  in `actions.ts`. They run when the module loads; `main.tsx` imports `actions.ts` before `App`.

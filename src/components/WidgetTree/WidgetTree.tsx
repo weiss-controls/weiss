@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 WEISS Contributors
 
-import { useMemo, useState, useCallback, useRef } from "react";
+import { memo, useMemo, useState, useCallback, useRef } from "react";
 import { RichTreeView } from "@mui/x-tree-view/RichTreeView";
-import { useWidgetContext } from "@src/context/useWidgetContext";
+import { useEditorStore } from "@src/stores/editorStore";
 import { GRID_ID } from "@src/constants/constants";
 import type { Widget } from "@src/types/widgets";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
@@ -53,15 +53,15 @@ function reorderList<T extends { id: string }>(
 }
 
 const WidgetTree: React.FC = () => {
+  const editorWidgets = useEditorStore((s) => s.editorWidgets);
+  const selectedWidgetIDs = useEditorStore((s) => s.selectedWidgetIDs);
   const {
-    editorWidgets,
-    selectedWidgetIDs,
     setSelectedWidgetIDs,
     updateEditorWidgetList,
     updateWidgetChildren,
     updateWidgetProperties,
     getWidget,
-  } = useWidgetContext();
+  } = useEditorStore.getState();
 
   // build tree items (render front-first, reversed from editorWidgets)
   const topLevelWidgets = useMemo(
@@ -217,4 +217,4 @@ const WidgetTree: React.FC = () => {
   );
 };
 
-export default WidgetTree;
+export default memo(WidgetTree);

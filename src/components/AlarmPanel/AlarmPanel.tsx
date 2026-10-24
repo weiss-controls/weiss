@@ -4,7 +4,7 @@
 
 import { useState, useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";
-import { usePVStore } from "@src/services/pvStore";
+import { usePVStore } from "@src/stores/pvStore";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";

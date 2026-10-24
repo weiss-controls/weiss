@@ -11,13 +11,14 @@ image data travels from epicsWS, see
 ## Data flow
 
 ```text
-epicsWS ──► useEpicsWS ──► imageStore ──► frameSource ──► AdController ──► ad.worker
+epicsWS ──► session.ts ──► imageStore ──► frameSource ──► AdController ──► ad.worker
                 │            (frames)       (events)     (main thread)    (OffscreenCanvas)
                 └──► pvStore (summary of the image PV, size and data type PVs)
 ```
 
-- `useEpicsWS` routes NTNDArray frames, and frames of plain array PVs registered as images, to
-  `src/services/imageStore.ts`. Frames never go through React props.
+- The WebSocket session (`src/services/WSClient/session.ts`) routes NTNDArray frames, and frames of
+  plain array PVs registered as images, to `src/stores/imageStore.ts`. Frames never go through React
+  props.
 - `frameSource.ts` turns both stores into one stream of events (`frame`, `notImage`, `waiting`,
   `disconnected`) for one PV, adding the waveform shape when waveform mode is configured.
 - `AdController` validates each frame, keeps at most one frame in flight and one pending, and copies

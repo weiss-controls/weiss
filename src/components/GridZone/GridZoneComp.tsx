@@ -4,8 +4,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import type { GridPosition, WidgetDefinition, WidgetUpdate } from "@src/types/widgets";
 import type { PVData } from "@src/types/epicsWS";
-import { usePVStore } from "@src/services/pvStore";
-import { createWidgetInstance, ensureGridCoordinate } from "@src/context/widgetHelpers";
+import { usePVStore } from "@src/stores/pvStore";
+import { createWidgetInstance, ensureGridCoordinate } from "@src/stores/widgetHelpers";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import { FRONT_UI_ZIDX, GRID_ID, MAX_ZOOM, MIN_ZOOM } from "@src/constants/constants";
 import ContextMenu from "@components/ContextMenu/ContextMenu";
@@ -15,8 +15,9 @@ import ToolbarButtons from "@components/Toolbar/Toolbar.tsx";
 import { v4 as uuidv4 } from "uuid";
 import SelectionManager from "./SelectionManager/SelectionManager";
 import { Box, CircularProgress, Fade } from "@mui/material";
-import { useWidgetContext } from "@src/context/useWidgetContext";
-import { useUIContext } from "@src/context/useUIContext";
+import { useEditorStore } from "@src/stores/editorStore";
+import { useSessionStore } from "@src/stores/sessionStore";
+import { useRepoStore } from "@src/stores/repoStore";
 import { useUIStore } from "@src/stores/uiStore";
 
 /**
@@ -38,16 +39,21 @@ import { useUIStore } from "@src/stores/uiStore";
 const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
   const props = data.editableProperties;
 
-  const { selectedFile, isDeveloper, isReposLoading } = useUIContext();
+  const selectedFile = useRepoStore((s) => s.selectedFile);
+  const isDeveloper = useSessionStore((s) => s.isDeveloper);
+  const isReposLoading = useRepoStore((s) => s.isReposLoading);
   const inEditMode = useUIStore((s) => s.inEditMode);
   const isPanning = useUIStore((s) => s.isPanning);
   const setIsPanning = useUIStore((s) => s.setIsPanning);
   const editorSidebarOpen = useUIStore((s) => s.editorSidebarOpen);
   const editorSidebarWidth = useUIStore((s) => s.editorSidebarWidth);
 
+  const pickedWidget = useEditorStore((s) => s.pickedWidget);
+  const isPlacementMode = useEditorStore((s) => s.isPlacementMode);
+  const gridSize = useEditorStore((s) => s.gridSize);
+  const snapToGrid = useEditorStore((s) => s.snapToGrid);
   const {
     addWidget,
-    selectedWidgetIDs,
     setSelectedWidgetIDs,
     handleRedo,
     handleUndo,
@@ -55,18 +61,12 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
     pasteWidget,
     downloadWidgets,
     deleteWidget,
-    allWidgetIDs,
-    pickedWidget,
     setPickedWidget,
-    isPlacementMode,
     setIsPlacementMode,
     groupSelected,
     ungroupSelected,
     moveSelected,
-    widgetIdMap,
-    gridSize,
-    snapToGrid,
-  } = useWidgetContext();
+  } = useEditorStore.getState();
 
   const gridRef = useRef<HTMLDivElement>(null);
   const lastPosRef = useRef<GridPosition>({ x: 0, y: 0 });
@@ -265,7 +265,7 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
       let foundPVName: string | null = null;
       let foundPVData: PVData | null = null;
       while (el && el !== document.body) {
-        const widget = widgetIdMap.get(el.id);
+        const widget = useEditorStore.getState().widgetIdMap.get(el.id);
         if (widget) {
           const runtimePVName = widget.runtimePVName ?? widget.editableProperties.pvName?.value;
           if (runtimePVName) {
@@ -366,7 +366,10 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
         });
         return;
       }
-      if (e.key.toLowerCase() === "delete" && selectedWidgetIDs.length > 0) {
+      if (
+        e.key.toLowerCase() === "delete" &&
+        useEditorStore.getState().selectedWidgetIDs.length > 0
+      ) {
         e.preventDefault();
         deleteWidget();
         return;
@@ -396,7 +399,7 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
       }
       if (e.ctrlKey && e.key.toLowerCase() === "a") {
         e.preventDefault();
-        setSelectedWidgetIDs(allWidgetIDs);
+        setSelectedWidgetIDs(useEditorStore.getState().allWidgetIDs);
         return;
       }
       if (e.ctrlKey && e.key.toLowerCase() === "g") {

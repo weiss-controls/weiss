@@ -1,28 +1,25 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 WEISS Contributors
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import { type DeploymentTreeInfo, type StagingTreeInfo } from "@src/services/APIClient";
 import ProjectSection from "./ProjectSection";
 import { Box, Button, Paper, Skeleton, Typography } from "@mui/material";
 import GitImportDialog from "@src/components/GitImportDialog/GitImportDialog";
 import CustomGitIcon from "@src/components/CustomIcons/GitIcon";
 import { COLORS } from "@src/constants/constants";
-import { useUIContext } from "@src/context/useUIContext";
+import { useSessionStore } from "@src/stores/sessionStore";
+import { useRepoStore } from "@src/stores/repoStore";
 import { useUIStore } from "@src/stores/uiStore";
 
-export default function ProjectsTab() {
-  const {
-    isDeveloper,
-    reposTreeInfo,
-    setReposTreeInfo,
-    isReposLoading,
-    setSelectedFile,
-    selectedFile,
-    imageSrc,
-    imageName,
-    reloadSelectedFile,
-  } = useUIContext();
+function ProjectsTab() {
+  const isDeveloper = useSessionStore((s) => s.isDeveloper);
+  const reposTreeInfo = useRepoStore((s) => s.reposTreeInfo);
+  const isReposLoading = useRepoStore((s) => s.isReposLoading);
+  const selectedFile = useRepoStore((s) => s.selectedFile);
+  const imageSrc = useRepoStore((s) => s.imageSrc);
+  const imageName = useRepoStore((s) => s.imageName);
+  const { setReposTreeInfo, setSelectedFile, reloadSelectedFile } = useRepoStore.getState();
   const inEditMode = useUIStore((s) => s.inEditMode);
   const [GitImportOpen, setGitImportOpen] = useState(false);
 
@@ -108,3 +105,5 @@ export default function ProjectsTab() {
     </Box>
   );
 }
+
+export default memo(ProjectsTab);

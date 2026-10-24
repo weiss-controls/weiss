@@ -15,11 +15,10 @@ import InputLabel from "@mui/material/InputLabel";
 import Typography from "@mui/material/Typography";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import { useWSActionsContext } from "@src/context/useEpicsWSContext";
+import { writePVValue } from "@src/services/WSClient/session";
 import { FLEX_ALIGN_MAP } from "@src/constants/constants";
 
 const SpinnerComp: React.FC<WidgetUpdate> = ({ data }) => {
-  const { writePVValue } = useWSActionsContext();
   const inEditMode = useUIStore((s) => s.inEditMode);
   const [editValue, setEditValue] = useState<number | null>(null);
   const [isFocused, setIsFocused] = useState(false);

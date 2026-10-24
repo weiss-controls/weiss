@@ -119,7 +119,7 @@ function evaluateRule(
  * Returns an empty object if no rules match.
  *
  * @param rules - The widget's rule list
- * @param pvState - The current PV state from EpicsWSContext
+ * @param pvState - The current PV state from pvStore
  */
 export function evaluateRules(
   rules: Rule[],

@@ -31,12 +31,14 @@ import SnapshotDialog from "@components/SnapshotDialog/SnapshotDialog.tsx";
 import AlarmPanel from "@components/AlarmPanel/AlarmPanel.tsx";
 import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
-import { useEpicsWSContext } from "@src/context/useEpicsWSContext.tsx";
-import { usePVStore } from "@src/services/pvStore";
+import { restoreFromSnapshot, takeSnapshot } from "@src/services/WSClient/session";
+import { usePVStore } from "@src/stores/pvStore";
 import { notifyUser } from "@src/services/Notifications/Notification.ts";
-import { useWidgetContext } from "@src/context/useWidgetContext.tsx";
-import { useUIContext } from "@src/context/useUIContext.tsx";
+import { useEditorStore } from "@src/stores/editorStore";
+import { useSessionStore } from "@src/stores/sessionStore";
+import { useRepoStore } from "@src/stores/repoStore";
 import { useUIStore } from "@src/stores/uiStore";
+import { updateMode } from "@src/stores/actions";
 import { parsePhoebus, convertDisplay } from "@src/utils/bob2json";
 import { confirmDialog } from "@src/services/Dialog/Dialog";
 interface StyledAppBarProps extends MuiAppBarProps {
@@ -136,12 +138,15 @@ function AlarmButtonAndPanel({ inEditMode }: { inEditMode: boolean }) {
 }
 
 export default function NavBar() {
-  const { downloadWidgets, importWidgets } = useWidgetContext();
+  const { downloadWidgets, importWidgets } = useEditorStore.getState();
   const inEditMode = useUIStore((s) => s.inEditMode);
   const wdgPickerOpen = useUIStore((s) => s.wdgPickerOpen);
   const toggleWdgPicker = useUIStore((s) => s.toggleWdgPicker);
-  const { updateMode, user, isAuthenticated, logout, isDeveloper, selectedFile } = useUIContext();
-  const { takeSnapshot, restoreFromSnapshot } = useEpicsWSContext();
+  const user = useSessionStore((s) => s.user);
+  const isAuthenticated = useSessionStore((s) => s.isAuthenticated);
+  const isDeveloper = useSessionStore((s) => s.isDeveloper);
+  const selectedFile = useRepoStore((s) => s.selectedFile);
+  const { logout } = useSessionStore.getState();
   const [snapshotOpen, setSnapshotOpen] = useState(false);
   const drawerWidth = WIDGET_SELECTOR_WIDTH;
   const [importMenuAnchor, setImportMenuAnchor] = useState<null | HTMLElement>(null);

@@ -21,7 +21,8 @@ import CloseIcon from "@mui/icons-material/Close";
 import UnfoldLessOutlined from "@mui/icons-material/UnfoldLessOutlined";
 import UnfoldMoreOutlined from "@mui/icons-material/UnfoldMoreOutlined";
 import { type TreeNode, uploadStagingRepoFile } from "@src/services/APIClient";
-import { useUIContext } from "@src/context/useUIContext";
+import { useSessionStore } from "@src/stores/sessionStore";
+import { useRepoStore } from "@src/stores/repoStore";
 import { useUIStore } from "@src/stores/uiStore";
 import { notifyUser } from "@src/services/Notifications/Notification";
 
@@ -89,7 +90,10 @@ const RepoFileBrowserDialog: React.FC<RepoFileBrowserDialogProps> = ({
   selectedAbsPath,
   onPick,
 }) => {
-  const { reposTreeInfo, selectedFile, setReposTreeInfo, isDeveloper } = useUIContext();
+  const reposTreeInfo = useRepoStore((s) => s.reposTreeInfo);
+  const selectedFile = useRepoStore((s) => s.selectedFile);
+  const isDeveloper = useSessionStore((s) => s.isDeveloper);
+  const { setReposTreeInfo } = useRepoStore.getState();
   const inEditMode = useUIStore((s) => s.inEditMode);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);

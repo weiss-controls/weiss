@@ -4,13 +4,14 @@
 import { type ReactNode } from "react";
 import { Navigate } from "react-router-dom";
 import { Box, CircularProgress } from "@mui/material";
-import { useUIContext } from "@src/context/useUIContext";
+import { useSessionStore } from "@src/stores/sessionStore";
 interface ProtectedRouteProps {
   children: ReactNode;
 }
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { isAuthenticated, authChecked } = useUIContext();
+  const isAuthenticated = useSessionStore((s) => s.isAuthenticated);
+  const authChecked = useSessionStore((s) => s.authChecked);
 
   if (!authChecked) {
     return (

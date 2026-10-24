@@ -56,7 +56,8 @@ const StrRecordProperty: React.FC<StrRecordPropertyProps> = ({
 
   useCommitOnUnmount(() => {
     const normalized = localItems.map(([k, v]) => [normalizeKey(k), v] as StrPair);
-    if (JSON.stringify(Object.fromEntries(normalized)) !== JSON.stringify(value)) {
+    // Compared as rows: an empty record shows as one blank row
+    if (JSON.stringify(normalized) !== JSON.stringify(normalizeItems(value))) {
       commitItems(normalized);
     }
   });

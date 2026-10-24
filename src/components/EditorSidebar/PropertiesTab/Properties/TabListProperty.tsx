@@ -15,7 +15,7 @@ import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import FolderOpenIcon from "@mui/icons-material/FolderOpen";
 import type { PropertyKey, PropertyValue, TabEntry } from "@src/types/widgets";
-import { useUIContext } from "@src/context/useUIContext";
+import { useRepoStore } from "@src/stores/repoStore";
 import { resolveRepoPath } from "@src/utils/repoPath";
 import RepoFileBrowserDialog from "./RepoFileBrowserDialog";
 import useCommitOnUnmount from "./propUtils/useCommitOnUnmount";
@@ -148,7 +148,7 @@ const TabMacrosEditor: React.FC<{
 };
 
 const TabListProperty: React.FC<TabListPropertyProps> = ({ propName, label, value, onChange }) => {
-  const { selectedFile } = useUIContext();
+  const selectedFile = useRepoStore((s) => s.selectedFile);
   const [localTabs, setLocalTabs] = useState<TabEntry[]>(() => normalizeTabs(value));
   const [browseIndex, setBrowseIndex] = useState<number | null>(null);
 

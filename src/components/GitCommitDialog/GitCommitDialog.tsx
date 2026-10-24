@@ -17,7 +17,7 @@ import {
 import TagIcon from "@mui/icons-material/LocalOffer";
 import CommitIcon from "@mui/icons-material/Commit";
 import { notifyUser } from "@src/services/Notifications/Notification";
-import { useUIContext } from "@src/context/useUIContext";
+import { useRepoStore } from "@src/stores/repoStore";
 import { commitStagingRepo, syncRepo } from "@src/services/APIClient";
 import { COLORS } from "@src/constants/constants";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -29,7 +29,7 @@ interface GitCommitDialogProps {
 }
 
 export default function GitCommitDialog({ open, onClose, repoID }: GitCommitDialogProps) {
-  const { setReposTreeInfo } = useUIContext();
+  const { setReposTreeInfo } = useRepoStore.getState();
 
   const [message, setMessage] = useState("");
   const [tag, setTag] = useState("");

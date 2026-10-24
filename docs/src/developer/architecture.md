@@ -37,9 +37,8 @@ traffic is injected.
 
 ### Core shared frontend components:
 
-For both modes, the operation and state management of the editor is handled through a combination of
-React context providers and custom hooks. For pv state update handling,
-[Zustand](https://zustand.site/en/) is used.
+For both modes, the state of the editor is held in [Zustand](https://zustand.pmnd.rs/) stores in
+`src/stores/`; there are no React context providers for app state.
 
 :::{important}  
 These are not all the shared elements of the frontend composition, but the more important ones.
@@ -50,24 +49,39 @@ Starting by these will naturally guide you through the other related files.
 
 #### State management layer
 
-- **`WidgetContext`** (`useWidgetManager`) - owns the canonical list of widgets on the canvas. It
-  handles selection, undo/redo history, clipboard, grouping, and serialisation/deserialisation of
-  OPI files.
-- **`UIContext`** (`useUIManager`) - owns the open file, repository and authentication state, and
-  cross-cutting interactions such as switching mode (`updateMode`) and loading or saving a file.
-- **`uiStore`** (`src/stores/uiStore.ts`, Zustand) - owns UI-only state: the current mode (edit vs.
-  runtime), panning, canvas text editing, and the widget picker and editor sidebar state. Widgets
-  read the mode with `useUIStore((s) => s.inEditMode)`. Shared state is moving from contexts to
-  stores in `src/stores/` (see its README).
-- **`EpicsWSContext`** (`useEpicsWS`) - exposes the WebSocket connection state and lifecycle methods
-  (`wsConnected`, `startNewSession`, `stopSession`). It does **not** carry live PV data — PV values
-  are served by the Zustand `pvStore` described below.
-- **`WSActionsContext`** (`useEpicsWS`) - exposes only `writePVValue`. Backed by the same
-  `useEpicsWS` hook but kept as a separate context so write-only widgets do not re-render on
-  connection state changes.
+Stores live in `src/stores/` (conventions in its `README.md`). Components subscribe with a selector
+for the slice they need, and call actions through `useXStore.getState()` in event handlers. Side
+effects are not React effects: each store reacts to the services and stores it depends on with
+subscriptions at the bottom of its own file.
+
+- **`editorStore`** - owns the canonical list of widgets on the canvas. It handles selection,
+  undo/redo history, clipboard, grouping, macros, and serialisation/deserialisation of OPI files.
+  Derived values (widget index, selection bounds, runtime macros, resolved PV list) are computed by
+  its actions and stored.
+- **`uiStore`** - UI-only state: the current mode (edit vs. runtime), panning, canvas text editing,
+  and the widget picker and editor sidebar state. Widgets read the mode with
+  `useUIStore((s) => s.inEditMode)`.
+- **`sessionStore`** - the authenticated user, role and git token status, `login` and `logout`.
+  Follows `AuthService` status changes, restores the session on page load, and fetches the token
+  status of a developer.
+- **`repoStore`** - repository trees and the selected file (or image preview). Fetches the trees on
+  login or role change, clears them on logout, loads the selected file into `editorStore` (or as an
+  image) when it changes, and reopens the last opened file once the trees load.
+- **`actions.ts`** - actions spanning several stores (`updateMode`) and reactions spanning them:
+  operators switched to runtime, the resolved PV list sent to the WebSocket session, the rule-driven
+  macro sync in runtime, and the debounced auto-save of the edited file (flushed on file or mode
+  switch). `main.tsx` imports it before `App`, which loads every store.
+- **WebSocket session** (`src/services/WSClient/session.ts`) - a module, not a context. It owns the
+  `WSClient` instance and exports `startNewSession`, `stopSession`, `setSubscribedPVs`,
+  `writePVValue`, `takeSnapshot` and `restoreFromSnapshot`, which components import directly. The
+  connection state is in `wsStore` (`src/stores/wsStore.ts`). A subscription in
+  `src/stores/actions.ts` passes `editorStore.resolvedPVList` to `setSubscribedPVs`; the session
+  subscribes the difference, and the whole list again after each (re)connect. `WSClient` reconnects
+  with backoff; the session clears PV data on disconnect and notifies the user when the connection
+  stays lost for 3 s, and again when it is restored.
 
 Live PV data is stored in a [Zustand](https://zustand.pmnd.rs/) module-level store (`usePVStore`,
-`src/services/pvStore.ts`). `useEpicsWS` collects incoming WebSocket messages in a buffer and
+`src/stores/pvStore.ts`). The WebSocket session collects incoming WebSocket messages in a buffer and
 flushes them into the store via `requestAnimationFrame`, capping updates at the user's monitor
 update rate. Widget components subscribe with a PV-specific selector:
 
@@ -79,9 +93,9 @@ This means each widget re-renders only when its own PV changes, with no re-rende
 through React context.
 
 Image frames (NTNDArray updates, and plain array PVs a widget registered as images) never enter
-`pvStore`: `useEpicsWS` routes them to a separate `imageStore`, and `pvStore` only keeps a summary
-of the PV without its pixels. Large images therefore never pass through React props, rules or
-macros.
+`pvStore`: the WebSocket session routes them to a separate `imageStore`, and `pvStore` only keeps a
+summary of the PV without its pixels. Large images therefore never pass through React props, rules
+or macros.
 
 :::{note}  
 The state management layer is the brains of the application. All global UI states and behaviors pass
@@ -94,11 +108,11 @@ through one of the above.
   zooming, and keyboard shortcuts. It is itself registered as a widget so that its editable
   properties (background, grid size, macros, …) are managed through the same widget pipeline as
   every other widget.
-- **`WidgetRenderer`** - iterates the widget list and renders each widget as a memoized `WidgetItem`
-  inside a resizable and draggable container (`react-rnd`); a multi-selection is rendered by
-  `SelectionGroup`. Unchanged widgets keep their object reference and are skipped by the memo. A
-  widget either renders the static component directly (edit mode), or delegates it to `LiveWidget`
-  in runtime.
+- **`WidgetRenderer`** - renders each top-level widget as a memoized `WidgetItem` inside a resizable
+  and draggable container (`react-rnd`); a multi-selection is rendered by `SelectionGroup`. A
+  `WidgetItem` selects its own widget (by id, from `editorStore.widgetIdMap`) and selection state,
+  so a selection change re-renders only the widgets whose selection state changed. A widget either
+  renders the static component directly (edit mode), or delegates it to `LiveWidget` in runtime.
 - **`LiveWidget`** - operates in runtime mode only. Subscribes to `usePVStore` with a PV-specific
   selector (using `useShallow` for reference equality), then calls `applyWidgetPVData()`
   (`widgetRenderUtils.ts`) to merge PV data, evaluate configured rules, and resolve macros before
@@ -125,7 +139,8 @@ through one of the above.
 
 - **`AuthService`** - singleton (`authService`) that drives the full OAuth login lifecycle. Handles
   provider redirect, code exchange, session restoration on page load (`restoreSession()`), and
-  logout. Broadcasts auth state changes to React via a callback observer consumed by `useUIManager`.
+  logout. Broadcasts auth state changes via a callback observer consumed by `sessionStore` and
+  `repoStore`.
 
 - **`Dialog`** - imperative confirmation dialog. Call `confirmDialog(options)` from anywhere in the
   app to open a modal; it returns a `Promise<boolean>` resolved when the user confirms or cancels.
@@ -138,7 +153,7 @@ through one of the above.
   to display a 4-second auto-dismiss snackbar. Accepted severity values: `"success"`, `"info"`,
   `"warning"`, `"error"`.
 
-- **`WSClient`** - stateful WebSocket class injected into `useEpicsWS`. Manages
+- **`WSClient`** - stateful WebSocket class used by the WebSocket session (`session.ts`). Manages
   subscribe/unsubscribe/write messaging to the EPICS bridge, auto-reconnects with exponential
   backoff on unexpected disconnection, and decodes binary array updates into typed arrays before
   data reaches `pvStore`.

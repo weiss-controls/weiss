@@ -28,15 +28,13 @@ interface PVStoreState {
  */
 export const usePVStore = create<PVStoreState>((set) => ({
   pvs: {},
-  setPVs: (updates) =>
-    set((state) => ({
-      pvs: { ...state.pvs, ...updates },
-    })),
-  removePVs: (pvNames) =>
-    set((state) => {
-      const next = { ...state.pvs };
-      for (const pv of pvNames) delete next[pv];
-      return { pvs: next };
-    }),
+  setPVs: (updates) => set((state) => ({ pvs: { ...state.pvs, ...updates } })),
+  removePVs,
   clearPVs: () => set({ pvs: {} }),
 }));
+
+function removePVs(pvNames: string[]) {
+  const next = { ...usePVStore.getState().pvs };
+  for (const pv of pvNames) delete next[pv];
+  usePVStore.setState({ pvs: next });
+}

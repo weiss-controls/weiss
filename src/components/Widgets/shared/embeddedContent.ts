@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from "uuid";
 import { getDeployedRepoFile, getStagingRepoFile } from "@src/services/APIClient";
 import { resolveMacroRecord, substituteMacrosInWidgetTree } from "@src/utils/macros";
 import { parseSerializedRules } from "@src/utils/ruleCompatibility";
-import { createGroupWidget, createWidgetInstance } from "@src/context/widgetHelpers";
+import { createGroupWidget, createWidgetInstance } from "@src/stores/widgetHelpers";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import type { DOMRectLike, ExportedWidget, PropertyKey, Widget } from "@src/types/widgets";
 

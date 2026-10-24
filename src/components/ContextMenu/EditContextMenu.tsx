@@ -28,7 +28,7 @@ import KeyboardArrowDown from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUp from "@mui/icons-material/KeyboardArrowUp";
 import FormatLineSpacingIcon from "@mui/icons-material/FormatLineSpacing";
 import ExpandIcon from "@mui/icons-material/Expand";
-import { useWidgetContext } from "@src/context/useWidgetContext";
+import { useEditorStore } from "@src/stores/editorStore";
 
 export interface EditContextMenuProps {
   pos: GridPosition;
@@ -38,9 +38,11 @@ export interface EditContextMenuProps {
 }
 
 const EditContextMenu: React.FC<EditContextMenuProps> = ({ pos, mousePos, visible, onClose }) => {
+  const selectedCount = useEditorStore((s) => s.selectedWidgetIDs.length);
+  const hasGroupSelected = useEditorStore((s) =>
+    s.selectedWidgets.some((w) => w.widgetName === "Group"),
+  );
   const {
-    selectedWidgetIDs,
-    selectedWidgets,
     bringToFront,
     sendToBack,
     alignTop,
@@ -56,18 +58,17 @@ const EditContextMenu: React.FC<EditContextMenuProps> = ({ pos, mousePos, visibl
     deleteWidget,
     groupSelected,
     ungroupSelected,
-    copyWidget,
-    pasteWidget,
     stepForward,
     stepBackwards,
-  } = useWidgetContext();
+    copyWidget,
+    pasteWidget,
+  } = useEditorStore.getState();
 
   if (!visible) return null;
 
-  const noneSelected = selectedWidgetIDs.length === 0;
-  const lessThanTwoSelected = selectedWidgetIDs.length < 2;
-  const lessThanThreeSelected = selectedWidgetIDs.length < 3;
-  const hasGroupSelected = selectedWidgets.some((w) => w.widgetName === "Group");
+  const noneSelected = selectedCount === 0;
+  const lessThanTwoSelected = selectedCount < 2;
+  const lessThanThreeSelected = selectedCount < 3;
 
   const options = [
     {
