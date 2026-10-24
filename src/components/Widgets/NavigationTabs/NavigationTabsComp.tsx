@@ -13,6 +13,7 @@ import { resolveRepoPath } from "@src/utils/repoPath";
 import {
   applyDisplayLayout,
   fetchDisplayContent,
+  keepEmbeddedChildren,
   macrosToKey,
   resolveDisplayMacros,
   type DisplayContent,
@@ -120,7 +121,8 @@ const NavigationTabsComp: React.FC<WidgetUpdate> = ({ data }) => {
 
     lastAppliedLayoutKeyRef.current = layoutKey;
     const withMacros = applyDisplayLayout(cached, contentBox, macrosRef.current);
-    useEditorStore.getState().updateWidgetChildren(data.id, withMacros, false);
+    const { widgetIdMap, updateWidgetChildren } = useEditorStore.getState();
+    updateWidgetChildren(data.id, keepEmbeddedChildren(withMacros, widgetIdMap), false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.id, contentBox.x, contentBox.y, contentBox.width, contentBox.height]);
 
