@@ -10,6 +10,11 @@ import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import type { DOMRectLike, ExportedWidget, PropertyKey, Widget } from "@src/types/widgets";
 
 /**
+ * Set of widget types that can embed other content.
+ */
+const EMBEDDING_WIDGETS = new Set(["EmbeddedDisplay", "NavigationTabs"]);
+
+/**
  * Cache of raw ExportedWidget arrays keyed by "<fileLoadedTrig>::<staging|deployed>::<repoId>::<path>".
  * Including fileLoadedTrig in the key ensures each file load fetches at least once,
  * while repeated instances of the same embedded path within the same file share
@@ -215,5 +220,46 @@ export function applyDisplayLayout(
   const offsetY = box.y + (box.height - natH * scale) / 2;
 
   const fresh = scaleWidgets(baseWidgets, scale, offsetX, offsetY, minX, minY);
-  return substituteMacrosInWidgetTree(fresh, macros);
+  return inheritDisplayMacros(substituteMacrosInWidgetTree(fresh, macros), macros);
+}
+
+/**
+ * Carry over the content already loaded by nested embedding widgets (looked up by id in
+ * the current tree), which their own components re-apply when their box or macros change.
+ */
+export function keepEmbeddedChildren(widgets: Widget[], current: Map<string, Widget>): Widget[] {
+  return widgets.map((w) => {
+    if (EMBEDDING_WIDGETS.has(w.widgetName)) {
+      const children = current.get(w.id)?.children;
+      return children ? { ...w, children } : w;
+    }
+    return w.children ? { ...w, children: keepEmbeddedChildren(w.children, current) } : w;
+  });
+}
+
+/**
+ * Nested embedding widgets resolve their content with their own macro tables only, so
+ * the outer macros are merged under each table; the nested widget's own entries win.
+ */
+function inheritDisplayMacros(widgets: Widget[], macros: Record<string, string>): Widget[] {
+  if (Object.keys(macros).length === 0) return widgets;
+  return widgets.map((w) => {
+    const { macros: ownMacros, tabs } = w.editableProperties;
+    let editableProperties = w.editableProperties;
+    if (w.widgetName === "EmbeddedDisplay" && ownMacros) {
+      editableProperties = {
+        ...editableProperties,
+        macros: { ...ownMacros, value: { ...macros, ...ownMacros.value } },
+      };
+    } else if (w.widgetName === "NavigationTabs" && tabs) {
+      const value = tabs.value.map((tab) => ({
+        ...tab,
+        macros: { ...macros, ...resolveMacroRecord(tab.macros, macros) },
+      }));
+      editableProperties = { ...editableProperties, tabs: { ...tabs, value } };
+    }
+    const children = w.children ? inheritDisplayMacros(w.children, macros) : undefined;
+    if (editableProperties === w.editableProperties && children === w.children) return w;
+    return { ...w, editableProperties, children };
+  });
 }

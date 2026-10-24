@@ -11,6 +11,7 @@ import { resolveRepoPath } from "@src/utils/repoPath";
 import {
   applyDisplayLayout,
   fetchDisplayContent,
+  keepEmbeddedChildren,
   macrosToKey,
   resolveDisplayMacros,
   type DisplayContent,
@@ -76,7 +77,8 @@ const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
       { x, y, width: targetW, height: targetH },
       macrosRef.current,
     );
-    useEditorStore.getState().updateWidgetChildren(data.id, withMacros, false);
+    const { widgetIdMap, updateWidgetChildren } = useEditorStore.getState();
+    updateWidgetChildren(data.id, keepEmbeddedChildren(withMacros, widgetIdMap), false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.id, x, y, targetW, targetH]);
 
