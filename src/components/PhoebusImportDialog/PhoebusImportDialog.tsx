@@ -195,8 +195,7 @@ export default function PhoebusImportDialog({ open, onClose }: PhoebusImportDial
       <DialogContent>
         <Stack spacing={2}>
           <Alert severity="warning">
-            Imported displays may not work out of the box. Validate them before using them in
-            production.
+            Imported displays may not work out of the box. Validate them before using in production.
           </Alert>
           {target ? (
             <Typography variant="body2">
@@ -225,7 +224,7 @@ export default function PhoebusImportDialog({ open, onClose }: PhoebusImportDial
             }}
           >
             <Typography variant="body2" sx={{ mb: 1.5, color: "text.secondary" }}>
-              Drop .bob files or folders here. Images in folders are imported too.
+              Drop .bob files or folders here, or browse with the buttons below.
             </Typography>
             <Stack direction="row" spacing={1} justifyContent="center">
               <Button variant="outlined" size="small" onClick={() => pick(false)}>
