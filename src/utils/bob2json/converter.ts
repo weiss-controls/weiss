@@ -16,6 +16,7 @@ import type { PhoebusDisplay, PhoebusWidget } from "./types";
 import type { ExportedWidget, PropertyValue } from "@src/types/widgets";
 import { parseActionButton } from "./converter/actionButton";
 import { centerWidgetsToOrigin } from "./converter/layout";
+import { resolveFilePaths } from "./converter/paths";
 import { buildUnsupportedPlaceholderWidget } from "./converter/placeholders";
 import {
   colorToRgba,
@@ -368,9 +369,10 @@ function makeGridWidget(display: PhoebusDisplay): ExportedWidget {
 }
 
 /**
- * Converts a parsed Phoebus display into WEISS widgets and warnings.
+ * Converts a parsed Phoebus display into WEISS widgets and warnings. `opiPath` is the repo path
+ * of the converted display, used to resolve the relative file paths it references.
  */
-export function convertDisplay(display: PhoebusDisplay): ConversionResult {
+export function convertDisplay(display: PhoebusDisplay, opiPath: string): ConversionResult {
   const warnings: string[] = [];
   const gridWidget = makeGridWidget(display);
   const contentWidgets: ExportedWidget[] = [];
@@ -384,6 +386,7 @@ export function convertDisplay(display: PhoebusDisplay): ConversionResult {
 
   const widgets: ExportedWidget[] = [gridWidget, ...contentWidgets];
   centerWidgetsToOrigin(widgets, contentWidgets);
+  resolveFilePaths(contentWidgets, opiPath, warnings);
 
   return { widgets, warnings };
 }

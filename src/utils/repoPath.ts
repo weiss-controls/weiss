@@ -46,6 +46,11 @@ export function resolveRepoPath(imagePath: string, opiPath: string): string {
   if (!imagePath.startsWith("./") && !imagePath.startsWith("../")) {
     return normalizePath(imagePath);
   }
+  return resolveRelativePath(imagePath, opiPath);
+}
+
+/** Resolve a path relative to the directory of `opiPath`, with or without a `./` prefix. */
+export function resolveRelativePath(path: string, opiPath: string): string {
   const dir = opiDir(opiPath);
-  return normalizePath(dir ? `${dir}/${imagePath}` : imagePath);
+  return normalizePath(dir ? `${dir}/${path}` : path);
 }

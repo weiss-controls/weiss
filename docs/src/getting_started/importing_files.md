@@ -32,19 +32,27 @@ need to be uploaded or imported.
 
 ### Import the display
 
-With the WEISS app running, login as a "Developer" and create a new file with the desired name.
-Click **Import** in the application header, select **From CSS/Phoebus**, and choose the `.bob` file
-from your computer. Before the import starts, WEISS will show a warning that the result may require
-validation. Confirm the message to continue. The converted widgets will be added to the current OPI.
+With the WEISS app running, login as a "Developer" and select the destination folder in the project
+tree (or a file inside it). Click **Import** in the application header and select **From
+CSS/Phoebus**. In the dialog, drop `.bob` files or whole folders, or use **Select files** / **Select
+folder**. Folders are imported recursively and keep their structure.
+
+Each `foo.bob` is converted and saved as `foo.opi.json` in the destination folder; there is no need
+to create the files beforehand. Files that already exist are skipped unless **Overwrite** is
+checked. When a single display is imported, it opens in the editor.
 
 ![Import a CS-Studio display](../_static/import-cs-studio.gif)
 
-If the display uses pictures, upload the corresponding `.svg`, `.png`, `.jpg`, or `.jpeg` files to
-the same repository. Make sure the paths used by the imported `Image` widgets match the paths of the
-uploaded files.
+Pictures (`.svg`, `.png`, `.jpg`, `.jpeg`) found in imported folders are uploaded along with the
+displays, at the same relative paths. Pictures elsewhere can be selected or dropped in the same
+dialog, or uploaded later to the repository. Make sure the paths used by the imported `Image`
+widgets match the paths of the uploaded files.
 
-For embedded displays, import each referenced `.bob` file using the same proccess as the main
-display. Make sure the path on the main display matches the location of the imported files.
+Paths to embedded displays are converted from `.bob` to `.opi.json`. Relative paths to pictures and
+displays (embedded displays, navigation tabs and buttons) are resolved against the folder of the
+imported display and saved as repository paths. Importing the folder that holds the main display and
+the files it references keeps these paths valid. Absolute paths, URLs and paths starting with a
+macro are kept as they are, with a warning.
 
 :::{important} Not all Phoebus widgets and features are supported. The unsupported widgets will be
 substituted by a dashed outline as placeholder, and a warning will be shown. Check next section for

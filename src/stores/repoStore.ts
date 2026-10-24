@@ -42,11 +42,14 @@ interface RepoStoreState {
   isReposLoading: boolean;
   /** File open in the editor (or shown as an image); loaded when it changes */
   selectedFile: SelectedPathInfo | null;
+  /** Last file or folder selected in a project tree; "" is the repository root */
+  treeSelection: SelectedPathInfo | null;
   imageSrc: string | null;
   imageName: string | null;
   setReposTreeInfo: (info: ReposTreeInfo | ((prev: ReposTreeInfo) => ReposTreeInfo)) => void;
   setIsReposLoading: (isReposLoading: boolean) => void;
   setSelectedFile: (file: SelectedPathInfo | null) => void;
+  setTreeSelection: (selection: SelectedPathInfo | null) => void;
   /** Fetches the current file again (e.g. after a git sync). */
   reloadSelectedFile: () => void;
   setImage: (imageSrc: string | null, imageName: string | null) => void;
@@ -62,17 +65,25 @@ export const useRepoStore = create<RepoStoreState>()(
       reposTreeInfo: null,
       isReposLoading: true,
       selectedFile: null,
+      treeSelection: null,
       imageSrc: null,
       imageName: null,
       setReposTreeInfo: (info) =>
         set((s) => ({ reposTreeInfo: typeof info === "function" ? info(s.reposTreeInfo) : info })),
       setIsReposLoading: (isReposLoading) => set({ isReposLoading }),
       setSelectedFile: (selectedFile) => set({ selectedFile }),
+      setTreeSelection: (treeSelection) => set({ treeSelection }),
       reloadSelectedFile: () =>
         set((s) => ({ selectedFile: s.selectedFile ? { ...s.selectedFile } : null })),
       setImage: (imageSrc, imageName) => set({ imageSrc, imageName }),
       updateReposTreeInfo,
-      reset: () => set({ reposTreeInfo: null, selectedFile: null, isReposLoading: false }),
+      reset: () =>
+        set({
+          reposTreeInfo: null,
+          selectedFile: null,
+          treeSelection: null,
+          isReposLoading: false,
+        }),
     }),
     { name: "repoStore", enabled: import.meta.env.DEV },
   ),

@@ -101,7 +101,7 @@ export default function ProjectSection({
   const isDeveloper = useSessionStore((s) => s.isDeveloper);
   const selectedFile = useRepoStore((s) => s.selectedFile);
   const tokenStatus = useSessionStore((s) => s.tokenStatus);
-  const { setSelectedFile, setIsReposLoading } = useRepoStore.getState();
+  const { setSelectedFile, setIsReposLoading, setTreeSelection } = useRepoStore.getState();
   const inEditMode = useUIStore((s) => s.inEditMode);
   // helper for type checking
   const isStagingTree = useCallback(
@@ -125,6 +125,11 @@ export default function ProjectSection({
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
   const selectedRef = isStagingTree(repo) ? repo.checked_out_ref : repo.deployed_ref;
   const shortRef = (ref: string) => ref.substring(0, REF_MAX_DISPLAY_SIZE);
+
+  const selectItem = (id: string | null) => {
+    setSelectedItem(id);
+    setTreeSelection(id !== null ? { repo_id: repo.id, path: id } : null);
+  };
 
   useEffect(() => {
     if (!defaultSelectedPath) return;
@@ -532,7 +537,7 @@ export default function ProjectSection({
     },
     onContextMenu: dndEnabled
       ? (itemId, event) => {
-          setSelectedItem(itemId);
+          selectItem(itemId);
           setContextMenu({ x: event.clientX, y: event.clientY, itemId });
         }
       : undefined,
@@ -682,7 +687,7 @@ export default function ProjectSection({
           <Box sx={{ px: 1, py: 0.5 }}>
             {isStagingTree(repo) && isDeveloper && inEditMode && (
               <Box
-                onClick={() => setSelectedItem("")}
+                onClick={() => selectItem("")}
                 onDragOver={(e) => {
                   e.preventDefault();
                   e.dataTransfer.dropEffect = "move";
@@ -728,7 +733,7 @@ export default function ProjectSection({
               items={items}
               selectedItems={selectedItem}
               onSelectedItemsChange={(_, id) => {
-                setSelectedItem(id);
+                selectItem(id);
                 const item = id ? findItemById(items, id) : null;
                 if (item?.type === "file") void onFileSelect(repo.id, item.path);
               }}
