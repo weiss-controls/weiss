@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 WEISS Contributors
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import { type DeploymentTreeInfo, type StagingTreeInfo } from "@src/services/APIClient";
 import ProjectSection from "./ProjectSection";
 import { Box, Button, Paper, Skeleton, Typography } from "@mui/material";
@@ -12,7 +12,7 @@ import { useSessionStore } from "@src/stores/sessionStore";
 import { useRepoStore } from "@src/stores/repoStore";
 import { useUIStore } from "@src/stores/uiStore";
 
-export default function ProjectsTab() {
+function ProjectsTab() {
   const isDeveloper = useSessionStore((s) => s.isDeveloper);
   const reposTreeInfo = useRepoStore((s) => s.reposTreeInfo);
   const isReposLoading = useRepoStore((s) => s.isReposLoading);
@@ -105,3 +105,5 @@ export default function ProjectsTab() {
     </Box>
   );
 }
+
+export default memo(ProjectsTab);

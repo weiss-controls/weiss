@@ -163,4 +163,4 @@ const PropertiesTab: React.FC = () => {
   );
 };
 
-export default PropertiesTab;
+export default React.memo(PropertiesTab);

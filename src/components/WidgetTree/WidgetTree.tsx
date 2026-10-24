@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 WEISS Contributors
 
-import { useMemo, useState, useCallback, useRef } from "react";
+import { memo, useMemo, useState, useCallback, useRef } from "react";
 import { RichTreeView } from "@mui/x-tree-view/RichTreeView";
 import { useEditorStore } from "@src/stores/editorStore";
 import { GRID_ID } from "@src/constants/constants";
@@ -217,4 +217,4 @@ const WidgetTree: React.FC = () => {
   );
 };
 
-export default WidgetTree;
+export default memo(WidgetTree);
