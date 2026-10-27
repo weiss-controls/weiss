@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 WEISS Contributors
 
-import React, { memo, type ReactNode } from "react";
+import React, { memo, useLayoutEffect, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import type { Widget } from "@src/types/widgets";
@@ -87,7 +87,7 @@ function WidgetItemBase({
 }: WidgetItemProps) {
   const w = useEditorStore((s) => s.widgetIdMap.get(id));
   const isSelected = useEditorStore((s) => s.selectedWidgetIDs.includes(id));
-  // multi-selected widgets are rendered inside the selection group
+  // multi-selected widgets are moved and resized by the selection group overlay
   const inSelectionGroup = useEditorStore(
     (s) => s.selectedWidgetIDs.length > 1 && s.selectedWidgetIDs.includes(id),
   );
@@ -104,15 +104,15 @@ function WidgetItemBase({
   const globalMacros = useEditorStore((s) => (inEditMode ? undefined : s.globalMacros));
   const { dragGrid, resizeGrid } = useGrids(scale);
 
-  if (!w || inSelectionGroup) return null;
+  if (!w) return null;
 
   const x = w.editableProperties.x!.value - parentX;
   const y = w.editableProperties.y!.value - parentY;
   const width = w.editableProperties.width!.value;
   const height = w.editableProperties.height!.value;
 
-  const canDrag = inEditMode && !isChild && !isEmbedded && !isTextEditing;
-  const canResize = inEditMode && !isChild;
+  const canDrag = inEditMode && !isChild && !isEmbedded && !isTextEditing && !inSelectionGroup;
+  const canResize = inEditMode && !isChild && !inSelectionGroup;
   const isGroup = !!w.children?.length;
   const childIsEmbedded =
     isEmbedded || w.widgetName === "EmbeddedDisplay" || w.widgetName === "NavigationTabs";
@@ -173,37 +173,35 @@ function WidgetItemBase({
   );
 }
 
-/** Multi-selection: the selected widgets moved and resized together inside one Rnd */
+/** Offsets the selected widgets with CSS `translate`, which composes with the Rnd transform */
+function translateWidgets(ids: string[], dx: number, dy: number) {
+  const value = dx || dy ? `${dx}px ${dy}px` : "";
+  for (const id of ids) {
+    const el = document.getElementById(id);
+    if (el) el.style.translate = value;
+  }
+}
+
+/**
+ * Multi-selection: an empty Rnd over the selection bounds. The selected widgets keep their place
+ * in the render order (and z-order); while dragging they follow the overlay through `translate`.
+ * The offset is state applied in a layout effect, which commits it in the same render as the
+ * react-draggable position of the overlay.
+ */
 const SelectionGroup = memo(function SelectionGroup({ scale }: RendererProps) {
   const bounds = useEditorStore((s) => (s.selectedWidgetIDs.length > 1 ? s.selectionBounds : null));
   const widgets = useEditorStore(useShallow((s) => s.selectedWidgets));
   const inEditMode = useUIStore((s) => s.inEditMode);
-  const globalMacros = useEditorStore((s) => (inEditMode ? undefined : s.globalMacros));
   const { dragGrid, resizeGrid } = useGrids(scale);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
+  useLayoutEffect(() => {
+    const ids = widgets.map((w) => w.id);
+    translateWidgets(ids, dragOffset.x, dragOffset.y);
+    return () => translateWidgets(ids, 0, 0);
+  }, [widgets, dragOffset]);
 
   if (!bounds) return null;
-
-  const renderRecursive = (w: Widget, parentX: number, parentY: number): ReactNode => {
-    const x = w.editableProperties.x!.value - parentX;
-    const y = w.editableProperties.y!.value - parentY;
-    const width = w.editableProperties.width!.value;
-    const height = w.editableProperties.height!.value;
-    const isGroup = w.children?.length;
-
-    return (
-      <div
-        key={w.id}
-        id={w.id}
-        className={`selectable selected ${isGroup ? "groupBox" : ""}`}
-        style={{ position: "absolute", left: x, top: y, width, height }}
-      >
-        {renderWidgetContent(w, globalMacros)}
-        {w.children?.map((child) =>
-          renderRecursive(child, w.editableProperties.x!.value, w.editableProperties.y!.value),
-        )}
-      </div>
-    );
-  };
 
   return (
     <Rnd
@@ -219,17 +217,19 @@ const SelectionGroup = memo(function SelectionGroup({ scale }: RendererProps) {
       disableDragging={!inEditMode}
       resizeHandleStyles={getResizeHandlesSize(bounds.width, bounds.height)}
       onDragStart={handleDragStart}
-      onDrag={handleDragging}
-      onDragStop={(_e, d) =>
-        useEditorStore.getState().handleSelGroupDragStop(d.x - bounds.x, d.y - bounds.y)
-      }
+      onDrag={(_e, d) => {
+        handleDragging();
+        setDragOffset({ x: d.x - bounds.x, y: d.y - bounds.y });
+      }}
+      onDragStop={(_e, d) => {
+        setDragOffset({ x: 0, y: 0 });
+        useEditorStore.getState().handleSelGroupDragStop(d.x - bounds.x, d.y - bounds.y);
+      }}
       onResizeStart={handleResizeStart}
       onResizeStop={(_e, _dir, ref) =>
         useEditorStore.getState().handleSelGroupResizeStop(ref, bounds, widgets)
       }
-    >
-      {widgets.map((w) => renderRecursive(w, bounds.x, bounds.y))}
-    </Rnd>
+    />
   );
 });
 
