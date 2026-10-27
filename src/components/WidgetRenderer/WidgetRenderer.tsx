@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 WEISS Contributors
 
-import React, { memo } from "react";
+import React, { memo, useLayoutEffect, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import type { Widget } from "@src/types/widgets";
@@ -185,16 +185,23 @@ function translateWidgets(ids: string[], dx: number, dy: number) {
 /**
  * Multi-selection: an empty Rnd over the selection bounds. The selected widgets keep their place
  * in the render order (and z-order); while dragging they follow the overlay through `translate`.
+ * The offset is state applied in a layout effect, which commits it in the same render as the
+ * react-draggable position of the overlay.
  */
 const SelectionGroup = memo(function SelectionGroup({ scale }: RendererProps) {
   const bounds = useEditorStore((s) => (s.selectedWidgetIDs.length > 1 ? s.selectionBounds : null));
   const widgets = useEditorStore(useShallow((s) => s.selectedWidgets));
   const inEditMode = useUIStore((s) => s.inEditMode);
   const { dragGrid, resizeGrid } = useGrids(scale);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
+  useLayoutEffect(() => {
+    const ids = widgets.map((w) => w.id);
+    translateWidgets(ids, dragOffset.x, dragOffset.y);
+    return () => translateWidgets(ids, 0, 0);
+  }, [widgets, dragOffset]);
 
   if (!bounds) return null;
-
-  const ids = widgets.map((w) => w.id);
 
   return (
     <Rnd
@@ -212,10 +219,10 @@ const SelectionGroup = memo(function SelectionGroup({ scale }: RendererProps) {
       onDragStart={handleDragStart}
       onDrag={(_e, d) => {
         handleDragging();
-        translateWidgets(ids, d.x - bounds.x, d.y - bounds.y);
+        setDragOffset({ x: d.x - bounds.x, y: d.y - bounds.y });
       }}
       onDragStop={(_e, d) => {
-        translateWidgets(ids, 0, 0);
+        setDragOffset({ x: 0, y: 0 });
         useEditorStore.getState().handleSelGroupDragStop(d.x - bounds.x, d.y - bounds.y);
       }}
       onResizeStart={handleResizeStart}
