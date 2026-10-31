@@ -173,7 +173,8 @@ const handleChange = (value: number) => {
 
 - **Layout:** It's recommended to use `width: 100%` and `height: 100%` on the root element of your
   component, so it fills the whole widget area and resizes properly when the user resizes the widget
-  in the editor.
+  in the editor. Set `boxSizing: "border-box"` on the element that carries the border properties:
+  with the default `content-box`, the border is drawn outside the widget area and clipped.
 - **Use all properties:** If a property is available in your definition file, make sure to use it in
   your component (e.g., `fontSize`, `textColor`, `backgroundColor`, etc.) so the user can customize
   it from the editor. Always refer to the existing widgets for examples of how to use different

@@ -14,6 +14,7 @@ export const Spinner: WidgetDefinition = {
   widgetLabel: "Spinner",
   category: "Controls",
   defaultProperties: {
+    label: { ...PROPERTY_SCHEMAS.label, value: "Spinner" },
     pvName: PROPERTY_SCHEMAS.pvName,
     unitsFromPV: PROPERTY_SCHEMAS.unitsFromPV,
     units: PROPERTY_SCHEMAS.units,
