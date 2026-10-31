@@ -19,6 +19,7 @@ export const EmbeddedDisplay: WidgetDefinition = {
     width: { ...PROPERTY_SCHEMAS.width, value: 300 },
     height: { ...PROPERTY_SCHEMAS.height, value: 210 },
     tooltip: { ...PROPERTY_SCHEMAS.tooltip, value: "" },
+    visible: PROPERTY_SCHEMAS.visible,
     displayPath: PROPERTY_SCHEMAS.displayPath,
     macros: PROPERTY_SCHEMAS.macros,
   },

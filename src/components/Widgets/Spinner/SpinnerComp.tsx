@@ -62,8 +62,6 @@ const SpinnerComp: React.FC<WidgetUpdate> = ({ data }) => {
     }
   }, [inEditMode]);
 
-  if (!p.visible?.value) return null;
-
   const handleWrite = (value: number | null) => {
     if (inEditMode || value === null || !runtimePVName) return;
     writePVValue(runtimePVName, value);

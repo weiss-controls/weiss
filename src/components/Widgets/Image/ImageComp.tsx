@@ -108,8 +108,6 @@ const ImageComp: React.FC<WidgetUpdate> = ({ data }) => {
     };
   }, [repoId, resolvedImagePath, isDeveloper]);
 
-  if (!p.visible?.value) return null;
-
   return (
     <div
       title={p.tooltip?.value ?? ""}

@@ -29,3 +29,13 @@
   z-index: var(--front-ui-zidx);
   box-sizing: border-box;
 }
+
+/* Runtime: the wrapper ignores pointer events and the widget content takes them. Clicks on a
+   hidden widget or on the empty area of a container reach the widgets below. */
+.runtimeWidget {
+  pointer-events: none;
+}
+
+.runtimeWidget > :not(.runtimeWidget) {
+  pointer-events: auto;
+}

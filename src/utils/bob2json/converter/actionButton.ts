@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 WEISS Contributors
 
-import { PhoebusAttribute, PhoebusProperty } from "../constants";
+import { PhoebusAttribute, PhoebusElement, PhoebusProperty } from "../constants";
 import type { PhoebusWidget } from "../types";
 import { isPhoebusInternalPvNameMacro, mapEmbeddedDisplayPath } from "./valueMappers";
 
@@ -33,6 +33,7 @@ function parseActionMacros(actionEl: Element): Record<string, string> | undefine
 
   const macros: Record<string, string> = {};
   for (const macroEl of Array.from(macrosEl.children)) {
+    if (macroEl.tagName === PhoebusElement.INCLUDE_PARENT_MACROS) continue;
     const key = `$(${macroEl.tagName.trim()})`;
     const value = macroEl.textContent?.trim();
     if (key && value !== undefined) macros[key] = value;

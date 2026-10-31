@@ -178,6 +178,9 @@ const handleChange = (value: number) => {
   your component (e.g., `fontSize`, `textColor`, `backgroundColor`, etc.) so the user can customize
   it from the editor. Always refer to the existing widgets for examples of how to use different
   properties.
+- **Visibility:** The `visible` property (in `COMMON_PROPS`, and changeable by rules) is handled by
+  the renderer: a hidden widget and its children are not rendered, so the component does not need to
+  check it.
 - **Save renders**: For better performance, avoid unnecessary renders by using `React.memo` or
   similar techniques if your widget is complex or has expensive rendering logic.
 - **Need extra properties?**: If you need a specific property that is not available, feel free to

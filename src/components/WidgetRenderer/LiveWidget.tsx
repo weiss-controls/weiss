@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 WEISS Contributors
 
-import { memo, useMemo } from "react";
+import { memo, useMemo, type ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import type { Widget } from "@src/types/widgets";
@@ -16,16 +16,20 @@ import { applyWidgetPVData } from "./widgetRenderUtils";
  * that this component re-renders only when:
  *   1. Its own PV data changes, or
  *   2. Its base widget object changes (widget config / grid-macro change), or
- *   3. globalMacros change (forwarded navigation macros or rule-driven macro updates).
+ *   3. globalMacros change (forwarded navigation macros or rule-driven macro updates), or
+ *   4. Its parent re-renders with new children (containers only).
  *
  * All other PV ticks in the system are invisible to this component.
  */
 const LiveWidget = memo(function WidgetRenderItem({
   w,
   globalMacros,
+  children,
 }: {
   w: Widget;
   globalMacros: Record<string, string>;
+  /** Rendered after the widget content */
+  children?: ReactNode;
 }) {
   // Collect every PV name this widget cares about:
   // - its primary PV, multi-PV list, and any PVs referenced in rule conditions.
@@ -78,9 +82,14 @@ const LiveWidget = memo(function WidgetRenderItem({
     [w, relevantPvs, globalMacros],
   );
 
+  if (mergedWidget.editableProperties.visible?.value === false) return null;
   const Comp = WidgetRegistry[w.widgetName]?.component;
-  if (!Comp) return null;
-  return <Comp data={mergedWidget} />;
+  return (
+    <>
+      {Comp && <Comp data={mergedWidget} />}
+      {children}
+    </>
+  );
 });
 
 export default LiveWidget;

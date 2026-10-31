@@ -42,6 +42,9 @@ export const PhoebusElement = {
   // plot traces
   TRACES: "traces",
   TRACE: "trace",
+
+  // flag inside <macros>, not a macro
+  INCLUDE_PARENT_MACROS: "include_parent_macros",
 } as const;
 
 // XML attributes
@@ -119,6 +122,9 @@ export const PhoebusProperty = {
   FILE: "file",
 
   PV_NAME: "pv_name",
+  FORMAT: "format",
+  PRECISION: "precision",
+  SHOW_UNITS: "show_units",
   MACROS: "macros",
   GRID_COLOR: "grid_color",
   GRID_VISIBLE: "grid_visible",

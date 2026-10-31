@@ -24,8 +24,6 @@ const MultiStateLEDComp: React.FC<WidgetUpdate> = ({ data }) => {
   const pvData = data.pvData;
   const inEditMode = useUIStore((s) => s.inEditMode);
 
-  if (!p.visible?.value) return null;
-
   const states = p.stateList?.value ?? [];
   // Last entry is always the fallback state
   const normalStates = states.slice(0, -1);

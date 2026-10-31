@@ -90,7 +90,6 @@ function statusLabel(status: AdStatus): string | null {
 const AreaDetectorComp: React.FC<WidgetUpdate> = ({ data }) => {
   const inEditMode = useUIStore((s) => s.inEditMode);
   const p = data.editableProperties;
-  const visible = p.visible?.value;
   const pvName = data.pvData?.pv ?? data.runtimePVName ?? "";
   const rotation = p.imageRotation?.value;
   const flipX = p.imageFlipX?.value;
@@ -143,7 +142,7 @@ const AreaDetectorComp: React.FC<WidgetUpdate> = ({ data }) => {
   // The controller (and its worker) only lives while the widget is shown at runtime
   useEffect(() => {
     const container = containerRef.current;
-    if (inEditMode || !visible || !pvName || !container) return;
+    if (inEditMode || !pvName || !container) return;
     const controller = new AdController(container, pvName, storeFrameSource, {
       orientation: orientationRef.current,
       params: paramsRef.current,
@@ -157,7 +156,7 @@ const AreaDetectorComp: React.FC<WidgetUpdate> = ({ data }) => {
       controller.dispose();
       controllerRef.current = null;
     };
-  }, [inEditMode, visible, pvName, sizeXPV, sizeYPV, dataTypePV, handleStats]);
+  }, [inEditMode, pvName, sizeXPV, sizeYPV, dataTypePV, handleStats]);
 
   // Passed to the running controller (rules can change them at runtime)
   useEffect(() => {
@@ -171,8 +170,6 @@ const AreaDetectorComp: React.FC<WidgetUpdate> = ({ data }) => {
   useEffect(() => {
     controllerRef.current?.setReadoutEnabled(showReadout);
   }, [showReadout]);
-
-  if (!visible) return null;
 
   const label = inEditMode ? null : !pvName ? "No PV configured" : statusLabel(status);
 

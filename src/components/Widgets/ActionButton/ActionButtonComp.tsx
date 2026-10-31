@@ -29,8 +29,6 @@ const ActionButtonComp: React.FC<WidgetUpdate> = ({ data }) => {
     }
   };
 
-  if (!p.visible?.value) return null;
-
   return (
     <AlarmBorder alarmData={pvData?.alarm} enable={p.alarmBorder?.value}>
       <Button

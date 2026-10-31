@@ -42,8 +42,6 @@ const ToggleButtonComp: React.FC<WidgetUpdate> = ({ data }) => {
     }
   };
 
-  if (!p.visible?.value) return null;
-
   // Pattern or solid fill for the circle
   const circleBackground = inEditMode
     ? `linear-gradient(-45deg, ${onColor} 50%, ${offColor} 50%)`

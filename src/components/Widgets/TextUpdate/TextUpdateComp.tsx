@@ -13,8 +13,6 @@ const TextUpdateComp: React.FC<WidgetUpdate> = ({ data }) => {
   const pvData = data.pvData;
   const inEditMode = useUIStore((s) => s.inEditMode);
 
-  if (!p.visible?.value) return null;
-
   const units = p.unitsFromPV?.value ? pvData?.display?.units : p.units?.value;
   const precision = p.precisionFromPV?.value ? pvData?.display?.precision : p.precision?.value;
   const displayFormat = p.displayFormat?.value ?? "Default";

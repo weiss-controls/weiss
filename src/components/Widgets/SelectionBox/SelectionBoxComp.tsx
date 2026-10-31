@@ -14,8 +14,6 @@ const SelectionBoxComp: React.FC<WidgetUpdate> = ({ data }) => {
   const p = data.editableProperties;
   const pvData = data.pvData;
 
-  if (!p.visible?.value) return null;
-
   const enumChoices: string[] =
     (p.labelFromPV?.value ? pvData?.enumChoices : p.enumChoices?.value) ?? [];
 

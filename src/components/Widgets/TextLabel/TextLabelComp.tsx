@@ -26,8 +26,6 @@ const TextLabelComp: React.FC<WidgetUpdate> = ({ data }) => {
     };
   }, [editing, data.id]);
 
-  if (!p.visible?.value) return null;
-
   const showEditableInput = inEditMode && editing;
 
   return (

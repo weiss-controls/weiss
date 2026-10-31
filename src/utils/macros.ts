@@ -19,13 +19,31 @@ function isConcreteMacroValue(value: string): boolean {
   return !value.includes("$(");
 }
 
+/** A macro token with no other token inside it: `$(NAME)` or `$(NAME=default)`. */
+const INNERMOST_MACRO_PATTERN = /\$\(([^()$=]+)(?:=([^()$]*))?\)/g;
+
+/** Caps the substitution passes when macros reference each other in a cycle. */
+const MAX_MACRO_PASSES = 10;
+
 /**
  * Substitute $(MACRO_NAME) patterns in a single string using a macros map.
- * Unresolved macros (no matching key) are left as-is.
+ * Tokens are resolved innermost first, so nested names like `$(A_$(N))` and macro values that
+ * contain macros are expanded. `$(NAME=default)` falls back to `default` when NAME is undefined.
+ * Unresolved macros (no matching key and no default) are left as-is.
  */
 export function substituteMacroInStr(str: string, macros: Record<string, string>): string {
   if (!str.includes("$(")) return str; // skip regex search if str has no macros at all
-  return str.replace(/\$\(([^)]+)\)/g, (match) => macros[match] ?? match);
+  let result = str;
+  for (let pass = 0; pass < MAX_MACRO_PASSES; pass++) {
+    const next = result.replace(
+      INNERMOST_MACRO_PATTERN,
+      (match, name: string, fallback: string | undefined) =>
+        macros[`$(${name})`] ?? fallback ?? match,
+    );
+    if (next === result) break;
+    result = next;
+  }
+  return result;
 }
 
 /**

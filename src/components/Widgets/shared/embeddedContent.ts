@@ -149,14 +149,16 @@ export function macrosToKey(macros: Record<string, string>): string {
 }
 
 /**
- * Resolve local macro values against app-level global macros.
- * This keeps support for values like "$(A)" inside the local macro table.
+ * Macro scope of an embedded display: the global macros, overridden by the local macro table
+ * resolved against them. The globals are included so `$(NAME=default)` falls back to the default
+ * only when NAME is defined in neither.
  */
 export function resolveDisplayMacros(
   displayMacros: Record<string, string> | undefined,
   globalMacros: Record<string, string>,
 ): Record<string, string> {
-  return displayMacros ? resolveMacroRecord(displayMacros, globalMacros) : {};
+  if (!displayMacros) return globalMacros;
+  return { ...globalMacros, ...resolveMacroRecord(displayMacros, globalMacros) };
 }
 
 /** Assign new UUIDs to avoid ID clashes when multiple instances of the same display exist. */
