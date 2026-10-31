@@ -114,6 +114,12 @@ The current widget support is:
 | `polygon`                             | —                                   | ❌ not planned                          |
 | `webbrowser`                          | —                                   | ❌ not planned                          |
 
+Other conversion details:
+
+- Phoebus formula PVs (names starting with `=`, e.g. `=timestamp(...)`) are not supported and are
+  removed, with a warning.
+- Local and simulated PVs (`loc://`, `sim://`) are kept but not supported, and a warning is shown.
+
 Rules and scripts are currently **not implemented** for the imported displays and need to be added
 manually using the WEISS interface.
 
