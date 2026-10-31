@@ -12,8 +12,6 @@ const BitIndicatorComp: React.FC<WidgetUpdate> = ({ data }) => {
   const pvData = data.pvData;
   const inEditMode = useUIStore((s) => s.inEditMode);
 
-  if (!p.visible?.value) return null;
-
   const onColor = p.onColor?.value;
   const offColor = p.offColor?.value;
   const value = pvData?.value ?? 0;

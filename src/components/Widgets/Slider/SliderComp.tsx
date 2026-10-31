@@ -74,9 +74,6 @@ const SliderComp: React.FC<WidgetUpdate> = ({ data }) => {
   const isHorizontal = p.horizontal?.value ?? true;
   const orientation = isHorizontal ? "horizontal" : "vertical";
   const displayFormat = p.displayFormat?.value ?? "Default";
-
-  if (!p.visible?.value) return null;
-
   const runtimeMin = (p.limitsFromPV?.value ? pvData?.display?.limitLow : p.min?.value) ?? 0;
   const runtimeMax = (p.limitsFromPV?.value ? pvData?.display?.limitHigh : p.max?.value) ?? 1;
   const min = inEditMode ? 0 : runtimeMin;

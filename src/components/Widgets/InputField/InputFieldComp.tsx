@@ -26,8 +26,6 @@ const InputFieldComp: React.FC<WidgetUpdate> = ({ data }) => {
     if (inEditMode) setInputValue("");
   }, [inEditMode]);
 
-  if (!p.visible?.value) return null;
-
   const handleWrite = (value: number | string) => {
     if (inEditMode || !runtimePVName) return;
     if (p.pvName?.value) {

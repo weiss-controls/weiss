@@ -40,8 +40,6 @@ const NavigationButtonComp: React.FC<WidgetUpdate> = ({ data }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFile]);
 
-  if (!p.visible?.value) return null;
-
   return (
     <Button
       title={p.tooltip?.value ?? ""}

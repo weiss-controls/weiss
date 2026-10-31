@@ -7,7 +7,6 @@ import type { WidgetUpdate } from "@src/types/widgets";
 
 const EllipseComp: React.FC<WidgetUpdate> = ({ data }) => {
   const p = data.editableProperties;
-  if (!p.visible?.value) return null;
   return (
     <div
       title={p.tooltip?.value ?? ""}

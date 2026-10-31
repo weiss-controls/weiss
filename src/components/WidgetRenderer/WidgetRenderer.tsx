@@ -66,11 +66,30 @@ function useGrids(scale: number) {
   };
 }
 
-/** Widget content: the component itself in edit mode, LiveWidget (PV data) in runtime. */
-function renderWidgetContent(w: Widget, globalMacros: Record<string, string> | undefined) {
-  if (globalMacros) return <LiveWidget w={w} globalMacros={globalMacros} />;
+/**
+ * Widget content and children: the component itself in edit mode, LiveWidget (PV data and rules)
+ * in runtime. Nothing is rendered for a hidden widget (`visible` false).
+ */
+function renderWidgetContent(
+  w: Widget,
+  globalMacros: Record<string, string> | undefined,
+  children: React.ReactNode,
+) {
+  if (globalMacros) {
+    return (
+      <LiveWidget w={w} globalMacros={globalMacros}>
+        {children}
+      </LiveWidget>
+    );
+  }
+  if (w.editableProperties.visible?.value === false) return null;
   const Comp = WidgetRegistry[w.widgetName]?.component;
-  return Comp ? <Comp data={w} /> : null;
+  return (
+    <>
+      {Comp && <Comp data={w} />}
+      {children}
+    </>
+  );
 }
 
 // Children render through the memoized `WidgetItem`. In a named function expression passed to
@@ -126,12 +145,12 @@ function WidgetItemBase({
     else selectSingleWidgetImmediate(id);
   };
 
-  let editModeClass = "";
+  let widgetClass = "runtimeWidget";
   if (inEditMode) {
-    if (isSelected) editModeClass = "selectable selected";
-    else if (groupHasSelectedChild) editModeClass = "selectable groupMemberSelected";
-    else if (isGroup) editModeClass = "selectable groupBox";
-    else editModeClass = "selectable";
+    if (isSelected) widgetClass = "selectable selected";
+    else if (groupHasSelectedChild) widgetClass = "selectable groupMemberSelected";
+    else if (isGroup) widgetClass = "selectable groupBox";
+    else widgetClass = "selectable";
   }
 
   return (
@@ -146,7 +165,7 @@ function WidgetItemBase({
       resizeHandleStyles={getResizeHandlesSize(width, height)}
       size={{ width, height }}
       position={{ x, y }}
-      className={editModeClass}
+      className={widgetClass}
       style={isEmbedded && inEditMode ? { pointerEvents: "none" } : undefined}
       onMouseDownCapture={handleMouseDownCapture}
       onDragStart={handleDragStart}
@@ -157,18 +176,21 @@ function WidgetItemBase({
         useEditorStore.getState().handleResizeStop(ref, pos, w)
       }
     >
-      {renderWidgetContent(w, globalMacros)}
-      {w.children?.map((child) => (
-        <WidgetItem
-          key={child.id}
-          id={child.id}
-          scale={scale}
-          parentX={w.editableProperties.x!.value}
-          parentY={w.editableProperties.y!.value}
-          isChild
-          isEmbedded={childIsEmbedded}
-        />
-      ))}
+      {renderWidgetContent(
+        w,
+        globalMacros,
+        w.children?.map((child) => (
+          <WidgetItem
+            key={child.id}
+            id={child.id}
+            scale={scale}
+            parentX={w.editableProperties.x!.value}
+            parentY={w.editableProperties.y!.value}
+            isChild
+            isEmbedded={childIsEmbedded}
+          />
+        )),
+      )}
     </Rnd>
   );
 }
