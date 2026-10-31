@@ -32,15 +32,14 @@ export class PhoebusParseError extends Error {
 
 // Scalar helpers
 
-/** Returns the trimmed text content of the first matching child element, or undefined. */
-function childText(parent: Element, tag: string): string | undefined {
-  const el = parent.getElementsByTagName(tag)[0];
-  return el?.textContent?.trim() ?? undefined;
-}
-
 /** Returns the first direct child element with the given tag name, or undefined. */
 function directChild(parent: Element, tag: string): Element | undefined {
   return Array.from(parent.children).find((el) => el.tagName === tag);
+}
+
+/** Returns the trimmed text content of the first direct child with the given tag, or undefined. */
+function childText(parent: Element, tag: string): string | undefined {
+  return directChild(parent, tag)?.textContent?.trim() ?? undefined;
 }
 
 /** Parses the text content of a child element as a finite number, or returns undefined. */
@@ -209,6 +208,7 @@ function parseTraces(tracesEl: Element): PhoebusTrace[] {
 function parseMacros(macrosEl: Element): Record<string, string> {
   const out: Record<string, string> = {};
   for (const child of Array.from(macrosEl.children)) {
+    if (child.tagName === PhoebusElement.INCLUDE_PARENT_MACROS) continue;
     out[`$(${child.tagName})`] = child.textContent?.trim() ?? "";
   }
   return out;
@@ -231,6 +231,20 @@ const PHOEBUS_PROPERTY_VALUES = new Set<string>(Object.values(PhoebusProperty));
 function isPhoebusPropertyTag(tag: string): tag is PhoebusProperty {
   return PHOEBUS_PROPERTY_VALUES.has(tag);
 }
+
+/** Scalar properties read as numbers; other scalars (text, PV names, …) are kept as strings. */
+const NUMERIC_PROPS: ReadonlySet<string> = new Set([
+  PhoebusProperty.X,
+  PhoebusProperty.Y,
+  PhoebusProperty.WIDTH,
+  PhoebusProperty.HEIGHT,
+  PhoebusProperty.LINE_WIDTH,
+  PhoebusProperty.BORDER_WIDTH,
+  PhoebusProperty.ROTATION,
+  PhoebusProperty.NBITS,
+  PhoebusProperty.PRECISION,
+  PhoebusProperty.OPACITY,
+]);
 
 function isColorWrapperTag(tag: string): tag is ColorWrapperProperty {
   return COLOR_WRAPPER_TAGS.has(tag as ColorWrapperProperty);
@@ -324,11 +338,11 @@ function parseWidget(widgetEl: Element): PhoebusWidget {
       continue;
     }
 
-    // Scalar fallback: read text content as string or number.
+    // Scalar fallback: numbers for numeric properties, strings otherwise.
     if (!isPhoebusPropertyTag(tag)) continue;
 
     const text = child.textContent?.trim() ?? "";
-    properties.set(tag, parseScalar(text));
+    properties.set(tag, NUMERIC_PROPS.has(tag) ? parseScalar(text) : text);
   }
 
   return {

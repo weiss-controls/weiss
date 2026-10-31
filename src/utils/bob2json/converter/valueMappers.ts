@@ -9,7 +9,7 @@ import type {
   PhoebusTrace,
   PhoebusWidget,
 } from "../types";
-import type { PropertyValue, StateEntry, TabEntry } from "@src/types/widgets";
+import type { PropertyValue, StateEntry, TabEntry, ValueDisplayFormat } from "@src/types/widgets";
 import { COLORS } from "@src/constants/constants";
 
 /**
@@ -150,6 +150,52 @@ export function mapLineStyle(raw: unknown): string | undefined {
   return "none";
 }
 
+/** WEISS formats by Phoebus `FormatOption` index; undefined for formats WEISS lacks. */
+const PHOEBUS_FORMATS: (ValueDisplayFormat | undefined)[] = [
+  "Default", // DEFAULT
+  "Default", // DECIMAL
+  "Scientific", // EXPONENTIAL
+  "Engineering", // ENGINEERING
+  "Hexadecimal", // HEX
+  "Default", // COMPACT
+  "String", // STRING
+  undefined, // SEXAGESIMAL
+  undefined, // SEXAGESIMAL_HMS
+  undefined, // SEXAGESIMAL_DMS
+  undefined, // BINARY
+];
+
+const PHOEBUS_FORMAT_NAMES = [
+  "DEFAULT",
+  "DECIMAL",
+  "EXPONENTIAL",
+  "ENGINEERING",
+  "HEX",
+  "COMPACT",
+  "STRING",
+  "SEXAGESIMAL",
+  "SEXAGESIMAL_HMS",
+  "SEXAGESIMAL_DMS",
+  "BINARY",
+];
+
+/** Maps a Phoebus format (index or name) to a WEISS display format. */
+export function mapDisplayFormat(raw: unknown): ValueDisplayFormat | undefined {
+  const text = String(raw).trim().toUpperCase();
+  const index = /^\d+$/.test(text) ? Number(text) : PHOEBUS_FORMAT_NAMES.indexOf(text);
+  return PHOEBUS_FORMATS[index];
+}
+
+/** Phoebus formula PVs (e.g. `=timestamp(...)`) have no WEISS equivalent. */
+export function isPhoebusFormula(raw: unknown): boolean {
+  return typeof raw === "string" && raw.trim().startsWith("=");
+}
+
+/** Local and simulated Phoebus PVs, not served by epicsWS. */
+export function isLocalPV(raw: unknown): boolean {
+  return typeof raw === "string" && /^(loc|sim):\/\//i.test(raw.trim());
+}
+
 export function extractFontProps(raw: unknown): Record<string, PropertyValue> {
   if (!raw || typeof raw !== "object") return {};
   const f = raw as PhoebusFont;
@@ -201,7 +247,7 @@ export function mapEmbeddedDisplayPath(raw: unknown): string | undefined {
   return raw.replace(/\.bob$/i, ".opi.json");
 }
 
-/** Converts parsed plot traces into WEISS PV and line-color arrays. */
+/** Converts parsed plot traces into WEISS PV and line-color arrays, skipping formula PVs. */
 export function mapTraces(
   raw: unknown,
   xyPlot = false,
@@ -214,13 +260,13 @@ export function mapTraces(
   let xPv: string | undefined;
 
   for (const trace of traces) {
-    if (xyPlot && !xPv && trace.xPv) xPv = trace.xPv;
+    if (xyPlot && !xPv && trace.xPv && !isPhoebusFormula(trace.xPv)) xPv = trace.xPv;
   }
 
   if (xPv) pvNames.push(xPv);
 
   for (const trace of traces) {
-    if (!trace.yPv) continue;
+    if (!trace.yPv || isPhoebusFormula(trace.yPv)) continue;
     pvNames.push(trace.yPv);
     lineColors.push(colorToRgba(trace.color) ?? COLORS.graphLineColor);
   }
@@ -286,7 +332,7 @@ export function normalizeTooltipMacros(raw: unknown): string | undefined {
   if (typeof raw !== "string") return undefined;
   if (!raw.includes("$(")) return raw;
 
-  const mapped = raw.replace(/\$\(([^)]+)\)/g, (_full, macroNameRaw: string) => {
+  const mapped = raw.replace(/\$\(([^()$]+)\)/g, (_full, macroNameRaw: string) => {
     const macroName = macroNameRaw.trim().toLowerCase();
     const mappedKnownMacro = PHOEBUS_TO_WEISS_TOOLTIP_MACROS[macroName];
     if (mappedKnownMacro) return mappedKnownMacro;

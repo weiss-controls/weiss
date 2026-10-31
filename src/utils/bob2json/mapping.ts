@@ -42,6 +42,12 @@ const TEXT_PROP_MAP: PropertyMap = {
   [PhoebusProperty.VERTICAL_ALIGNMENT]: "textVAlign",
 };
 
+/** InputField has no vertical text alignment. */
+const { [PhoebusProperty.VERTICAL_ALIGNMENT]: _vAlign, ...TEXT_NO_VALIGN_PROP_MAP } = TEXT_PROP_MAP;
+
+/** LED-like widgets have a border but no background color. */
+const { [PhoebusProperty.BACKGROUND_COLOR]: _bgColor, ...BORDER_PROP_MAP } = STYLE_PROP_MAP;
+
 /** Single-state LEDs often carry explicit on/off colors and labels in Phoebus. */
 const SINGLE_LED_PROP_MAP: PropertyMap = {
   [PhoebusProperty.ON_COLOR]: "onColor",
@@ -73,6 +79,9 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
       ...STYLE_PROP_MAP,
       ...TEXT_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
+      [PhoebusProperty.FORMAT]: "displayFormat",
+      [PhoebusProperty.PRECISION]: "precision",
+      [PhoebusProperty.SHOW_UNITS]: "unitsFromPV",
     },
   },
 
@@ -82,8 +91,10 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     propMap: {
       ...COMMON_PROP_MAP,
       ...STYLE_PROP_MAP,
-      ...TEXT_PROP_MAP,
+      ...TEXT_NO_VALIGN_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
+      [PhoebusProperty.FORMAT]: "displayFormat",
+      [PhoebusProperty.SHOW_UNITS]: "unitsFromPV",
       [PhoebusProperty.ENABLED]: "disabled",
     },
   },
@@ -95,7 +106,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     hasFont: true,
     propMap: {
       ...COMMON_PROP_MAP,
-      ...STYLE_PROP_MAP,
+      ...BORDER_PROP_MAP,
       ...SINGLE_LED_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
       [PhoebusProperty.SQUARE]: "square",
@@ -106,7 +117,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     weissName: "MultiBitIndicator",
     propMap: {
       ...COMMON_PROP_MAP,
-      ...STYLE_PROP_MAP,
+      ...BORDER_PROP_MAP,
       [PhoebusProperty.ON_COLOR]: "onColor",
       [PhoebusProperty.OFF_COLOR]: "offColor",
       [PhoebusProperty.PV_NAME]: "pvName",
@@ -120,7 +131,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     hasFont: true,
     propMap: {
       ...COMMON_PROP_MAP,
-      ...STYLE_PROP_MAP,
+      ...BORDER_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
       [PhoebusProperty.LABELS_FROM_PV]: "labelFromPV",
       [PhoebusProperty.STATES]: "stateList",
@@ -263,6 +274,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
       ...STYLE_PROP_MAP,
       ...TEXT_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
+      [PhoebusProperty.SHOW_UNITS]: "unitsFromPV",
       [PhoebusProperty.ENABLED]: "disabled",
     },
   },

@@ -12,7 +12,7 @@
 import { PhoebusBoolean, PhoebusProperty, PhoebusWidgetType, COLOR_PROP_KEYS } from "./constants";
 import { PHOEBUS_WIDGET_DEFAULTS, applyWidgetDefaults } from "./defaults";
 import { WIDGET_MAP } from "@src/utils/bob2json/mapping";
-import type { PhoebusDisplay, PhoebusWidget } from "./types";
+import type { PhoebusDisplay, PhoebusTrace, PhoebusWidget } from "./types";
 import type { ExportedWidget, PropertyValue } from "@src/types/widgets";
 import { parseActionButton } from "./converter/actionButton";
 import { centerWidgetsToOrigin } from "./converter/layout";
@@ -22,7 +22,10 @@ import {
   colorToRgba,
   extractFontProps,
   getNumericProperty,
+  isLocalPV,
+  isPhoebusFormula,
   isTrue,
+  mapDisplayFormat,
   mapEmbeddedDisplayPath,
   mapHAlign,
   mapLineStyle,
@@ -36,6 +39,22 @@ import {
 export interface ConversionResult {
   widgets: ExportedWidget[];
   warnings: string[];
+}
+
+/** Warns about PV names WEISS cannot connect to; returns false for those to drop. */
+function checkPVName(pvName: unknown, widgetLabel: string, warnings: string[]): boolean {
+  if (isPhoebusFormula(pvName)) {
+    warnings.push(
+      `Widget "${widgetLabel}": formula PV "${String(pvName)}" is not supported - dropped.`,
+    );
+    return false;
+  }
+  if (isLocalPV(pvName)) {
+    warnings.push(
+      `Widget "${widgetLabel}": local/simulated PV "${String(pvName)}" is not supported.`,
+    );
+  }
+  return true;
 }
 
 /**
@@ -98,6 +117,7 @@ function convertWidget(
   const absoluteX = rawX + xOffset;
   const absoluteY = rawY + yOffset;
   const supportsBackgroundColor = Object.values(entry.propMap).includes("backgroundColor");
+  const widgetLabel = phWidget.name ?? phWidget.type;
 
   for (const [phKey, weissKeyRaw] of Object.entries(entry.propMap)) {
     if (typeof weissKeyRaw !== "string") continue;
@@ -121,6 +141,33 @@ function convertWidget(
     // (width/height without defaults, truly optional properties, etc.)
 
     if (raw === undefined || raw === null) continue;
+
+    if (phoebusKey === PhoebusProperty.PV_NAME) {
+      if (typeof raw === "string" && checkPVName(raw, widgetLabel, warnings)) {
+        properties[weissKey] = raw.trim();
+      }
+      continue;
+    }
+
+    if (phoebusKey === PhoebusProperty.FORMAT) {
+      const mapped = mapDisplayFormat(raw);
+      if (mapped !== undefined) {
+        properties[weissKey] = mapped;
+      } else {
+        warnings.push(
+          `Widget "${widgetLabel}": format ${JSON.stringify(raw)} is not supported - using default.`,
+        );
+      }
+      continue;
+    }
+
+    // Phoebus uses a negative precision to read it from the PV.
+    if (phoebusKey === PhoebusProperty.PRECISION) {
+      const precision = getNumericProperty(phWidget, phoebusKey, -1);
+      properties.precisionFromPV = precision < 0;
+      if (precision >= 0) properties[weissKey] = precision;
+      continue;
+    }
 
     // Alignment
     if (phoebusKey === PhoebusProperty.HORIZONTAL_ALIGNMENT) {
@@ -246,7 +293,9 @@ function convertWidget(
       phoebusKey === PhoebusProperty.ENABLED ||
       phoebusKey === PhoebusProperty.TRANSPARENT ||
       phoebusKey === PhoebusProperty.SQUARE ||
-      phoebusKey === PhoebusProperty.HORIZONTAL
+      phoebusKey === PhoebusProperty.HORIZONTAL ||
+      phoebusKey === PhoebusProperty.SHOW_UNITS ||
+      phoebusKey === PhoebusProperty.LABELS_FROM_PV
     ) {
       const boolValue = isTrue(raw);
       properties[weissKey] = weissKey === "disabled" ? !boolValue : boolValue;
@@ -286,10 +335,15 @@ function convertWidget(
     phWidget.type === PhoebusWidgetType.STRIP_CHART ||
     phWidget.type === PhoebusWidgetType.XY_PLOT
   ) {
-    const mappedTraces = mapTraces(
-      phWidget.properties.get(PhoebusProperty.TRACES),
-      phWidget.type === PhoebusWidgetType.XY_PLOT,
-    );
+    const rawTraces = phWidget.properties.get(PhoebusProperty.TRACES);
+    const xyPlot = phWidget.type === PhoebusWidgetType.XY_PLOT;
+    if (Array.isArray(rawTraces)) {
+      const tracePVs = (rawTraces as PhoebusTrace[]).flatMap((t) =>
+        xyPlot ? [t.xPv, t.yPv] : [t.yPv],
+      );
+      for (const pv of new Set(tracePVs)) checkPVName(pv, widgetLabel, warnings);
+    }
+    const mappedTraces = mapTraces(rawTraces, xyPlot);
     if (mappedTraces !== undefined) {
       properties.pvNames = mappedTraces.pvNames;
       properties.lineColors = mappedTraces.lineColors;
@@ -303,7 +357,10 @@ function convertWidget(
 
   if (phWidget.type === PhoebusWidgetType.ACTION_BUTTON) {
     if (actionButton.mode === "write_pv") {
-      if (actionButton.pvName !== undefined) {
+      if (
+        actionButton.pvName !== undefined &&
+        checkPVName(actionButton.pvName, widgetLabel, warnings)
+      ) {
         properties.pvName = actionButton.pvName;
       }
       if (actionButton.actionValue !== undefined) {
