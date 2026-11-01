@@ -74,7 +74,7 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
         lineStyle: { color: lineColors[idx] },
         itemStyle: { color: lineColors[idx] },
         name: pvName,
-      } as ECOption;
+      };
     });
   };
 
@@ -90,7 +90,7 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
     const orderedPvNames = pvNames.length > 0 ? pvNames : Object.keys(pvData);
 
     return orderedPvNames
-      .map((pvName) => {
+      .map((pvName): ECOption | null => {
         const pv = pvData[pvName];
         if (!pv) return null;
 
@@ -114,7 +114,7 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
           data: seriesData,
           lineStyle: { color },
           itemStyle: { color },
-        } as ECOption;
+        };
       })
       .filter((series): series is ECOption => series !== null);
   };

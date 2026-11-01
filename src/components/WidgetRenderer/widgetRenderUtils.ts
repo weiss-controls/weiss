@@ -29,9 +29,7 @@ function evalWidgetRules(
   macros: Record<string, string>,
 ): RuleOverrides {
   const overrides = evaluateRules(w.rules ?? [], runtimeData, macros);
-  return Object.fromEntries(
-    Object.entries(overrides).filter(([k]) => k !== "globalMacros"),
-  ) as RuleOverrides;
+  return Object.fromEntries(Object.entries(overrides).filter(([k]) => k !== "globalMacros"));
 }
 
 /** Pick the effective primary PV after applying rule overrides. */

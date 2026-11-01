@@ -127,13 +127,13 @@ const CustomTreeItem = forwardRef<HTMLLIElement, UseTreeItemParameters>(
                 onDragEnter: (e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  const ct = e.currentTarget as HTMLElement;
+                  const ct = e.currentTarget;
                   const rt = e.relatedTarget as Node | null;
                   if (!rt || !ct.contains(rt)) dndCtx.onDragEnterDir(itemId);
                 },
                 onDragLeave: (e) => {
                   e.stopPropagation();
-                  const ct = e.currentTarget as HTMLElement;
+                  const ct = e.currentTarget;
                   const rt = e.relatedTarget as Node | null;
                   if (!rt || !ct.contains(rt)) dndCtx.onDragLeaveDir(itemId);
                 },

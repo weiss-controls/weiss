@@ -1,3 +1,6 @@
+// @hey-api/openapi-ts is pinned to a `next` prerelease: stable releases require the TypeScript
+// compiler API, which TypeScript 7 no longer provides. Move back to a stable release once one
+// supports TypeScript 7: https://github.com/hey-api/hey-api/issues/4235
 import { defineConfig } from "@hey-api/openapi-ts";
 import { defaultPlugins } from "@hey-api/openapi-ts";
 

@@ -49,6 +49,6 @@ export function buildUnsupportedPlaceholderWidget(
       fontSize: 12,
       textColor: COLORS.textColor,
       tooltip,
-    } as ExportedWidget["properties"],
+    },
   };
 }

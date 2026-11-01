@@ -85,14 +85,14 @@ const WidgetTreeItem = forwardRef<HTMLLIElement, UseTreeItemParameters>(
         e.preventDefault();
         e.stopPropagation();
         e.dataTransfer.dropEffect = "move";
-        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        const rect = e.currentTarget.getBoundingClientRect();
         const position = e.clientY < rect.top + rect.height / 2 ? "before" : "after";
         dndCtx?.onDragOver(itemId, position, item.groupId);
       },
       onDragLeave: (e) => {
         e.stopPropagation();
         // Only clear if leaving to outside this element
-        const ct = e.currentTarget as HTMLElement;
+        const ct = e.currentTarget;
         const rt = e.relatedTarget as Node | null;
         if (!rt || !ct.contains(rt)) {
           dndCtx?.onDragOver(itemId, "after", item.groupId); // reset by re-evaluating on next enter
@@ -102,7 +102,7 @@ const WidgetTreeItem = forwardRef<HTMLLIElement, UseTreeItemParameters>(
         e.preventDefault();
         e.stopPropagation();
         if (!dndCtx) return;
-        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        const rect = e.currentTarget.getBoundingClientRect();
         const position = e.clientY < rect.top + rect.height / 2 ? "before" : "after";
         dndCtx.onDrop(itemId, position, item.groupId);
       },
