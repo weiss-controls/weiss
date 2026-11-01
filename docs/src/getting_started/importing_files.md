@@ -89,6 +89,7 @@ The current widget support is:
 | `navtabs`                             | `NavigationTabs`                    | ✅ per-tab colors not supported         |
 | `xyplot`                              | `GraphXY`                           | ✅                                      |
 | `stripchart`                          | `GraphY`                            | ✅                                      |
+| `image`                               | `AreaDetector`                      | ✅ see notes below                      |
 | `checkbox`                            | —                                   | 🔶 not implemented                      |
 | `choice`                              | —                                   | 🔶 not implemented                      |
 | `meter`                               | —                                   | 🔶 not implemented                      |
@@ -96,7 +97,6 @@ The current widget support is:
 | `tank`                                | —                                   | 🔶 not implemented                      |
 | `thermometer`                         | —                                   | 🔶 not implemented                      |
 | `array`                               | —                                   | 🔶 not implemented                      |
-| `image`                               | —                                   | 🔶 not implemented                      |
 | `tabs`                                | —                                   | 🔶 not implemented                      |
 | `slide_button`                        | —                                   | 🔶 not implemented                      |
 | `thumbwheel`                          | —                                   | 🔶 not implemented                      |
@@ -119,6 +119,10 @@ Other conversion details:
 - Phoebus formula PVs (names starting with `=`, e.g. `=timestamp(...)`) are not supported and are
   removed, with a warning.
 - Local and simulated PVs (`loc://`, `sim://`) are kept but not supported, and a warning is shown.
+- `image` widgets keep their PV, colormap, colorbar visibility and intensity limits. Colormaps
+  `MAGMA` and `JET` become `inferno` and `turbo`; other colormaps use the default. A fixed image
+  size (`data_width`/`data_height`) is not imported: for plain waveform PVs, set the Size X/Y PV
+  properties of the `AreaDetector` widget.
 
 Rules and scripts are currently **not implemented** for the imported displays and need to be added
 manually using the WEISS interface.

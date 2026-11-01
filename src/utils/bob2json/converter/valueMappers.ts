@@ -218,6 +218,18 @@ export function extractFontProps(raw: unknown): Record<string, PropertyValue> {
   return out;
 }
 
+/** Phoebus predefined colormaps; MAGMA and JET use the closest WEISS colormap. */
+const COLOR_MAPS: Record<string, string> = {
+  VIRIDIS: "viridis",
+  GRAY: "grayscale",
+  MAGMA: "inferno",
+  JET: "turbo",
+};
+
+export function mapColorMap(raw: unknown): string | undefined {
+  return typeof raw === "string" ? COLOR_MAPS[raw.trim().toUpperCase()] : undefined;
+}
+
 export function isTrue(raw: unknown): boolean {
   return raw === true || raw === PhoebusBoolean.TRUE || raw === 1;
 }
