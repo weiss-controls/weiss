@@ -92,7 +92,7 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
         lineStyle: { color: lineColors[idx] },
         itemStyle: { color: lineColors[idx] },
         name: `${previewPvs[0]} vs ${pvName}`,
-      } as ECOption;
+      };
     });
   };
 
@@ -144,7 +144,7 @@ const GraphXYComp: React.FC<WidgetUpdate> = ({ data }) => {
         lineStyle: { color: lineColors[i - 1] },
         itemStyle: { color: lineColors[i - 1] },
         name: `${pvNames[0]} vs ${pvNames[i]}`,
-      } as ECOption);
+      });
     }
 
     return newSeries;

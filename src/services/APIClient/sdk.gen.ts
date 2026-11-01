@@ -355,7 +355,7 @@ export const uploadStagingRepoFile = <ThrowOnError extends boolean = true>(
  * Reset changes of a single file in the staging repository.
  *
  * .. deprecated::
- * Use ``POST /{repo_id}/path/reset`` instead, which handles both files and directories.
+ *     Use ``POST /{repo_id}/path/reset`` instead, which handles both files and directories.
  *
  * @deprecated
  */

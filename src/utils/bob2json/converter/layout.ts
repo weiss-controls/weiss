@@ -34,10 +34,10 @@ const computeScreenBounds = (widgets: ExportedWidget[]): DOMRectLike | null => {
 };
 
 const shiftWidgetPosition = (widget: ExportedWidget, dx: number, dy: number): void => {
-  if (Number.isFinite(widget.properties.x as number)) {
+  if (Number.isFinite(widget.properties.x)) {
     (widget.properties.x as number) += dx;
   }
-  if (Number.isFinite(widget.properties.y as number)) {
+  if (Number.isFinite(widget.properties.y)) {
     (widget.properties.y as number) += dy;
   }
 

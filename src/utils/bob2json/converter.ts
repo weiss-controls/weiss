@@ -385,7 +385,7 @@ function convertWidget(
 
   return {
     widgetName: weissName ?? entry.weissName,
-    properties: properties as ExportedWidget["properties"],
+    properties,
     ...(children.length > 0 && { children }),
   };
 }
@@ -421,7 +421,7 @@ function makeGridWidget(display: PhoebusDisplay): ExportedWidget {
 
   return {
     widgetName: "GridZone",
-    properties: properties as ExportedWidget["properties"],
+    properties,
   };
 }
 

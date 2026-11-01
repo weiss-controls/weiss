@@ -31,7 +31,6 @@ import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import type {
   Rule,
   RuleCondition,
-  RuleOperator,
   PropertyKey,
   PropertyValue,
   RuleSet,
@@ -474,7 +473,7 @@ const RulesDialog: React.FC<RulesDialogProps> = ({
                                     value={cond.operator}
                                     onChange={(e) =>
                                       updateCondition(rulesetIdx, conditionIdx, {
-                                        operator: e.target.value as RuleOperator,
+                                        operator: e.target.value,
                                       })
                                     }
                                     sx={{ width: 72 }}

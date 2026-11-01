@@ -161,6 +161,6 @@ export function applyRules(w: Widget, overrides: RuleOverrides): Widget {
         }
         return [key, { ...prop, value: override }];
       }),
-    ) as typeof w.editableProperties,
+    ),
   };
 }

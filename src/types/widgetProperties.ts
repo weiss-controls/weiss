@@ -26,6 +26,8 @@ function defineProp<T extends PropertyValue>(prop: WidgetProperty<T>): WidgetPro
  * Master schema of all widget properties.
  * Standardizes widget property definitions across the app.
  */
+// The `value` assertions widen the type inferred for `defineProp` (e.g. `number`, not `100`), so they are necessary although linter complains. Disable rule for this section.
+/* oxlint-disable typescript/no-unnecessary-type-assertion */
 /* prettier-ignore */
 export const PROPERTY_SCHEMAS = {
   disabled:        defineProp({ selType: "boolean", label: "Disabled", value: false as boolean, category: "General" }),
@@ -138,6 +140,7 @@ export const PROPERTY_SCHEMAS = {
   // MultiStateLED
   stateList:       defineProp({ selType: "stateList", label: "States", value: [{ value: "0", color: COLORS.offColor, label: "" }, { value: "1", color: COLORS.onColor, label: "" }, { value: "", color: COLORS.midGray, label: "" }] as StateEntry[], category: "EPICS" }),
 };
+/* oxlint-enable typescript/no-unnecessary-type-assertion */
 
 /**
  * Defines the preferred order for displaying property categories in the UI.

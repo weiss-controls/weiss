@@ -63,7 +63,7 @@ const RepoFileProperty: React.FC<RepoFilePropertyProps> = ({
         label={label}
         variant="outlined"
         size="small"
-        value={value as string}
+        value={value}
         onChange={(e) => onChange(propName, e.target.value)}
         onBlur={handleBlur}
         slotProps={{

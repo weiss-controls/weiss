@@ -48,7 +48,7 @@ const ActionValueInput: React.FC<ActionValueInputProps> = ({
       <TextField
         size="small"
         type="number"
-        value={value as number}
+        value={value}
         onChange={(e) => onChange(Number(e.target.value))}
         sx={{ width: 100 }}
         slotProps={{ htmlInput: { step: "any" } }}
@@ -87,7 +87,7 @@ const ActionValueInput: React.FC<ActionValueInputProps> = ({
   return (
     <TextField
       size="small"
-      value={value as string}
+      value={value}
       onChange={(e) => onChange(e.target.value)}
       sx={{ flex: 1, minWidth: 80 }}
     />
