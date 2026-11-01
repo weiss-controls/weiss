@@ -19,7 +19,7 @@ import AlignVerticalCenter from "@mui/icons-material/AlignVerticalCenter";
 import AlignHorizontalCenter from "@mui/icons-material/AlignHorizontalCenter";
 import FlipToFront from "@mui/icons-material/FlipToFront";
 import FlipToBack from "@mui/icons-material/FlipToBack";
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
 import CustomGroupIcon from "@components/CustomIcons/GroupIcon";
 import CustomUngroupIcon from "@components/CustomIcons/UngroupIcon";
 import ContentCopy from "@mui/icons-material/ContentCopy";

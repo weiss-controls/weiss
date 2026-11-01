@@ -4,7 +4,7 @@
 import { useState, forwardRef, createContext, useContext } from "react";
 import { Box, Tooltip, Collapse } from "@mui/material";
 import {
-  type TreeViewBaseItem,
+  type TreeViewDefaultItemModelProperties,
   TreeItemLabel,
   TreeItemIcon,
   TreeItemLabelInput,
@@ -19,7 +19,7 @@ import ImageIcon from "@mui/icons-material/Image";
 import { type GitFileStatus } from "@src/services/APIClient";
 import { COLORS } from "@src/constants/constants";
 
-export type RichTreeItem = TreeViewBaseItem & {
+export type RichTreeItem = TreeViewDefaultItemModelProperties & {
   type: "file" | "directory";
   path: string;
   gitStatus?: GitFileStatus["status"];

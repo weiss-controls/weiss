@@ -58,8 +58,7 @@ function ProjectsTab() {
               <Typography
                 variant="caption"
                 noWrap
-                display="block"
-                sx={{ mb: 0.5, color: "text.secondary" }}
+                sx={{ display: "block", mb: 0.5, color: "text.secondary" }}
               >
                 {imageName}
               </Typography>

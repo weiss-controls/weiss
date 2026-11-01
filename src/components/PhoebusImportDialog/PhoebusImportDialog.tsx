@@ -226,7 +226,7 @@ export default function PhoebusImportDialog({ open, onClose }: PhoebusImportDial
             <Typography variant="body2" sx={{ mb: 1.5, color: "text.secondary" }}>
               Drop .bob files or folders here, or browse with the buttons below.
             </Typography>
-            <Stack direction="row" spacing={1} justifyContent="center">
+            <Stack direction="row" spacing={1} sx={{ justifyContent: "center" }}>
               <Button variant="outlined" size="small" onClick={() => pick(false)}>
                 Select files
               </Button>
@@ -237,7 +237,7 @@ export default function PhoebusImportDialog({ open, onClose }: PhoebusImportDial
           </Box>
           {items.length > 0 && (
             <Box>
-              <Stack direction="row" alignItems="center" justifyContent="space-between">
+              <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between" }}>
                 <Typography variant="body2" sx={{ color: "text.secondary" }}>
                   {displayCount} display(s), {items.length - displayCount} image(s)
                 </Typography>

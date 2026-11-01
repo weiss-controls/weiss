@@ -599,7 +599,7 @@ export default function ProjectSection({
                     value={repoRef}
                     sx={{ color: repoRef === repo.deployed_ref ? "green" : undefined }}
                   >
-                    <Box display="flex" flexDirection="column">
+                    <Box sx={{ display: "flex", flexDirection: "column" }}>
                       <Typography variant="inherit">{shortRef(repoRef)}</Typography>
                       <Typography variant="caption" color="text.secondary">
                         {repoRef === repo.deployed_ref ? `Deployed · ${message}` : message}
