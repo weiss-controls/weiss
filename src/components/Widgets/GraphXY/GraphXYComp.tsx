@@ -8,7 +8,7 @@ import { COLORS } from "@src/constants/constants";
 import { getPVHistory, registerPVHistory } from "@src/utils/historyBuffers";
 import AlarmBorder from "@src/components/AlarmBorder/AlarmBorder";
 import { useUIStore } from "@src/stores/uiStore";
-import ReactEChartsCore from "echarts-for-react/lib/core";
+import ReactEChartsCore from "echarts-for-react/esm/core";
 import { echarts, type ECOption } from "@src/utils/eChartsMinified";
 import { isNumericArray } from "@src/utils/numericArray";
 
