@@ -16,7 +16,7 @@ import FlipToBack from "@mui/icons-material/FlipToBack";
 import AlignVerticalCenter from "@mui/icons-material/AlignVerticalCenter";
 import AlignHorizontalCenter from "@mui/icons-material/AlignHorizontalCenter";
 import DragIndicator from "@mui/icons-material/DragIndicator";
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
 import CustomGroupIcon from "@components/CustomIcons/GroupIcon";
 import CustomUngroupIcon from "@components/CustomIcons/UngroupIcon";
 import KeyboardArrowDown from "@mui/icons-material/KeyboardArrowDown";

@@ -3,7 +3,7 @@
 
 import React, { useState, useRef } from "react";
 import { IconButton, Fade, Box, Typography, Tooltip, Divider } from "@mui/material";
-import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutlined";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { APP_SRC_URL, FRONT_UI_ZIDX } from "@src/constants/constants";
 
@@ -136,7 +136,7 @@ const HelpOverlay: React.FC = () => {
             zIndex: FRONT_UI_ZIDX,
           }}
         >
-          <Typography variant="h6" gutterBottom textAlign="center">
+          <Typography variant="h6" gutterBottom sx={{ textAlign: "center" }}>
             Help
           </Typography>
           <Typography variant="body2" gutterBottom>
