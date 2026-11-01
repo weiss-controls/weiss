@@ -73,6 +73,9 @@ the demonstration OPIs, the IOCs can be found in
 
 ![Add pv names](../_static/macros.gif)
 
+Macros are written as `$(NAME)`. `$(NAME=default)` uses `default` when `NAME` is not defined, and
+macros can be nested (e.g. `$(MOTOR_$(N))`) or defined in terms of other macros.
+
 ## Test it
 
 For testing connection and functionality, hit the "Runtime" switch. The app will instantly open a

@@ -16,7 +16,6 @@ from .repos import deployed, staging
 from .snapshots import snapshots
 
 # Provider config
-AUTH_TENANT_ID = os.getenv("AUTH_TENANT_ID", "common")
 AUTH_CLIENT_ID = os.getenv("AUTH_CLIENT_ID")
 AUTH_CLIENT_SECRET = os.getenv("AUTH_CLIENT_SECRET")
 

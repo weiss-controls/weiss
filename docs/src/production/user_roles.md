@@ -24,7 +24,7 @@ contribute to that feature.
 ## Setup
 
 A template file is included in the repository at `backend/api/roles.example.toml`. Copy it to
-`roles.toml` in the same directory and edit it:
+`roles.toml` at the root of the repository and edit it:
 
 ```sh
 cp backend/api/roles.example.toml roles.toml
@@ -56,13 +56,15 @@ Usernames are matched case-insensitively.
 
 ## Mounting the file (Docker)
 
-The compose files expect `roles.toml` to be mounted into the API container. By default, they look
-for it at `./roles.toml` relative to the project root. If you want to keep it elsewhere, set
-`ROLES_CONFIG_FILE` in your `.env` file:
+The compose files mount the file set in `ROLES_CONFIG_FILE` into the API container. Set it in your
+`.env` file:
 
 ```sh
-ROLES_CONFIG_FILE=/path/to/your/roles.toml
+ROLES_CONFIG_FILE=./roles.toml
 ```
+
+When unset, the compose files mount `backend/api/roles.example.toml`, which grants the developer
+role to nobody.
 
 The file is mounted read-only at `/config/roles.toml` inside the container.
 
