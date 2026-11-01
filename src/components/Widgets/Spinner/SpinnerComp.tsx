@@ -98,6 +98,7 @@ const SpinnerComp: React.FC<WidgetUpdate> = ({ data }) => {
                 borderStyle: p.borderStyle?.value,
                 borderWidth: p.borderWidth?.value,
                 borderColor: p.borderColor?.value,
+                boxSizing: "border-box",
                 minWidth: 0,
                 minHeight: 0,
                 padding: 0,
@@ -114,13 +115,13 @@ const SpinnerComp: React.FC<WidgetUpdate> = ({ data }) => {
           )}
         >
           <InputLabel htmlFor={id} shrink={labelShrink}>
-            {p.pvName?.value}
+            {p.label?.value}
           </InputLabel>
           <BaseNumberField.Input
             id={id}
             render={(props, state) => (
               <OutlinedInput
-                label={p.pvName?.value}
+                label={p.label?.value}
                 notched={labelShrink}
                 inputRef={props.ref}
                 value={state.inputValue}

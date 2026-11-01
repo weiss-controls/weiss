@@ -237,6 +237,7 @@ const GraphYComp: React.FC<WidgetUpdate> = ({ data }) => {
           borderStyle: p.borderStyle?.value,
           borderWidth: p.borderWidth?.value,
           borderColor: p.borderColor?.value,
+          boxSizing: "border-box",
           display: "flex",
           overflow: "hidden",
         }}

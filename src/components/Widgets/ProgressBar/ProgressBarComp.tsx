@@ -111,6 +111,10 @@ export const ProgressBarComp: React.FC<WidgetUpdate> = ({ data }) => {
           flexDirection: containerFlexDirection,
           justifyContent: "center",
           padding: "4px",
+          borderRadius: p.borderRadius?.value,
+          borderStyle: p.borderStyle?.value,
+          borderWidth: p.borderWidth?.value,
+          borderColor: p.borderColor?.value,
           boxSizing: "border-box",
           gap: "4px",
         }}
