@@ -3,7 +3,7 @@ import { defaultPlugins } from "@hey-api/openapi-ts";
 
 export default defineConfig({
   input: "http://localhost:8000/openapi.json",
-  output: { format: "prettier", path: "src/services/APIClient" },
+  output: { postProcess: ["prettier"], path: "src/services/APIClient" },
   plugins: [
     ...defaultPlugins,
     {

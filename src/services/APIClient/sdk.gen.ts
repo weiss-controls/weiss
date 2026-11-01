@@ -2,8 +2,10 @@
 
 import {
   type Client,
+  type ClientMeta,
   formDataBodySerializer,
   type Options as Options2,
+  type RequestResult,
   type TDataShape,
 } from "./client";
 import { client } from "./client.gen";
@@ -114,7 +116,8 @@ import type {
 export type Options<
   TData extends TDataShape = TDataShape,
   ThrowOnError extends boolean = boolean,
-> = Options2<TData, ThrowOnError> & {
+  TResponse = unknown,
+> = Options2<TData, ThrowOnError, TResponse> & {
   /**
    * You can provide a client instance returned by `createClient()` instead of
    * individual options. This might be also useful if you want to implement a
@@ -125,7 +128,7 @@ export type Options<
    * You can pass arbitrary values through the `meta` object. This can be
    * used to access values that aren't defined as part of the SDK function.
    */
-  meta?: Record<string, unknown>;
+  meta?: keyof ClientMeta extends never ? Record<string, unknown> : ClientMeta;
 };
 
 /**
@@ -133,7 +136,7 @@ export type Options<
  */
 export const authGetAuthUrl = <ThrowOnError extends boolean = true>(
   options: Options<AuthGetAuthUrlData, ThrowOnError>,
-) =>
+): RequestResult<AuthGetAuthUrlResponses, AuthGetAuthUrlErrors, ThrowOnError> =>
   (options.client ?? client).get<AuthGetAuthUrlResponses, AuthGetAuthUrlErrors, ThrowOnError>({
     url: "/api/v1/auth/{provider}/authorize",
     ...options,
@@ -144,7 +147,7 @@ export const authGetAuthUrl = <ThrowOnError extends boolean = true>(
  */
 export const authCallback = <ThrowOnError extends boolean = true>(
   options: Options<AuthCallbackData, ThrowOnError>,
-) =>
+): RequestResult<AuthCallbackResponses, AuthCallbackErrors, ThrowOnError> =>
   (options.client ?? client).post<AuthCallbackResponses, AuthCallbackErrors, ThrowOnError>({
     url: "/api/v1/auth/callback",
     ...options,
@@ -159,7 +162,7 @@ export const authCallback = <ThrowOnError extends boolean = true>(
  */
 export const authMe = <ThrowOnError extends boolean = true>(
   options?: Options<AuthMeData, ThrowOnError>,
-) =>
+): RequestResult<AuthMeResponses, unknown, ThrowOnError> =>
   (options?.client ?? client).get<AuthMeResponses, unknown, ThrowOnError>({
     url: "/api/v1/auth/me",
     ...options,
@@ -170,7 +173,7 @@ export const authMe = <ThrowOnError extends boolean = true>(
  */
 export const authLogout = <ThrowOnError extends boolean = true>(
   options?: Options<AuthLogoutData, ThrowOnError>,
-) =>
+): RequestResult<AuthLogoutResponses, unknown, ThrowOnError> =>
   (options?.client ?? client).post<AuthLogoutResponses, unknown, ThrowOnError>({
     url: "/api/v1/auth/logout",
     ...options,
@@ -181,7 +184,7 @@ export const authLogout = <ThrowOnError extends boolean = true>(
  */
 export const authReloadRoles = <ThrowOnError extends boolean = true>(
   options?: Options<AuthReloadRolesData, ThrowOnError>,
-) =>
+): RequestResult<AuthReloadRolesResponses, unknown, ThrowOnError> =>
   (options?.client ?? client).post<AuthReloadRolesResponses, unknown, ThrowOnError>({
     url: "/api/v1/auth/admin/reload-roles",
     ...options,
@@ -195,7 +198,7 @@ export const authReloadRoles = <ThrowOnError extends boolean = true>(
  */
 export const getTokenStatus = <ThrowOnError extends boolean = true>(
   options?: Options<GetTokenStatusData, ThrowOnError>,
-) =>
+): RequestResult<GetTokenStatusResponses, unknown, ThrowOnError> =>
   (options?.client ?? client).get<GetTokenStatusResponses, unknown, ThrowOnError>({
     url: "/api/v1/repos/staging/token-status",
     ...options,
@@ -206,7 +209,7 @@ export const getTokenStatus = <ThrowOnError extends boolean = true>(
  */
 export const listRepos = <ThrowOnError extends boolean = true>(
   options?: Options<ListReposData, ThrowOnError>,
-) =>
+): RequestResult<ListReposResponses, unknown, ThrowOnError> =>
   (options?.client ?? client).get<ListReposResponses, unknown, ThrowOnError>({
     url: "/api/v1/repos/staging/",
     ...options,
@@ -217,7 +220,7 @@ export const listRepos = <ThrowOnError extends boolean = true>(
  */
 export const getAllReposTree = <ThrowOnError extends boolean = true>(
   options?: Options<GetAllReposTreeData, ThrowOnError>,
-) =>
+): RequestResult<GetAllReposTreeResponses, unknown, ThrowOnError> =>
   (options?.client ?? client).get<GetAllReposTreeResponses, unknown, ThrowOnError>({
     url: "/api/v1/repos/staging/tree",
     ...options,
@@ -230,7 +233,7 @@ export const getAllReposTree = <ThrowOnError extends boolean = true>(
  */
 export const registerRepo = <ThrowOnError extends boolean = true>(
   options: Options<RegisterRepoData, ThrowOnError>,
-) =>
+): RequestResult<RegisterRepoResponses, RegisterRepoErrors, ThrowOnError> =>
   (options.client ?? client).post<RegisterRepoResponses, RegisterRepoErrors, ThrowOnError>({
     url: "/api/v1/repos/staging/register",
     ...options,
@@ -250,7 +253,7 @@ export const registerRepo = <ThrowOnError extends boolean = true>(
  */
 export const unregisterRepo = <ThrowOnError extends boolean = true>(
   options: Options<UnregisterRepoData, ThrowOnError>,
-) =>
+): RequestResult<UnregisterRepoResponses, UnregisterRepoErrors, ThrowOnError> =>
   (options.client ?? client).delete<UnregisterRepoResponses, UnregisterRepoErrors, ThrowOnError>({
     url: "/api/v1/repos/staging/{repo_id}/unregister",
     ...options,
@@ -264,7 +267,7 @@ export const unregisterRepo = <ThrowOnError extends boolean = true>(
  */
 export const listRepoRefs = <ThrowOnError extends boolean = true>(
   options: Options<ListRepoRefsData, ThrowOnError>,
-) =>
+): RequestResult<ListRepoRefsResponses, ListRepoRefsErrors, ThrowOnError> =>
   (options.client ?? client).get<ListRepoRefsResponses, ListRepoRefsErrors, ThrowOnError>({
     url: "/api/v1/repos/staging/{repo_id}/refs",
     ...options,
@@ -279,7 +282,7 @@ export const listRepoRefs = <ThrowOnError extends boolean = true>(
  */
 export const syncRepo = <ThrowOnError extends boolean = true>(
   options: Options<SyncRepoData, ThrowOnError>,
-) =>
+): RequestResult<SyncRepoResponses, SyncRepoErrors, ThrowOnError> =>
   (options.client ?? client).post<SyncRepoResponses, SyncRepoErrors, ThrowOnError>({
     url: "/api/v1/repos/staging/{repo_id}/sync",
     ...options,
@@ -292,7 +295,7 @@ export const syncRepo = <ThrowOnError extends boolean = true>(
  */
 export const getStagingRepoFile = <ThrowOnError extends boolean = true>(
   options: Options<GetStagingRepoFileData, ThrowOnError>,
-) =>
+): RequestResult<GetStagingRepoFileResponses, GetStagingRepoFileErrors, ThrowOnError> =>
   (options.client ?? client).get<
     GetStagingRepoFileResponses,
     GetStagingRepoFileErrors,
@@ -308,7 +311,7 @@ export const getStagingRepoFile = <ThrowOnError extends boolean = true>(
  */
 export const updateStagingRepoFile = <ThrowOnError extends boolean = true>(
   options: Options<UpdateStagingRepoFileData, ThrowOnError>,
-) =>
+): RequestResult<UpdateStagingRepoFileResponses, UpdateStagingRepoFileErrors, ThrowOnError> =>
   (options.client ?? client).put<
     UpdateStagingRepoFileResponses,
     UpdateStagingRepoFileErrors,
@@ -331,7 +334,7 @@ export const updateStagingRepoFile = <ThrowOnError extends boolean = true>(
  */
 export const uploadStagingRepoFile = <ThrowOnError extends boolean = true>(
   options: Options<UploadStagingRepoFileData, ThrowOnError>,
-) =>
+): RequestResult<UploadStagingRepoFileResponses, UploadStagingRepoFileErrors, ThrowOnError> =>
   (options.client ?? client).post<
     UploadStagingRepoFileResponses,
     UploadStagingRepoFileErrors,
@@ -358,7 +361,7 @@ export const uploadStagingRepoFile = <ThrowOnError extends boolean = true>(
  */
 export const resetStagingRepoFile = <ThrowOnError extends boolean = true>(
   options: Options<ResetStagingRepoFileData, ThrowOnError>,
-) =>
+): RequestResult<ResetStagingRepoFileResponses, ResetStagingRepoFileErrors, ThrowOnError> =>
   (options.client ?? client).post<
     ResetStagingRepoFileResponses,
     ResetStagingRepoFileErrors,
@@ -375,7 +378,7 @@ export const resetStagingRepoFile = <ThrowOnError extends boolean = true>(
  */
 export const resetStagingRepoPath = <ThrowOnError extends boolean = true>(
   options: Options<ResetStagingRepoPathData, ThrowOnError>,
-) =>
+): RequestResult<ResetStagingRepoPathResponses, ResetStagingRepoPathErrors, ThrowOnError> =>
   (options.client ?? client).post<
     ResetStagingRepoPathResponses,
     ResetStagingRepoPathErrors,
@@ -390,7 +393,7 @@ export const resetStagingRepoPath = <ThrowOnError extends boolean = true>(
  */
 export const resetStagingRepo = <ThrowOnError extends boolean = true>(
   options: Options<ResetStagingRepoData, ThrowOnError>,
-) =>
+): RequestResult<ResetStagingRepoResponses, ResetStagingRepoErrors, ThrowOnError> =>
   (options.client ?? client).post<ResetStagingRepoResponses, ResetStagingRepoErrors, ThrowOnError>({
     url: "/api/v1/repos/staging/{repo_id}/reset",
     ...options,
@@ -404,7 +407,7 @@ export const resetStagingRepo = <ThrowOnError extends boolean = true>(
  */
 export const deleteStagingRepoPath = <ThrowOnError extends boolean = true>(
   options: Options<DeleteStagingRepoPathData, ThrowOnError>,
-) =>
+): RequestResult<DeleteStagingRepoPathResponses, DeleteStagingRepoPathErrors, ThrowOnError> =>
   (options.client ?? client).delete<
     DeleteStagingRepoPathResponses,
     DeleteStagingRepoPathErrors,
@@ -420,7 +423,7 @@ export const deleteStagingRepoPath = <ThrowOnError extends boolean = true>(
  */
 export const createStagingRepoPath = <ThrowOnError extends boolean = true>(
   options: Options<CreateStagingRepoPathData, ThrowOnError>,
-) =>
+): RequestResult<CreateStagingRepoPathResponses, CreateStagingRepoPathErrors, ThrowOnError> =>
   (options.client ?? client).post<
     CreateStagingRepoPathResponses,
     CreateStagingRepoPathErrors,
@@ -441,7 +444,7 @@ export const createStagingRepoPath = <ThrowOnError extends boolean = true>(
  */
 export const renameStagingRepoPath = <ThrowOnError extends boolean = true>(
   options: Options<RenameStagingRepoPathData, ThrowOnError>,
-) =>
+): RequestResult<RenameStagingRepoPathResponses, RenameStagingRepoPathErrors, ThrowOnError> =>
   (options.client ?? client).post<
     RenameStagingRepoPathResponses,
     RenameStagingRepoPathErrors,
@@ -464,7 +467,7 @@ export const renameStagingRepoPath = <ThrowOnError extends boolean = true>(
  */
 export const moveStagingRepoPath = <ThrowOnError extends boolean = true>(
   options: Options<MoveStagingRepoPathData, ThrowOnError>,
-) =>
+): RequestResult<MoveStagingRepoPathResponses, MoveStagingRepoPathErrors, ThrowOnError> =>
   (options.client ?? client).post<
     MoveStagingRepoPathResponses,
     MoveStagingRepoPathErrors,
@@ -487,7 +490,7 @@ export const moveStagingRepoPath = <ThrowOnError extends boolean = true>(
  */
 export const commitStagingRepo = <ThrowOnError extends boolean = true>(
   options: Options<CommitStagingRepoData, ThrowOnError>,
-) =>
+): RequestResult<CommitStagingRepoResponses, CommitStagingRepoErrors, ThrowOnError> =>
   (options.client ?? client).post<
     CommitStagingRepoResponses,
     CommitStagingRepoErrors,
@@ -508,7 +511,7 @@ export const commitStagingRepo = <ThrowOnError extends boolean = true>(
  */
 export const deployRepo = <ThrowOnError extends boolean = true>(
   options: Options<DeployRepoData, ThrowOnError>,
-) =>
+): RequestResult<DeployRepoResponses, DeployRepoErrors, ThrowOnError> =>
   (options.client ?? client).post<DeployRepoResponses, DeployRepoErrors, ThrowOnError>({
     url: "/api/v1/repos/staging/{repo_id}/deploy",
     ...options,
@@ -527,7 +530,7 @@ export const deployRepo = <ThrowOnError extends boolean = true>(
  */
 export const undeployRepo = <ThrowOnError extends boolean = true>(
   options: Options<UndeployRepoData, ThrowOnError>,
-) =>
+): RequestResult<UndeployRepoResponses, UndeployRepoErrors, ThrowOnError> =>
   (options.client ?? client).post<UndeployRepoResponses, UndeployRepoErrors, ThrowOnError>({
     url: "/api/v1/repos/staging/{repo_id}/undeploy",
     ...options,
@@ -540,7 +543,7 @@ export const undeployRepo = <ThrowOnError extends boolean = true>(
  */
 export const checkoutRepoRef = <ThrowOnError extends boolean = true>(
   options: Options<CheckoutRepoRefData, ThrowOnError>,
-) =>
+): RequestResult<CheckoutRepoRefResponses, CheckoutRepoRefErrors, ThrowOnError> =>
   (options.client ?? client).post<CheckoutRepoRefResponses, CheckoutRepoRefErrors, ThrowOnError>({
     url: "/api/v1/repos/staging/{repo_id}/checkout",
     ...options,
@@ -551,7 +554,7 @@ export const checkoutRepoRef = <ThrowOnError extends boolean = true>(
  */
 export const getStagingRepoTree = <ThrowOnError extends boolean = true>(
   options: Options<GetStagingRepoTreeData, ThrowOnError>,
-) =>
+): RequestResult<GetStagingRepoTreeResponses, GetStagingRepoTreeErrors, ThrowOnError> =>
   (options.client ?? client).get<
     GetStagingRepoTreeResponses,
     GetStagingRepoTreeErrors,
@@ -563,7 +566,7 @@ export const getStagingRepoTree = <ThrowOnError extends boolean = true>(
  */
 export const listDeployedRepos = <ThrowOnError extends boolean = true>(
   options?: Options<ListDeployedReposData, ThrowOnError>,
-) =>
+): RequestResult<ListDeployedReposResponses, unknown, ThrowOnError> =>
   (options?.client ?? client).get<ListDeployedReposResponses, unknown, ThrowOnError>({
     url: "/api/v1/repos/runtime/",
     ...options,
@@ -574,7 +577,7 @@ export const listDeployedRepos = <ThrowOnError extends boolean = true>(
  */
 export const getAllDeployedReposTree = <ThrowOnError extends boolean = true>(
   options?: Options<GetAllDeployedReposTreeData, ThrowOnError>,
-) =>
+): RequestResult<GetAllDeployedReposTreeResponses, unknown, ThrowOnError> =>
   (options?.client ?? client).get<GetAllDeployedReposTreeResponses, unknown, ThrowOnError>({
     url: "/api/v1/repos/runtime/tree",
     ...options,
@@ -588,7 +591,7 @@ export const getAllDeployedReposTree = <ThrowOnError extends boolean = true>(
  */
 export const getDeployedRepoTree = <ThrowOnError extends boolean = true>(
   options: Options<GetDeployedRepoTreeData, ThrowOnError>,
-) =>
+): RequestResult<GetDeployedRepoTreeResponses, GetDeployedRepoTreeErrors, ThrowOnError> =>
   (options.client ?? client).get<
     GetDeployedRepoTreeResponses,
     GetDeployedRepoTreeErrors,
@@ -602,7 +605,7 @@ export const getDeployedRepoTree = <ThrowOnError extends boolean = true>(
  */
 export const getDeployedRepoFile = <ThrowOnError extends boolean = true>(
   options: Options<GetDeployedRepoFileData, ThrowOnError>,
-) =>
+): RequestResult<GetDeployedRepoFileResponses, GetDeployedRepoFileErrors, ThrowOnError> =>
   (options.client ?? client).get<
     GetDeployedRepoFileResponses,
     GetDeployedRepoFileErrors,
@@ -616,7 +619,7 @@ export const getDeployedRepoFile = <ThrowOnError extends boolean = true>(
  */
 export const listSnapshots = <ThrowOnError extends boolean = true>(
   options: Options<ListSnapshotsData, ThrowOnError>,
-) =>
+): RequestResult<ListSnapshotsResponses, ListSnapshotsErrors, ThrowOnError> =>
   (options.client ?? client).get<ListSnapshotsResponses, ListSnapshotsErrors, ThrowOnError>({
     url: "/api/v1/snapshots",
     ...options,
@@ -629,7 +632,7 @@ export const listSnapshots = <ThrowOnError extends boolean = true>(
  */
 export const saveSnapshot = <ThrowOnError extends boolean = true>(
   options: Options<SaveSnapshotData, ThrowOnError>,
-) =>
+): RequestResult<SaveSnapshotResponses, SaveSnapshotErrors, ThrowOnError> =>
   (options.client ?? client).put<SaveSnapshotResponses, SaveSnapshotErrors, ThrowOnError>({
     url: "/api/v1/snapshots",
     ...options,
@@ -646,7 +649,7 @@ export const saveSnapshot = <ThrowOnError extends boolean = true>(
  */
 export const deleteSnapshot = <ThrowOnError extends boolean = true>(
   options: Options<DeleteSnapshotData, ThrowOnError>,
-) =>
+): RequestResult<DeleteSnapshotResponses, DeleteSnapshotErrors, ThrowOnError> =>
   (options.client ?? client).delete<DeleteSnapshotResponses, DeleteSnapshotErrors, ThrowOnError>({
     url: "/api/v1/snapshots/{snapshot_id}",
     ...options,
@@ -659,7 +662,7 @@ export const deleteSnapshot = <ThrowOnError extends boolean = true>(
  */
 export const getSnapshot = <ThrowOnError extends boolean = true>(
   options: Options<GetSnapshotData, ThrowOnError>,
-) =>
+): RequestResult<GetSnapshotResponses, GetSnapshotErrors, ThrowOnError> =>
   (options.client ?? client).get<GetSnapshotResponses, GetSnapshotErrors, ThrowOnError>({
     url: "/api/v1/snapshots/{snapshot_id}",
     ...options,
@@ -670,7 +673,7 @@ export const getSnapshot = <ThrowOnError extends boolean = true>(
  */
 export const rootInfo = <ThrowOnError extends boolean = true>(
   options?: Options<RootInfoData, ThrowOnError>,
-) =>
+): RequestResult<RootInfoResponses, unknown, ThrowOnError> =>
   (options?.client ?? client).get<RootInfoResponses, unknown, ThrowOnError>({
     url: "/",
     ...options,
@@ -681,7 +684,7 @@ export const rootInfo = <ThrowOnError extends boolean = true>(
  */
 export const healthCheck = <ThrowOnError extends boolean = true>(
   options?: Options<HealthCheckData, ThrowOnError>,
-) =>
+): RequestResult<HealthCheckResponses, unknown, ThrowOnError> =>
   (options?.client ?? client).get<HealthCheckResponses, unknown, ThrowOnError>({
     url: "/health",
     ...options,
