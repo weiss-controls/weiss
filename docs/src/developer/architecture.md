@@ -163,8 +163,9 @@ through one of the above.
 - **`pvStore`** - Zustand store for live EPICS PV data. See the
   [State management layer](#state-management-layer) section above for a full description.
 
-- **`imageStore`** - Zustand store holding the latest frame of each image (NTNDArray) PV, read by
-  image widgets. Cleared when the WebSocket closes.
+- **`imageStore`** - Zustand store holding the latest frame of each image PV (NTNDArray, or a plain
+  array PV a widget registered as an image), read by image widgets. Cleared when the WebSocket
+  closes.
 
 ---
 
@@ -172,7 +173,7 @@ through one of the above.
 
 ### API
 
-The FastAPI back-end exposes three route groups:
+Besides authentication (see below), the FastAPI back-end exposes three route groups:
 
 - **Developer routes** (`/api/v1/repos/staging`): developer-only endpoints (enforced by
   `require_developer`) that manage per-user editable copies of OPI repositories. Each registered
@@ -207,11 +208,11 @@ IOCs. The frontend connects to it through `WSClient` and subscribes to PV names 
 present on the canvas.
 
 - The PVA library used is [p4p](https://github.com/epics-base/p4p/), see
-  `backend/epicsWS/PVAClient`.
+  `backend/epicsWS/PVAClient.py`.
 - The CA library used is [PyEpics](https://pyepics.github.io/pyepics/), see
-  `backend/epicsWS/CAClient`.
+  `backend/epicsWS/CAClient.py`.
 
-The web socket application and connection manager can be seen in `backend/epicsWS/epicsWS`. The
+The web socket application and connection manager can be seen in `backend/epicsWS/epicsWS.py`. The
 concept was based on [ORNL PV Web Socket (PVWS)](https://github.com/ornl-epics/pvws).
 
 #### How it works

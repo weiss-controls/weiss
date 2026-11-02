@@ -48,6 +48,18 @@ const PHOEBUS_DEFAULT_ON_COLOR: PhoebusColor = {
   blue: 60,
 };
 
+const PHOEBUS_DEFAULT_BACKGROUND_COLOR: PhoebusColor = {
+  red: 255,
+  green: 255,
+  blue: 255,
+};
+
+const PHOEBUS_DEFAULT_TEXT_COLOR: PhoebusColor = {
+  red: 0,
+  green: 0,
+  blue: 0,
+};
+
 const PHOEBUS_MULTI_STATE_LED_FALLBACK_COLOR: PhoebusColor = {
   red: 176,
   green: 118,
@@ -157,6 +169,18 @@ export const PHOEBUS_WIDGET_DEFAULTS: Partial<
       [PhoebusProperty.HORIZONTAL]: true,
       [PhoebusProperty.OFF_COLOR]: PHOEBUS_DEFAULT_OFF_COLOR,
       [PhoebusProperty.ON_COLOR]: PHOEBUS_DEFAULT_ON_COLOR,
+    },
+  },
+
+  // Plots
+
+  [PhoebusWidgetType.IMAGE]: {
+    inputDefaults: {
+      [PhoebusProperty.WIDTH]: 400,
+      [PhoebusProperty.HEIGHT]: 300,
+      [PhoebusProperty.BACKGROUND_COLOR]: PHOEBUS_DEFAULT_BACKGROUND_COLOR,
+      [PhoebusProperty.FOREGROUND_COLOR]: PHOEBUS_DEFAULT_TEXT_COLOR,
+      [PhoebusProperty.COLOR_MAP]: "VIRIDIS",
     },
   },
 

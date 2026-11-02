@@ -382,9 +382,18 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.IMAGE]: {
-    weissName: undefined,
+    weissName: "AreaDetector",
     propMap: {
       ...COMMON_PROP_MAP,
+      [PhoebusProperty.BACKGROUND_COLOR]: "backgroundColor",
+      [PhoebusProperty.FOREGROUND_COLOR]: "textColor",
+      [PhoebusProperty.PV_NAME]: "pvName",
+      [PhoebusProperty.COLOR_MAP]: "colorMap",
+      [PhoebusProperty.COLOR_BAR]: "showColorbar",
+      [PhoebusProperty.AUTOSCALE]: "autoLimits",
+      [PhoebusProperty.LOG_SCALE]: "logIntensity",
+      [PhoebusProperty.MINIMUM]: "min",
+      [PhoebusProperty.MAXIMUM]: "max",
     },
   },
 

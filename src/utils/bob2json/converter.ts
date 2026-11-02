@@ -27,6 +27,7 @@ import {
   isTrue,
   mapDisplayFormat,
   mapEmbeddedDisplayPath,
+  mapColorMap,
   mapHAlign,
   mapLineStyle,
   mapNavTabs,
@@ -287,9 +288,25 @@ function convertWidget(
       continue;
     }
 
+    if (phoebusKey === PhoebusProperty.COLOR_MAP) {
+      const mapped = mapColorMap(raw);
+      if (mapped !== undefined) {
+        properties[weissKey] = mapped;
+      } else {
+        warnings.push(
+          `Widget "${widgetLabel}": colormap ${JSON.stringify(raw || "custom")} ` +
+            "is not supported - using default.",
+        );
+      }
+      continue;
+    }
+
     // Boolean
     if (
       phoebusKey === PhoebusProperty.VISIBLE ||
+      phoebusKey === PhoebusProperty.COLOR_BAR ||
+      phoebusKey === PhoebusProperty.AUTOSCALE ||
+      phoebusKey === PhoebusProperty.LOG_SCALE ||
       phoebusKey === PhoebusProperty.ENABLED ||
       phoebusKey === PhoebusProperty.TRANSPARENT ||
       phoebusKey === PhoebusProperty.SQUARE ||
@@ -348,6 +365,17 @@ function convertWidget(
       properties.pvNames = mappedTraces.pvNames;
       properties.lineColors = mappedTraces.lineColors;
     }
+  }
+
+  if (
+    phWidget.type === PhoebusWidgetType.IMAGE &&
+    (phWidget.properties.has(PhoebusProperty.DATA_WIDTH) ||
+      phWidget.properties.has(PhoebusProperty.DATA_HEIGHT))
+  ) {
+    warnings.push(
+      `Widget "${widgetLabel}": fixed image size is not supported - ` +
+        "for plain waveform PVs, set the Size X/Y PV properties.",
+    );
   }
 
   const widgetOutputDefaults = PHOEBUS_WIDGET_DEFAULTS[phWidget.type]?.outputDefaults;

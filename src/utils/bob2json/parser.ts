@@ -5,7 +5,13 @@
  * Parses Phoebus Display Builder XML into a PhoebusDisplay IR.
  */
 
-import { PhoebusAttribute, PhoebusElement, PhoebusProperty, PhoebusWidgetType } from "./constants";
+import {
+  PhoebusAttribute,
+  PhoebusBoolean,
+  PhoebusElement,
+  PhoebusProperty,
+  PhoebusWidgetType,
+} from "./constants";
 import type {
   ColorWrapperProperty,
   PhoebusColor,
@@ -244,6 +250,8 @@ const NUMERIC_PROPS: ReadonlySet<string> = new Set([
   PhoebusProperty.NBITS,
   PhoebusProperty.PRECISION,
   PhoebusProperty.OPACITY,
+  PhoebusProperty.MINIMUM,
+  PhoebusProperty.MAXIMUM,
 ]);
 
 function isColorWrapperTag(tag: string): tag is ColorWrapperProperty {
@@ -325,6 +333,18 @@ function parseWidget(widgetEl: Element): PhoebusWidget {
     // Macros (embedded display)
     if (tag === PhoebusProperty.MACROS) {
       properties.set(PhoebusProperty.MACROS, parseMacros(child));
+      continue;
+    }
+
+    // Image colormap: <name> of a predefined map, empty for a custom one.
+    if (tag === PhoebusProperty.COLOR_MAP) {
+      properties.set(tag, childText(child, PhoebusElement.NAME) ?? "");
+      continue;
+    }
+
+    // Image colorbar: only its visibility is used.
+    if (tag === PhoebusProperty.COLOR_BAR) {
+      properties.set(tag, childText(child, PhoebusProperty.VISIBLE) ?? PhoebusBoolean.TRUE);
       continue;
     }
 

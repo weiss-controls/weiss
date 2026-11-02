@@ -46,7 +46,7 @@ export const MyWidget: WidgetDefinition = {
   category: "Basic", // palette group
   defaultProperties: {
     label: { ...PROPERTY_SCHEMAS.label, value: "My Widget" },
-    ...COMMON_PROPS, // x, y, width, height, tooltip, visible
+    ...COMMON_PROPS, // position, size, border, background, visibility, ...
     ...TEXT_PROPS, // fonts, text alignment, colors
     pvName: PROPERTY_SCHEMAS.pvName, // add only if the widget reads a PV
   },
@@ -61,11 +61,11 @@ file clean.
 
 For convenience, some **property groups** are provided (see `widgetProperties.ts`):
 
-| Export         | Properties included                                                                                                               |
-| -------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `COMMON_PROPS` | `x`, `y`, `width`, `height`, `tooltip`, `visible`, `borderColor`, `borderWidth`, `borderRadius`, `borderStyle`, `backgroundColor` |
-| `TEXT_PROPS`   | `textColor`, `fontSize`, `fontFamily`, `fontBold`, `fontItalic`, `fontUnderlined`, `textHAlign`, `textVAlign`                     |
-| `PLOT_PROPS`   | `pvNames`, `plotTitle`, `xAxisTitle`, `yAxisTitle`, `lineColors`, `logscaleY`                                                     |
+| Export         | Properties included                                                                                                                                                      |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `COMMON_PROPS` | `alias`, `x`, `y`, `width`, `height`, `tooltip`, `visible`, `alarmBorder`, `borderColor`, `borderWidth`, `borderRadius`, `borderStyle`, `backgroundColor`                |
+| `TEXT_PROPS`   | `textColor`, `fontSize`, `fontFamily`, `fontBold`, `fontItalic`, `fontUnderlined`, `textHAlign`, `textVAlign`                                                            |
+| `PLOT_PROPS`   | `pvNames`, `backgroundColor`, `lineColors`, `plotTitle`, `xAxisTitle`, `yAxisTitle`, `logscaleY`, `plotBufferSize`, `plotLineStyle`, `showLegend`, `legend*` (placement) |
 
 For more details and all available properties, see `PROPERTY_SCHEMAS` definition in
 `src/types/widgetProperties.ts`. Looking into the existing widgets in `src/components/Widgets` is
@@ -92,8 +92,8 @@ the canvas, and will be serialised/deserialised using `widgetName` as the key.
 Now it's time to actually design your widget. The component receives a single prop of type
 `WidgetUpdate` (defined as `{ data: Widget }`, where `Widget` is the runtime instance of a widget).
 Use `data.editableProperties` to read property values, and `data.pvData`/`data.multiPvData` for live
-EPICS data (injected automatically at render time by `WidgetRenderer`). All properties defined in
-your definition file will be available for usage by your component.
+EPICS data (injected automatically at render time by `LiveWidget`). All properties defined in your
+definition file will be available for usage by your component.
 
 ```tsx
 // src/components/Widgets/MyWidget/MyWidgetComp.tsx
@@ -130,7 +130,7 @@ container instead of the root element of the component.
 
 ### Reading PV data in the component
 
-In runtime mode, `WidgetRenderer` injects the latest value into `data.pvData` before each render of
+In runtime mode, `LiveWidget` injects the latest value into `data.pvData` before each render of
 widgets that have `pvName` property set. For multi-PV widgets (e.g., plots), `pvNames` and
 `data.multiPvData` are used instead.
 
@@ -138,7 +138,7 @@ widgets that have `pvName` property set. For multi-PV widgets (e.g., plots), `pv
 // Single PV
 const pv = data.pvData; // PVData | undefined
 if (pv) {
-  const value = pv.value; // number | string | number[] | string[]
+  const value = pv.value; // number | string | string[] | NumericArray (typed array)
   const alarm = pv.alarm; // { severity, status, message } | undefined
   const units = pv.display?.units;
 }
@@ -146,6 +146,9 @@ if (pv) {
 // Multiple PVs
 const pvs = data.multiPvData; // Record<pvName, PVData> | undefined
 ```
+
+Numeric arrays arrive as typed-array views (`NumericArray`). Check them with `isNumericArray()` from
+`src/utils/numericArray.ts`, not `Array.isArray()`, and avoid copying them.
 
 :::{note}  
 The `PVData` type is heavily based on the
@@ -185,7 +188,10 @@ const handleChange = (value: number) => {
 - **Save renders**: For better performance, avoid unnecessary renders by using `React.memo` or
   similar techniques if your widget is complex or has expensive rendering logic.
 - **Need extra properties?**: If you need a specific property that is not available, feel free to
-  add it to `PROPERTY_SCHEMAS`. Make sure to follow the existing patterns.
+  add it to `PROPERTY_SCHEMAS`. Make sure to follow the existing patterns, and prefix
+  widget-specific names (e.g. `imageRotation`). `description` adds a tooltip in the property editor.
+  `isPV: true` marks a value as a PV name: it is macro-resolved and subscribed, but not bound into
+  `pvData`; read it from `data.runtimeAuxPVs` and select it from `usePVStore`.
 - **Make it easy to try out:** If your widget requires a PV not available in the
   [demonstration IOCs](https://github.com/weiss-controls/weiss-demo-iocs/), consider submitting a PR
   to add it there, so other developers can easily test your widget without needing to set up their

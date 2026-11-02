@@ -23,11 +23,13 @@ In this repository, Compose derives these from server-side variables:
 
 ---
 
-## Docker image tagging
+## Docker image tagging and ports
 
 | Variable     | Default  | Description                                                                               |
 | ------------ | -------- | ----------------------------------------------------------------------------------------- |
 | `DOCKER_TAG` | `latest` | Tag applied to all Docker images built by Compose (`weiss`, `weiss-api`, `weiss-epicsws`) |
+| `HTTP_PORT`  | `80`     | Host port for HTTP.                                                                       |
+| `HTTPS_PORT` | `443`    | Host port for HTTPS.                                                                      |
 
 ---
 

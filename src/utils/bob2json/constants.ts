@@ -148,6 +148,16 @@ export const PhoebusProperty = {
   TRACES: "traces",
   X_PV: "x_pv",
   Y_PV: "y_pv",
+
+  // image
+  COLOR_MAP: "color_map",
+  COLOR_BAR: "color_bar",
+  AUTOSCALE: "autoscale",
+  LOG_SCALE: "log_scale",
+  MINIMUM: "minimum",
+  MAXIMUM: "maximum",
+  DATA_WIDTH: "data_width",
+  DATA_HEIGHT: "data_height",
 } as const;
 
 // Widget types

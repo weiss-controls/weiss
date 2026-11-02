@@ -9,13 +9,13 @@
 project = "WEISS"
 copyright = "2026, WEISS Contributors"
 author = "André Favoto"
-release = "2.0.0"
+release = "2.1.0-rc.1"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = ["myst_parser", "sphinx_copybutton"]
-myst_enable_extensions = ["colon_fence"]
+myst_enable_extensions = ["colon_fence", "substitution"]
 
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
@@ -28,3 +28,12 @@ html_theme = "furo"
 html_title = "WEISS Documentation"
 html_short_title = "WEISS"
 html_static_path = ["_static"]
+
+# Substitutions are not applied inside link URLs, so the whole badge is substituted.
+# Shields static badges escape "-" as "--".
+myst_substitutions = {
+    "docs_badge": (
+        f"[![Documentation](https://img.shields.io/badge/docs-v{release.replace('-', '--')}-blue)]"
+        "(index.md)"
+    ),
+}

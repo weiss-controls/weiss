@@ -13,6 +13,7 @@ Instructions available [here](https://docs.docker.com/engine/install/).
 
 ```sh
 git clone https://github.com/weiss-controls/weiss.git
+cd weiss
 git checkout $(git describe --tags $(git rev-list --tags --max-count=1))
 ```
 
@@ -42,7 +43,8 @@ get familiarized with the options.
 docker compose up -d
 ```
 
-Once built, three services should be running (plus an internal `storage` volume container):
+Once built, three services should be running (plus a `storage` volume for repositories and
+snapshots):
 
 - `weiss-epicsws`: the EPICS communication layer.
 - `weiss-api`: the backend API for file and git interaction.
