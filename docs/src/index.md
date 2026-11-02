@@ -1,5 +1,7 @@
 # WEISS - Web EPICS Interface & Synoptic Studio
 
+{{docs_badge}}
+
 WEISS is a no-code, drag-and-drop system for building web-based EPICS operation interfaces. It
 provides a responsive editor, git-based OPI versioning, live PV communication and a lightweight
 deployment model.

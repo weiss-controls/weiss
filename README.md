@@ -1,5 +1,12 @@
 # WEISS – Web EPICS Interface & Synoptic Studio
 
+[![Lint](https://img.shields.io/github/actions/workflow/status/weiss-controls/weiss/lint.yml?branch=main&label=lint)](https://github.com/weiss-controls/weiss/actions/workflows/lint.yml)
+[![Docker build](https://img.shields.io/github/actions/workflow/status/weiss-controls/weiss/docker-build.yml?branch=main&label=docker%20build)](https://github.com/weiss-controls/weiss/actions/workflows/docker-build.yml)
+[![Podman build](https://img.shields.io/github/actions/workflow/status/weiss-controls/weiss/podman-build.yml?branch=main&label=podman%20build)](https://github.com/weiss-controls/weiss/actions/workflows/podman-build.yml)
+
+[![Latest](https://img.shields.io/github/v/release/weiss-controls/weiss?label=latest&include_prereleases)](https://github.com/weiss-controls/weiss/releases)
+[![License: GPL v3](https://img.shields.io/github/license/weiss-controls/weiss?color=blue)](https://github.com/weiss-controls/weiss/blob/main/COPYING.md)
+
 WEISS is a no-code, drag-and-drop system for building web-based EPICS operation interfaces. It
 provides a responsive editor, live PV communication (read and write), git-based version control and
 a lightweight deployment model.
