@@ -22,15 +22,15 @@ continue editing it in the browser or use it right away.
 
 ### Make sure you have things ready
 
-Open the display you want to import in CS-Studio/Phoebus and check that it works as expected. **The
-extension accepted is a `.bob` file only,** so check that it is also saved on this format.
+Open the displays you want to import in CS-Studio/Phoebus and check that they work as expected.
+**The extension accepted is a `.bob` file only,** so check that they are also saved on this format.
 
 Be sure to have all image files or embedded displays used by your OPI at hand, as they will also
 need to be uploaded or imported.
 
 ![Example CS-Studio display](../_static/cs-studio-screen.gif)
 
-### Import the display
+### Import the display(s)
 
 With the WEISS app running, login as a "Developer" and select the destination folder in the project
 tree (or a file inside it). Click **Import** in the application header and select **From
@@ -46,13 +46,8 @@ checked. When a single display is imported, it opens in the editor.
 Pictures (`.svg`, `.png`, `.jpg`, `.jpeg`) found in imported folders are uploaded along with the
 displays, at the same relative paths. Pictures elsewhere can be selected or dropped in the same
 dialog, or uploaded later to the repository. Make sure the paths used by the imported `Image`
-widgets match the paths of the uploaded files.
-
-Paths to embedded displays are converted from `.bob` to `.opi.json`. Relative paths to pictures and
-displays (embedded displays, navigation tabs and buttons) are resolved against the folder of the
-imported display and saved as repository paths. Importing the folder that holds the main display and
-the files it references keeps these paths valid. Absolute paths, URLs and paths starting with a
-macro are kept as they are, with a warning.
+widgets match the paths of the uploaded files. Paths to embedded displays are converted from `.bob`
+to `.opi.json`.
 
 :::{important} Not all Phoebus widgets and features are supported. The unsupported widgets will be
 substituted by a dashed outline as placeholder, and a warning will be shown. Check next section for
