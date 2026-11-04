@@ -152,12 +152,14 @@ class AuthService {
     try {
       await authLogout();
     } catch (err) {
+      // The session cookie is httponly: without the server, it stays valid
       this.logAndNotifyError(err);
-    } finally {
-      this.currentUser = null;
-      this.notifyLogout();
-      this.notifyAuthStatus(AuthStatuses.UNAUTHENTICATED, null);
+      notifyUser("Logout failed. You are still logged in, please try again.", "error");
+      return;
     }
+    this.currentUser = null;
+    this.notifyLogout();
+    this.notifyAuthStatus(AuthStatuses.UNAUTHENTICATED, null);
   }
 
   /**
