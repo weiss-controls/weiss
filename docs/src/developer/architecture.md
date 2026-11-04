@@ -67,10 +67,10 @@ subscriptions at the bottom of its own file.
 - **`repoStore`** - repository trees and the selected file (or image preview). Fetches the trees on
   login or role change, clears them on logout, loads the selected file into `editorStore` (or as an
   image) when it changes, and reopens the last opened file once the trees load.
-- **`actions.ts`** - actions spanning several stores (`updateMode`) and reactions spanning them:
-  operators switched to runtime, the resolved PV list sent to the WebSocket session, the rule-driven
-  macro sync in runtime, and the debounced auto-save of the edited file (flushed on file or mode
-  switch). `main.tsx` imports it before `App`, which loads every store.
+- **`actions.ts`** - actions involving several stores and reactions related to them: operators
+  switched to runtime, the WebSocket session management, the resolved PV list sent to the WebSocket
+  session, the rule-driven macro sync in runtime, and the debounced auto-save of the edited file
+  (flushed on file or mode switch). `main.tsx` imports it before `App`, which loads every store.
 - **WebSocket session** (`src/services/WSClient/session.ts`) - a module, not a context. It owns the
   `WSClient` instance and exports `startNewSession`, `stopSession`, `setSubscribedPVs`,
   `writePVValue`, `takeSnapshot` and `restoreFromSnapshot`, which components import directly. The
