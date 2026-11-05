@@ -91,7 +91,7 @@ class AuthService {
     try {
       const authorizeUrl = await this.getAuthorizeUrl(provider, demoRole);
       if (!authorizeUrl) throw new Error("No authorize URL returned");
-      window.location.href = authorizeUrl;
+      window.location.replace(authorizeUrl);
     } catch (err) {
       this.logAndNotifyError(err);
       notifyUser("Login failed. Please, try again. If problem persists, contact support", "error");
@@ -146,6 +146,23 @@ class AuthService {
       this.notifyAuthStatus(AuthStatuses.UNAUTHENTICATED, null);
       return null;
     }
+  }
+
+  /**
+   * Checks the session cookie again, for a page restored from the browserback/forward cache whose
+   * auth state may be outdated. A 401 expires the session through the API client.
+   */
+  async revalidateSession(): Promise<void> {
+    if (this.callbackPromise) return;
+    let user: User;
+    try {
+      user = await authMe().then((r) => r.data);
+    } catch {
+      return;
+    }
+    if (user.id === this.currentUser?.id) return;
+    this.currentUser = user;
+    this.notifyAuthStatus(AuthStatuses.AUTHENTICATED, user);
   }
 
   async logout() {

@@ -69,6 +69,10 @@ authService.subscribe({
   onAuthStatusChange: (status, user) => useSessionStore.getState().setAuthStatus(status, user),
 });
 void authService.restoreSession().finally(() => useSessionStore.getState().setAuthChecked(true));
+window.addEventListener("pageshow", (event) => {
+  // Revalidate session if the page was restored from pressing "back" or "forward" in the browser
+  if (event.persisted) void authService.revalidateSession();
+});
 
 // Git token status of a logged-in developer
 useSessionStore.subscribe((state, prev) => {
