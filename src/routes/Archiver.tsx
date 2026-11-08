@@ -93,11 +93,11 @@ export default function Archiver() {
           return null;
         }
 
-        return await response.json() as ArchiverPv;
+        return (await response.json()) as ArchiverPv;
       });
 
       const pvData = await Promise.all(requests);
-      const filteredPvData = pvData.flatMap((pv) => (pv ?? []));
+      const filteredPvData = pvData.flatMap((pv) => pv ?? []);
       setIsLoading(false);
       setData(filteredPvData);
     };
