@@ -46,7 +46,7 @@ export default function Archiver() {
     searchParams.get("start") ?? new Date(now.getTime() - 5 * MS_IN_MINUTE).toISOString();
   const timeRangeEnd = searchParams.get("end") ?? now.toISOString();
 
-  const updatePvs = (_: any, newPvs: string[]) => {
+  const updatePvs = (_: unknown, newPvs: string[]) => {
     setSearchParams((sp) => {
       const next = new URLSearchParams(sp);
       next.delete("pv");
@@ -55,7 +55,7 @@ export default function Archiver() {
     });
   };
 
-  const updateTimeRangeFromPreset = (_: any, timePreset: string) => {
+  const updateTimeRangeFromPreset = (_: unknown, timePreset: string) => {
     // TODO: this can be converted to use the new Temporal API, which is better
 
     setSelectedTimePreset(timePreset);
@@ -93,16 +93,16 @@ export default function Archiver() {
           return null;
         }
 
-        return await response.json();
+        return await response.json() as ArchiverPv;
       });
 
       const pvData = await Promise.all(requests);
-      const filteredPvData = pvData.flatMap((pv) => (pv ? pv : []));
+      const filteredPvData = pvData.flatMap((pv) => (pv ?? []));
       setIsLoading(false);
       setData(filteredPvData);
     };
 
-    fetchData();
+    void fetchData();
   }, [searchParams, timeRangeStart, timeRangeEnd]);
 
   const toggleOptimise = () => {

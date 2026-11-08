@@ -8,7 +8,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 
 export interface PvSearchBoxProps {
   value: string[];
-  onChange: (_: any, pvs: string[]) => void;
+  onChange: (_: unknown, pvs: string[]) => void;
 }
 
 export default function PvSearchBox({ value, onChange }: PvSearchBoxProps) {
