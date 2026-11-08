@@ -103,7 +103,7 @@ export default function Archiver() {
     };
 
     fetchData();
-  }, [searchParams]);
+  }, [searchParams, timeRangeStart, timeRangeEnd]);
 
   const toggleOptimise = () => {
     setSearchParams((sp) => {
