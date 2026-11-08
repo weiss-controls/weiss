@@ -5,6 +5,7 @@
 
 interface ImportMetaEnv {
   readonly VITE_DEMO_MODE?: string;
+  readonly VITE_EPICS_ARCHIVER_URL?: string;
   readonly VITE_AUTH_IDENTITY_PROVIDER?: string;
 }
 

@@ -149,16 +149,14 @@ const RuntimeContextMenu: React.FC<RuntimeContextMenuProps> = ({
           </span>
         </Tooltip>
 
-        <Tooltip title="Coming soon" placement="right">
-          <span>
-            <MenuItem disabled>
-              <ListItemIcon>
-                <HistoryIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>See PV History</ListItemText>
-            </MenuItem>
-          </span>
-        </Tooltip>
+        <span>
+          <MenuItem href={`/archiver?pv=${pvName}`}>
+            <ListItemIcon>
+              <HistoryIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>See PV History</ListItemText>
+          </MenuItem>
+        </span>
       </MenuList>
     </Paper>
   );
