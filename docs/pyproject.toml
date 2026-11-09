@@ -1,6 +1,6 @@
 [project]
 name = "weiss-docs"
-version = "2.1.0rc1"
+version = "2.1.0"
 requires-python = ">=3.14"
 dependencies = [
     "furo",
