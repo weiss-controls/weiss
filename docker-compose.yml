@@ -6,6 +6,7 @@ services:
       args:
         VITE_DEMO_MODE: ${DEMO_MODE:-false}
         VITE_AUTH_IDENTITY_PROVIDER: ${AUTH_IDENTITY_PROVIDER:-oauth}
+        VITE_EPICS_ARCHIVER_URL: ${EPICS_ARCHIVER_URL:-http://localhost:17665}
     ports:
       - "${HTTP_PORT:-80}:8081"
       - "${HTTPS_PORT:-443}:8082"

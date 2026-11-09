@@ -15,6 +15,7 @@ services:
       NODE_ENV: development
       VITE_DEMO_MODE: ${DEMO_MODE:-false}
       VITE_AUTH_IDENTITY_PROVIDER: ${AUTH_IDENTITY_PROVIDER:-oauth}
+      VITE_EPICS_ARCHIVER_URL: ${EPICS_ARCHIVER_URL:-http://localhost:17665}
     depends_on:
       - weiss-epicsws-dev
       - weiss-api-dev
