@@ -77,14 +77,31 @@ when pushing commits. Some important keys to consider:
 
 You may request one from your IT or git administrator, or create a bot account yourself if
 permitted. After that, logged in as the service user, generate a PAT that will be fed to WEISS app.
-The token must have **repository write** permission for every repository you want to manage from
-WEISS. Some useful links:
+The token needs **API read** and **repository read and write** permissions for every repository you
+want to manage from WEISS. Some useful links:
 
 - **GitHub**:
   [Managing your Personal Access Tokens](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)
 
 - **GitLab**: [Personal Access Tokens](https://docs.gitlab.com/user/profile/personal_access_tokens/)
   or [Project Access Tokens](https://docs.gitlab.com/user/project/settings/project_access_tokens/)
+
+:::{note}  
+**Recommended setup per platform:**
+
+- **GitLab**: use a
+  [group access token](https://docs.gitlab.com/user/group/settings/group_access_tokens/) or a
+  project access token with the `read_api`, `read_repository` and `write_repository` scopes and at
+  least the **Developer** role. `read_api` is used to check the token and read the bot's name and
+  email. GitLab creates a bot user for the token, so no separate account is needed, and commits are
+  attributed to that bot.
+- **GitHub**: use a regular account dedicated to WEISS (a machine user) with a
+  [fine-grained PAT](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token)
+  limited to the managed repositories, with **Contents: Read and write** permission (repository read
+  and write; reading the account through the API needs no extra permission). GitHub has no
+  group-level token, and GitHub App tokens are not supported.
+
+:::
 
 :::{hint}  
 If you are experimenting WEISS by yourself, you can also create and use a personal token from your
