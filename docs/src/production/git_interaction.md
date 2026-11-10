@@ -57,9 +57,8 @@ A technical account is a service identity - a regular git account created specif
 application rather than a person - that WEISS uses to authenticate against the git hosting service
 when pushing commits. Some important keys to consider:
 
-- **Operation is NOT anonymous.** On top of the bot's identity set in `TECHNICAL_ACCOUNT_USERNAME`
-  and `TECHNICAL_ACCOUNT_EMAIL`, **the LDAP identity of each user is also added to each commit**,
-  leaving a clear and auditable trail in the repository history. See
+- **Operation is NOT anonymous.** On top of the bot's identity, **the LDAP identity of each user is
+  also added to each commit**, leaving a clear and auditable trail in the repository history. See
   [example](https://github.com/weiss-controls/weiss-demo-opis/commits/main/).
 - **Access is minimal and revocable.** The personal access token (PAT) can be scoped to only the
   specific repositories and permissions it needs (write to contents). It can be revoked or rotated
@@ -93,13 +92,16 @@ own account. Remind, however, that any commit pushed to the repository will be a
 account, so it is not recommended for production or shared environments.  
 :::
 
-For these settings, only the following variables in your `.env` file are relevant:
+For these settings, only the token is needed in your `.env` file:
 
 ```sh
 TECHNICAL_ACCOUNT_TOKEN="<personal-access-token>"
-TECHNICAL_ACCOUNT_USERNAME="<technical-account-username>"   # used for git identity only
-TECHNICAL_ACCOUNT_EMAIL="<technical-account-email>"         # used for git identity only
 ```
+
+WEISS reads the bot's name and email from the GitHub or GitLab user API with this token and uses
+them as the committer of each commit. If the account has no email (e.g. GitLab bot accounts), the
+platform's no-reply address is used, which still links the commits to the account. On other
+platforms, or if the API cannot be reached, commits are made as `weiss-bot <weiss-bot@dummy>`.
 
 :::{warning}  
 Treat the token like a password. Store it only in the `.env` file on the server, never commit it to
