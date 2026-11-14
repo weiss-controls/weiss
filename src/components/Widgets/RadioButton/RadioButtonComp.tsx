@@ -92,8 +92,8 @@ export function RadioButtonComp({ data }: WidgetUpdate) {
                   disableRipple={inEditMode}
                   sx={{
                     p: 0,
-                    color: p.controlColor?.value,
-                    "&.Mui-checked": { color: p.controlCheckedColor?.value },
+                    color: p.unselectedColor?.value,
+                    "&.Mui-checked": { color: p.selectedColor?.value },
                     // Same icon-to-text ratio as MUI's defaults (24px icon for 16px text).
                     "& .MuiSvgIcon-root": { fontSize: fontSize * 1.5 },
                   }}
