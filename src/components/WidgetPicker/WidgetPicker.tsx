@@ -111,7 +111,7 @@ const DraggableItem: React.FC<DraggableItemProps> = ({ item, open }) => {
           selected={isActive}
           onDragStart={handleDragStart}
           onClick={handleClick}
-          sx={{ minHeight: 25, justifyContent: open ? "initial" : "center" }}
+          sx={{ minHeight: 25, alignItems: "center", justifyContent: open ? "initial" : "center" }}
         >
           <ListItemIcon
             sx={{
@@ -125,7 +125,12 @@ const DraggableItem: React.FC<DraggableItemProps> = ({ item, open }) => {
           >
             {item.widgetIcon ? <item.widgetIcon /> : <WidgetsIcon />}
           </ListItemIcon>
-          {open && <ListItemText primary={item.widgetLabel} sx={{ height: 20 }} />}
+          {open && (
+            <ListItemText
+              primary={item.widgetLabel}
+              sx={{ my: 0, display: "flex", alignItems: "center", height: 25 }}
+            />
+          )}
         </ListItemButton>
       </Tooltip>
     </ListItem>
