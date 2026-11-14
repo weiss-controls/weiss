@@ -69,6 +69,7 @@ The current widget support is:
 | `textentry`                           | `InputField`                        | ✅                                      |
 | `action_button`                       | `ActionButton` / `NavigationButton` | ✅ map based on action type             |
 | `bool_button`                         | `ToggleButton`                      | ✅                                      |
+| `checkbox`                            | `Checkbox`                          | ✅ `bit` not supported                  |
 | `combo`                               | `SelectionBox`                      | ✅                                      |
 | `spinner`                             | `Spinner`                           | ✅                                      |
 | `scaledslider`                        | `Slider`                            | ✅                                      |
@@ -85,7 +86,6 @@ The current widget support is:
 | `xyplot`                              | `GraphXY`                           | ✅                                      |
 | `stripchart`                          | `GraphY`                            | ✅                                      |
 | `image`                               | `AreaDetector`                      | ✅ see notes below                      |
-| `checkbox`                            | —                                   | 🔶 not implemented                      |
 | `choice`                              | —                                   | 🔶 not implemented                      |
 | `meter`                               | —                                   | 🔶 not implemented                      |
 | `linearmeter`                         | —                                   | 🔶 not implemented                      |

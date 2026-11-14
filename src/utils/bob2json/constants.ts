@@ -119,6 +119,7 @@ export const PhoebusProperty = {
   SQUARE: "square",
 
   TEXT: "text",
+  LABEL: "label",
   FILE: "file",
 
   PV_NAME: "pv_name",

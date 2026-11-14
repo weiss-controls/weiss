@@ -118,6 +118,14 @@ export const PHOEBUS_WIDGET_DEFAULTS: Partial<
     },
   },
 
+  [PhoebusWidgetType.CHECK_BOX]: {
+    inputDefaults: {
+      [PhoebusProperty.WIDTH]: 100,
+      [PhoebusProperty.HEIGHT]: 20,
+      [PhoebusProperty.LABEL]: "Label",
+    },
+  },
+
   [PhoebusWidgetType.COMBO_BOX]: {
     inputDefaults: {
       [PhoebusProperty.WIDTH]: 100,

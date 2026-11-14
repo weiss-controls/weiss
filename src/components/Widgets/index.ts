@@ -9,6 +9,7 @@ export { InputField } from "./InputField";
 export { Spinner } from "./Spinner";
 export { Slider } from "./Slider";
 export { NavigationButton } from "./NavigationButton";
+export { Checkbox } from "./CheckBox";
 // Monitoring
 export { BitIndicator } from "./BitIndicator";
 export { MultiStateLED } from "./MultiStateLED";
