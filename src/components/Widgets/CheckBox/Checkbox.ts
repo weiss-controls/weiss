@@ -23,8 +23,8 @@ export const Checkbox: WidgetDefinition = {
       value: "end",
       options: ["end", "start", "top", "bottom"],
     },
-    controlColor: PROPERTY_SCHEMAS.controlColor,
-    controlCheckedColor: PROPERTY_SCHEMAS.controlCheckedColor,
+    unselectedColor: PROPERTY_SCHEMAS.unselectedColor,
+    selectedColor: PROPERTY_SCHEMAS.selectedColor,
     ...TEXT_PROPS,
   },
 };
