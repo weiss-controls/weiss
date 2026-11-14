@@ -224,12 +224,13 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.CHECK_BOX]: {
-    weissName: undefined,
+    weissName: "Checkbox",
+    hasFont: true,
     propMap: {
       ...COMMON_PROP_MAP,
-      ...STYLE_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
-      [PhoebusProperty.TEXT]: "text",
+      [PhoebusProperty.LABEL]: "label",
+      [PhoebusProperty.FOREGROUND_COLOR]: "textColor",
       [PhoebusProperty.ENABLED]: "disabled",
     },
   },
