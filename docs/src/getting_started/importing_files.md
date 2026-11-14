@@ -71,6 +71,7 @@ The current widget support is:
 | `bool_button`                         | `ToggleButton`                      | ✅                                      |
 | `checkbox`                            | `Checkbox`                          | ✅ `bit` not supported                  |
 | `combo`                               | `SelectionBox`                      | ✅                                      |
+| `radio`                               | `RadioButton`                       | ✅                                      |
 | `spinner`                             | `Spinner`                           | ✅                                      |
 | `scaledslider`                        | `Slider`                            | ✅                                      |
 | `led`                                 | `BitIndicator`                      | ✅                                      |
@@ -95,7 +96,6 @@ The current widget support is:
 | `tabs`                                | —                                   | 🔶 not implemented                      |
 | `slide_button`                        | —                                   | 🔶 not implemented                      |
 | `thumbwheel`                          | —                                   | 🔶 not implemented                      |
-| `radio`                               | —                                   | 🔶 not implemented                      |
 | `table`                               | —                                   | 🔶 not implemented                      |
 | `polyline`                            | —                                   | 🔶 not implemented                      |
 | `template`                            | —                                   | 🔶 not implemented                      |

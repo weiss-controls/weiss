@@ -133,6 +133,16 @@ export const PHOEBUS_WIDGET_DEFAULTS: Partial<
     },
   },
 
+  [PhoebusWidgetType.RADIO_BUTTON]: {
+    inputDefaults: {
+      [PhoebusProperty.WIDTH]: 100,
+      [PhoebusProperty.HEIGHT]: 20,
+      // Phoebus radio buttons are horizontal and read their items from the PV by default.
+      [PhoebusProperty.HORIZONTAL]: true,
+      [PhoebusProperty.ITEMS_FROM_PV]: true,
+    },
+  },
+
   [PhoebusWidgetType.SPINNER]: {
     inputDefaults: {
       [PhoebusProperty.WIDTH]: 100,
