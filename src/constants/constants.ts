@@ -33,7 +33,7 @@ export const COLORS = {
 
   // Status / boolean
   onColor: "#00ac25",
-  offColor: "#ac0000",
+  offColor: "#5c6c5f",
 
   // EPICS alarm colors
   minor: "#ffff00",
