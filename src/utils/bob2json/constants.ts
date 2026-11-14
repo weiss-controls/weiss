@@ -113,6 +113,7 @@ export const PhoebusProperty = {
   ON_LABEL: "on_label",
   OFF_LABEL: "off_label",
   LABELS_FROM_PV: "labels_from_pv",
+  ITEMS_FROM_PV: "items_from_pv",
   SELECTED_COLOR: "selected_color",
 
   TRANSPARENT: "transparent",

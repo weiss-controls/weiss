@@ -106,6 +106,9 @@ export const PROPERTY_SCHEMAS = {
   // Checkbox
   checkboxColor:   defineProp({ selType: "colorSel", label: "Box color", value: COLORS.textColor, category: "Style" }),
   checkboxCheckedColor: defineProp({ selType: "colorSel", label: "Checked color", value: COLORS.midDarkBlue, category: "Style" }),
+  // RadioButton
+  radioColor:      defineProp({ selType: "colorSel", label: "Button color", value: COLORS.textColor, category: "Style" }),
+  radioCheckedColor: defineProp({ selType: "colorSel", label: "Selected color", value: COLORS.midDarkBlue, category: "Style" }),
   // Slider
   stepSize:       defineProp({ selType: "number", label: "Step Size", value: 0 as number, limits: { min: 1 }, category: "Layout" }),
   min:             defineProp({ selType: "number", label: "Minimum value", value: 0 as number, category: "EPICS" }),

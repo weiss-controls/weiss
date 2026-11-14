@@ -312,10 +312,16 @@ function convertWidget(
       phoebusKey === PhoebusProperty.SQUARE ||
       phoebusKey === PhoebusProperty.HORIZONTAL ||
       phoebusKey === PhoebusProperty.SHOW_UNITS ||
-      phoebusKey === PhoebusProperty.LABELS_FROM_PV
+      phoebusKey === PhoebusProperty.LABELS_FROM_PV ||
+      phoebusKey === PhoebusProperty.ITEMS_FROM_PV
     ) {
       const boolValue = isTrue(raw);
       properties[weissKey] = weissKey === "disabled" ? !boolValue : boolValue;
+      continue;
+    }
+
+    if (phoebusKey === PhoebusProperty.ITEMS && Array.isArray(raw)) {
+      properties[weissKey] = raw as string[];
       continue;
     }
 
