@@ -50,8 +50,8 @@ export function CheckboxComp({ data }: WidgetUpdate) {
         borderRadius: 0,
         flex: "0 0 auto",
         alignSelf: "center",
-        color: p.checkboxColor?.value,
-        "&.Mui-checked": { color: p.checkboxCheckedColor?.value },
+        color: p.controlColor?.value,
+        "&.Mui-checked": { color: p.controlCheckedColor?.value },
       }}
     />
   );

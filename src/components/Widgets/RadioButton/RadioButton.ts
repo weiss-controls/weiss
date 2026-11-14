@@ -26,8 +26,8 @@ export const RadioButton: WidgetDefinition = {
       value: "end",
       options: ["end", "start", "top", "bottom"],
     },
-    radioColor: PROPERTY_SCHEMAS.radioColor,
-    radioCheckedColor: PROPERTY_SCHEMAS.radioCheckedColor,
+    controlColor: PROPERTY_SCHEMAS.controlColor,
+    controlCheckedColor: PROPERTY_SCHEMAS.controlCheckedColor,
     ...TEXT_PROPS,
   },
 };
