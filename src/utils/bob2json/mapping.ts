@@ -307,10 +307,15 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.RADIO_BUTTON]: {
-    weissName: undefined,
+    weissName: "RadioButton",
+    hasFont: true,
     propMap: {
       ...COMMON_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
+      [PhoebusProperty.FOREGROUND_COLOR]: "textColor",
+      [PhoebusProperty.ITEMS]: "enumChoices",
+      [PhoebusProperty.ITEMS_FROM_PV]: "labelFromPV",
+      [PhoebusProperty.HORIZONTAL]: "horizontal",
       [PhoebusProperty.ENABLED]: "disabled",
     },
   },

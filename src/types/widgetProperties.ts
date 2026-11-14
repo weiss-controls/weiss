@@ -103,8 +103,11 @@ export const PROPERTY_SCHEMAS = {
   legendHAlign:    defineProp({ selType: "select", label: "Legend horizontal align", value: "right" as string, options: ["left", "center", "right"], category: "Layout" }),
   // Selector
   enumChoices:     defineProp({ selType: "strList", label: "Option label", value: [""] as string[], category: "EPICS" }),
+  // RadioButton
+  radioColor:      defineProp({ selType: "colorSel", label: "Button color", value: COLORS.textColor, category: "Style" }),
+  radioCheckedColor: defineProp({ selType: "colorSel", label: "Selected color", value: COLORS.midDarkBlue, category: "Style" }),
   // Slider
-  stepSize:        defineProp({ selType: "number", label: "Step Size", value: 0 as number, limits: { min: 1 }, category: "Layout" }),
+  stepSize:       defineProp({ selType: "number", label: "Step Size", value: 0 as number, limits: { min: 1 }, category: "Layout" }),
   min:             defineProp({ selType: "number", label: "Minimum value", value: 0 as number, category: "EPICS" }),
   max:             defineProp({ selType: "number", label: "Maximum value", value: 0 as number, category: "EPICS" }),
   //Other
