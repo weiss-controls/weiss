@@ -126,6 +126,14 @@ export const PHOEBUS_WIDGET_DEFAULTS: Partial<
     },
   },
 
+  [PhoebusWidgetType.SLIDE_BUTTON]: {
+    inputDefaults: {
+      [PhoebusProperty.WIDTH]: 100,
+      [PhoebusProperty.HEIGHT]: 30,
+      [PhoebusProperty.LABEL]: "Label",
+    },
+  },
+
   [PhoebusWidgetType.COMBO_BOX]: {
     inputDefaults: {
       [PhoebusProperty.WIDTH]: 100,

@@ -290,10 +290,15 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.SLIDE_BUTTON]: {
-    weissName: undefined,
+    weissName: "Switch",
+    hasFont: true,
     propMap: {
       ...COMMON_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
+      [PhoebusProperty.LABEL]: "label",
+      [PhoebusProperty.FOREGROUND_COLOR]: "textColor",
+      [PhoebusProperty.ON_COLOR]: "onColor",
+      [PhoebusProperty.OFF_COLOR]: "offColor",
       [PhoebusProperty.ENABLED]: "disabled",
     },
   },

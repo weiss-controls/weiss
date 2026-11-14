@@ -70,6 +70,7 @@ The current widget support is:
 | `action_button`                       | `ActionButton` / `NavigationButton` | ✅ map based on action type             |
 | `bool_button`                         | `ToggleButton`                      | ✅                                      |
 | `checkbox`                            | `Checkbox`                          | ✅ `bit` not supported                  |
+| `slide_button`                        | `Switch`                            | ✅ `bit` not supported                  |
 | `combo`                               | `SelectionBox`                      | ✅                                      |
 | `radio`                               | `RadioButton`                       | ✅                                      |
 | `spinner`                             | `Spinner`                           | ✅                                      |
@@ -94,7 +95,6 @@ The current widget support is:
 | `thermometer`                         | —                                   | 🔶 not implemented                      |
 | `array`                               | —                                   | 🔶 not implemented                      |
 | `tabs`                                | —                                   | 🔶 not implemented                      |
-| `slide_button`                        | —                                   | 🔶 not implemented                      |
 | `thumbwheel`                          | —                                   | 🔶 not implemented                      |
 | `table`                               | —                                   | 🔶 not implemented                      |
 | `polyline`                            | —                                   | 🔶 not implemented                      |
