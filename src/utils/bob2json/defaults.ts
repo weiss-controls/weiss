@@ -141,6 +141,16 @@ export const PHOEBUS_WIDGET_DEFAULTS: Partial<
     },
   },
 
+  [PhoebusWidgetType.CHOICE_BUTTON]: {
+    inputDefaults: {
+      [PhoebusProperty.WIDTH]: 100,
+      [PhoebusProperty.HEIGHT]: 43,
+      // Phoebus choice buttons are horizontal and read their items from the PV by default.
+      [PhoebusProperty.HORIZONTAL]: true,
+      [PhoebusProperty.ITEMS_FROM_PV]: true,
+    },
+  },
+
   [PhoebusWidgetType.RADIO_BUTTON]: {
     inputDefaults: {
       [PhoebusProperty.WIDTH]: 100,

@@ -73,6 +73,7 @@ The current widget support is:
 | `slide_button`                        | `Switch`                            | ✅ `bit` not supported                  |
 | `combo`                               | `SelectionBox`                      | ✅                                      |
 | `radio`                               | `RadioButton`                       | ✅                                      |
+| `choice`                              | `ChoiceButton`                      | ✅                                      |
 | `spinner`                             | `Spinner`                           | ✅                                      |
 | `scaledslider`                        | `Slider`                            | ✅                                      |
 | `led`                                 | `BitIndicator`                      | ✅                                      |
@@ -88,7 +89,6 @@ The current widget support is:
 | `xyplot`                              | `GraphXY`                           | ✅                                      |
 | `stripchart`                          | `GraphY`                            | ✅                                      |
 | `image`                               | `AreaDetector`                      | ✅ see notes below                      |
-| `choice`                              | —                                   | 🔶 not implemented                      |
 | `meter`                               | —                                   | 🔶 not implemented                      |
 | `linearmeter`                         | —                                   | 🔶 not implemented                      |
 | `tank`                                | —                                   | 🔶 not implemented                      |

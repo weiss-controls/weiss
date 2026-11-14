@@ -6,6 +6,7 @@ export { ActionButton } from "./ActionButton";
 export { ToggleButton } from "./ToggleButton";
 export { SelectionBox } from "./SelectionBox";
 export { RadioButton } from "./RadioButton";
+export { ChoiceButton } from "./ChoiceButton";
 export { InputField } from "./InputField";
 export { Spinner } from "./Spinner";
 export { Slider } from "./Slider";
