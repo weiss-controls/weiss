@@ -150,7 +150,12 @@ const RuntimeContextMenu: React.FC<RuntimeContextMenuProps> = ({
         </Tooltip>
 
         <span>
-          <MenuItem href={`/archiver?pv=${pvName}`}>
+          <MenuItem
+             component={RouterLink}
+             to={`/archiver?pv=${encodeURIComponent(pvName)}`}
+             target="_blank"
+             rel="noopener noreferrer"
+          >
             <ListItemIcon>
               <HistoryIcon fontSize="small" />
             </ListItemIcon>
