@@ -2,6 +2,7 @@
 # Copyright (C) 2026 WEISS Contributors
 
 import os
+from importlib.metadata import version
 
 
 def env_bool(name: str, default: bool = False) -> bool:
@@ -12,7 +13,7 @@ def env_bool(name: str, default: bool = False) -> bool:
 
 
 TITLE = "WEISS Backend API"
-VERSION = "2.1.0-rc.1"
+VERSION = version("weiss-api")
 APP_HOSTNAME = os.getenv("APP_HOSTNAME", "localhost")
 ENABLE_HTTPS = env_bool("ENABLE_HTTPS", False)
 DEV_MODE = env_bool("DEV_MODE", False)

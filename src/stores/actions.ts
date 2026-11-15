@@ -189,9 +189,22 @@ export async function importPhoebusFiles(repoId: string, items: PhoebusImportIte
   }
 }
 
-// Operators only use runtime mode
+// Operators only use runtime mode; logging out closes the WebSocket session
 useSessionStore.subscribe((state, prev) => {
-  if (state.user !== prev.user && state.user?.role === Roles.OPERATOR) updateMode(RUNTIME_MODE);
+  if (state.user === prev.user) return;
+  if (state.user?.role === Roles.OPERATOR) updateMode(RUNTIME_MODE);
+  else if (!state.user) {
+    stopRuleMacroSync?.();
+    stopRuleMacroSync = null;
+    stopSession();
+  }
+});
+
+// Closing, reloading or leaving the page closes the session
+// A page restored from the back/forward cache reconnects.
+window.addEventListener("pagehide", stopSession);
+window.addEventListener("pageshow", (event) => {
+  if (event.persisted && !useUIStore.getState().inEditMode) startNewSession();
 });
 
 useEditorStore.subscribe((state, prev) => {

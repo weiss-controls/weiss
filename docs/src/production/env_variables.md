@@ -98,11 +98,9 @@ implementation must inherit from `api.auth.providers.generic.GenericProvider`.
 Required for commit and push operations from the staging editor. See [Using Git](git_interaction.md)
 for setup instructions.
 
-| Variable                     | Default           | Description                                                     |
-| ---------------------------- | ----------------- | --------------------------------------------------------------- |
-| `TECHNICAL_ACCOUNT_TOKEN`    | _(none)_          | Technical account token (PAT) with repository write permission. |
-| `TECHNICAL_ACCOUNT_USERNAME` | `weiss-bot`       | Technical account username. Used for commit history logs        |
-| `TECHNICAL_ACCOUNT_EMAIL`    | `weiss-bot@dummy` | Technical account email. Used for commit history logs           |
+| Variable                  | Default  | Description                                                     |
+| ------------------------- | -------- | --------------------------------------------------------------- |
+| `TECHNICAL_ACCOUNT_TOKEN` | _(none)_ | Technical account token (PAT) with repository write permission. |
 
 ### User roles
 
