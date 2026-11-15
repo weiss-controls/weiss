@@ -24,7 +24,7 @@ import { useRepoStore } from "@src/stores/repoStore";
 import { COLORS } from "@src/constants/constants";
 
 function isHttpsGitUrl(url: string): boolean {
-  const httpsPattern = /^https:\/\/[\w.-]+\/[\w.-]+\/[\w.-]+(\.git)?$/;
+  const httpsPattern = /^https:\/\/[\w.-]+(:\d+)?(\/[\w.-]+){2,}(\.git)?$/;
   return httpsPattern.test(url);
 }
 

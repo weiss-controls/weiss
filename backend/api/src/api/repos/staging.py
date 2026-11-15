@@ -41,14 +41,13 @@ router = APIRouter(
 
 MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
 TECHNICAL_ACCOUNT_TOKEN = os.getenv("TECHNICAL_ACCOUNT_TOKEN")
-TECHNICAL_ACCOUNT_USERNAME = os.getenv("TECHNICAL_ACCOUNT_USERNAME", "weiss-bot")
-TECHNICAL_ACCOUNT_EMAIL = os.getenv("TECHNICAL_ACCOUNT_EMAIL", "weiss-bot@dummy")
+# Git identity used when the hosting platform API does not provide one
+DEFAULT_GIT_IDENTITY = ("weiss-bot", "weiss-bot@dummy")
 auth_cmd = None
 if TECHNICAL_ACCOUNT_TOKEN:
     token = TECHNICAL_ACCOUNT_TOKEN.strip()
-    auth_header = (
-        f"Authorization: Basic {base64.b64encode((TECHNICAL_ACCOUNT_USERNAME + ':' + token).encode()).decode()}"
-    )
+    # GitHub and GitLab ignore the username of a PAT; it only has to be non-empty
+    auth_header = f"Authorization: Basic {base64.b64encode(f'weiss-bot:{token}'.encode()).decode()}"
     auth_cmd = ["-c", f"http.extraHeader={auth_header}"]
 os.environ["GIT_ASKPASS"] = "echo"
 os.environ["GIT_TERMINAL_PROMPT"] = "0"
@@ -153,16 +152,12 @@ def run_git(
     cwd: str | None = None,
     allow_fail: bool = False,
     timeout: int = 30,
+    identity: Tuple[str, str] = DEFAULT_GIT_IDENTITY,
 ) -> str:
     """Run git command and raise exception if allow_fail==False (default)"""
     try:
-        base_cmd = [
-            "git",
-            "-c",
-            f"user.name={TECHNICAL_ACCOUNT_USERNAME}",
-            "-c",
-            f"user.email={TECHNICAL_ACCOUNT_EMAIL}",
-        ]
+        name, email = identity
+        base_cmd = ["git", "-c", f"user.name={name}", "-c", f"user.email={email}"]
 
         if auth_cmd:
             full_cmd = base_cmd + auth_cmd + cmd
@@ -342,32 +337,68 @@ def validate_repo_content(repo_path: str) -> ValidationResult:
     return ValidationResult(valid=not errors, errors=errors)
 
 
+def _query_platform_user(git_url: str) -> httpx.Response | None:
+    """Query the hosting platform's current-user API with the technical account token.
+    Returns None for platforms other than GitHub and GitLab."""
+    token = (TECHNICAL_ACCOUNT_TOKEN or "").strip()
+    hostname = urlparse(git_url).hostname or ""
+    if "github.com" in hostname:
+        return httpx.get(
+            "https://api.github.com/user",
+            headers={"Authorization": f"token {token}"},
+            timeout=10,
+        )
+    if "gitlab" in hostname:
+        return httpx.get(
+            f"https://{hostname}/api/v4/user",
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=10,
+        )
+    return None
+
+
+_git_identity_cache: dict[str, Tuple[str, str]] = {}
+
+
+def get_git_identity(git_url: str) -> Tuple[str, str]:
+    """Return the (name, email) of the technical account on the repository's host.
+    Missing emails fall back to the platform's no-reply address, which still links
+    the commit to the account."""
+    hostname = urlparse(git_url).hostname or ""
+    if hostname in _git_identity_cache:
+        return _git_identity_cache[hostname]
+    if not TECHNICAL_ACCOUNT_TOKEN:
+        return DEFAULT_GIT_IDENTITY
+    try:
+        resp = _query_platform_user(git_url)
+    except httpx.HTTPError:
+        return DEFAULT_GIT_IDENTITY
+    if resp is None or resp.status_code != 200:
+        return DEFAULT_GIT_IDENTITY
+
+    account = resp.json()
+    username = account.get("login") or account.get("username")
+    if not username:
+        return DEFAULT_GIT_IDENTITY
+    name = account.get("name") or username
+    email = account.get("email") or account.get("commit_email") or account.get("public_email")
+    if not email:
+        if "github.com" in hostname:
+            email = f"{account['id']}+{username}@users.noreply.github.com"
+        else:
+            email = f"{account['id']}-{username}@users.noreply.{hostname}"
+    _git_identity_cache[hostname] = (name, email)
+    return name, email
+
+
 def _check_token(git_url: str) -> TokenStatus:
     """Core token validation logic against the hosting platform's auth API."""
     if not TECHNICAL_ACCOUNT_TOKEN:
         return TokenStatus(configured=False, valid=False, detail="No token configured")
 
-    token = TECHNICAL_ACCOUNT_TOKEN.strip()
-    hostname = urlparse(git_url).hostname or ""
-
     try:
-        if "github.com" in hostname:
-            resp = httpx.get(
-                "https://api.github.com/user",
-                headers={"Authorization": f"token {token}"},
-                timeout=10,
-            )
-            if resp.status_code == 200:
-                return TokenStatus(configured=True, valid=True, detail="Token is valid")
-            return TokenStatus(configured=True, valid=False, detail="Token authentication failed")
-
-        if "gitlab" in hostname:
-            base = f"https://{hostname}"
-            resp = httpx.get(
-                f"{base}/api/v4/user",
-                headers={"Authorization": f"Bearer {token}"},
-                timeout=10,
-            )
+        resp = _query_platform_user(git_url)
+        if resp is not None:
             if resp.status_code == 200:
                 return TokenStatus(configured=True, valid=True, detail="Token is valid")
             return TokenStatus(configured=True, valid=False, detail="Token authentication failed")
@@ -1052,6 +1083,7 @@ def commit_staging_repo(repo_id: str, payload: CommitRequest, user: User = Depen
                 f"Committed by WEISS on behalf of @{user.username}",
             ],
             cwd=repo_path,
+            identity=get_git_identity(repo_meta.git_url),
         )
     except HTTPException as e:
         raise HTTPException(

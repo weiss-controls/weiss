@@ -62,15 +62,15 @@ subscriptions at the bottom of its own file.
   and the widget picker and editor sidebar state. Widgets read the mode with
   `useUIStore((s) => s.inEditMode)`.
 - **`sessionStore`** - the authenticated user, role and git token status, `login` and `logout`.
-  Follows `AuthService` status changes, restores the session on page load, and fetches the token
-  status of a developer.
+  Follows `AuthService` status changes, restores the session on page load, checks it again when a
+  page returns from the back/forward cache, and fetches the token status of a developer.
 - **`repoStore`** - repository trees and the selected file (or image preview). Fetches the trees on
   login or role change, clears them on logout, loads the selected file into `editorStore` (or as an
   image) when it changes, and reopens the last opened file once the trees load.
-- **`actions.ts`** - actions spanning several stores (`updateMode`) and reactions spanning them:
-  operators switched to runtime, the resolved PV list sent to the WebSocket session, the rule-driven
-  macro sync in runtime, and the debounced auto-save of the edited file (flushed on file or mode
-  switch). `main.tsx` imports it before `App`, which loads every store.
+- **`actions.ts`** - actions involving several stores and reactions related to them: operators
+  switched to runtime, the WebSocket session management, the resolved PV list sent to the WebSocket
+  session, the rule-driven macro sync in runtime, and the debounced auto-save of the edited file
+  (flushed on file or mode switch). `main.tsx` imports it before `App`, which loads every store.
 - **WebSocket session** (`src/services/WSClient/session.ts`) - a module, not a context. It owns the
   `WSClient` instance and exports `startNewSession`, `stopSession`, `setSubscribedPVs`,
   `writePVValue`, `takeSnapshot` and `restoreFromSnapshot`, which components import directly. The
@@ -140,9 +140,10 @@ through one of the above.
   :::
 
 - **`AuthService`** - singleton (`authService`) that drives the full OAuth login lifecycle. Handles
-  provider redirect, code exchange, session restoration on page load (`restoreSession()`), and
-  logout. Broadcasts auth state changes via a callback observer consumed by `sessionStore` and
-  `repoStore`.
+  provider redirect (replacing the login page in the history), code exchange, session restoration on
+  page load (`restoreSession()`) and on back/forward cache restores (`revalidateSession()`), and
+  logout (local state is kept when the request fails). Broadcasts auth state changes via a callback
+  observer consumed by `sessionStore` and `repoStore`.
 
 - **`Dialog`** - imperative confirmation dialog. Call `confirmDialog(options)` from anywhere in the
   app to open a modal; it returns a `Promise<boolean>` resolved when the user confirms or cancels.

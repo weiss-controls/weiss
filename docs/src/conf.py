@@ -3,13 +3,17 @@
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+import tomllib
+from pathlib import Path
+
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "WEISS"
 copyright = "2026, WEISS Contributors"
 author = "André Favoto"
-release = "2.1.0-rc.1"
+pyproject = Path(__file__).parent.parent / "pyproject.toml"
+release = tomllib.loads(pyproject.read_text())["project"]["version"]
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
