@@ -28,7 +28,7 @@ export default function PvSearchBox({ value, onChange }: PvSearchBoxProps) {
       setLoading(true);
 
       try {
-        const url = `${import.meta.env.VITE_EPICS_ARCHIVER_URL}/retrieval/bpl/getMatchingPVs?pv=${encodeURIComponent(
+        const url = `${import.meta.env.VITE_EPICS_ARCHIVER_RETRIEVAL_URL}/bpl/getMatchingPVs?pv=${encodeURIComponent(
           inputValue,
         )}*&limit=50`;
 

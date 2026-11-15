@@ -6,7 +6,7 @@ import NavBar from "@src/components/NavBar/NavBar";
 import "../App.css";
 import ReactEChartsCore from "echarts-for-react/esm/core";
 import { echarts, type ECOption } from "@src/utils/eChartsMinified";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { COLORS } from "@src/constants/constants";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
@@ -56,7 +56,8 @@ export default function Archiver() {
   };
 
   const updateTimeRangeFromPreset = (_: unknown, timePreset: string) => {
-    // TODO: this can be converted to use the new Temporal API, which is better
+    // TODO: this can be converted to use the new Temporal API
+    // once widespread support is available
 
     setSelectedTimePreset(timePreset);
     if (timePreset === "YTD") {
@@ -76,6 +77,16 @@ export default function Archiver() {
     }
   };
 
+  const updateTimeRange = (
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    key: "start" | "end",
+  ) => {
+    setSearchParams((sp) => {
+      sp.set(key, e.target.value);
+      return sp;
+    });
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
@@ -85,7 +96,7 @@ export default function Archiver() {
         const optName = searchParams.get("optimise") === "true" ? `mean_60(${pvName})` : pvName;
         const timeRange = `from=${timeRangeStart}&to=${timeRangeEnd}`;
         const response = await fetch(
-          `${import.meta.env.VITE_EPICS_ARCHIVER_URL}/retrieval/data/getData.qw?pv=${optName}&${timeRange}&fetchLatestMetadata=true`,
+          `${import.meta.env.EPICS_ARCHIVER_RETRIEVAL_URL}/data/getData.qw?pv=${optName}&${timeRange}&fetchLatestMetadata=true`,
         );
 
         if (!response.ok) {
@@ -120,6 +131,7 @@ export default function Archiver() {
         type: "line",
         smooth: false,
         showSymbol: false,
+        animation: false,
         nameTextStyle: {
           color: COLORS.lightGray,
           fontSize: 12,
@@ -157,7 +169,12 @@ export default function Archiver() {
             onChange={updateTimeRangeFromPreset}
             aria-label="Time Range Preset"
             size="small"
-            style={{ height: "56px" }}
+            sx={{
+              height: "56px",
+              "& .MuiToggleButtonGroup-grouped": {
+                textTransform: "none",
+              },
+            }}
           >
             <ToggleButton value="YTD">YTD</ToggleButton>
             <ToggleButton value="5">5m</ToggleButton>
@@ -172,6 +189,7 @@ export default function Archiver() {
           <TextField
             label="Start"
             type="datetime-local"
+            onChange={(e) => updateTimeRange(e, "start")}
             slotProps={{
               htmlInput: {
                 style: { height: "56px", padding: "0 10px" },
@@ -185,8 +203,13 @@ export default function Archiver() {
           <TextField
             label="End"
             type="datetime-local"
+            onChange={(e) => updateTimeRange(e, "end")}
             slotProps={{
-              htmlInput: { style: { height: "56px", padding: "0 10px" }, step: 1 },
+              htmlInput: {
+                style: { height: "56px", padding: "0 10px" },
+                step: 1,
+                max: now.toISOString().slice(0, 19),
+              },
               inputLabel: { shrink: true },
             }}
             value={timeRangeEnd.slice(0, 19)}
@@ -198,7 +221,11 @@ export default function Archiver() {
           />
         </Stack>
         {isLoading ? (
-          <Skeleton />
+          <Skeleton
+            width="80%"
+            height="100%"
+            sx={{ alignSelf: "center", justifyContent: "start" }}
+          />
         ) : series.length > 0 ? (
           <ReactEChartsCore
             style={{ width: "100%", flex: "1 0 0" }}
