@@ -39,12 +39,14 @@ export default function Archiver() {
   const defaultStart = new Date(now.getTime() - 5 * MS_IN_MINUTE).toISOString();
 
   const [selectedTimePreset, setSelectedTimePreset] = useState("5");
-  const [searchParams, setSearchParams] = useSearchParams({ start: defaultStart, end: now.toISOString() });
+  const [searchParams, setSearchParams] = useSearchParams({
+    start: defaultStart,
+    end: now.toISOString(),
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<ArchiverPv[] | null>(null);
 
-  const timeRangeStart =
-    searchParams.get("start") ?? defaultStart;
+  const timeRangeStart = searchParams.get("start") ?? defaultStart;
   const timeRangeEnd = searchParams.get("end") ?? now.toISOString();
 
   const updatePvs = (_: unknown, newPvs: string[]) => {
