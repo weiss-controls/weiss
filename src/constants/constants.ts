@@ -22,8 +22,9 @@ export const COLORS = {
   inputColor: "#ffffff",
   readColor: "#ced4da",
   gridLineColor: "#dee2e6",
-  buttonColor: "#979dac",
+  buttonColor: "#b2b6c0",
   lightGray: "#adb5bd",
+  gray: "#808080",
   midGray: "#6c757d",
 
   // Blues
@@ -33,7 +34,7 @@ export const COLORS = {
 
   // Status / boolean
   onColor: "#00ac25",
-  offColor: "#ac0000",
+  offColor: "#5c6c5f",
 
   // EPICS alarm colors
   minor: "#ffff00",

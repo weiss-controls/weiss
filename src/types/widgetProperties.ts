@@ -77,7 +77,7 @@ export const PROPERTY_SCHEMAS = {
   labelFromPV:     defineProp({ selType: "boolean", label: "Label(s) from PV", value: false as boolean, category: "EPICS" }),
   actionValue:     defineProp({ selType: "text", label: "Action Value", value: 1 as number | string, category: "EPICS" }),
   // BitIndicators
-  horizontal:      defineProp({ selType: "boolean", label: "Horizontal", value: false, category: "Layout" }),
+  horizontal:      defineProp({ selType: "boolean", label: "Horizontal", value: false as boolean, category: "Layout" }),
   nBits:           defineProp({ selType: "number", label: "Number of bits", value: 8 as number, limits: { min: 1 }, category: "Layout" }),
   invertBitOrder:  defineProp({ selType: "boolean", label: "Invert bit order", value: false as boolean, category: "Layout" }),
   onColor:         defineProp({ selType: "colorSel", label: "On Color", value: COLORS.onColor, category: "Style" }),
@@ -103,8 +103,11 @@ export const PROPERTY_SCHEMAS = {
   legendHAlign:    defineProp({ selType: "select", label: "Legend horizontal align", value: "right" as string, options: ["left", "center", "right"], category: "Layout" }),
   // Selector
   enumChoices:     defineProp({ selType: "strList", label: "Option label", value: [""] as string[], category: "EPICS" }),
+  // Selectable controls (Checkbox, RadioButton, ChoiceButton)
+  unselectedColor: defineProp({ selType: "colorSel", label: "Unselected color", value: COLORS.textColor, category: "Style" }),
+  selectedColor: defineProp({ selType: "colorSel", label: "Selected color", value: COLORS.midDarkBlue, category: "Style" }),
   // Slider
-  stepSize:        defineProp({ selType: "number", label: "Step Size", value: 0 as number, limits: { min: 1 }, category: "Layout" }),
+  stepSize:       defineProp({ selType: "number", label: "Step Size", value: 0 as number, limits: { min: 1 }, category: "Layout" }),
   min:             defineProp({ selType: "number", label: "Minimum value", value: 0 as number, category: "EPICS" }),
   max:             defineProp({ selType: "number", label: "Maximum value", value: 0 as number, category: "EPICS" }),
   //Other

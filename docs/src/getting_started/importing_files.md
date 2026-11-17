@@ -69,7 +69,11 @@ The current widget support is:
 | `textentry`                           | `InputField`                        | ✅                                      |
 | `action_button`                       | `ActionButton` / `NavigationButton` | ✅ map based on action type             |
 | `bool_button`                         | `ToggleButton`                      | ✅                                      |
+| `checkbox`                            | `Checkbox`                          | ✅ `bit` not supported                  |
+| `slide_button`                        | `Switch`                            | ✅ `bit` not supported                  |
 | `combo`                               | `SelectionBox`                      | ✅                                      |
+| `radio`                               | `RadioButton`                       | ✅                                      |
+| `choice`                              | `ChoiceButton`                      | ✅                                      |
 | `spinner`                             | `Spinner`                           | ✅                                      |
 | `scaledslider`                        | `Slider`                            | ✅                                      |
 | `led`                                 | `BitIndicator`                      | ✅                                      |
@@ -85,17 +89,13 @@ The current widget support is:
 | `xyplot`                              | `GraphXY`                           | ✅                                      |
 | `stripchart`                          | `GraphY`                            | ✅                                      |
 | `image`                               | `AreaDetector`                      | ✅ see notes below                      |
-| `checkbox`                            | —                                   | 🔶 not implemented                      |
-| `choice`                              | —                                   | 🔶 not implemented                      |
 | `meter`                               | —                                   | 🔶 not implemented                      |
 | `linearmeter`                         | —                                   | 🔶 not implemented                      |
 | `tank`                                | —                                   | 🔶 not implemented                      |
 | `thermometer`                         | —                                   | 🔶 not implemented                      |
 | `array`                               | —                                   | 🔶 not implemented                      |
 | `tabs`                                | —                                   | 🔶 not implemented                      |
-| `slide_button`                        | —                                   | 🔶 not implemented                      |
 | `thumbwheel`                          | —                                   | 🔶 not implemented                      |
-| `radio`                               | —                                   | 🔶 not implemented                      |
 | `table`                               | —                                   | 🔶 not implemented                      |
 | `polyline`                            | —                                   | 🔶 not implemented                      |
 | `template`                            | —                                   | 🔶 not implemented                      |

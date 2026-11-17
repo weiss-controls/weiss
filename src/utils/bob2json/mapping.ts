@@ -224,12 +224,13 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.CHECK_BOX]: {
-    weissName: undefined,
+    weissName: "Checkbox",
+    hasFont: true,
     propMap: {
       ...COMMON_PROP_MAP,
-      ...STYLE_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
-      [PhoebusProperty.TEXT]: "text",
+      [PhoebusProperty.LABEL]: "label",
+      [PhoebusProperty.FOREGROUND_COLOR]: "textColor",
       [PhoebusProperty.ENABLED]: "disabled",
     },
   },
@@ -247,11 +248,17 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.CHOICE_BUTTON]: {
-    weissName: undefined,
+    weissName: "ChoiceButton",
+    hasFont: true,
     propMap: {
       ...COMMON_PROP_MAP,
-      ...STYLE_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
+      [PhoebusProperty.FOREGROUND_COLOR]: "textColor",
+      [PhoebusProperty.BACKGROUND_COLOR]: "unselectedColor",
+      [PhoebusProperty.SELECTED_COLOR]: "selectedColor",
+      [PhoebusProperty.ITEMS]: "enumChoices",
+      [PhoebusProperty.ITEMS_FROM_PV]: "labelFromPV",
+      [PhoebusProperty.HORIZONTAL]: "horizontal",
       [PhoebusProperty.ENABLED]: "disabled",
     },
   },
@@ -289,10 +296,15 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.SLIDE_BUTTON]: {
-    weissName: undefined,
+    weissName: "Switch",
+    hasFont: true,
     propMap: {
       ...COMMON_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
+      [PhoebusProperty.LABEL]: "label",
+      [PhoebusProperty.FOREGROUND_COLOR]: "textColor",
+      [PhoebusProperty.ON_COLOR]: "onColor",
+      [PhoebusProperty.OFF_COLOR]: "offColor",
       [PhoebusProperty.ENABLED]: "disabled",
     },
   },
@@ -307,10 +319,15 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.RADIO_BUTTON]: {
-    weissName: undefined,
+    weissName: "RadioButton",
+    hasFont: true,
     propMap: {
       ...COMMON_PROP_MAP,
       [PhoebusProperty.PV_NAME]: "pvName",
+      [PhoebusProperty.FOREGROUND_COLOR]: "textColor",
+      [PhoebusProperty.ITEMS]: "enumChoices",
+      [PhoebusProperty.ITEMS_FROM_PV]: "labelFromPV",
+      [PhoebusProperty.HORIZONTAL]: "horizontal",
       [PhoebusProperty.ENABLED]: "disabled",
     },
   },
