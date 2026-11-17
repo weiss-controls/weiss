@@ -13,6 +13,7 @@ import LoginPage from "@src/routes/Login.tsx";
 import ProtectedRoute from "@src/routes/ProtectedRoute.tsx";
 import NotificationService from "./services/Notifications/NotificationService";
 import DialogService from "./services/Dialog/DialogService";
+import Archiver from "./routes/Archiver";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -27,6 +28,14 @@ createRoot(document.getElementById("root")!).render(
           element={
             <ProtectedRoute>
               <App />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/archiver"
+          element={
+            <ProtectedRoute>
+              <Archiver />
             </ProtectedRoute>
           }
         />
