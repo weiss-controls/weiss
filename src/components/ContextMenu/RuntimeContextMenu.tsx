@@ -11,6 +11,7 @@ import Tooltip from "@mui/material/Tooltip";
 import { FRONT_UI_ZIDX } from "@src/constants/constants";
 import type { GridPosition } from "@src/types/widgets";
 import type { PVData } from "@src/types/epicsWS";
+import { Link as RouterLink } from "react-router-dom";
 
 import ContentCopy from "@mui/icons-material/ContentCopy";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
@@ -149,16 +150,21 @@ const RuntimeContextMenu: React.FC<RuntimeContextMenuProps> = ({
           </span>
         </Tooltip>
 
-        <Tooltip title="Coming soon" placement="right">
-          <span>
-            <MenuItem disabled>
-              <ListItemIcon>
-                <HistoryIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>See PV History</ListItemText>
-            </MenuItem>
-          </span>
-        </Tooltip>
+        <span>
+          <MenuItem
+            component={RouterLink}
+            // Item is disabled if PV name is not a string, so we can consider it not null
+            to={`/archiver?pv=${encodeURIComponent(pvName!)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            disabled={!pvName}
+          >
+            <ListItemIcon>
+              <HistoryIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>See PV History</ListItemText>
+          </MenuItem>
+        </span>
       </MenuList>
     </Paper>
   );
