@@ -70,7 +70,12 @@ subscriptions at the bottom of its own file.
 - **`actions.ts`** - actions involving several stores and reactions related to them: operators
   switched to runtime, the WebSocket session management, the resolved PV list sent to the WebSocket
   session, the rule-driven macro sync in runtime, and the debounced auto-save of the edited file
-  (flushed on file or mode switch). `main.tsx` imports it before `App`, which loads every store.
+  (flushed on file or mode switch). `App.tsx` imports it first. `main.tsx` loads each route lazily,
+  so the editor stores and their reactions load with `App`.  
+  ::{note}  
+  The `/archiver` route uses its own navigation bar and imports none of the editor stores or
+  reactions.  
+  :::
 - **WebSocket session** (`src/services/WSClient/session.ts`) - a module, not a context. It owns the
   `WSClient` instance and exports `startNewSession`, `stopSession`, `setSubscribedPVs`,
   `writePVValue`, `takeSnapshot` and `restoreFromSnapshot`, which components import directly. The

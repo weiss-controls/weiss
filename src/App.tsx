@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 WEISS Contributors
 
+import "@src/stores/actions";
 import React from "react";
 import "./App.css";
 import { GridZone } from "./components/GridZone";

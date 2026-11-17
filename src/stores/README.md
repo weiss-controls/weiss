@@ -20,4 +20,5 @@ Shared app state, one [Zustand](https://zustand.pmnd.rs/) store per concern. Com
 - Actions that touch several stores live in `actions.ts` as plain functions.
 - Side effects are subscriptions at the bottom of the store that owns their result (e.g. file
   loading in `repoStore`), reacting to services and other stores. Those spanning several stores live
-  in `actions.ts`. They run when the module loads; `main.tsx` imports `actions.ts` before `App`.
+  in `actions.ts`. They run when the module loads; `App.tsx` imports `actions.ts` first, and
+  `main.tsx` loads `App` lazily.
