@@ -99,7 +99,7 @@ export default function Archiver() {
         const optName = searchParams.get("optimise") === "true" ? `mean_60(${pvName})` : pvName;
         const timeRange = `from=${timeRangeStart}&to=${timeRangeEnd}`;
         const response = await fetch(
-          `${import.meta.env.EPICS_ARCHIVER_RETRIEVAL_URL}/data/getData.qw?pv=${optName}&${timeRange}&fetchLatestMetadata=true`,
+          `${import.meta.env.VITE_EPICS_ARCHIVER_RETRIEVAL_URL}/data/getData.qw?pv=${optName}&${timeRange}&fetchLatestMetadata=true`,
         );
 
         if (!response.ok) {
