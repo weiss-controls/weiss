@@ -31,6 +31,7 @@ import SnapshotDialog from "@components/SnapshotDialog/SnapshotDialog.tsx";
 import AlarmPanel from "@components/AlarmPanel/AlarmPanel.tsx";
 import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
+import HistoryIcon from "@mui/icons-material/History";
 import { restoreFromSnapshot, takeSnapshot } from "@src/services/WSClient/session";
 import { usePVStore } from "@src/stores/pvStore";
 import { notifyUser } from "@src/services/Notifications/Notification.ts";
@@ -324,6 +325,17 @@ export default function NavBar() {
                     </Button>
                   </Tooltip>
                 )}
+                {!inEditMode && (
+                  <Tooltip title="Open archiver appliance">
+                    <Button
+                      onClick={() => window.open("/archiver", "_blank", "noopener,noreferrer")}
+                      startIcon={<HistoryIcon />}
+                      sx={{ color: "white", textTransform: "none" }}
+                    >
+                      Archiver
+                    </Button>
+                  </Tooltip>
+                )}
                 <HelpOverlay />
                 <Tooltip title="View source on GitHub">
                   <IconButton
@@ -344,6 +356,17 @@ export default function NavBar() {
                   sx={{ color: "white", textTransform: "none" }}
                 >
                   Snapshots
+                </Button>
+              </Tooltip>
+            )}
+            {!isDeveloper && (
+              <Tooltip title="Open archiver viewer">
+                <Button
+                  onClick={() => window.open("/archiver", "_blank", "noopener,noreferrer")}
+                  startIcon={<HistoryIcon />}
+                  sx={{ color: "white", textTransform: "none" }}
+                >
+                  Archiver
                 </Button>
               </Tooltip>
             )}
