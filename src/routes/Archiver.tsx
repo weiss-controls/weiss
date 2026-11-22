@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 WEISS Contributors
 
-import NavBar from "@src/components/NavBar/NavBar";
-
+import ArchiverNavBar from "@components/ArchiverNavBar/ArchiverNavBar";
 import "../App.css";
 import ReactEChartsCore from "echarts-for-react/esm/core";
 import { echarts, type ECOption } from "@src/utils/eChartsMinified";
@@ -161,7 +160,7 @@ export default function Archiver() {
   return (
     <div className="app">
       <div className="appBar">
-        <NavBar />
+        <ArchiverNavBar />
       </div>
 
       <Stack direction="column" style={{ marginTop: "90px", height: "100%" }}>
