@@ -108,6 +108,8 @@ useSessionStore.subscribe((state, prev) => {
   if (state.isAuthenticated !== prev.isAuthenticated || state.isDeveloper !== prev.isDeveloper)
     void useRepoStore.getState().updateReposTreeInfo();
 });
+// The editor loads after login, so the trees of an existing session are fetched on load
+if (useSessionStore.getState().isAuthenticated) void useRepoStore.getState().updateReposTreeInfo();
 authService.subscribe({ onLogout: () => useRepoStore.getState().reset() });
 
 let loadRequest = 0;

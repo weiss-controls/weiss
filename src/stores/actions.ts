@@ -199,6 +199,7 @@ useSessionStore.subscribe((state, prev) => {
     stopSession();
   }
 });
+if (useSessionStore.getState().user?.role === Roles.OPERATOR) updateMode(RUNTIME_MODE);
 
 // Closing, reloading or leaving the page closes the session
 // A page restored from the back/forward cache reconnects.
