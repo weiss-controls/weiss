@@ -46,9 +46,10 @@ There are no automated tests. Run the checks above after changes; CI runs the sa
   `sessionStore`, repo trees and file loading in `repoStore`); those spanning several stores (PV
   subscriptions, rule macros, auto-save, operator mode, the editor URL) are in
   `src/stores/actions.ts`. There are no React contexts or app-wide React effects for app state.
-- The editor URL (`/?repo=<alias>&path=<path>&mode=<mode>`, `src/utils/fileUrl.ts`) follows
-  `repoStore.selectedFile` and the mode. Pass `setSelectedFile` a `SelectionNav`: `"push"` (default)
-  for opening a file, `"replace"` for renames, moves and clears.
+- The editor URL (`/?repo=<alias>&path=<path>&mode=<mode>&ctx=<context>`, `src/utils/fileUrl.ts`)
+  follows `repoStore.selectedFile` and the mode; `ctx` encodes the navigation macros of the screen
+  (`selectedFile.macros`). Pass `setSelectedFile` a `SelectionNav`: `"push"` (default) for opening a
+  file, `"replace"` for renames, moves and clears. Navigation buttons use `navigateToDisplay`.
 - The PV WebSocket session is a module (`src/services/WSClient/session.ts`): import `writePVValue`,
   `takeSnapshot`, etc. directly. Its connection state is in `src/stores/wsStore.ts`.
 - PV array values are `NumericArray` typed-array views: use `isNumericArray()`

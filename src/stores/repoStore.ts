@@ -15,6 +15,7 @@ import {
 } from "@src/services/APIClient";
 import { useEditorStore } from "./editorStore";
 import { useSessionStore } from "./sessionStore";
+import { useUIStore } from "./uiStore";
 
 const LAST_FILE_KEY = "lastLoadedFile";
 const IMAGE_MIME_TYPES: Record<string, string> = {
@@ -33,6 +34,8 @@ function imageMimeType(path: string): string | undefined {
 export interface SelectedPathInfo {
   repo_id: string;
   path: string;
+  /** Navigation macros the screen was opened with, applied in runtime mode */
+  macros?: Record<string, string>;
 }
 
 /**
@@ -154,7 +157,8 @@ async function loadSelectedFile() {
       setImage(src, selectedFile.path.slice(selectedFile.path.lastIndexOf("/") + 1));
     } else {
       setImage(null, null);
-      useEditorStore.getState().loadWidgets(res.data.content);
+      const navMacros = useUIStore.getState().inEditMode ? undefined : selectedFile.macros;
+      useEditorStore.getState().loadWidgets(res.data.content, navMacros);
       localStorage.setItem(LAST_FILE_KEY, JSON.stringify(selectedFile));
     }
   } catch (err) {

@@ -13,10 +13,13 @@ import {
 import { notifyUser } from "@src/services/Notifications/Notification";
 import { usePVStore } from "@src/stores/pvStore";
 import { setSubscribedPVs, startNewSession, stopSession } from "@src/services/WSClient/session";
-import { collectGlobalMacroOverrides } from "@src/utils/macros";
+import { collectGlobalMacroOverrides, composeForwardNavigationMacros } from "@src/utils/macros";
+import { resolveRepoPath } from "@src/utils/repoPath";
 import { convertDisplay, parsePhoebus } from "@src/utils/bob2json";
 import {
   buildFileSearch,
+  decodeScreenContext,
+  encodeScreenContext,
   isHiddenPath,
   parseFileSearch,
   pendingFileLink,
@@ -99,7 +102,8 @@ export function updateMode(mode: Mode) {
   if (!useSessionStore.getState().isDeveloper) mode = RUNTIME_MODE;
   flushAutoSave();
   const editor = useEditorStore.getState();
-  editor.resetRuntimeMacros();
+  const navMacros = useRepoStore.getState().selectedFile?.macros;
+  editor.resetRuntimeMacros(mode === RUNTIME_MODE ? navMacros : undefined);
   stopRuleMacroSync?.();
   stopRuleMacroSync = null;
   if (mode === EDIT_MODE) {
@@ -231,27 +235,55 @@ useEditorStore.subscribe((state, prev) => {
   if (state.resolvedPVList !== prev.resolvedPVList) setSubscribedPVs(state.resolvedPVList);
 });
 
-// The editor URL shows the selected file and the mode. It is written once the file link of the
-// page load has been applied, after the first repository trees load.
-let urlSynced = false;
-
-/** Writes the selected file and mode to the URL of the editor page. */
-function writeFileUrl(history: "push" | "replace") {
-  if (!urlSynced || window.location.pathname !== "/") return;
-  const { selectedFile, reposTreeInfo } = useRepoStore.getState();
-  const search = buildFileSearch({
-    repo: reposTreeInfo?.find((r) => r.id === selectedFile?.repo_id)?.alias,
-    path: selectedFile?.path,
-    mode: useUIStore.getState().mode,
+/**
+ * Opens a display from the current one (navigation button): the button macros go on top of the
+ * macros the current screen was opened with.
+ */
+export function navigateToDisplay(displayPath: string, buttonMacros: Record<string, string>) {
+  const { selectedFile, setSelectedFile } = useRepoStore.getState();
+  if (!selectedFile) return;
+  const macros = composeForwardNavigationMacros(selectedFile.macros ?? {}, buttonMacros);
+  setSelectedFile({
+    repo_id: selectedFile.repo_id,
+    path: resolveRepoPath(displayPath, selectedFile.path),
+    macros: Object.keys(macros).length > 0 ? macros : undefined,
   });
-  if (search === window.location.search) return;
-  const url = `/${search}${window.location.hash}`;
-  if (history === "push") window.history.pushState(window.history.state, "", url);
-  else window.history.replaceState(window.history.state, "", url);
 }
 
-/** Repository file of a link, or null (with an error) when it is unknown or hidden. */
-function resolveFileLink({ repo, path }: FileLink): SelectedPathInfo | null {
+// The editor URL shows the selected file, its navigation macros and the mode. It is written once
+// the file link of the page load has been applied, after the first repository trees load.
+let urlSync: "waiting" | "opening" | "done" = "waiting";
+/** Writes in order; each one waits for the context encoding of the previous one */
+let urlWrites = Promise.resolve();
+/** Context of the selection, reused while the selection is unchanged */
+let contextCache: { file: SelectedPathInfo; repo: string; ctx: Promise<string> } | null = null;
+
+function screenContext(file: SelectedPathInfo, repo: string): Promise<string | undefined> {
+  if (!file.macros) return Promise.resolve(undefined);
+  if (contextCache?.file !== file || contextCache.repo !== repo)
+    contextCache = { file, repo, ctx: encodeScreenContext(repo, file.path, file.macros) };
+  return contextCache.ctx.catch(() => undefined);
+}
+
+/** Writes the selected file, its context and the mode to the URL of the editor page. */
+function writeFileUrl(history: "push" | "replace") {
+  if (urlSync !== "done") return;
+  const { selectedFile, reposTreeInfo } = useRepoStore.getState();
+  const repo = reposTreeInfo?.find((r) => r.id === selectedFile?.repo_id)?.alias;
+  const { mode } = useUIStore.getState();
+  const ctx = selectedFile && repo ? screenContext(selectedFile, repo) : undefined;
+  urlWrites = urlWrites.then(async () => {
+    if (window.location.pathname !== "/") return;
+    const search = buildFileSearch({ repo, path: selectedFile?.path, mode, ctx: await ctx });
+    if (search === window.location.search) return;
+    const url = `/${search}${window.location.hash}`;
+    if (history === "push") window.history.pushState(window.history.state, "", url);
+    else window.history.replaceState(window.history.state, "", url);
+  });
+}
+
+/** Repository file of a link, or null (with an error) when it is unknown, hidden or damaged. */
+async function resolveFileLink({ repo, path, ctx }: FileLink): Promise<SelectedPathInfo | null> {
   if (!repo || !path) return null;
   const repoInfo = useRepoStore.getState().reposTreeInfo?.find((r) => r.alias === repo);
   if (!repoInfo) {
@@ -262,37 +294,50 @@ function resolveFileLink({ repo, path }: FileLink): SelectedPathInfo | null {
     notifyUser(`Failed to load file: ${path} not found`, "error");
     return null;
   }
-  return { repo_id: repoInfo.id, path };
+  if (!ctx) return { repo_id: repoInfo.id, path };
+  const macros = await decodeScreenContext(ctx, repo, path);
+  if (!macros) {
+    notifyUser("Failed to load display: invalid link", "error");
+    return null;
+  }
+  const file = { repo_id: repoInfo.id, path, macros };
+  // The URL keeps the context it was opened with
+  contextCache = { file, repo, ctx: Promise.resolve(ctx) };
+  return file;
 }
 
 /** Applies the mode and file of the page URL, or restores the last opened file. */
-function openPendingFileLink() {
+async function openPendingFileLink() {
+  urlSync = "opening";
   const link = pendingFileLink();
   // Operators stay in runtime mode
   const canSwitch = useSessionStore.getState().isDeveloper;
   if (canSwitch && link.mode && link.mode !== useUIStore.getState().mode) updateMode(link.mode);
-  urlSynced = true;
-  if (link.repo || link.path) {
-    useRepoStore.getState().setSelectedFile(resolveFileLink(link), "replace");
-  } else {
-    restoreLastFile();
-  }
+  const file = link.repo || link.path ? await resolveFileLink(link) : undefined;
+  urlSync = "done";
+  if (file !== undefined) useRepoStore.getState().setSelectedFile(file, "replace");
+  else restoreLastFile();
   writeFileUrl("replace");
 }
 
 useRepoStore.subscribe((state, prev) => {
   if (state.selectedFile !== prev.selectedFile)
     writeFileUrl(state.selectionNav === "push" ? "push" : "replace");
-  if (!urlSynced && prev.isReposLoading && !state.isReposLoading) openPendingFileLink();
+  if (urlSync === "waiting" && prev.isReposLoading && !state.isReposLoading)
+    void openPendingFileLink();
 });
 useUIStore.subscribe((state, prev) => {
   if (state.mode !== prev.mode) writeFileUrl("replace");
 });
 
 // Back/forward opens the file of the history entry; the mode stays as it is
+let popRequest = 0;
 window.addEventListener("popstate", () => {
-  if (!urlSynced || window.location.pathname !== "/") return;
-  const link = parseFileSearch(window.location.search);
-  useRepoStore.getState().setSelectedFile(resolveFileLink(link), "pop");
-  writeFileUrl("replace");
+  if (urlSync !== "done" || window.location.pathname !== "/") return;
+  const request = ++popRequest;
+  void resolveFileLink(parseFileSearch(window.location.search)).then((file) => {
+    if (request !== popRequest) return;
+    useRepoStore.getState().setSelectedFile(file, "pop");
+    writeFileUrl("replace");
+  });
 });

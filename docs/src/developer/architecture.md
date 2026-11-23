@@ -68,15 +68,14 @@ subscriptions at the bottom of its own file.
   login or role change, clears them on logout, loads the selected file into `editorStore` (or as an
   image) when it changes, and sets the page title to its name. `setSelectedFile` takes how the
   change reaches the URL (`SelectionNav`): opening a file pushes a history entry; renames, moves,
-  clears and failed loads replace it. A failed load clears the selection.
-- **`actions.ts`** - actions involving several stores and reactions related to them: operators
-  switched to runtime, the WebSocket session management, the resolved PV list sent to the WebSocket
-  session, the rule-driven macro sync in runtime, the debounced auto-save of the edited file
-  (flushed on file or mode switch), and the editor URL. When the first trees load, it opens the file
-  and mode of the URL (`src/utils/fileUrl.ts`), or the last opened file; after that it writes the
-  selected file and mode to the URL and opens the file of a back/forward entry. `App.tsx` imports it
-  first. `main.tsx` loads each route lazily, so the editor stores and their reactions load with
-  `App`.  
+  clears and failed loads replace it. A failed load clears the selection. The selection also holds
+  the navigation macros its screen was opened with, applied in runtime mode; files opened from the
+  project tree have none.
+- **`actions.ts`** - actions involving several stores and reactions related to them:
+  `navigateToDisplay` (navigation buttons), operators switched to runtime, the WebSocket session
+  management, the resolved PV list sent to the WebSocket session, runtime macro resolutions, among
+  others. `App.tsx` imports it first. `main.tsx` loads each route lazily, so the editor stores and
+  their reactions load with `App`.  
   ::{note}  
   The `/archiver` route uses its own navigation bar and imports none of the editor stores or
   reactions.  
