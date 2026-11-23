@@ -153,7 +153,7 @@ https://<weiss-host>/?repo=<repository alias>&path=<file path>&mode=<edit|runtim
   sharing the link keeps all macros properly set for a given view.
 
 :::{important}  
-Avoid building or edit links to displays by hand, especially nested or embedded ones. Open the
+Avoid building or editing links to displays by hand, especially nested or embedded ones. Open the
 display in Runtime mode and copy the URL from the browser.  
 :::
 
