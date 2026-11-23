@@ -86,7 +86,11 @@ const ShortcutRow: React.FC<ShortcutRowProps> = ({ action, keys }) => {
   );
 };
 
-const HelpOverlay: React.FC = () => {
+interface HelpOverlayProps {
+  inEditMode: boolean;
+}
+
+const HelpOverlay: React.FC<HelpOverlayProps> = ({ inEditMode }) => {
   const [open, setOpen] = useState(false);
   const closeTimer = useRef<number | null>(null);
 
@@ -140,9 +144,10 @@ const HelpOverlay: React.FC = () => {
             Help
           </Typography>
           <Typography variant="body2" gutterBottom>
-            Select a widget from the left bar, drag and drop it on the canvas. Edit its properties
-            using the right menu. Add PV names as needed. Enter runtime mode when ready. For more
-            information, refer to the{" "}
+            {inEditMode
+              ? "Select a widget from the left bar, drag and drop it on the canvas. Edit its properties using the right menu. Add PV names as needed. Enter runtime mode when ready."
+              : "Widgets show live PV data. Use the mouse shortcuts below to navigate the display."}{" "}
+            For more information, refer to the{" "}
             <a
               href={`docs.weiss-controls.org`}
               target="_blank"
@@ -169,25 +174,29 @@ const HelpOverlay: React.FC = () => {
             </i>
           </Typography>
 
+          {inEditMode && (
+            <>
+              <Divider sx={{ my: 2, borderColor: "rgba(255,255,255,0.2)" }} />
+
+              <Typography variant="h6" gutterBottom>
+                Shortcuts
+              </Typography>
+              <ShortcutRow action="Undo" keys="Ctrl + Z" />
+              <ShortcutRow action="Redo" keys="Ctrl + Y" />
+              <ShortcutRow action="Copy widget" keys="Ctrl + C" />
+              <ShortcutRow action="Paste widget" keys="Ctrl + V" />
+              <ShortcutRow action="Delete widget" keys="Delete" />
+              <ShortcutRow action="Select all" keys="Ctrl + A" />
+              <ShortcutRow action="Group" keys="Ctrl + G" />
+              <ShortcutRow action="Ungroup" keys="Ctrl + U" />
+              <ShortcutRow action="Export layout" keys="Ctrl + S" />
+            </>
+          )}
+
           <Divider sx={{ my: 2, borderColor: "rgba(255,255,255,0.2)" }} />
 
           <Typography variant="h6" gutterBottom>
-            Shortcuts
-          </Typography>
-          <ShortcutRow action="Undo" keys="Ctrl + Z" />
-          <ShortcutRow action="Redo" keys="Ctrl + Y" />
-          <ShortcutRow action="Copy widget" keys="Ctrl + C" />
-          <ShortcutRow action="Paste widget" keys="Ctrl + V" />
-          <ShortcutRow action="Delete widget" keys="Delete" />
-          <ShortcutRow action="Select all" keys="Ctrl + A" />
-          <ShortcutRow action="Group" keys="Ctrl + G" />
-          <ShortcutRow action="Ungroup" keys="Ctrl + U" />
-          <ShortcutRow action="Export layout" keys="Ctrl + S" />
-
-          <Divider sx={{ my: 2, borderColor: "rgba(255,255,255,0.2)" }} />
-
-          <Typography variant="h6" gutterBottom>
-            Mouse
+            Navigation
           </Typography>
           <ShortcutRow action="Center screen" keys={["Middle Mouse", "Ctrl + Shift + C"]} />
           <ShortcutRow action="Zoom" keys="Scroll Wheel" />
