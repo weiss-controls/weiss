@@ -20,6 +20,16 @@ import { useSessionStore } from "@src/stores/sessionStore";
 import { useRepoStore } from "@src/stores/repoStore";
 import { useUIStore } from "@src/stores/uiStore";
 
+const BADGE_TIMEOUT_MS = 1000;
+
+const BADGE_SX = {
+  bgcolor: "rgba(73, 73, 73, 0.7)",
+  border: "1px solid rgba(255,255,255,0.2)",
+  color: "white",
+  borderRadius: "3px 3px 0 0",
+  boxShadow: 4,
+} as const;
+
 /**
  * GridZoneComp renders the main editor canvas where widgets are displayed, moved, and interacted with.
  *
@@ -71,6 +81,8 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
   const gridRef = useRef<HTMLDivElement>(null);
   const lastPosRef = useRef<GridPosition>({ x: 0, y: 0 });
   const mousePosRef = useRef<GridPosition>({ x: 0, y: 0 });
+  const positionBadgeRef = useRef<HTMLDivElement>(null);
+  const positionBadgeTimerRef = useRef<number | null>(null);
   const gridGrabbed = useRef(false);
 
   const [zoom, setZoom] = useState(1);
@@ -133,7 +145,7 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
     zoomBadgeTimerRef.current = window.setTimeout(() => {
       setZoomBadgeVisible(false);
       zoomBadgeTimerRef.current = null;
-    }, 1000);
+    }, BADGE_TIMEOUT_MS);
   };
 
   useEffect(() => {
@@ -141,8 +153,29 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
       if (zoomBadgeTimerRef.current) {
         clearTimeout(zoomBadgeTimerRef.current);
       }
+      if (positionBadgeTimerRef.current) {
+        clearTimeout(positionBadgeTimerRef.current);
+      }
     };
   }, []);
+
+  // The position badge is updated in the DOM directly: mouse moves do not re-render.
+  const hidePositionBadge = () => {
+    if (positionBadgeTimerRef.current) {
+      clearTimeout(positionBadgeTimerRef.current);
+      positionBadgeTimerRef.current = null;
+    }
+    if (positionBadgeRef.current) positionBadgeRef.current.style.opacity = "0";
+  };
+
+  const showPositionBadge = (x: number, y: number) => {
+    const badge = positionBadgeRef.current;
+    if (!badge) return;
+    badge.textContent = `x: ${Math.round(x)}, y: ${Math.round(y)}`;
+    badge.style.opacity = "1";
+    if (positionBadgeTimerRef.current) clearTimeout(positionBadgeTimerRef.current);
+    positionBadgeTimerRef.current = window.setTimeout(hidePositionBadge, BADGE_TIMEOUT_MS);
+  };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -292,10 +325,17 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
       const userX = (rawX - pan.x) / zoom;
       const userY = (rawY - pan.y) / zoom;
 
-      mousePosRef.current = {
-        x: ensureGridCoordinate(userX, snapToGrid, gridSize),
-        y: ensureGridCoordinate(userY, snapToGrid, gridSize),
-      };
+      if (inEditMode) {
+        mousePosRef.current = {
+          x: ensureGridCoordinate(userX, snapToGrid, gridSize),
+          y: ensureGridCoordinate(userY, snapToGrid, gridSize),
+        };
+        if (e.target instanceof Node && gridRef.current?.contains(e.target)) {
+          showPositionBadge(userX, userY);
+        } else {
+          hidePositionBadge();
+        }
+      }
       if (isPlacementMode && pickedWidget) {
         setDragPreview({
           widget: pickedWidget,
@@ -448,6 +488,7 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
       onWheel={handleWheel}
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
+      onMouseLeave={hidePositionBadge}
       onClick={handleClick}
       style={{
         cursor: isPlacementMode ? "crosshair" : gridGrabbed.current ? "grabbing" : "default",
@@ -540,27 +581,40 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
           ? selectedFile.path
           : `No file selected${inEditMode && isDeveloper ? ". Progress will not be saved!" : ""}`}
       </Box>
-      <Fade in={zoomBadgeVisible} timeout={300}>
-        <Box
-          sx={{
-            position: "absolute",
-            top: 10,
-            right: editorSidebarOpen ? `${editorSidebarWidth + 12}px` : "50px",
-            padding: "4px 12px",
-            fontSize: "20px",
-            bgcolor: "rgba(73, 73, 73, 0.7)",
-            border: "1px solid rgba(255,255,255,0.2)",
-            color: "white",
-            borderRadius: "3px 3px 0 0",
-            pointerEvents: "none",
-            userSelect: "none",
-            boxShadow: 4,
-            zIndex: FRONT_UI_ZIDX,
-          }}
-        >
-          {Math.round(zoom * 100)}%
-        </Box>
-      </Fade>
+      <Box
+        sx={{
+          position: "absolute",
+          top: 10,
+          right: editorSidebarOpen ? `${editorSidebarWidth + 12}px` : "50px",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "flex-end",
+          gap: "6px",
+          pointerEvents: "none",
+          userSelect: "none",
+          zIndex: FRONT_UI_ZIDX,
+        }}
+      >
+        {inEditMode && (
+          // Content and opacity are set by showPositionBadge / hidePositionBadge.
+          <Box
+            ref={positionBadgeRef}
+            style={{ opacity: 0 }}
+            sx={{
+              ...BADGE_SX,
+              padding: "2px 8px",
+              fontSize: "12px",
+              fontVariantNumeric: "tabular-nums",
+              transition: "opacity 300ms",
+            }}
+          />
+        )}
+        <Fade in={zoomBadgeVisible} timeout={300}>
+          <Box sx={{ ...BADGE_SX, padding: "4px 12px", fontSize: "20px" }}>
+            {Math.round(zoom * 100)}%
+          </Box>
+        </Fade>
+      </Box>
     </div>
   );
 };
