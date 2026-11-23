@@ -292,7 +292,7 @@ async function resolveFileLink({ repo, path, ctx }: FileLink): Promise<SelectedP
   if (!ctx) return { repo_id: repoInfo.id, path };
   const macros = await decodeScreenContext(ctx, repo, path);
   if (!macros) {
-    notifyUser("Failed to load display: invalid link", "error");
+    notifyUser("Failed to load display: invalid URL", "error");
     return null;
   }
   const file = { repo_id: repoInfo.id, path, macros };
