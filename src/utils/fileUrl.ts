@@ -40,11 +40,6 @@ export function parseFileSearch(search: string): FileLink {
   };
 }
 
-/** Whether any segment of the path is hidden (`_` prefix) in runtime mode */
-export function isHiddenPath(path: string): boolean {
-  return path.split("/").some((segment) => segment.startsWith("_"));
-}
-
 /** Stores the location to return to after a login (which leaves the page). */
 export function saveReturnTo(location: string) {
   sessionStorage.setItem(RETURN_TO_KEY, location);

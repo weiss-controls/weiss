@@ -35,10 +35,12 @@ visibility rules:
 
 - They **are visible and selectable in Edit mode**, allowing developers to organise internal or
   non-navigable assets inside a repository.
-- They **are hidden and not selectable in Runtime mode**, so operators never see them.
+- They **are hidden from the file browser in Runtime mode**, so operators do not open them directly.
+  They can still be opened through a navigation button or a shared link, e.g. a display template in
+  an `_assets` folder opened with different macros.
 
 This convention lets you keep support files (e.g. shared symbol libraries, templates) alongside your
-OPIs without exposing them to end users.
+OPIs without listing them for end users.
 
 ---
 

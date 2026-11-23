@@ -20,7 +20,6 @@ import {
   buildFileSearch,
   decodeScreenContext,
   encodeScreenContext,
-  isHiddenPath,
   parseFileSearch,
   pendingFileLink,
   type FileLink,
@@ -282,16 +281,12 @@ function writeFileUrl(history: "push" | "replace") {
   });
 }
 
-/** Repository file of a link, or null (with an error) when it is unknown, hidden or damaged. */
+/** Repository file of a link, or null (with an error) when it is unknown or damaged. */
 async function resolveFileLink({ repo, path, ctx }: FileLink): Promise<SelectedPathInfo | null> {
   if (!repo || !path) return null;
   const repoInfo = useRepoStore.getState().reposTreeInfo?.find((r) => r.alias === repo);
   if (!repoInfo) {
     notifyUser(`Repository '${repo}' not found`, "error");
-    return null;
-  }
-  if (!useUIStore.getState().inEditMode && isHiddenPath(path)) {
-    notifyUser(`Failed to load file: ${path} not found`, "error");
     return null;
   }
   if (!ctx) return { repo_id: repoInfo.id, path };

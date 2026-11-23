@@ -83,8 +83,8 @@ There are no automated tests. Run the checks above after changes; CI runs the sa
   the client in the same commit.
 - Sessions and users are in-memory. Roles come from `roles.toml` (`ROLES_CONFIG_FILE`).
 - Repo storage: `<repo_id>/{repo.json, bare/, worktrees/<user>/, deployments/<uuid>/, current}`.
-  Files and folders prefixed `_` are hidden in runtime mode. Blank OPI template: `NEW_FILE_CONTENT`
-  in `repos/common.py`.
+  Files and folders prefixed `_` are hidden from the runtime file browser (links still open them).
+  Blank OPI template: `NEW_FILE_CONTENT` in `repos/common.py`.
 
 ## epicsWS
 
