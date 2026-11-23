@@ -7,11 +7,12 @@ import IntegrationInstructionsIcon from "@mui/icons-material/IntegrationInstruct
 import PermIdentityIcon from "@mui/icons-material/PermIdentity";
 import { OAuthProviders, Roles, type OAuthProvider } from "@src/services/AuthService/AuthService";
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { APP_SRC_URL, APP_VERSION, COLORS } from "@src/constants/constants";
 import GitHubIcon from "@mui/icons-material/GitHub";
 import IconButton from "@mui/material/IconButton";
 import { useSessionStore } from "@src/stores/sessionStore";
+import { saveReturnTo, takeReturnTo } from "@src/utils/fileUrl";
 
 export default function LoginPage() {
   const isAuthenticated = useSessionStore((s) => s.isAuthenticated);
@@ -19,6 +20,7 @@ export default function LoginPage() {
   const isDemo = useSessionStore((s) => s.isDemo);
   const { login } = useSessionStore.getState();
   const navigate = useNavigate();
+  const from = (useLocation().state as { from?: string } | null)?.from;
 
   const configuredProvider =
     import.meta.env.VITE_AUTH_IDENTITY_PROVIDER === OAuthProviders.OAUTH
@@ -27,11 +29,13 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      void navigate("/", { replace: true });
+      void navigate(takeReturnTo() ?? from ?? "/", { replace: true });
     }
-  }, [isAuthenticated, user, navigate]);
+  }, [isAuthenticated, user, navigate, from]);
 
   const handleLogin = async (provider: OAuthProvider, demoRole?: Roles) => {
+    // The login leaves the page; the callback returns to this location
+    if (from) saveReturnTo(from);
     await login(provider, demoRole);
   };
 

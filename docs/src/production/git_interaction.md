@@ -40,6 +40,21 @@ visibility rules:
 This convention lets you keep support files (e.g. shared symbol libraries, templates) alongside your
 OPIs without exposing them to end users.
 
+## Links to a display
+
+The page URL shows the open file, so it can be shared or bookmarked:
+
+```
+https://<weiss-host>/?repo=<repository alias>&path=<file path>&mode=<edit|runtime>
+```
+
+- Repositories are identified by their alias, which must be unique (ignoring case).
+- `mode` is optional. Operators always open links in Runtime mode.
+- In Runtime mode, links to `_` files or folders are refused.
+- A link to a repository or file the user cannot see shows an error and opens no file.
+- Opening a file adds a browser history entry, so back and forward move between displays.
+- A link opened before logging in is opened after the login.
+
 ---
 
 (enabling-commits)=

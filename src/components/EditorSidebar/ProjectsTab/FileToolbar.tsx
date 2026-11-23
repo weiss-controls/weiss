@@ -113,7 +113,7 @@ export default function FileToolbar({
         query: { path },
       }).then((r) => r.data);
       if (selectedFile?.repo_id === repo_id) {
-        setSelectedFile(null);
+        setSelectedFile(null, "replace");
       }
       onRepoUpdate(updt);
     } catch {

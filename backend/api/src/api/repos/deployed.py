@@ -17,6 +17,7 @@ from ..repos.common import (
     build_path_tree,
     get_repo_meta,
     list_all_repositories,
+    normalize_rel_path,
 )
 
 router = APIRouter(
@@ -109,9 +110,7 @@ def runtime_get_repo_file(repo_id: str, path: str = Query(..., description="Path
     Return the content of a file from the currently deployed snapshot.
     """
     snapshot_path = get_current_snapshot_path(repo_id)
-    rel_path = os.path.normpath(path).lstrip(os.sep)
-    if not rel_path or rel_path.startswith(".."):
-        raise HTTPException(status_code=400, detail="Invalid file path")
+    rel_path = normalize_rel_path(path, "Invalid file path")
     full_path = os.path.join(snapshot_path, rel_path)
     if not os.path.exists(full_path) or not os.path.isfile(full_path):
         raise HTTPException(status_code=404, detail="File not found in snapshot")

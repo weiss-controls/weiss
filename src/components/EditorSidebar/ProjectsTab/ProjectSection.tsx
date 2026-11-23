@@ -254,7 +254,7 @@ export default function ProjectSection({
         throw new Error(msg as string);
       }
       if (selectedFile?.repo_id === repo.id) {
-        setSelectedFile(null);
+        setSelectedFile(null, "replace");
       }
       onTreeUpdate(res.data);
       notifyUser(`Successfully unregistered ${repo.alias}`, "success");
@@ -373,7 +373,7 @@ export default function ProjectSection({
         query: { path: itemId },
       }).then((r) => r.data);
       if (selectedFile?.repo_id === repo.id && selectedFile.path.startsWith(itemId)) {
-        setSelectedFile(null);
+        setSelectedFile(null, "replace");
       }
       onRepoUpdate(updt);
     } catch {
@@ -405,12 +405,15 @@ export default function ProjectSection({
         const parentDir = itemId.slice(0, itemId.lastIndexOf("/") + 1);
         const newItemPath = parentDir + newLabel;
         if (selectedFile.path === itemId) {
-          setSelectedFile({ ...selectedFile, path: newItemPath });
+          setSelectedFile({ ...selectedFile, path: newItemPath }, "replace");
         } else if (selectedFile.path.startsWith(itemId + "/")) {
-          setSelectedFile({
-            ...selectedFile,
-            path: newItemPath + selectedFile.path.slice(itemId.length),
-          });
+          setSelectedFile(
+            {
+              ...selectedFile,
+              path: newItemPath + selectedFile.path.slice(itemId.length),
+            },
+            "replace",
+          );
         }
       }
       onRepoUpdate(updt);
@@ -438,12 +441,15 @@ export default function ProjectSection({
         const itemName = srcId.slice(srcId.lastIndexOf("/") + 1);
         const newPath = targetDirId ? `${targetDirId}/${itemName}` : itemName;
         if (selectedFile.path === srcId) {
-          setSelectedFile({ ...selectedFile, path: newPath });
+          setSelectedFile({ ...selectedFile, path: newPath }, "replace");
         } else if (selectedFile.path.startsWith(`${srcId}/`)) {
-          setSelectedFile({
-            ...selectedFile,
-            path: newPath + selectedFile.path.slice(srcId.length),
-          });
+          setSelectedFile(
+            {
+              ...selectedFile,
+              path: newPath + selectedFile.path.slice(srcId.length),
+            },
+            "replace",
+          );
         }
       }
       onRepoUpdate(updt);

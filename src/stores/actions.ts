@@ -15,10 +15,17 @@ import { usePVStore } from "@src/stores/pvStore";
 import { setSubscribedPVs, startNewSession, stopSession } from "@src/services/WSClient/session";
 import { collectGlobalMacroOverrides } from "@src/utils/macros";
 import { convertDisplay, parsePhoebus } from "@src/utils/bob2json";
+import {
+  buildFileSearch,
+  isHiddenPath,
+  parseFileSearch,
+  pendingFileLink,
+  type FileLink,
+} from "@src/utils/fileUrl";
 import { useEditorStore } from "./editorStore";
 import { restoreWidgets } from "./restoreWidgets";
 import { serializeWidgets } from "./widgetHelpers";
-import { useRepoStore } from "./repoStore";
+import { restoreLastFile, useRepoStore, type SelectedPathInfo } from "./repoStore";
 import { useSessionStore } from "./sessionStore";
 import { useUIStore } from "./uiStore";
 
@@ -89,6 +96,7 @@ function startRuleMacroSync() {
  * selection, WebSocket session and rule-macro sync.
  */
 export function updateMode(mode: Mode) {
+  if (!useSessionStore.getState().isDeveloper) mode = RUNTIME_MODE;
   flushAutoSave();
   const editor = useEditorStore.getState();
   editor.resetRuntimeMacros();
@@ -221,4 +229,70 @@ useRepoStore.subscribe((state, prev) => {
 setSubscribedPVs(useEditorStore.getState().resolvedPVList);
 useEditorStore.subscribe((state, prev) => {
   if (state.resolvedPVList !== prev.resolvedPVList) setSubscribedPVs(state.resolvedPVList);
+});
+
+// The editor URL shows the selected file and the mode. It is written once the file link of the
+// page load has been applied, after the first repository trees load.
+let urlSynced = false;
+
+/** Writes the selected file and mode to the URL of the editor page. */
+function writeFileUrl(history: "push" | "replace") {
+  if (!urlSynced || window.location.pathname !== "/") return;
+  const { selectedFile, reposTreeInfo } = useRepoStore.getState();
+  const search = buildFileSearch({
+    repo: reposTreeInfo?.find((r) => r.id === selectedFile?.repo_id)?.alias,
+    path: selectedFile?.path,
+    mode: useUIStore.getState().mode,
+  });
+  if (search === window.location.search) return;
+  const url = `/${search}${window.location.hash}`;
+  if (history === "push") window.history.pushState(window.history.state, "", url);
+  else window.history.replaceState(window.history.state, "", url);
+}
+
+/** Repository file of a link, or null (with an error) when it is unknown or hidden. */
+function resolveFileLink({ repo, path }: FileLink): SelectedPathInfo | null {
+  if (!repo || !path) return null;
+  const repoInfo = useRepoStore.getState().reposTreeInfo?.find((r) => r.alias === repo);
+  if (!repoInfo) {
+    notifyUser(`Repository '${repo}' not found`, "error");
+    return null;
+  }
+  if (!useUIStore.getState().inEditMode && isHiddenPath(path)) {
+    notifyUser(`Failed to load file: ${path} not found`, "error");
+    return null;
+  }
+  return { repo_id: repoInfo.id, path };
+}
+
+/** Applies the mode and file of the page URL, or restores the last opened file. */
+function openPendingFileLink() {
+  const link = pendingFileLink();
+  // Operators stay in runtime mode
+  const canSwitch = useSessionStore.getState().isDeveloper;
+  if (canSwitch && link.mode && link.mode !== useUIStore.getState().mode) updateMode(link.mode);
+  urlSynced = true;
+  if (link.repo || link.path) {
+    useRepoStore.getState().setSelectedFile(resolveFileLink(link), "replace");
+  } else {
+    restoreLastFile();
+  }
+  writeFileUrl("replace");
+}
+
+useRepoStore.subscribe((state, prev) => {
+  if (state.selectedFile !== prev.selectedFile)
+    writeFileUrl(state.selectionNav === "push" ? "push" : "replace");
+  if (!urlSynced && prev.isReposLoading && !state.isReposLoading) openPendingFileLink();
+});
+useUIStore.subscribe((state, prev) => {
+  if (state.mode !== prev.mode) writeFileUrl("replace");
+});
+
+// Back/forward opens the file of the history entry; the mode stays as it is
+window.addEventListener("popstate", () => {
+  if (!urlSynced || window.location.pathname !== "/") return;
+  const link = parseFileSearch(window.location.search);
+  useRepoStore.getState().setSelectedFile(resolveFileLink(link), "pop");
+  writeFileUrl("replace");
 });

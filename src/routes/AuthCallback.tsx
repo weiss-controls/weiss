@@ -4,6 +4,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { authService, type OAuthProvider } from "@src/services/AuthService/AuthService";
+import { takeReturnTo } from "@src/utils/fileUrl";
 
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -25,7 +26,7 @@ export default function AuthCallback() {
     authService
       .handleCallback(provider, code, redirectUri, stateParam)
       .then(() => authService.restoreSession())
-      .then(() => navigate("/", { replace: true }))
+      .then(() => navigate(takeReturnTo() ?? "/", { replace: true }))
       .catch(() => navigate("/login", { replace: true }));
   }, [navigate]);
 
