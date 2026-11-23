@@ -336,7 +336,7 @@ export default function NavBar() {
                     </Button>
                   </Tooltip>
                 )}
-                <HelpOverlay />
+                <HelpOverlay inEditMode={inEditMode} />
                 <Tooltip title="View source on GitHub">
                   <IconButton
                     size="small"
@@ -370,6 +370,7 @@ export default function NavBar() {
                 </Button>
               </Tooltip>
             )}
+            {!isDeveloper && <HelpOverlay inEditMode={false} />}
             <IconButton onClick={handleUserMenuOpen}>
               <Avatar alt={user?.displayName} sx={{ width: 32, height: 32 }}>
                 {user?.displayName?.[0]?.toUpperCase() ?? "U"}
