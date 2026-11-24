@@ -2,7 +2,7 @@
 // Copyright (C) 2026 WEISS Contributors
 
 import { type ReactNode } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import LoadingScreen from "@src/routes/LoadingScreen.tsx";
 import { useSessionStore } from "@src/stores/sessionStore";
 interface ProtectedRouteProps {
@@ -12,13 +12,14 @@ interface ProtectedRouteProps {
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const isAuthenticated = useSessionStore((s) => s.isAuthenticated);
   const authChecked = useSessionStore((s) => s.authChecked);
+  const location = useLocation();
 
   if (!authChecked) {
     return <LoadingScreen />;
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
   }
 
   return <>{children}</>;

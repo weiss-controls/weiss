@@ -18,12 +18,7 @@ import { GridZone } from "@components/GridZone";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import { GRID_ID, MAX_HISTORY } from "@src/constants/constants";
 import { notifyUser } from "@src/services/Notifications/Notification";
-import {
-  collectResolvedPVs,
-  composeForwardNavigationMacros,
-  resolveMacroRecord,
-  stampRuntimePVs,
-} from "@src/utils/macros";
+import { collectResolvedPVs, resolveMacroRecord, stampRuntimePVs } from "@src/utils/macros";
 import {
   createGroupWidget,
   createWidgetInstance,
@@ -94,7 +89,7 @@ interface EditorState {
   fileLoadedTrig: number;
   /** Exported content last loaded or saved; auto-save skips identical content. null after an import. */
   savedContent: string | null;
-  /** Macros forwarded by navigation actions (runtime only) */
+  /** Navigation macros of the open screen (runtime only) */
   navMacroOverrides: Macros;
   /** Macros set by rules from live PV data (runtime only) */
   ruleMacroOverrides: Macros;
@@ -164,7 +159,8 @@ interface EditorState {
   copyWidget: () => void;
   pasteWidget: (pos: GridPosition) => void;
   downloadWidgets: (suggestedName?: string) => Promise<void>;
-  loadWidgets: (widgetsData: string | ExportedWidget[]) => void;
+  /** Loads a file; `navMacros` are the navigation macros of the screen (runtime only). */
+  loadWidgets: (widgetsData: string | ExportedWidget[], navMacros?: Macros) => void;
   /** Loads widgets from a local file, also triggering the backend auto-save. */
   importWidgets: (widgetsData: string | ExportedWidget[]) => void;
   setSavedContent: (content: string) => void;
@@ -177,10 +173,9 @@ interface EditorState {
   handleSelGroupResizeStop: (ref: HTMLElement, bounds: DOMRectLike, widgets: Widget[]) => void;
   snapshotEditModeMacros: () => void;
   restoreEditModeMacros: () => void;
-  /** Forwards navigation macros: button macros go on top of the inherited ones. */
-  forwardNavigationMacros: (macros: Macros) => void;
   setRuleMacroOverrides: (macros: Macros) => void;
-  resetRuntimeMacros: () => void;
+  /** Clears the rule macro overrides and sets the navigation macros (none by default). */
+  resetRuntimeMacros: (navMacros?: Macros) => void;
 }
 
 type MacroOverrides = Pick<EditorState, "navMacroOverrides" | "ruleMacroOverrides">;
@@ -331,10 +326,9 @@ export const useEditorStore = create<EditorState>()(() => ({
   snapshotEditModeMacros,
   restoreEditModeMacros: () =>
     get().updateWidgetProperties(GRID_ID, { macros: editModeMacros }, false),
-  forwardNavigationMacros,
   setRuleMacroOverrides: (ruleMacroOverrides) => setMacroOverrides({ ruleMacroOverrides }),
-  resetRuntimeMacros: () =>
-    setMacroOverrides({ navMacroOverrides: NO_MACROS, ruleMacroOverrides: NO_MACROS }),
+  resetRuntimeMacros: (navMacros = NO_MACROS) =>
+    setMacroOverrides({ navMacroOverrides: navMacros, ruleMacroOverrides: NO_MACROS }),
 }));
 
 // Actions below read and write the store through these; they run only after it is created.
@@ -785,7 +779,7 @@ async function downloadWidgets(suggestedName?: string) {
   URL.revokeObjectURL(url);
 }
 
-function loadWidgets(widgetsData: string | ExportedWidget[]) {
+function loadWidgets(widgetsData: string | ExportedWidget[], navMacros: Macros = NO_MACROS) {
   const warnings: string[] = [];
   try {
     const parsed: ExportedWidget[] =
@@ -797,7 +791,7 @@ function loadWidgets(widgetsData: string | ExportedWidget[]) {
 
     const s = get();
     set({
-      ...commit(imported, { ...s, selectedWidgetIDs: [] }),
+      ...commit(imported, { ...s, selectedWidgetIDs: [] }, { ...s, navMacroOverrides: navMacros }),
       selectedWidgetIDs: [],
       savedContent: serializeWidgets(imported),
       fileLoadedTrig: s.fileLoadedTrig + 1,
@@ -888,9 +882,4 @@ function handleSelGroupResizeStop(ref: HTMLElement, bounds: DOMRectLike, widgets
 
 function snapshotEditModeMacros() {
   editModeMacros = get().getWidget(GRID_ID)?.editableProperties.macros?.value ?? {};
-}
-
-function forwardNavigationMacros(macros: Macros) {
-  const navMacroOverrides = composeForwardNavigationMacros(get().navMacroOverrides, macros);
-  setMacroOverrides({ navMacroOverrides });
 }

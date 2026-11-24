@@ -137,6 +137,26 @@ incognito mode and access the app with an "Operator" user simultaneously.
 menu.  
 :::
 
+## Share a link to a display
+
+The page URL shows the open display, so it can be shared or bookmarked:
+
+```
+https://<weiss-host>/?repo=<repository alias>&path=<file path>&mode=<edit|runtime>
+```
+
+- Repositories are identified by their alias, which is always unique (enforced by the system).
+- `mode` is optional. Operators always open links in Runtime mode.
+- Opening a display adds a browser history entry, so back and forward move between displays.
+- A display opened from another one (e.g. with a navigation button) has its macros and path encoded
+  in an extra `ctx` parameter. This ensures that reloading the page, going back or forward, or
+  sharing the link keeps all macros properly set for a given view.
+
+:::{important}  
+Avoid building or editing links to displays by hand, especially nested or embedded ones. Open the
+display in Runtime mode and copy the URL from the browser.  
+:::
+
 ---
 
 This tutorial showed the basic workflow of creating a simple OPI and deploying it to users.

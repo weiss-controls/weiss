@@ -15,6 +15,7 @@ import {
 } from "@src/services/APIClient";
 import { useEditorStore } from "./editorStore";
 import { useSessionStore } from "./sessionStore";
+import { useUIStore } from "./uiStore";
 
 const LAST_FILE_KEY = "lastLoadedFile";
 const IMAGE_MIME_TYPES: Record<string, string> = {
@@ -33,7 +34,15 @@ function imageMimeType(path: string): string | undefined {
 export interface SelectedPathInfo {
   repo_id: string;
   path: string;
+  /** Navigation macros the screen was opened with, applied in runtime mode */
+  macros?: Record<string, string>;
 }
+
+/**
+ * How a selected file change reaches the URL: "push" adds a history entry, "replace" and
+ * "restore" (the last opened file) replace it, "pop" comes from back/forward navigation.
+ */
+export type SelectionNav = "push" | "replace" | "restore" | "pop";
 
 type ReposTreeInfo = (StagingTreeInfo | DeploymentTreeInfo)[] | null;
 
@@ -42,13 +51,14 @@ interface RepoStoreState {
   isReposLoading: boolean;
   /** File open in the editor (or shown as an image); loaded when it changes */
   selectedFile: SelectedPathInfo | null;
+  selectionNav: SelectionNav;
   /** Last file or folder selected in a project tree; "" is the repository root */
   treeSelection: SelectedPathInfo | null;
   imageSrc: string | null;
   imageName: string | null;
   setReposTreeInfo: (info: ReposTreeInfo | ((prev: ReposTreeInfo) => ReposTreeInfo)) => void;
   setIsReposLoading: (isReposLoading: boolean) => void;
-  setSelectedFile: (file: SelectedPathInfo | null) => void;
+  setSelectedFile: (file: SelectedPathInfo | null, nav?: SelectionNav) => void;
   setTreeSelection: (selection: SelectedPathInfo | null) => void;
   /** Fetches the current file again (e.g. after a git sync). */
   reloadSelectedFile: () => void;
@@ -65,22 +75,27 @@ export const useRepoStore = create<RepoStoreState>()(
       reposTreeInfo: null,
       isReposLoading: true,
       selectedFile: null,
+      selectionNav: "replace",
       treeSelection: null,
       imageSrc: null,
       imageName: null,
       setReposTreeInfo: (info) =>
         set((s) => ({ reposTreeInfo: typeof info === "function" ? info(s.reposTreeInfo) : info })),
       setIsReposLoading: (isReposLoading) => set({ isReposLoading }),
-      setSelectedFile: (selectedFile) => set({ selectedFile }),
+      setSelectedFile: (selectedFile, selectionNav = "push") => set({ selectedFile, selectionNav }),
       setTreeSelection: (treeSelection) => set({ treeSelection }),
       reloadSelectedFile: () =>
-        set((s) => ({ selectedFile: s.selectedFile ? { ...s.selectedFile } : null })),
+        set((s) => ({
+          selectedFile: s.selectedFile ? { ...s.selectedFile } : null,
+          selectionNav: "replace",
+        })),
       setImage: (imageSrc, imageName) => set({ imageSrc, imageName }),
       updateReposTreeInfo,
       reset: () =>
         set({
           reposTreeInfo: null,
           selectedFile: null,
+          selectionNav: "replace",
           treeSelection: null,
           isReposLoading: false,
         }),
@@ -117,7 +132,7 @@ let loadRequest = 0;
 /** Loads the selected file into the editor, or as an image; a newer request supersedes it. */
 async function loadSelectedFile() {
   const request = ++loadRequest;
-  const { selectedFile, setImage } = useRepoStore.getState();
+  const { selectedFile, selectionNav, setImage } = useRepoStore.getState();
   if (!selectedFile) {
     useEditorStore.getState().clearAllWidgets();
     setImage(null, null);
@@ -142,27 +157,42 @@ async function loadSelectedFile() {
       setImage(src, selectedFile.path.slice(selectedFile.path.lastIndexOf("/") + 1));
     } else {
       setImage(null, null);
-      useEditorStore.getState().loadWidgets(res.data.content);
+      const navMacros = useUIStore.getState().inEditMode ? undefined : selectedFile.macros;
+      useEditorStore.getState().loadWidgets(res.data.content, navMacros);
       localStorage.setItem(LAST_FILE_KEY, JSON.stringify(selectedFile));
     }
   } catch (err) {
-    if (request === loadRequest) notifyUser(`Failed to load file: ${String(err)}`, "error");
+    if (request !== loadRequest) return;
+    if (selectionNav === "restore") {
+      localStorage.removeItem(LAST_FILE_KEY);
+      notifyUser(`Could not restore the last opened file (${selectedFile.path})`, "warning");
+    } else {
+      notifyUser(`Failed to load file: ${String(err)}`, "error");
+    }
+    useRepoStore.getState().setSelectedFile(null, "replace");
   }
 }
 
 useRepoStore.subscribe((state, prev) => {
-  if (state.selectedFile !== prev.selectedFile) void loadSelectedFile();
+  if (state.selectedFile === prev.selectedFile) return;
+  void loadSelectedFile();
+  const path = state.selectedFile?.path;
+  document.title = path ? `${path.slice(path.lastIndexOf("/") + 1)} - WEISS` : "WEISS";
 });
 useSessionStore.subscribe((state, prev) => {
   if (state.isDeveloper !== prev.isDeveloper) void loadSelectedFile();
 });
 
-// The last opened file is restored once, when the repositories first load
-const stopRestore = useRepoStore.subscribe((state) => {
-  if (!state.reposTreeInfo?.length) return;
-  stopRestore();
+/** Opens the last file loaded in the editor, if any; warns when it is no longer available. */
+export function restoreLastFile() {
   const raw = localStorage.getItem(LAST_FILE_KEY);
   if (!raw) return;
   const last = JSON.parse(raw) as SelectedPathInfo;
-  if (state.reposTreeInfo.some((r) => r.id === last.repo_id)) state.setSelectedFile(last);
-});
+  const { reposTreeInfo, setSelectedFile } = useRepoStore.getState();
+  if (reposTreeInfo?.some((r) => r.id === last.repo_id)) {
+    setSelectedFile(last, "restore");
+  } else {
+    localStorage.removeItem(LAST_FILE_KEY);
+    notifyUser(`Could not restore the last opened file (${last.path})`, "warning");
+  }
+}

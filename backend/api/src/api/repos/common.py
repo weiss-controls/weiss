@@ -37,6 +37,14 @@ ALLOWED_EXTENSIONS = {".svg", ".png", ".jpg", ".jpeg"}
 os.makedirs(REPOS_BASE_PATH, exist_ok=True)
 
 
+def normalize_rel_path(path: str, detail: str = "Invalid path") -> str:
+    """Normalize a path relative to a repository root; raise 400 if it points outside it."""
+    rel_path = os.path.normpath(path).lstrip(os.sep)
+    if rel_path == ".." or rel_path.startswith(".." + os.sep):
+        raise HTTPException(status_code=400, detail=detail)
+    return rel_path
+
+
 class FileResponse(BaseModel):
     path: str
     content: str

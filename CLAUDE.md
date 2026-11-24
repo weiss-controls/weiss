@@ -44,8 +44,12 @@ There are no automated tests. Run the checks above after changes; CI runs the sa
 - Auth state is in `sessionStore`, repositories and the selected file in `repoStore`. Side effects
   are store subscriptions at the bottom of the store that owns them (auth and token status in
   `sessionStore`, repo trees and file loading in `repoStore`); those spanning several stores (PV
-  subscriptions, rule macros, auto-save, operator mode) are in `src/stores/actions.ts`. There are no
-  React contexts or app-wide React effects for app state.
+  subscriptions, rule macros, auto-save, operator mode, the editor URL) are in
+  `src/stores/actions.ts`. There are no React contexts or app-wide React effects for app state.
+- The editor URL (`/?repo=<alias>&path=<path>&mode=<mode>&ctx=<context>`, `src/utils/fileUrl.ts`)
+  follows `repoStore.selectedFile` and the mode; `ctx` encodes the navigation macros of the screen
+  (`selectedFile.macros`). Pass `setSelectedFile` a `SelectionNav`: `"push"` (default) for opening a
+  file, `"replace"` for renames, moves and clears. Navigation buttons use `navigateToDisplay`.
 - The PV WebSocket session is a module (`src/services/WSClient/session.ts`): import `writePVValue`,
   `takeSnapshot`, etc. directly. Its connection state is in `src/stores/wsStore.ts`.
 - PV array values are `NumericArray` typed-array views: use `isNumericArray()`
@@ -79,8 +83,8 @@ There are no automated tests. Run the checks above after changes; CI runs the sa
   the client in the same commit.
 - Sessions and users are in-memory. Roles come from `roles.toml` (`ROLES_CONFIG_FILE`).
 - Repo storage: `<repo_id>/{repo.json, bare/, worktrees/<user>/, deployments/<uuid>/, current}`.
-  Files and folders prefixed `_` are hidden in runtime mode. Blank OPI template: `NEW_FILE_CONTENT`
-  in `repos/common.py`.
+  Files and folders prefixed `_` are hidden from the runtime file browser (links still open them).
+  Blank OPI template: `NEW_FILE_CONTENT` in `repos/common.py`.
 
 ## epicsWS
 

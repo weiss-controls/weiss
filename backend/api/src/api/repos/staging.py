@@ -30,6 +30,7 @@ from ..repos.common import (
     build_path_tree,
     get_repo_meta,
     list_all_repositories,
+    normalize_rel_path,
 )
 from .common import BARE_CLONE_NAME, REPOS_BASE_PATH
 
@@ -491,13 +492,16 @@ def get_all_repos_tree(user: User = Depends(require_developer)):
 @router.post("/register", response_model=List[StagingTreeInfo], operation_id="registerRepo")
 def register_repository(payload: RepoCreateRequest, user: User = Depends(require_developer)):
     """Register a Git repository and create a clone"""
+    alias = payload.alias.strip()
+    if any(r.alias.strip().casefold() == alias.casefold() for r in list_all_repositories()):
+        raise HTTPException(status_code=409, detail=f"A repository with alias '{alias}' already exists")
     repo_id = str(uuid.uuid4())
     created_at = datetime.now(timezone.utc).isoformat()
     clone(payload.git_url, repo_id)
 
     repo_meta = StagingMeta(
         id=repo_id,
-        alias=payload.alias,
+        alias=alias,
         git_url=payload.git_url,
         created_at=created_at,
     )
@@ -628,8 +632,8 @@ def staging_get_repo_file(
     """
     Return the content of a file from the current state of staging repo.
     """
-    file_path = get_user_worktree_path(repo_id, user)
-    full_path = os.path.join(file_path, path)
+    rel_path = normalize_rel_path(path, "Invalid file path")
+    full_path = os.path.join(get_user_worktree_path(repo_id, user), rel_path)
     if not os.path.exists(full_path) or not os.path.isfile(full_path):
         raise HTTPException(status_code=404, detail="File not found")
 
@@ -664,9 +668,7 @@ async def upload_staging_repo_file(
     Creates or overwrites the file at the given path.
     Intermediate directories are created as needed.
     """
-    rel_path = os.path.normpath(path).lstrip(os.sep)
-    if rel_path.startswith(".."):
-        raise HTTPException(status_code=400, detail="Invalid file path")
+    rel_path = normalize_rel_path(path, "Invalid file path")
 
     rel_lower = rel_path.lower()
     _, ext = os.path.splitext(rel_lower)
@@ -717,9 +719,7 @@ def staging_update_repo_file(
     repo_path = get_user_worktree_path(repo_id, user)
 
     # Normalize and validate path
-    rel_path = os.path.normpath(path).lstrip(os.sep)
-    if rel_path.startswith(".."):
-        raise HTTPException(status_code=400, detail="Invalid file path")
+    rel_path = normalize_rel_path(path, "Invalid file path")
 
     full_path = os.path.join(repo_path, rel_path)
 
@@ -764,9 +764,7 @@ def reset_staging_repo_file(
     repo_path = get_user_worktree_path(repo_id, user)
 
     # Normalize and validate path
-    rel_path = os.path.normpath(path).lstrip(os.sep)
-    if rel_path.startswith(".."):
-        raise HTTPException(status_code=400, detail="Invalid file path")
+    rel_path = normalize_rel_path(path, "Invalid file path")
 
     full_path = os.path.join(repo_path, rel_path)
     if not os.path.exists(full_path):
@@ -796,9 +794,7 @@ def reset_staging_repo_path(
     """
     repo_path = get_user_worktree_path(repo_id, user)
 
-    rel_path = os.path.normpath(path).lstrip(os.sep)
-    if rel_path.startswith(".."):
-        raise HTTPException(status_code=400, detail="Invalid path")
+    rel_path = normalize_rel_path(path)
 
     full_path = os.path.join(repo_path, rel_path)
     if not os.path.exists(full_path):
@@ -854,9 +850,7 @@ def create_staging_repo_path(
     """
     repo_path = get_user_worktree_path(repo_id, user)
 
-    rel_path = os.path.normpath(payload.path).lstrip(os.sep)
-    if rel_path.startswith(".."):
-        raise HTTPException(status_code=400, detail="Invalid path")
+    rel_path = normalize_rel_path(payload.path)
 
     full_path = os.path.join(repo_path, rel_path)
     parent_dir = os.path.dirname(full_path)
@@ -910,9 +904,7 @@ def delete_staging_repo_path(
     """
     repo_path = get_user_worktree_path(repo_id, user)
 
-    rel_path = os.path.normpath(path).lstrip(os.sep)
-    if rel_path.startswith(".."):
-        raise HTTPException(status_code=400, detail="Invalid path")
+    rel_path = normalize_rel_path(path)
 
     full_path = os.path.join(repo_path, rel_path)
 
@@ -948,9 +940,7 @@ def rename_staging_repo_path(
     """
     repo_path = get_user_worktree_path(repo_id, user)
 
-    rel_path = os.path.normpath(path).lstrip(os.sep)
-    if rel_path.startswith(".."):
-        raise HTTPException(status_code=400, detail="Invalid path")
+    rel_path = normalize_rel_path(path)
 
     new_name = payload.new_name.strip()
     if not new_name or os.sep in new_name or "/" in new_name:
@@ -1006,14 +996,10 @@ def move_staging_repo_path(
     repo_path = get_user_worktree_path(repo_id, user)
 
     # Normalise and validate source
-    rel_src = os.path.normpath(path).lstrip(os.sep)
-    if rel_src.startswith(".."):
-        raise HTTPException(status_code=400, detail="Invalid source path")
+    rel_src = normalize_rel_path(path, "Invalid source path")
 
     # Normalise and validate destination
-    rel_dst_dir = os.path.normpath(payload.destination).lstrip(os.sep)
-    if rel_dst_dir.startswith(".."):
-        raise HTTPException(status_code=400, detail="Invalid destination path")
+    rel_dst_dir = normalize_rel_path(payload.destination, "Invalid destination path")
 
     full_src = os.path.join(repo_path, rel_src)
     if not os.path.exists(full_src):
