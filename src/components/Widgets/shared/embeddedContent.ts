@@ -18,6 +18,9 @@ import type { DOMRectLike, ExportedWidget, PropertyKey, Widget } from "@src/type
  */
 const _contentCache = new Map<string, Promise<ExportedWidget[]>>();
 
+/** Widgets whose `macros` table takes the macros of the display they are embedded in. */
+const INHERITS_MACRO_TABLE = new Set(["EmbeddedDisplay", "DisplayRepeater", "NavigationButton"]);
+
 /** Parsed, bounds-computed content ready to be scaled into a target box. */
 export interface DisplayContent {
   baseWidgets: Widget[];
@@ -144,6 +147,14 @@ export function macrosToKey(macros: Record<string, string>): string {
   return JSON.stringify(entries);
 }
 
+/** Macros of an embedded display: `all` to substitute in its widgets, `local` to pass on. */
+export interface MacroScope {
+  /** Global macros overridden by the local ones */
+  all: Record<string, string>;
+  /** The display's own macro table (with what it inherited from outer embeds), resolved */
+  local: Record<string, string>;
+}
+
 /**
  * Macro scope of an embedded display: the global macros, overridden by the local macro table
  * resolved against them. The globals are included so `$(NAME=default)` falls back to the default
@@ -152,9 +163,10 @@ export function macrosToKey(macros: Record<string, string>): string {
 export function resolveDisplayMacros(
   displayMacros: Record<string, string> | undefined,
   globalMacros: Record<string, string>,
-): Record<string, string> {
-  if (!displayMacros) return globalMacros;
-  return { ...globalMacros, ...resolveMacroRecord(displayMacros, globalMacros) };
+): MacroScope {
+  if (!displayMacros) return { all: globalMacros, local: {} };
+  const local = resolveMacroRecord(displayMacros, globalMacros);
+  return { all: { ...globalMacros, ...local }, local };
 }
 
 /** Assign new UUIDs to avoid ID clashes when multiple instances of the same display exist. */
@@ -208,7 +220,7 @@ export async function fetchDisplayContent(
 export function applyDisplayLayout(
   content: DisplayContent,
   box: TargetBox,
-  macros: Record<string, string>,
+  macros: MacroScope,
 ): Widget[] {
   const { baseWidgets, natW, natH, minX, minY } = content;
   const scale = natW > 0 && natH > 0 ? Math.min(box.width / natW, box.height / natH) : 1;
@@ -218,7 +230,7 @@ export function applyDisplayLayout(
   const offsetY = box.y + (box.height - natH * scale) / 2;
 
   const fresh = scaleWidgets(baseWidgets, scale, offsetX, offsetY, minX, minY);
-  return inheritDisplayMacros(substituteMacrosInWidgetTree(fresh, macros), macros);
+  return inheritDisplayMacros(substituteMacrosInWidgetTree(fresh, macros.all), macros);
 }
 
 /**
@@ -269,25 +281,37 @@ export function keepEmbeddedChildren(widgets: Widget[], current: Map<string, Wid
 }
 
 /**
- * Nested embedding widgets resolve their content with their own macro tables only, so
- * the outer macros are merged under each table; the nested widget's own entries win.
+ * Pass the local macros of an embedded display on to the widgets that use their own macro table:
+ * nested embedding widgets, which resolve their content with it, and navigation buttons, which
+ * forward it to the display they open. The widget's own entries win. Only the local scope is
+ * passed: the globals are already in scope of nested embeds, and forwarding them would override
+ * the defaults of the opened display with those of the current one.
  */
-function inheritDisplayMacros(widgets: Widget[], macros: Record<string, string>): Widget[] {
-  if (Object.keys(macros).length === 0) return widgets;
+function inheritDisplayMacros(widgets: Widget[], macros: MacroScope): Widget[] {
+  const { all, local } = macros;
+  if (Object.keys(local).length === 0) return widgets;
   return widgets.map((w) => {
-    const { macros: ownMacros, tabs } = w.editableProperties;
+    const { macros: ownMacros, tabs, instances } = w.editableProperties;
     let editableProperties = w.editableProperties;
-    if ((w.widgetName === "EmbeddedDisplay" || w.widgetName === "DisplayRepeater") && ownMacros) {
+    if (ownMacros && INHERITS_MACRO_TABLE.has(w.widgetName)) {
+      // own values were already resolved against `all` by the macro substitution
       editableProperties = {
         ...editableProperties,
-        macros: { ...ownMacros, value: { ...macros, ...ownMacros.value } },
+        macros: { ...ownMacros, value: { ...local, ...ownMacros.value } },
       };
-    } else if (w.widgetName === "NavigationTabs" && tabs) {
+    }
+    if (w.widgetName === "NavigationTabs" && tabs) {
       const value = tabs.value.map((tab) => ({
         ...tab,
-        macros: { ...macros, ...resolveMacroRecord(tab.macros, macros) },
+        macros: { ...local, ...resolveMacroRecord(tab.macros, all) },
       }));
       editableProperties = { ...editableProperties, tabs: { ...tabs, value } };
+    }
+    if (w.widgetName === "DisplayRepeater" && instances) {
+      const value = instances.value.map((inst) => ({
+        macros: resolveMacroRecord(inst.macros, all),
+      }));
+      editableProperties = { ...editableProperties, instances: { ...instances, value } };
     }
     const children = w.children ? inheritDisplayMacros(w.children, macros) : undefined;
     if (editableProperties === w.editableProperties && children === w.children) return w;

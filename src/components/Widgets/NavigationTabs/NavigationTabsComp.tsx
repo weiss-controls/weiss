@@ -90,7 +90,7 @@ const NavigationTabsComp: React.FC<WidgetUpdate> = ({ data }) => {
     () => resolveDisplayMacros(activeEntry?.macros, globalMacros),
     [activeEntry?.macros, globalMacros],
   );
-  const layoutKey = `${contentBox.x}|${contentBox.y}|${contentBox.width}|${contentBox.height}|${macrosToKey(macros)}`;
+  const layoutKey = `${contentBox.x}|${contentBox.y}|${contentBox.width}|${contentBox.height}|${macrosToKey(macros.all)}`;
 
   // Only the active tab's content is loaded, as `data.children`.
   useEmbeddedContent(data.id, activeEntry?.displayPath, layoutKey, (content) =>

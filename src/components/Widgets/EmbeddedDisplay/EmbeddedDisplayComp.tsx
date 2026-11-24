@@ -28,7 +28,7 @@ const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
     () => resolveDisplayMacros(displayMacros, globalMacros),
     [displayMacros, globalMacros],
   );
-  const layoutKey = `${x}|${y}|${width}|${height}|${macrosToKey(macros)}`;
+  const layoutKey = `${x}|${y}|${width}|${height}|${macrosToKey(macros.all)}`;
 
   const resolvedPath = useEmbeddedContent(data.id, p.displayPath?.value, layoutKey, (content) =>
     applyDisplayLayout(content, { x, y, width, height }, macros),

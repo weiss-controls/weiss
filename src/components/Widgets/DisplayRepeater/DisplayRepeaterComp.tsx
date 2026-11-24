@@ -51,7 +51,7 @@ const DisplayRepeaterComp: React.FC<WidgetUpdate> = ({ data }) => {
       ),
     [instances, sharedMacros, globalMacros],
   );
-  const layoutKey = JSON.stringify([cells, instanceMacros.map(macrosToKey)]);
+  const layoutKey = JSON.stringify([cells, instanceMacros.map((m) => macrosToKey(m.all))]);
 
   // One copy of the content per instance, each with its own widget ids. Kept across re-layouts so
   // ids stay stable (nested embedding widgets keep their loaded children); rebuilt on re-fetch.
