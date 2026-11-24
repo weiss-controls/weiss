@@ -15,6 +15,7 @@ import type {
   ExportedWidget,
   ExportedRule,
 } from "@src/types/widgets";
+import { isEmbeddingWidget } from "@components/Widgets/shared/embeddingWidgets";
 
 /** Make sure the given coordinate is aligned with grid if snapToGrid.
  * Round returned coordinate to `gridDecimalPlaces` digits.
@@ -269,11 +270,10 @@ export function serializeWidgets(widgets: Widget[]): string {
 }
 
 export function formatWdgToExport(widget: Widget): ExportedWidget {
-  // EmbeddedDisplay/NavigationTabs children are injected at runtime and not exported
-  const exportChildren =
-    widget.widgetName === "EmbeddedDisplay" || widget.widgetName === "NavigationTabs"
-      ? undefined
-      : widget.children?.map(formatWdgToExport);
+  // Children of embedding widgets are injected at runtime and not exported
+  const exportChildren = isEmbeddingWidget(widget.widgetName)
+    ? undefined
+    : widget.children?.map(formatWdgToExport);
   return {
     widgetName: widget.widgetName,
     properties: Object.fromEntries(

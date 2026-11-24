@@ -7,12 +7,8 @@ import { resolveMacroRecord, substituteMacrosInWidgetTree } from "@src/utils/mac
 import { parseSerializedRules } from "@src/utils/ruleCompatibility";
 import { createGroupWidget, createWidgetInstance } from "@src/stores/widgetHelpers";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
+import { isEmbeddingWidget } from "./embeddingWidgets";
 import type { DOMRectLike, ExportedWidget, PropertyKey, Widget } from "@src/types/widgets";
-
-/**
- * Set of widget types that can embed other content.
- */
-const EMBEDDING_WIDGETS = new Set(["EmbeddedDisplay", "NavigationTabs"]);
 
 /**
  * Cache of raw ExportedWidget arrays keyed by "<fileLoadedTrig>::<staging|deployed>::<repoId>::<path>".
@@ -226,12 +222,45 @@ export function applyDisplayLayout(
 }
 
 /**
+ * Split a box into the cells of a repeater grid, in instance order. Instances fill rows when
+ * `horizontal` (columns otherwise); `wrapCount` instances per row/column, 0 for a single line.
+ */
+export function computeInstanceCells(
+  box: TargetBox,
+  count: number,
+  horizontal: boolean,
+  gap: number,
+  wrapCount: number,
+): TargetBox[] {
+  if (count <= 0) return [];
+  const perLine = wrapCount > 0 ? Math.min(wrapCount, count) : count;
+  const lines = Math.ceil(count / perLine);
+  const cols = horizontal ? perLine : lines;
+  const rows = horizontal ? lines : perLine;
+  const cellW = Math.max((box.width - gap * (cols - 1)) / cols, 0);
+  const cellH = Math.max((box.height - gap * (rows - 1)) / rows, 0);
+
+  return Array.from({ length: count }, (_, i) => {
+    const line = Math.floor(i / perLine);
+    const pos = i % perLine;
+    const col = horizontal ? pos : line;
+    const row = horizontal ? line : pos;
+    return {
+      x: box.x + col * (cellW + gap),
+      y: box.y + row * (cellH + gap),
+      width: cellW,
+      height: cellH,
+    };
+  });
+}
+
+/**
  * Carry over the content already loaded by nested embedding widgets (looked up by id in
  * the current tree), which their own components re-apply when their box or macros change.
  */
 export function keepEmbeddedChildren(widgets: Widget[], current: Map<string, Widget>): Widget[] {
   return widgets.map((w) => {
-    if (EMBEDDING_WIDGETS.has(w.widgetName)) {
+    if (isEmbeddingWidget(w.widgetName)) {
       const children = current.get(w.id)?.children;
       return children ? { ...w, children } : w;
     }
@@ -248,7 +277,7 @@ function inheritDisplayMacros(widgets: Widget[], macros: Record<string, string>)
   return widgets.map((w) => {
     const { macros: ownMacros, tabs } = w.editableProperties;
     let editableProperties = w.editableProperties;
-    if (w.widgetName === "EmbeddedDisplay" && ownMacros) {
+    if ((w.widgetName === "EmbeddedDisplay" || w.widgetName === "DisplayRepeater") && ownMacros) {
       editableProperties = {
         ...editableProperties,
         macros: { ...ownMacros, value: { ...macros, ...ownMacros.value } },

@@ -86,6 +86,7 @@ The current widget support is:
 | `embedded`                            | `EmbeddedDisplay`                   | ✅ `.bob` path rewritten to `.opi.json` |
 | `group`                               | `Group`                             | ✅                                      |
 | `navtabs`                             | `NavigationTabs`                    | ✅ per-tab colors not supported         |
+| `template`                            | `DisplayRepeater`                   | ✅ instances scaled to fit their cell   |
 | `xyplot`                              | `GraphXY`                           | ✅                                      |
 | `stripchart`                          | `GraphY`                            | ✅                                      |
 | `image`                               | `AreaDetector`                      | ✅ see notes below                      |
@@ -98,7 +99,6 @@ The current widget support is:
 | `thumbwheel`                          | —                                   | 🔶 not implemented                      |
 | `table`                               | —                                   | 🔶 not implemented                      |
 | `polyline`                            | —                                   | 🔶 not implemented                      |
-| `template`                            | —                                   | 🔶 not implemented                      |
 | `3d viewer`                           | —                                   | 🔶 not implemented                      |
 | `fileselector`                        | —                                   | ❌ not planned                          |
 | `text-symbol`                         | —                                   | ❌ not planned                          |

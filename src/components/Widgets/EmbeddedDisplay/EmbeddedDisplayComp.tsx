@@ -1,151 +1,41 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 WEISS Contributors
 
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useMemo } from "react";
 import type { WidgetUpdate } from "@src/types/widgets";
-import { useSessionStore } from "@src/stores/sessionStore";
-import { useRepoStore } from "@src/stores/repoStore";
 import { useUIStore } from "@src/stores/uiStore";
 import { useEditorStore } from "@src/stores/editorStore";
-import { resolveRepoPath } from "@src/utils/repoPath";
 import {
   applyDisplayLayout,
-  fetchDisplayContent,
-  keepEmbeddedChildren,
   macrosToKey,
   resolveDisplayMacros,
-  type DisplayContent,
 } from "@components/Widgets/shared/embeddedContent";
+import { useEmbeddedContent } from "@components/Widgets/shared/useEmbeddedContent";
 import { Placeholder } from "@components/Widgets/shared/Placeholder";
 
 const EmbeddedDisplayComp: React.FC<WidgetUpdate> = ({ data }) => {
-  const isDeveloper = useSessionStore((s) => s.isDeveloper);
-  const selectedFile = useRepoStore((s) => s.selectedFile);
   const inEditMode = useUIStore((s) => s.inEditMode);
-  const fileLoadedTrig = useEditorStore((s) => s.fileLoadedTrig);
   const globalMacros = useEditorStore((s) => s.globalMacros);
   const p = data.editableProperties;
 
-  const repoId = selectedFile?.repo_id ?? "";
-  const opiPath = selectedFile?.path ?? "";
-  const displayPath = p.displayPath?.value;
-  const resolvedPath = displayPath ? resolveRepoPath(displayPath, opiPath) : undefined;
   const displayMacros = p.macros?.value;
-
   const x = p.x?.value ?? 0;
   const y = p.y?.value ?? 0;
-  const targetW = p.width?.value ?? 100;
-  const targetH = p.height?.value ?? 70;
+  const width = p.width?.value ?? 100;
+  const height = p.height?.value ?? 70;
 
-  // Per-instance cache of the last successfully parsed & bounds-computed
-  // content. Allocated fresh per component instance (per useRef semantics),
-  // so two EmbeddedDisplay widgets pointing at the same displayPath each get
-  // their own copy here — only the unscaled network fetch is shared via
-  // _contentCache below, never the scale/layout output.
-  const rawContentRef = useRef<DisplayContent | null>(null);
-
-  const lastAppliedLayoutKeyRef = useRef<string>("");
-
-  const resolvedDisplayMacros = useMemo(
+  const macros = useMemo(
     () => resolveDisplayMacros(displayMacros, globalMacros),
     [displayMacros, globalMacros],
   );
-  const resolvedMacroKey = useMemo(
-    () => macrosToKey(resolvedDisplayMacros),
-    [resolvedDisplayMacros],
+  const layoutKey = `${x}|${y}|${width}|${height}|${macrosToKey(macros)}`;
+
+  const resolvedPath = useEmbeddedContent(data.id, p.displayPath?.value, layoutKey, (content) =>
+    applyDisplayLayout(content, { x, y, width, height }, macros),
   );
 
-  const macrosRef = useRef<Record<string, string>>({});
-  macrosRef.current = resolvedDisplayMacros;
-
-  /**
-   * Re-derive scaled child widgets from `rawContentRef` and push them via
-   * `updateWidgetChildren`. Pure re-layout — no network I/O — so it's cheap
-   * to call whenever this instance's own box (x/y/width/height) changes.
-   */
-  const layoutAndApply = useCallback(() => {
-    const cached = rawContentRef.current;
-    if (!cached) return;
-
-    const macroKey = macrosToKey(macrosRef.current);
-    const layoutKey = `${targetW}|${targetH}|${x}|${y}|${macroKey}`;
-    if (layoutKey === lastAppliedLayoutKeyRef.current) return;
-
-    lastAppliedLayoutKeyRef.current = layoutKey;
-    const withMacros = applyDisplayLayout(
-      cached,
-      { x, y, width: targetW, height: targetH },
-      macrosRef.current,
-    );
-    const { widgetIdMap, updateWidgetChildren } = useEditorStore.getState();
-    updateWidgetChildren(data.id, keepEmbeddedChildren(withMacros, widgetIdMap), false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data.id, x, y, targetW, targetH]);
-
-  // Fetch effect: only re-runs on source/mode change. The network
-  // request (and JSON parse) is shared across instances via _contentCache;
-  // this effect just stores the parsed result + natural bounds locally and
-  // triggers an initial layout.
-  useEffect(() => {
-    if (!repoId || !resolvedPath) {
-      rawContentRef.current = null;
-      lastAppliedLayoutKeyRef.current = "";
-      useEditorStore.getState().updateWidgetChildren(data.id, [], false);
-      return;
-    }
-
-    let cancelled = false;
-
-    const fetchDisplay = async () => {
-      try {
-        const content = await fetchDisplayContent(
-          repoId,
-          resolvedPath,
-          isDeveloper,
-          fileLoadedTrig,
-        );
-        if (cancelled) return;
-
-        rawContentRef.current = content;
-        lastAppliedLayoutKeyRef.current = "";
-        layoutAndApply();
-      } catch {
-        if (!cancelled) {
-          rawContentRef.current = null;
-          lastAppliedLayoutKeyRef.current = "";
-          useEditorStore.getState().updateWidgetChildren(data.id, [], false);
-        }
-      }
-    };
-
-    void fetchDisplay();
-    return () => {
-      cancelled = true;
-    };
-    // layoutAndApply is intentionally omitted: it's re-created when x/y/width/height
-    // change, which would otherwise re-trigger a full re-fetch on every resize tick.
-    // The dedicated layout effect below handles those changes instead.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [repoId, resolvedPath, isDeveloper, data.id, fileLoadedTrig]);
-
-  // Macro edits are instance-local and should not trigger any re-fetch; just
-  // force a fresh layout+macro pass for this instance.
-  useEffect(() => {
-    lastAppliedLayoutKeyRef.current = "";
-    layoutAndApply();
-  }, [resolvedMacroKey, layoutAndApply]);
-
-  // Layout effect: re-runs per-instance whenever THIS widget's own box
-  // changes (x/y/width/height, via layoutAndApply's deps). No network call —
-  // just re-scales the already-fetched content in rawContentRef.
-  useEffect(() => {
-    layoutAndApply();
-  }, [layoutAndApply]);
-
   const hasChildren = (data.children?.length ?? 0) > 0;
-  if (hasChildren) return null;
-
-  if (!inEditMode) return null;
+  if (hasChildren || !inEditMode) return null;
   return <Placeholder label={resolvedPath ? "Loading…" : "No display selected"} />;
 };
 

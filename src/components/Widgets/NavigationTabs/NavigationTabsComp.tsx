@@ -6,19 +6,14 @@ import Box from "@mui/material/Box";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import type { TabEntry, WidgetUpdate } from "@src/types/widgets";
-import { useSessionStore } from "@src/stores/sessionStore";
-import { useRepoStore } from "@src/stores/repoStore";
 import { useEditorStore } from "@src/stores/editorStore";
-import { resolveRepoPath } from "@src/utils/repoPath";
 import {
   applyDisplayLayout,
-  fetchDisplayContent,
-  keepEmbeddedChildren,
   macrosToKey,
   resolveDisplayMacros,
-  type DisplayContent,
   type TargetBox,
 } from "@components/Widgets/shared/embeddedContent";
+import { useEmbeddedContent } from "@components/Widgets/shared/useEmbeddedContent";
 import { COLORS } from "@src/constants/constants";
 
 function normalizeTabs(raw: unknown): TabEntry[] {
@@ -28,9 +23,6 @@ function normalizeTabs(raw: unknown): TabEntry[] {
 }
 
 const NavigationTabsComp: React.FC<WidgetUpdate> = ({ data }) => {
-  const isDeveloper = useSessionStore((s) => s.isDeveloper);
-  const selectedFile = useRepoStore((s) => s.selectedFile);
-  const fileLoadedTrig = useEditorStore((s) => s.fileLoadedTrig);
   const globalMacros = useEditorStore((s) => s.globalMacros);
   const p = data.editableProperties;
 
@@ -89,96 +81,21 @@ const NavigationTabsComp: React.FC<WidgetUpdate> = ({ data }) => {
     return () => ro.disconnect();
   }, [recomputeIndicator]);
 
-  const repoId = selectedFile?.repo_id ?? "";
-  const opiPath = selectedFile?.path ?? "";
-
   const activeEntry = tabs[activeTab];
-  const displayPath = activeEntry?.displayPath;
-  const resolvedPath = displayPath ? resolveRepoPath(displayPath, opiPath) : undefined;
-
   const contentBox: TargetBox = isVertical
     ? { x: x + tabBarSize, y, width: Math.max(width - tabBarSize, 0), height }
     : { x, y: y + tabBarSize, width, height: Math.max(height - tabBarSize, 0) };
 
-  const resolvedMacros = useMemo(
+  const macros = useMemo(
     () => resolveDisplayMacros(activeEntry?.macros, globalMacros),
     [activeEntry?.macros, globalMacros],
   );
-  const resolvedMacroKey = useMemo(() => macrosToKey(resolvedMacros), [resolvedMacros]);
+  const layoutKey = `${contentBox.x}|${contentBox.y}|${contentBox.width}|${contentBox.height}|${macrosToKey(macros)}`;
 
-  const rawContentRef = useRef<DisplayContent | null>(null);
-  const lastAppliedLayoutKeyRef = useRef<string>("");
-  const macrosRef = useRef<Record<string, string>>({});
-  macrosRef.current = resolvedMacros;
-
-  const layoutAndApply = useCallback(() => {
-    const cached = rawContentRef.current;
-    if (!cached) return;
-
-    const macroKey = macrosToKey(macrosRef.current);
-    const layoutKey = `${contentBox.width}|${contentBox.height}|${contentBox.x}|${contentBox.y}|${macroKey}`;
-    if (layoutKey === lastAppliedLayoutKeyRef.current) return;
-
-    lastAppliedLayoutKeyRef.current = layoutKey;
-    const withMacros = applyDisplayLayout(cached, contentBox, macrosRef.current);
-    const { widgetIdMap, updateWidgetChildren } = useEditorStore.getState();
-    updateWidgetChildren(data.id, keepEmbeddedChildren(withMacros, widgetIdMap), false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data.id, contentBox.x, contentBox.y, contentBox.width, contentBox.height]);
-
-  // Fetch effect: re-runs when the active tab's source or file-load mode changes.
-  // Network requests are shared across instances/tabs via the shared content cache.
-  useEffect(() => {
-    if (!repoId || !resolvedPath) {
-      rawContentRef.current = null;
-      lastAppliedLayoutKeyRef.current = "";
-      useEditorStore.getState().updateWidgetChildren(data.id, [], false);
-      return;
-    }
-
-    let cancelled = false;
-
-    const load = async () => {
-      try {
-        const content = await fetchDisplayContent(
-          repoId,
-          resolvedPath,
-          isDeveloper,
-          fileLoadedTrig,
-        );
-        if (cancelled) return;
-
-        rawContentRef.current = content;
-        lastAppliedLayoutKeyRef.current = "";
-        layoutAndApply();
-      } catch {
-        if (!cancelled) {
-          rawContentRef.current = null;
-          lastAppliedLayoutKeyRef.current = "";
-          useEditorStore.getState().updateWidgetChildren(data.id, [], false);
-        }
-      }
-    };
-
-    void load();
-    return () => {
-      cancelled = true;
-    };
-    // layoutAndApply intentionally omitted: it's re-created on box resize, which
-    // must not re-trigger a full re-fetch. The layout effect below handles that.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [repoId, resolvedPath, isDeveloper, fileLoadedTrig, data.id]);
-
-  // Macro edits are instance-local and should not trigger a re-fetch.
-  useEffect(() => {
-    lastAppliedLayoutKeyRef.current = "";
-    layoutAndApply();
-  }, [resolvedMacroKey, layoutAndApply]);
-
-  // Re-layout (no network) whenever this instance's own box changes.
-  useEffect(() => {
-    layoutAndApply();
-  }, [layoutAndApply]);
+  // Only the active tab's content is loaded, as `data.children`.
+  useEmbeddedContent(data.id, activeEntry?.displayPath, layoutKey, (content) =>
+    applyDisplayLayout(content, contentBox, macros),
+  );
 
   return (
     <Box

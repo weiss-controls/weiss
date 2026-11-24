@@ -18,6 +18,7 @@ import type { MultiPvData, PVData } from "./epicsWS";
  * - "strRecord": string-string record (key-value pairs)
  * - "stateList": list of (value, color, label) state entries
  * - "tabList": list of (label, displayPath, macros) tab entries
+ * - "instanceList": list of per-instance macro tables
  * - "none": no selector (property not displayed)
  */
 export type PropertySelectorType =
@@ -32,6 +33,7 @@ export type PropertySelectorType =
   | "repoFile"
   | "stateList"
   | "tabList"
+  | "instanceList"
   | "none";
 
 /** A single state entry for multi-state widgets: trigger value, display color, and label */
@@ -48,9 +50,21 @@ export interface TabEntry {
   macros: Record<string, string>;
 }
 
+/** A single instance entry for DisplayRepeater: the macros of that copy of the display */
+export interface InstanceEntry {
+  macros: Record<string, string>;
+}
+
 /** Allowed values for a widget property */
 export type PropertyValue =
-  string | number | boolean | string[] | Record<string, string> | StateEntry[] | TabEntry[];
+  | string
+  | number
+  | boolean
+  | string[]
+  | Record<string, string>
+  | StateEntry[]
+  | TabEntry[]
+  | InstanceEntry[];
 
 export const valueDisplayFormats = [
   "Default",

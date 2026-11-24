@@ -12,6 +12,7 @@ import WidgetTreeItem, {
   type WidgetLayerItem,
   type WidgetTreeDndCtx,
 } from "./WidgetTreeItem";
+import { isEmbeddingWidget } from "@components/Widgets/shared/embeddingWidgets";
 
 function widgetTreeLabel(w: Widget): string {
   const alias = w.editableProperties.alias?.value;
@@ -27,10 +28,7 @@ function buildLayerItems(widgets: Widget[], groupId: string | null): WidgetLayer
     widgetName: w.widgetName,
     groupId,
     children:
-      w.children &&
-      w.children.length > 0 &&
-      w.widgetName !== "EmbeddedDisplay" &&
-      w.widgetName !== "NavigationTabs"
+      w.children && w.children.length > 0 && !isEmbeddingWidget(w.widgetName)
         ? buildLayerItems(w.children, w.id)
         : undefined,
   }));

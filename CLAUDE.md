@@ -65,11 +65,11 @@ There are no automated tests. Run the checks above after changes; CI runs the sa
   property whose value is a PV name to subscribe, resolved into `Widget.runtimeAuxPVs`.
 - Rules: one rule targets one property; the last matching ruleset wins, and later rules win. Legacy
   action-map rules are converted on import (`src/utils/ruleCompatibility.ts`).
-- Widgets that load another `.opi.json` at render time (`EmbeddedDisplay`, `NavigationTabs`) inject
-  it as `data.children`. Reuse `src/components/Widgets/shared/` for this, and special-case new ones
-  wherever `EmbeddedDisplay` is: `WidgetRenderer.tsx` (`childIsEmbedded`), `editorStore.ts`
-  (`ungroupSelected`), `widgetHelpers.ts` (`formatWdgToExport`), `WidgetTree.tsx`
-  (`buildLayerItems`).
+- Widgets that load another `.opi.json` at render time (`EmbeddedDisplay`, `NavigationTabs`,
+  `DisplayRepeater`) inject it as `data.children` through the `useEmbeddedContent` hook
+  (`src/components/Widgets/shared/`). Add new ones to `EMBEDDING_WIDGETS` (`embeddingWidgets.ts`),
+  which the renderer, ungrouping, export and widget tree check, and to `inheritDisplayMacros` in
+  `embeddedContent.ts` if they have a macro table.
 - `src/services/APIClient/` is generated: never edit it by hand.
 - `src/utils/bob2json/` converts Phoebus `.bob` files (see its README). Widgets and properties
   missing from `mapping.ts` are dropped on import.

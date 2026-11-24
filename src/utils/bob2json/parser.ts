@@ -19,6 +19,7 @@ import type {
   PhoebusFont,
   PhoebusNavTab,
   PhoebusState,
+  PhoebusTemplateInstance,
   PhoebusTrace,
   PhoebusWidget,
 } from "./types";
@@ -185,6 +186,25 @@ function parseNavTabs(tabsEl: Element): PhoebusNavTab[] {
 }
 
 /**
+ * Parses a template's <instances> element into PhoebusTemplateInstance entries.
+ *
+ * Shape:
+ *   <instances>
+ *     <instance>
+ *       <macros><key>value</key></macros>
+ *     </instance>
+ *   </instances>
+ */
+function parseTemplateInstances(instancesEl: Element): PhoebusTemplateInstance[] {
+  return Array.from(instancesEl.children)
+    .filter((el) => el.tagName === PhoebusElement.INSTANCE)
+    .map((instanceEl) => {
+      const macrosEl = directChild(instanceEl, PhoebusProperty.MACROS);
+      return { macros: macrosEl ? parseMacros(macrosEl) : undefined };
+    });
+}
+
+/**
  * Parses a plot's <traces> element into PhoebusTrace entries.
  *
  * Shape:
@@ -248,6 +268,8 @@ const NUMERIC_PROPS: ReadonlySet<string> = new Set([
   PhoebusProperty.BORDER_WIDTH,
   PhoebusProperty.ROTATION,
   PhoebusProperty.NBITS,
+  PhoebusProperty.GAP,
+  PhoebusProperty.WRAP_COUNT,
   PhoebusProperty.PRECISION,
   PhoebusProperty.OPACITY,
   PhoebusProperty.MINIMUM,
@@ -301,6 +323,12 @@ function parseWidget(widgetEl: Element): PhoebusWidget {
     // Plot traces (xyplot / stripchart).
     if (tag === PhoebusElement.TRACES) {
       properties.set(PhoebusProperty.TRACES, parseTraces(child));
+      continue;
+    }
+
+    // Template instances, each with its own macros.
+    if (tag === PhoebusElement.INSTANCES) {
+      properties.set(PhoebusProperty.INSTANCES, parseTemplateInstances(child));
       continue;
     }
 

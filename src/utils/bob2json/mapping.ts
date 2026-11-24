@@ -488,9 +488,15 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
   },
 
   [PhoebusWidgetType.TEMPLATE]: {
-    weissName: undefined,
+    weissName: "DisplayRepeater",
     propMap: {
       ...COMMON_PROP_MAP,
+      [PhoebusProperty.FILE]: "displayPath",
+      [PhoebusProperty.MACROS]: "macros",
+      [PhoebusProperty.INSTANCES]: "instances",
+      [PhoebusProperty.HORIZONTAL]: "horizontal",
+      [PhoebusProperty.GAP]: "instanceGap",
+      [PhoebusProperty.WRAP_COUNT]: "instanceWrapCount",
     },
   },
 

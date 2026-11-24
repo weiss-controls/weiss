@@ -32,6 +32,7 @@ import {
   mapLineStyle,
   mapNavTabs,
   mapStates,
+  mapTemplateInstances,
   mapTraces,
   mapVAlign,
   normalizeTooltipMacros,
@@ -259,6 +260,20 @@ function convertWidget(
         warnings.push(
           `Widget "${phWidget.name ?? phWidget.type}": ` +
             `could not parse traces for "${phoebusKey}" - skipped.`,
+        );
+      }
+      continue;
+    }
+
+    // Template instances
+    if (phoebusKey === PhoebusProperty.INSTANCES) {
+      const mappedInstances = mapTemplateInstances(raw);
+      if (mappedInstances !== undefined) {
+        properties[weissKey] = mappedInstances;
+      } else {
+        warnings.push(
+          `Widget "${phWidget.name ?? phWidget.type}": ` +
+            `could not parse instances for "${phoebusKey}" - skipped.`,
         );
       }
       continue;

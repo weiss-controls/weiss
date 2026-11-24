@@ -32,3 +32,4 @@ export { TextLabel } from "./TextLabel";
 // Layout
 export { EmbeddedDisplay } from "./EmbeddedDisplay";
 export { NavigationTabs } from "./NavigationTabs";
+export { DisplayRepeater } from "./DisplayRepeater";

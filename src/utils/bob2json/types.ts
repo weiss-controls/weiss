@@ -33,6 +33,11 @@ export interface PhoebusNavTab {
   macros?: Record<string, string>;
 }
 
+/** A single <instance> entry of a template widget: its own macros. */
+export interface PhoebusTemplateInstance {
+  macros?: Record<string, string>;
+}
+
 /** A single <trace> entry of an xyplot/stripchart widget: monitored PVs and line color. */
 export interface PhoebusTrace {
   xPv?: string;

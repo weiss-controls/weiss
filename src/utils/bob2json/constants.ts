@@ -43,6 +43,10 @@ export const PhoebusElement = {
   TRACES: "traces",
   TRACE: "trace",
 
+  // template instances
+  INSTANCES: "instances",
+  INSTANCE: "instance",
+
   // flag inside <macros>, not a macro
   INCLUDE_PARENT_MACROS: "include_parent_macros",
 } as const;
@@ -88,6 +92,8 @@ export const PhoebusProperty = {
   ROTATION: "rotation",
   HORIZONTAL: "horizontal",
   NBITS: "numBits",
+  GAP: "gap",
+  WRAP_COUNT: "wrap_count",
 
   VISIBLE: "visible",
   ENABLED: "enabled",
@@ -148,6 +154,7 @@ export const PhoebusProperty = {
   STATES: "states",
   TABS: "tabs",
   TRACES: "traces",
+  INSTANCES: "instances",
   X_PV: "x_pv",
   Y_PV: "y_pv",
 

@@ -11,6 +11,7 @@ import { useUIStore } from "@src/stores/uiStore";
 import { useEditorStore } from "@src/stores/editorStore";
 import { hasSelectedDescendant } from "./widgetRenderUtils";
 import LiveWidget from "./LiveWidget";
+import { isEmbeddingWidget } from "@components/Widgets/shared/embeddingWidgets";
 
 interface RendererProps {
   scale: number;
@@ -133,8 +134,7 @@ function WidgetItemBase({
   const canDrag = inEditMode && !isChild && !isEmbedded && !isTextEditing && !inSelectionGroup;
   const canResize = inEditMode && !isChild && !inSelectionGroup;
   const isGroup = !!w.children?.length;
-  const childIsEmbedded =
-    isEmbedded || w.widgetName === "EmbeddedDisplay" || w.widgetName === "NavigationTabs";
+  const childIsEmbedded = isEmbedded || isEmbeddingWidget(w.widgetName);
 
   const handleMouseDownCapture = (e: React.MouseEvent) => {
     if (!inEditMode || isTextEditing || useUIStore.getState().isPanning) return;

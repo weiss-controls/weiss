@@ -8,6 +8,7 @@ import {
   type ValueDisplayFormat,
   type StateEntry,
   type TabEntry,
+  type InstanceEntry,
   valueDisplayFormats,
 } from "./widgets";
 import { COLORS } from "@src/constants/constants";
@@ -127,6 +128,10 @@ export const PROPERTY_SCHEMAS = {
   tabs:            defineProp({ selType: "tabList", label: "Tabs", value: [{ label: "Tab 1", displayPath: "", macros: {} }] as TabEntry[], category: "Layout" }),
   activeTabColor:   defineProp({ selType: "colorSel", label: "Active tab color", value: COLORS.midDarkBlue, category: "Style" }),
   tabOrientation:  defineProp({ selType: "select", label: "Tab Orientation", value: "horizontal" as string, options: ["horizontal", "vertical"], category: "Layout" }),
+  // DisplayRepeater
+  instances:       defineProp({ selType: "instanceList", label: "Instances", value: [{ macros: {} }, { macros: {} }] as InstanceEntry[], category: "General" }),
+  instanceGap:     defineProp({ selType: "number", label: "Gap between instances", value: 10 as number, limits: { min: 0 }, category: "Layout" }),
+  instanceWrapCount: defineProp({ selType: "number", label: "Wrap count", value: 0 as number, limits: { min: 0 }, category: "Layout", description: "Instances per row (horizontal) or per column (vertical) before wrapping. 0 never wraps." }),
   target:          defineProp({ selType: "text", label: "Target", value: "" as string, category: "General" }),
   // AreaDetector
   sizeXPV:         defineProp({ selType: "text", label: "Size X PV (waveform only)", value: "" as string, category: "EPICS", isPV: true, description: "Only needed for plain waveform image PVs (CA-style, non-NTNDArray)." }),

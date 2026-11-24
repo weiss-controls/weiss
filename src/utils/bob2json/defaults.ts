@@ -231,6 +231,17 @@ export const PHOEBUS_WIDGET_DEFAULTS: Partial<
 
   // Containers
 
+  [PhoebusWidgetType.TEMPLATE]: {
+    inputDefaults: {
+      [PhoebusProperty.WIDTH]: 400,
+      [PhoebusProperty.HEIGHT]: 300,
+      // Phoebus stacks instances vertically, 10px apart, without wrapping.
+      [PhoebusProperty.HORIZONTAL]: false,
+      [PhoebusProperty.GAP]: 10,
+      [PhoebusProperty.WRAP_COUNT]: 0,
+    },
+  },
+
   [PhoebusWidgetType.NAVIGATION_TABS]: {
     inputDefaults: {
       [PhoebusProperty.WIDTH]: 500,

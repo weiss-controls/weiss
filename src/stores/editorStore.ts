@@ -35,6 +35,7 @@ import {
   serializeWidgets,
 } from "@src/stores/widgetHelpers";
 import { restoreWidgets } from "@src/stores/restoreWidgets";
+import { isEmbeddingWidget } from "@components/Widgets/shared/embeddingWidgets";
 
 type Macros = Record<string, string>;
 
@@ -518,10 +519,7 @@ function ungroupSelected() {
   const { selectedWidgetIDs } = get();
   updateEditorWidgetList((prev) =>
     prev.flatMap((w) =>
-      selectedWidgetIDs.includes(w.id) &&
-      w.children &&
-      w.widgetName !== "EmbeddedDisplay" &&
-      w.widgetName !== "NavigationTabs"
+      selectedWidgetIDs.includes(w.id) && w.children && !isEmbeddingWidget(w.widgetName)
         ? w.children
         : [w],
     ),

@@ -6,10 +6,17 @@ import type {
   PhoebusFont,
   PhoebusNavTab,
   PhoebusState,
+  PhoebusTemplateInstance,
   PhoebusTrace,
   PhoebusWidget,
 } from "../types";
-import type { PropertyValue, StateEntry, TabEntry, ValueDisplayFormat } from "@src/types/widgets";
+import type {
+  InstanceEntry,
+  PropertyValue,
+  StateEntry,
+  TabEntry,
+  ValueDisplayFormat,
+} from "@src/types/widgets";
 import { COLORS } from "@src/constants/constants";
 
 /**
@@ -298,6 +305,12 @@ export function mapNavTabs(raw: unknown): TabEntry[] | undefined {
   }));
 
   return mapped.length > 0 ? mapped : undefined;
+}
+
+/** Converts a template's parsed <instance> entries into WEISS InstanceEntry objects. */
+export function mapTemplateInstances(raw: unknown): InstanceEntry[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  return (raw as PhoebusTemplateInstance[]).map((inst) => ({ macros: inst.macros ?? {} }));
 }
 
 export function getNumericProperty(
