@@ -110,6 +110,8 @@ export const PhoebusProperty = {
 
   BORDER_WIDTH: "border_width",
   BORDER_COLOR: "border_color",
+  CORNER_WIDTH: "corner_width",
+  CORNER_HEIGHT: "corner_height",
 
   ON_COLOR: "on_color",
   OFF_COLOR: "off_color",

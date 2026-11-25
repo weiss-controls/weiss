@@ -60,6 +60,35 @@ const PHOEBUS_DEFAULT_TEXT_COLOR: PhoebusColor = {
   blue: 0,
 };
 
+const PHOEBUS_DEFAULT_LED_LINE_COLOR: PhoebusColor = {
+  red: 50,
+  green: 50,
+  blue: 50,
+  alpha: 178,
+};
+
+const PHOEBUS_DEFAULT_SHAPE_BACKGROUND_COLOR: PhoebusColor = {
+  red: 30,
+  green: 144,
+  blue: 255,
+};
+
+const PHOEBUS_DEFAULT_SHAPE_LINE_COLOR: PhoebusColor = {
+  red: 0,
+  green: 0,
+  blue: 255,
+};
+
+/** Rectangles and ellipses: blue fill with a 3px solid outline. */
+const PHOEBUS_SHAPE_DEFAULTS: Partial<Record<PhoebusProperty, unknown>> = {
+  [PhoebusProperty.BACKGROUND_COLOR]: PHOEBUS_DEFAULT_SHAPE_BACKGROUND_COLOR,
+  [PhoebusProperty.LINE_COLOR]: PHOEBUS_DEFAULT_SHAPE_LINE_COLOR,
+  [PhoebusProperty.LINE_WIDTH]: 3,
+};
+
+/** Phoebus draws labels, text updates, plots and images with square corners. */
+const SQUARE_CORNERS: Record<string, PropertyValue> = { borderRadius: 0 };
+
 const PHOEBUS_MULTI_STATE_LED_FALLBACK_COLOR: PhoebusColor = {
   red: 176,
   green: 118,
@@ -86,6 +115,7 @@ export const PHOEBUS_WIDGET_DEFAULTS: Partial<
       // Transparency is handled as conditional logic in applyWidgetDefaults;
       // see comment there for why it cannot be a simple data entry.
     },
+    outputDefaults: SQUARE_CORNERS,
   },
 
   [PhoebusWidgetType.TEXT_UPDATE]: {
@@ -93,6 +123,7 @@ export const PHOEBUS_WIDGET_DEFAULTS: Partial<
       [PhoebusProperty.WIDTH]: 100,
       [PhoebusProperty.HEIGHT]: 20,
     },
+    outputDefaults: SQUARE_CORNERS,
   },
 
   [PhoebusWidgetType.TEXT_ENTRY]: {
@@ -175,6 +206,7 @@ export const PHOEBUS_WIDGET_DEFAULTS: Partial<
       [PhoebusProperty.HEIGHT]: 20,
       [PhoebusProperty.OFF_COLOR]: PHOEBUS_DEFAULT_OFF_COLOR,
       [PhoebusProperty.ON_COLOR]: PHOEBUS_DEFAULT_ON_COLOR,
+      [PhoebusProperty.LINE_COLOR]: PHOEBUS_DEFAULT_LED_LINE_COLOR,
     },
     // fixedProportion is a WEISS-only concept with no Phoebus counterpart.
     outputDefaults: {
@@ -187,6 +219,7 @@ export const PHOEBUS_WIDGET_DEFAULTS: Partial<
       [PhoebusProperty.WIDTH]: 20,
       [PhoebusProperty.HEIGHT]: 20,
       [PhoebusProperty.STATES]: PHOEBUS_MULTI_STATE_LED_DEFAULT_STATES,
+      [PhoebusProperty.LINE_COLOR]: PHOEBUS_DEFAULT_LED_LINE_COLOR,
     },
   },
 
@@ -218,14 +251,33 @@ export const PHOEBUS_WIDGET_DEFAULTS: Partial<
       [PhoebusProperty.FOREGROUND_COLOR]: PHOEBUS_DEFAULT_TEXT_COLOR,
       [PhoebusProperty.COLOR_MAP]: "VIRIDIS",
     },
+    outputDefaults: SQUARE_CORNERS,
+  },
+
+  [PhoebusWidgetType.XY_PLOT]: {
+    outputDefaults: SQUARE_CORNERS,
+  },
+
+  [PhoebusWidgetType.STRIP_CHART]: {
+    outputDefaults: SQUARE_CORNERS,
   },
 
   // Graphics
 
   [PhoebusWidgetType.RECTANGLE]: {
     inputDefaults: {
+      ...PHOEBUS_SHAPE_DEFAULTS,
       [PhoebusProperty.WIDTH]: 100,
       [PhoebusProperty.HEIGHT]: 20,
+      [PhoebusProperty.CORNER_WIDTH]: 0,
+    },
+  },
+
+  [PhoebusWidgetType.ELLIPSE]: {
+    inputDefaults: {
+      ...PHOEBUS_SHAPE_DEFAULTS,
+      [PhoebusProperty.WIDTH]: 100,
+      [PhoebusProperty.HEIGHT]: 50,
     },
   },
 
@@ -254,8 +306,9 @@ export const PHOEBUS_WIDGET_DEFAULTS: Partial<
  * Applies `inputDefaults` from `PHOEBUS_WIDGET_DEFAULTS` for the widget type
  * into `phWidget.properties`, but only for keys that are currently absent.
  *
- * Also handles the conditional line-style default: if `line_width` is present
- * and positive but `line_style` is absent, `line_style` is set to `"SOLID"`.
+ * Also handles the conditional line-style default: if `line_width` or
+ * `border_width` is positive but `line_style` is absent, `line_style` is set to
+ * `"SOLID"`.
  *
  * Call this once at the start of `convertWidget`, before the propMap loop.
  */
@@ -273,12 +326,14 @@ export function applyWidgetDefaults(phWidget: PhoebusWidget): void {
     }
   }
 
-  // Conditional default: Phoebus renders borders as solid when line_width is
-  // explicitly set but line_style is omitted.
-  const lineWidth = phWidget.properties.get(PhoebusProperty.LINE_WIDTH);
+  // Conditional default: Phoebus renders borders as solid when a line or
+  // border width is set but line_style is omitted (border_* has no style).
+  const hasWidth = (key: PhoebusProperty) => {
+    const width = phWidget.properties.get(key);
+    return (typeof width === "number" || typeof width === "string") && Number(width) > 0;
+  };
   if (
-    (typeof lineWidth === "number" || typeof lineWidth === "string") &&
-    Number(lineWidth) > 0 &&
+    (hasWidth(PhoebusProperty.LINE_WIDTH) || hasWidth(PhoebusProperty.BORDER_WIDTH)) &&
     !phWidget.properties.has(PhoebusProperty.LINE_STYLE)
   ) {
     phWidget.properties.set(PhoebusProperty.LINE_STYLE, "SOLID");

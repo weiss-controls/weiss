@@ -61,6 +61,9 @@ const BitIndicatorComp: React.FC<WidgetUpdate> = ({ data }) => {
     height: isSquare ? containerHeight : fixedProportion ? circleSize : containerHeight,
     borderRadius: isSquare ? 0 : "50%",
     background,
+    // Keep the fill inside the border; longhands must follow the shorthand.
+    backgroundOrigin: "border-box",
+    backgroundClip: "padding-box",
     borderStyle: p.borderStyle?.value,
     borderWidth: p.borderWidth?.value,
     borderColor: p.borderColor?.value,

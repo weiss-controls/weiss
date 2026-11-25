@@ -266,6 +266,8 @@ const NUMERIC_PROPS: ReadonlySet<string> = new Set([
   PhoebusProperty.HEIGHT,
   PhoebusProperty.LINE_WIDTH,
   PhoebusProperty.BORDER_WIDTH,
+  PhoebusProperty.CORNER_WIDTH,
+  PhoebusProperty.CORNER_HEIGHT,
   PhoebusProperty.ROTATION,
   PhoebusProperty.NBITS,
   PhoebusProperty.GAP,

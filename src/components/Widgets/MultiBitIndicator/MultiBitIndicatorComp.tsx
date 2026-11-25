@@ -49,6 +49,9 @@ const MultiBitIndicatorComp: React.FC<WidgetUpdate> = ({ data }) => {
             : bitOn
               ? onColor
               : offColor,
+          // Keep the fill inside the border; longhands must follow the shorthand.
+          backgroundOrigin: "border-box",
+          backgroundClip: "padding-box",
           borderStyle: p.borderStyle?.value,
           borderWidth: p.borderWidth?.value,
           borderColor: p.borderColor?.value,

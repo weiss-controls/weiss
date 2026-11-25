@@ -190,6 +190,14 @@ function convertWidget(
       continue;
     }
 
+    // Phoebus corners are JavaFX arc sizes (diameters) with separate width and height.
+    if (phoebusKey === PhoebusProperty.CORNER_WIDTH) {
+      const cornerWidth = getNumericProperty(phWidget, PhoebusProperty.CORNER_WIDTH, 0);
+      const cornerHeight = getNumericProperty(phWidget, PhoebusProperty.CORNER_HEIGHT, cornerWidth);
+      properties[weissKey] = Math.max(0, Math.min(cornerWidth, cornerHeight) / 2);
+      continue;
+    }
+
     if (phoebusKey === PhoebusProperty.LINE_STYLE) {
       const mapped = mapLineStyle(raw);
       if (mapped !== undefined) {

@@ -30,6 +30,8 @@ const STYLE_PROP_MAP: PropertyMap = {
   [PhoebusProperty.LINE_COLOR]: "borderColor",
   [PhoebusProperty.LINE_WIDTH]: "borderWidth",
   [PhoebusProperty.LINE_STYLE]: "borderStyle",
+  [PhoebusProperty.BORDER_COLOR]: "borderColor",
+  [PhoebusProperty.BORDER_WIDTH]: "borderWidth",
   [PhoebusProperty.BACKGROUND_COLOR]: "backgroundColor",
 };
 /**
@@ -356,6 +358,7 @@ export const WIDGET_MAP: Partial<Record<PhoebusWidgetType, WidgetMapEntry>> = {
     propMap: {
       ...COMMON_PROP_MAP,
       ...STYLE_PROP_MAP,
+      [PhoebusProperty.CORNER_WIDTH]: "borderRadius",
     },
   },
 
