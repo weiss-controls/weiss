@@ -5,6 +5,7 @@ import { MultiBitIndicatorComp } from "./MultiBitIndicatorComp";
 import { PROPERTY_SCHEMAS, COMMON_PROPS } from "@src/types/widgetProperties";
 import type { WidgetDefinition } from "@src/types/widgets";
 import CustomMultiBitIcon from "@src/components/CustomIcons/MultiBitIcon";
+import { COLORS } from "@src/constants/constants";
 
 const { borderRadius, backgroundColor, ...FILTERED_COMMON_PROPS } = COMMON_PROPS;
 
@@ -18,6 +19,9 @@ export const MultiBitIndicator: WidgetDefinition = {
     ...FILTERED_COMMON_PROPS,
     width: { ...PROPERTY_SCHEMAS.width, value: 40 },
     height: { ...PROPERTY_SCHEMAS.height, value: 320 },
+    borderColor: { ...PROPERTY_SCHEMAS.borderColor, value: COLORS.offColor },
+    borderStyle: { ...PROPERTY_SCHEMAS.borderStyle, value: "solid" },
+    borderWidth: { ...PROPERTY_SCHEMAS.borderWidth, value: 2 },
     onColor: PROPERTY_SCHEMAS.onColor,
     offColor: PROPERTY_SCHEMAS.offColor,
     nBits: PROPERTY_SCHEMAS.nBits,

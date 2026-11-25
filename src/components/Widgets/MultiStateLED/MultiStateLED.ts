@@ -5,6 +5,7 @@ import { MultiStateLEDComp } from "./MultiStateLEDComp";
 import { PROPERTY_SCHEMAS, COMMON_PROPS, TEXT_PROPS } from "@src/types/widgetProperties";
 import type { WidgetDefinition } from "@src/types/widgets";
 import TonalityIcon from "@mui/icons-material/Tonality";
+import { COLORS } from "@src/constants/constants";
 
 const { borderRadius, backgroundColor, ...FILTERED_COMMON_PROPS } = COMMON_PROPS;
 const { textVAlign, textHAlign, ...FILTERED_TEXT_PROPS } = TEXT_PROPS;
@@ -17,8 +18,11 @@ export const MultiStateLED: WidgetDefinition = {
   category: "Monitoring",
   defaultProperties: {
     ...FILTERED_COMMON_PROPS,
-    width: { ...PROPERTY_SCHEMAS.width, value: 95 },
+    width: { ...PROPERTY_SCHEMAS.width, value: 40 },
     height: { ...PROPERTY_SCHEMAS.height, value: 40 },
+    borderColor: { ...PROPERTY_SCHEMAS.borderColor, value: COLORS.offColor },
+    borderStyle: { ...PROPERTY_SCHEMAS.borderStyle, value: "solid" },
+    borderWidth: { ...PROPERTY_SCHEMAS.borderWidth, value: 2 },
     pvName: PROPERTY_SCHEMAS.pvName,
     stateList: PROPERTY_SCHEMAS.stateList,
     labelFromPV: PROPERTY_SCHEMAS.labelFromPV,
