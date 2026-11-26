@@ -2,10 +2,14 @@
 // Copyright (C) 2026 WEISS Contributors
 
 import React, { useEffect, useRef, useState } from "react";
-import type { GridPosition, WidgetDefinition, WidgetUpdate } from "@src/types/widgets";
+import type { GridPosition, Widget, WidgetDefinition, WidgetUpdate } from "@src/types/widgets";
 import type { PVData } from "@src/types/epicsWS";
 import { usePVStore } from "@src/stores/pvStore";
-import { createWidgetInstance, ensureGridCoordinate } from "@src/stores/widgetHelpers";
+import {
+  computeGroupBounds,
+  createWidgetInstance,
+  ensureGridCoordinate,
+} from "@src/stores/widgetHelpers";
 import WidgetRegistry from "@components/WidgetRegistry/WidgetRegistry";
 import { FRONT_UI_ZIDX, GRID_ID, MAX_ZOOM, MIN_ZOOM } from "@src/constants/constants";
 import ContextMenu from "@components/ContextMenu/ContextMenu";
@@ -21,6 +25,18 @@ import { useRepoStore } from "@src/stores/repoStore";
 import { useUIStore } from "@src/stores/uiStore";
 
 const BADGE_TIMEOUT_MS = 1000;
+
+const FIT_MARGIN = 20;
+
+/** Largest zoom up to 1 that shows every widget with the origin at the middle of the view. */
+function fitZoom(widgets: Widget[], width: number, height: number): number {
+  const bounds = computeGroupBounds(widgets);
+  if (!bounds || width <= 0 || height <= 0) return 1;
+  const halfW = Math.max(Math.abs(bounds.x), Math.abs(bounds.x + bounds.width)) + FIT_MARGIN;
+  const halfH = Math.max(Math.abs(bounds.y), Math.abs(bounds.y + bounds.height)) + FIT_MARGIN;
+  const fit = Math.min(width / (2 * halfW), height / (2 * halfH));
+  return Math.min(Math.max(fit, MIN_ZOOM), 1);
+}
 
 const BADGE_SX = {
   bgcolor: "rgba(73, 73, 73, 0.7)",
@@ -44,7 +60,7 @@ const BADGE_SX = {
  *
  * @notes
  * - Zooming is constrained by MIN_ZOOM and MAX_ZOOM constants.
- * - Panning centers the grid on first load or when middle mouse button is used.
+ * - Centering (on file load, middle click or Ctrl+Shift+C) puts the origin at the middle and zooms out to fit all widgets.
  */
 const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
   const props = data.editableProperties;
@@ -93,7 +109,6 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
   const [contextMenuPVData, setContextMenuPVData] = useState<PVData | null>(null);
   const [zoomBadgeVisible, setZoomBadgeVisible] = useState(false);
 
-  const [shouldCenterPan, setShouldCenterPan] = useState(true);
   const [dragPreview, setDragPreview] = useState<{
     widget: WidgetDefinition;
     x: number;
@@ -103,27 +118,22 @@ const GridZoneComp: React.FC<WidgetUpdate> = ({ data }) => {
 
   const gridLineVisible = props.gridLineVisible?.value;
 
+  /** Puts the origin at the middle of the view, zoomed out to fit all widgets if needed. */
   const centerScreen = () => {
-    setZoom(1);
+    const container = gridRef.current;
+    if (!container) return;
+    const { width, height } = container.getBoundingClientRect();
+    const widgets = useEditorStore.getState().editorWidgets.filter((w) => w.id !== GRID_ID);
+    setZoom(fitZoom(widgets, width, height));
+    setPan({ x: width / 2, y: height / 2 });
     showZoomBadge();
-    setShouldCenterPan(true);
   };
 
+  const fileLoadedTrig = useEditorStore((s) => s.fileLoadedTrig);
   useEffect(() => {
-    if (shouldCenterPan && zoom === 1) {
-      const container = document.getElementById("gridContainer");
-
-      if (container) {
-        const containerBounds = container.getBoundingClientRect();
-
-        const centerX = containerBounds.width / 2;
-        const centerY = containerBounds.height / 2;
-
-        setPan({ x: centerX, y: centerY });
-        setShouldCenterPan(false);
-      }
-    }
-  }, [shouldCenterPan, zoom, inEditMode]);
+    centerScreen();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs on mount and on each file load
+  }, [fileLoadedTrig]);
 
   useEffect(() => {
     const handleCtrlZoom = (e: WheelEvent) => {
