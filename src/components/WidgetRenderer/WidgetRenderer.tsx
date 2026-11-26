@@ -38,20 +38,24 @@ function handleDragging() {
   useEditorStore.getState().setIsDragging(true);
 }
 
-/** Resize handle size is 10% of the widget size, clamped between 6px and 24px. */
-function getResizeHandlesSize(width: number, height: number) {
-  const handleWidth = Math.min(Math.max(width * 0.1, 6), 24);
-  const handleHeight = Math.min(Math.max(height * 0.1, 6), 24);
-  const corner = { width: `${2 * handleWidth}px`, height: `${2 * handleHeight}px` };
+/**
+ * Resize handles are 10% of the widget size on screen, clamped between 6px and 24px on screen.
+ * They are drawn inside the scaled canvas, so sizes and offsets are divided by the scale.
+ * Each handle straddles the widget edge.
+ */
+function getResizeHandlesSize(width: number, height: number, scale: number) {
+  const hw = Math.min(Math.max(width * scale * 0.1, 6), 24) / scale;
+  const hh = Math.min(Math.max(height * scale * 0.1, 6), 24) / scale;
+  const corner = { width: `${2 * hw}px`, height: `${2 * hh}px` };
   return {
-    left: { width: `${handleWidth}px` },
-    right: { width: `${handleWidth}px` },
-    top: { height: `${handleHeight}px` },
-    bottom: { height: `${handleHeight}px` },
-    topLeft: corner,
-    topRight: corner,
-    bottomLeft: corner,
-    bottomRight: corner,
+    left: { width: `${hw}px`, left: `${-hw / 2}px` },
+    right: { width: `${hw}px`, right: `${-hw / 2}px` },
+    top: { height: `${hh}px`, top: `${-hh / 2}px` },
+    bottom: { height: `${hh}px`, bottom: `${-hh / 2}px` },
+    topLeft: { ...corner, left: `${-hw}px`, top: `${-hh}px` },
+    topRight: { ...corner, right: `${-hw}px`, top: `${-hh}px` },
+    bottomLeft: { ...corner, left: `${-hw}px`, bottom: `${-hh}px` },
+    bottomRight: { ...corner, right: `${-hw}px`, bottom: `${-hh}px` },
   };
 }
 
@@ -162,7 +166,7 @@ function WidgetItemBase({
       resizeGrid={resizeGrid}
       disableDragging={!canDrag}
       enableResizing={canResize}
-      resizeHandleStyles={getResizeHandlesSize(width, height)}
+      resizeHandleStyles={getResizeHandlesSize(width, height, scale)}
       size={{ width, height }}
       position={{ x, y }}
       className={widgetClass}
@@ -237,7 +241,7 @@ const SelectionGroup = memo(function SelectionGroup({ scale }: RendererProps) {
       position={{ x: bounds.x, y: bounds.y }}
       enableResizing={inEditMode}
       disableDragging={!inEditMode}
-      resizeHandleStyles={getResizeHandlesSize(bounds.width, bounds.height)}
+      resizeHandleStyles={getResizeHandlesSize(bounds.width, bounds.height, scale)}
       onDragStart={handleDragStart}
       onDrag={(_e, d) => {
         handleDragging();
